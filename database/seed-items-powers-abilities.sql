@@ -58,7 +58,7 @@ INSERT INTO "Items" (
 ),
 (
   'Pocao de Vida', 'Recupera vida durante uma aventura.',
-  'Consumivel', 'Comum', 20, 7, 0.5, '/images/primordial.webp'
+  'Consumivel', 'Comum', 1, 7, 0.5, '/images/primordial.webp'
 ),
 (
   'Pocao de Mana', 'Recupera mana para usar poderes.',

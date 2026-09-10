@@ -149,6 +149,8 @@ let character = {
   Class: classes[0],
 };
 
+let potionQuantity = 2;
+
 const powers = [
   {
     id: 1,
@@ -216,10 +218,10 @@ export class MockApiClient {
             inventory: [
               {
                 id_personagem_inventario: 1,
-                quantidade: 2,
+                quantidade: potionQuantity,
                 equipado: false,
                 Item: {
-                  id: 1,
+                  id: 3,
                   nome: "Pocao de Vida",
                   tipo_item: "Consumivel",
                   raridade: "Comum",
@@ -323,6 +325,31 @@ export class MockApiClient {
         { status: "success", data: { character } } as T,
         config,
       );
+    }
+    if (url === "/shop/purchase") {
+      const request = body as { itemId?: number; quantity?: number };
+      const quantity = Math.max(1, request.quantity ?? 1);
+      const price = quantity;
+      const result = response<T>(
+        {
+          status: "success",
+          data: {
+            quantity,
+            character: { dinheiro: character.dinheiro - price },
+          },
+        } as T,
+        config,
+      );
+
+      if (request.itemId !== 3 || character.dinheiro < price) {
+        result.status = 400;
+        result.statusText = "Bad Request";
+        throw new Error("Compra invalida ou moedas insuficientes.");
+      }
+
+      character = { ...character, dinheiro: character.dinheiro - price };
+      potionQuantity += quantity;
+      return result;
     }
     if (url === "/combat/action") {
       const request = body as {

@@ -8,6 +8,7 @@ interface CurrentCharacter {
   nivel: number;
   experiencia?: number;
   vida_atual: number;
+  vida_maxima?: number;
   mana_atual: number;
   forca: number;
   vitalidade: number;

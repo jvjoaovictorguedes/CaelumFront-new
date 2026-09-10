@@ -25,7 +25,11 @@ export default async function CharacterPage() {
     );
   }
 
-  const vidaMaxima = 30 + character.vitalidade * 6;
+  const vidaMaximaCalculada = 30 + character.vitalidade * 6;
+  const vidaMaxima = Math.max(
+    character.vida_maxima ?? vidaMaximaCalculada,
+    character.vida_atual,
+  );
   const manaMaxima = 20 + character.inteligencia * 5;
   const experienciaAtual = character.experiencia ?? 0;
   const experienciaNivel = Math.max(100, character.nivel * 100);
