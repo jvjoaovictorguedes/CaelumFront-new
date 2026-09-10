@@ -2,7 +2,10 @@
 import React, { useEffect, useState } from "react";
 import axiosInstance from "@/utils/axiosIntance";
 import { createCharacter } from "@/app/create/action";
-import { getTempCharacterData } from "@/app/create/temp-character-data-action";
+import {
+  getTempCharacterData,
+  type TempCharacterData,
+} from "@/app/create/temp-character-data-action";
 import router from "next/router";
 
 interface ClassData {
@@ -10,23 +13,6 @@ interface ClassData {
   nome: string;
   descricao: string;
   imagem_url: string;
-}
-
-interface TempCharacterData {
-  nome: string;
-  genero: string;
-  id_raca: string;
-  nivel?: number;
-  experiencia?: number;
-  vida_atual?: number;
-  mana_atual?: number;
-  forca?: number;
-  vitalidade?: number;
-  agilidade?: number;
-  inteligencia?: number;
-  velocidade?: number;
-  dinheiro?: number;
-  id_usuario?: string;
 }
 
 export default function ClassSelection() {
@@ -135,6 +121,14 @@ export default function ClassSelection() {
           <div className="text-white text-3xl">Carregando classes...</div>
         </div>
       );
+    }
+    if (
+      !tempCharacterData?.nome ||
+      !tempCharacterData.genero ||
+      !tempCharacterData.id_raca
+    ) {
+      setErrorMessage("Dados de personagem incompletos. Reinicie a criação.");
+      return;
     }
     setIsLoading(true);
 

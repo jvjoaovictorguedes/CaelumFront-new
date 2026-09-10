@@ -3,7 +3,7 @@
 
 import { cookies } from "next/headers";
 
-interface TempCharacterData {
+export interface TempCharacterData {
   nome?: string;
   genero?: string;
   id_raca?: string;
