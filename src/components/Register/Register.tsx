@@ -1,7 +1,7 @@
 "use client";
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-const axios = require("axios");
+import axios from "axios";
 
 export default function Register() {
   const router = useRouter();
@@ -24,15 +24,17 @@ export default function Register() {
 
     try {
       const response = await axios.post(
-        "http://localhost:3001/api/users/register",
-        userData
+        `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api"}/users/register`,
+        userData,
       );
       console.log("Usuário registrado com sucesso:", response.data);
-    } catch (error: any) {
-      console.error(
-        "Erro ao registrar usuário:",
-        error.response ? error.response.data : error.message
-      );
+    } catch (error: unknown) {
+      const message = axios.isAxiosError(error)
+        ? error.response?.data
+        : error instanceof Error
+          ? error.message
+          : error;
+      console.error("Erro ao registrar usuário:", message);
     }
   }
 
@@ -60,7 +62,7 @@ export default function Register() {
       username.length > MAX_USERNAME_LENGTH
     ) {
       setErrorMessage(
-        `O nome de usuário deve ter entre ${MIN_USERNAME_LENGTH} e ${MAX_USERNAME_LENGTH} caracteres.`
+        `O nome de usuário deve ter entre ${MIN_USERNAME_LENGTH} e ${MAX_USERNAME_LENGTH} caracteres.`,
       );
       return;
     }
@@ -78,13 +80,13 @@ export default function Register() {
     }
     if (password.length < MIN_PASSWORD_LENGTH) {
       setErrorMessage(
-        `A senha deve ter pelo menos ${MIN_PASSWORD_LENGTH} caracteres.`
+        `A senha deve ter pelo menos ${MIN_PASSWORD_LENGTH} caracteres.`,
       );
       return;
     }
     if (!PASSWORD_REGEX.test(password)) {
       setErrorMessage(
-        "A senha deve conter pelo menos uma letra maiúscula, uma minúscula, um número e um caractere especial."
+        "A senha deve conter pelo menos uma letra maiúscula, uma minúscula, um número e um caractere especial.",
       );
       return;
     }

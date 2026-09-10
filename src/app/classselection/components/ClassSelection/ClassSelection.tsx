@@ -12,25 +12,39 @@ interface ClassData {
   imagem_url: string;
 }
 
+interface TempCharacterData {
+  nome: string;
+  genero: string;
+  id_raca: string;
+  nivel?: number;
+  experiencia?: number;
+  vida_atual?: number;
+  mana_atual?: number;
+  forca?: number;
+  vitalidade?: number;
+  agilidade?: number;
+  inteligencia?: number;
+  velocidade?: number;
+  dinheiro?: number;
+  id_usuario?: string;
+}
+
 export default function ClassSelection() {
   const [errorMessage, setErrorMessage] = useState("");
-  const [loadingClassess, setLoadingClassess] = useState(true);
-  const [rawClassesObject, setRawClassesObject] = useState<any[]>([]);
-  const [classesData, setClassesData] = useState<any[]>([]);
+  const [rawClassesObject, setRawClassesObject] = useState<ClassData[]>([]);
+  const [classesData, setClassesData] = useState<ClassData[]>([]);
   const [selectedClasses, setSelectedClasses] = useState("");
   const [loadingClasses, setLoadingClasses] = useState(true);
   const [hasRolledSpecial, setHasRolledSpecial] = useState(false);
-  const [specialClasses, setSpecialClasses] = useState<any[]>([]);
+  const [, setSpecialClasses] = useState<ClassData[]>([]);
   const [visibleClasses, setVisibleClasses] = useState<ClassData[]>([]);
-  const [acceptedSpecialClasses, setAcceptedSpecialClasses] = useState(false);
-  const [tempCharacterData, setTempCharacterData] = useState<any>(null);
+  const [tempCharacterData, setTempCharacterData] =
+    useState<TempCharacterData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     const fetchClasses = async () => {
       try {
-        setLoadingClassess(true);
-
         const dataFromCookie = await getTempCharacterData();
         setTempCharacterData(dataFromCookie);
         console.log(dataFromCookie);
@@ -40,41 +54,39 @@ export default function ClassSelection() {
           !dataFromCookie.id_raca
         ) {
           setErrorMessage(
-            "Dados de personagem incompletos. Por favor, reinicie a criação."
+            "Dados de personagem incompletos. Por favor, reinicie a criação.",
           );
           router.replace("/create");
           return;
         }
         const response = await axiosInstance.get("/classes");
-        const rawClassesObject = response.data.data;
-        if (
-          rawClassesObject &&
-          typeof rawClassesObject === "object" &&
-          !Array.isArray(rawClassesObject)
-        ) {
-          const fetchedClassesArray = Object.values(rawClassesObject);
-          setRawClassesObject(rawClassesObject.classes);
+        const responseData = response.data.data as
+          | { classes?: ClassData[] }
+          | undefined;
+        const classes = responseData?.classes;
+        if (classes) {
+          setRawClassesObject(classes);
 
-          if (rawClassesObject.classes.length >= 2) {
-            setClassesData(rawClassesObject.classes.slice(0, 2));
-            setVisibleClasses(rawClassesObject.classes.slice(0, 2));
+          if (classes.length >= 2) {
+            setClassesData(classes.slice(0, 2));
+            setVisibleClasses(classes.slice(0, 2));
           } else {
             setErrorMessage("Não há classes suficientes disponíveis.");
           }
-          if (fetchedClassesArray.length > 0) {
-            setSelectedClasses((fetchedClassesArray[0] as { id: string }).id);
+          if (classes.length > 0) {
+            setSelectedClasses(classes[0].id);
           }
         } else {
           console.error(
             "A API /races não retornou um objeto ou array de raças esperado:",
-            rawClassesObject
+            responseData,
           );
           setErrorMessage("Formato de dados inesperado da API de raças.");
         }
       } catch (error) {
         console.error("Erro ao carregar as raças:", error);
         setErrorMessage(
-          "Erro ao carregar as raças. Tente novamente mais tarde."
+          "Erro ao carregar as raças. Tente novamente mais tarde.",
         );
       } finally {
         setLoadingClasses(false);
@@ -101,8 +113,8 @@ export default function ClassSelection() {
   };
 
   const currentClassDescription =
-    rawClassesObject.find((cls: any) => cls.id === selectedClasses)
-      ?.descricao || "Selecione uma classe para ver a descrição.";
+    rawClassesObject.find((cls) => cls.id === selectedClasses)?.descricao ||
+    "Selecione uma classe para ver a descrição.";
 
   const handleCreateFinalCharacter = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -155,7 +167,7 @@ export default function ClassSelection() {
       router.push("/dashboard");
     } else {
       setErrorMessage(
-        result.message || "Erro desconhecido ao criar personagem."
+        result.message || "Erro desconhecido ao criar personagem.",
       );
     }
   };

@@ -3,6 +3,7 @@
 import { cookies } from "next/headers";
 import { TOKEN_KEY } from "../../constants/index";
 import axiosInstance from "@/utils/axiosIntance";
+import axios from "axios";
 
 interface LoginResponseData {
   token: string;
@@ -24,7 +25,7 @@ export async function login(data: CookiesData) {
       {
         email: data.email,
         password: data.password,
-      }
+      },
     );
 
     // Antes isso buscava `/characters/{id do usuário}`, tratando o id do
@@ -34,7 +35,7 @@ export async function login(data: CookiesData) {
       `/characters/by-user/${response.data.data.user.id}`,
       {
         validateStatus: (status) => status <= 404,
-      }
+      },
     );
 
     const { token, data: userData } = response.data;
@@ -75,24 +76,23 @@ export async function login(data: CookiesData) {
 
     console.log(
       "Usuário logado com sucesso (Server Action):",
-      userData.user.id
+      userData.user.id,
     );
     return {
       success: true,
       userId: userData.user.id,
       character: character.status,
     };
-  } catch (error: any) {
-    console.error(
-      "Erro ao logar usuário (Server Action):",
-      error.response ? error.response.data : error.message
-    );
+  } catch (error: unknown) {
+    const message = axios.isAxiosError(error)
+      ? error.response?.data?.message
+      : error instanceof Error
+        ? error.message
+        : undefined;
+    console.error("Erro ao logar usuário (Server Action):", message);
     return {
       success: false,
-      message:
-        error.response && error.response.data && error.response.data.message
-          ? error.response.data.message
-          : "Email ou senha incorretos. Tente novamente.",
+      message: message || "Email ou senha incorretos. Tente novamente.",
     };
   }
 }

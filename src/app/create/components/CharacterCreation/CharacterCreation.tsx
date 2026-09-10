@@ -9,11 +9,26 @@ import {
 import Tooltip from "@/components/Tooltip/Tooltip";
 
 interface RaceData {
-  forca: number;
-  vitalidade: number;
-  agilidade: number;
-  inteligencia: number;
-  velocidade: number;
+  id: string;
+  nome_masculino: string;
+  nome_feminino: string;
+  descricao_masculina: string;
+  descricao_feminina: string;
+  imagem_masculina_url: string;
+  imagem_feminina_url: string;
+  bonus_forca: number;
+  bonus_vitalidade: number;
+  bonus_agilidade: number;
+  bonus_inteligencia: number;
+  bonus_velocidade: number;
+}
+
+interface UserCookie {
+  id: string;
+}
+
+interface RacesResponseData {
+  races: RaceData[];
 }
 
 export default function CharacterCreation() {
@@ -23,11 +38,11 @@ export default function CharacterCreation() {
   const [gender, setGender] = useState("Masculino");
   const [selectedRace, setSelectedRace] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
-  const [racesData, setRacesData] = useState<any[]>([]);
+  const [racesData, setRacesData] = useState<RaceData[][]>([]);
   const [loadingRaces, setLoadingRaces] = useState(true);
-  const [rawRacesObject, setrawRacesObject] = useState<any[]>([]);
+  const [rawRacesObject, setrawRacesObject] = useState<RaceData[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [cookiesUser, setCookiesUser] = useState<any>(null);
+  const [cookiesUser, setCookiesUser] = useState<UserCookie | null>(null);
   const [natureMagic, setNatureMagic] = useState<string>("");
 
   useEffect(() => {
@@ -37,29 +52,31 @@ export default function CharacterCreation() {
         setCookiesUser(cookieStore);
         setLoadingRaces(true);
         const response = await axiosInstance.get("/races");
-        const rawRacesObject = response.data.data;
+        const rawRacesObject = response.data.data as RacesResponseData;
         if (
           rawRacesObject &&
           typeof rawRacesObject === "object" &&
           !Array.isArray(rawRacesObject)
         ) {
-          const fetchedRacesArray = Object.values(rawRacesObject);
+          const fetchedRacesArray = Object.values(
+            rawRacesObject,
+          ) as RaceData[][];
           setrawRacesObject(rawRacesObject.races);
           setRacesData(fetchedRacesArray);
-          if (fetchedRacesArray.length > 0) {
-            setSelectedRace((fetchedRacesArray[0] as { id: string }).id);
+          if (rawRacesObject.races.length > 0) {
+            setSelectedRace(rawRacesObject.races[0].id);
           }
         } else {
           console.error(
             "A API /races não retornou um objeto ou array de raças esperado:",
-            rawRacesObject
+            rawRacesObject,
           );
           setErrorMessage("Formato de dados inesperado da API de raças.");
         }
       } catch (error) {
         console.error("Erro ao carregar as raças:", error);
         setErrorMessage(
-          "Erro ao carregar as raças. Tente novamente mais tarde."
+          "Erro ao carregar as raças. Tente novamente mais tarde.",
         );
       } finally {
         setLoadingRaces(false);
@@ -68,9 +85,7 @@ export default function CharacterCreation() {
 
     fetchRaces();
   }, []);
-  const currentRace = rawRacesObject.find(
-    (race: any) => race.id === selectedRace
-  );
+  const currentRace = rawRacesObject.find((race) => race.id === selectedRace);
 
   const currentRaceDescription = currentRace
     ? gender === "Masculino"
@@ -119,7 +134,7 @@ export default function CharacterCreation() {
     }
 
     const currentRaceTempory = rawRacesObject.find(
-      (race: any) => race.id === selectedRace
+      (race) => race.id === selectedRace,
     );
 
     const roll = Math.random() * 100;
@@ -242,8 +257,8 @@ export default function CharacterCreation() {
 
           <div className="grid grid-cols-4 gap-4 mb-6">
             {racesData[0]
-              .sort((a: any, b: any) => a.id - b.id)
-              .map((race: any) => (
+              .sort((a, b) => Number(a.id) - Number(b.id))
+              .map((race) => (
                 <div
                   key={race.id}
                   className={`relative p-2 rounded-lg cursor-pointer transition-all duration-200
