@@ -27,6 +27,7 @@ interface CharacterState {
   inteligencia: number;
   vida_atual: number;
   mana_atual: number;
+  experiencia?: number;
 }
 
 interface EnemyState {
@@ -63,13 +64,15 @@ export default function CombatArena({
     `Um(a) ${initialEnemy.nome} apareceu!`,
   ]);
   const [carregando, setCarregando] = useState(false);
-  const [resultado, setResultado] = useState<
-    "vitoria" | "derrota" | null
-  >(null);
+  const [resultado, setResultado] = useState<"vitoria" | "derrota" | null>(
+    null,
+  );
   const [recompensa, setRecompensa] = useState<{
     experiencia: number;
     dinheiro: number;
   } | null>(null);
+  const experienciaAtual = character.experiencia ?? 0;
+  const experienciaNivel = Math.max(100, character.nivel * 100);
 
   interface RespostaCombate {
     data: {
@@ -82,7 +85,9 @@ export default function CombatArena({
     };
   }
 
-  async function executarAcao(action: { type: "attack" } | { type: "power"; powerId: number }) {
+  async function executarAcao(
+    action: { type: "attack" } | { type: "power"; powerId: number },
+  ) {
     if (carregando || resultado) return;
     setCarregando(true);
     try {
@@ -92,7 +97,7 @@ export default function CombatArena({
           characterId: character.id,
           enemy,
           action,
-        }
+        },
       );
 
       const data = response.data.data;
@@ -116,19 +121,47 @@ export default function CombatArena({
   }
 
   return (
-    <div className="flex flex-col items-center h-full p-4 w-full">
-      <h1 className="font-imFeel text-5xl mb-4">Aventura</h1>
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-5 p-2 sm:p-4">
+      <div className="rounded-2xl border-2 border-[#F3B43F] bg-[#292018]/90 p-5 text-white shadow-xl">
+        <p className="text-sm uppercase tracking-widest text-[#F3B43F]">
+          Zona de combate
+        </p>
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <h1 className="font-imFeel text-4xl sm:text-5xl">Aventura</h1>
+          <p className="text-sm text-white/70">
+            XP: {experienciaAtual} / {experienciaNivel}
+          </p>
+        </div>
+        <div className="mt-2 h-2 overflow-hidden rounded-full bg-black/50">
+          <div
+            className="h-full bg-[#F3B43F]"
+            style={{
+              width: `${Math.min(100, (experienciaAtual / experienciaNivel) * 100)}%`,
+            }}
+          />
+        </div>
+      </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 w-full max-w-2xl mb-4">
-        <div className="bg-black/10 rounded-lg p-4">
+      <div className="grid w-full grid-cols-1 gap-4 md:grid-cols-2">
+        <div className="rounded-2xl border border-green-900/20 bg-green-100/70 p-4 shadow-lg">
           <p className="font-imFeel text-xl mb-1">
             {character.nome} (Nv. {character.nivel})
           </p>
-          <BarraDeStatus label="Vida" atual={vidaAtual} maxima={vidaMaxima} cor="bg-red-600" />
-          <BarraDeStatus label="Mana" atual={manaAtual} maxima={manaMaxima} cor="bg-blue-600" />
+          <BarraDeStatus
+            label="Vida"
+            atual={vidaAtual}
+            maxima={vidaMaxima}
+            cor="bg-red-600"
+          />
+          <BarraDeStatus
+            label="Mana"
+            atual={manaAtual}
+            maxima={manaMaxima}
+            cor="bg-blue-600"
+          />
         </div>
 
-        <div className="bg-black/10 rounded-lg p-4">
+        <div className="rounded-2xl border border-red-900/20 bg-red-100/70 p-4 shadow-lg">
           <p className="font-imFeel text-xl mb-1">
             {enemy.nome} (Nv. {enemy.nivel})
           </p>
@@ -142,11 +175,11 @@ export default function CombatArena({
       </div>
 
       {!resultado && (
-        <div className="flex flex-wrap gap-3 justify-center mb-4">
+        <div className="flex flex-wrap justify-center gap-3">
           <button
             onClick={() => executarAcao({ type: "attack" })}
             disabled={carregando}
-            className="bg-[#BC8418] hover:bg-[#a5710f] text-black font-bold py-2 px-4 rounded-lg disabled:opacity-50"
+            className="rounded-lg border-2 border-[#F3B43F] bg-[#BC8418] px-4 py-2 font-bold text-black shadow-md transition hover:bg-[#a5710f] disabled:opacity-50"
           >
             Ataque básico
           </button>
@@ -158,7 +191,7 @@ export default function CombatArena({
               }
               disabled={carregando || manaAtual < habilidade.Power.custo_mana}
               title={habilidade.Power.descricao}
-              className="bg-[#3a2f24] hover:bg-[#2a2018] text-white font-bold py-2 px-4 rounded-lg disabled:opacity-50"
+              className="rounded-lg border-2 border-[#F3B43F]/60 bg-[#3a2f24] px-4 py-2 font-bold text-white shadow-md transition hover:bg-[#2a2018] disabled:opacity-50"
             >
               {habilidade.Power.nome} ({habilidade.Power.custo_mana} mana)
             </button>
@@ -167,7 +200,7 @@ export default function CombatArena({
       )}
 
       {resultado && (
-        <div className="text-center mb-4">
+        <div className="rounded-2xl border-2 border-[#F3B43F] bg-[#292018]/90 p-5 text-center text-white shadow-xl">
           <p className="font-imFeel text-3xl mb-2">
             {resultado === "vitoria" ? "Vitória!" : "Derrota..."}
           </p>
@@ -179,14 +212,14 @@ export default function CombatArena({
           )}
           <button
             onClick={() => router.refresh()}
-            className="bg-[#BC8418] hover:bg-[#a5710f] text-black font-bold py-2 px-4 rounded-lg"
+            className="rounded-lg bg-[#BC8418] px-4 py-2 font-bold text-black hover:bg-[#a5710f]"
           >
             {resultado === "vitoria" ? "Buscar outro inimigo" : "Voltar"}
           </button>
         </div>
       )}
 
-      <div className="bg-black/80 text-white text-sm rounded-lg p-3 w-full max-w-2xl h-40 overflow-y-auto flex flex-col-reverse">
+      <div className="flex h-48 w-full flex-col-reverse overflow-y-auto rounded-2xl bg-black/85 p-4 text-sm text-white shadow-inner">
         <div>
           {log.map((linha, indice) => (
             <p key={indice} className="mb-1">
@@ -221,7 +254,9 @@ function BarraDeStatus({
       <div className="w-full h-3 bg-black/20 rounded-full overflow-hidden">
         <div
           className={`h-full ${cor}`}
-          style={{ width: `${Math.max(0, Math.min(100, (atual / maxima) * 100))}%` }}
+          style={{
+            width: `${Math.max(0, Math.min(100, (atual / maxima) * 100))}%`,
+          }}
         />
       </div>
     </div>

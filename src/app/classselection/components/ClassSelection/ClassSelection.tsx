@@ -1,12 +1,13 @@
 "use client";
 import React, { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import axiosInstance from "@/utils/axiosIntance";
 import { createCharacter } from "@/app/create/action";
 import {
   getTempCharacterData,
   type TempCharacterData,
 } from "@/app/create/temp-character-data-action";
-import router from "next/router";
+import { getClassImage } from "@/utils/media-url";
 
 interface ClassData {
   id: string;
@@ -16,6 +17,7 @@ interface ClassData {
 }
 
 export default function ClassSelection() {
+  const router = useRouter();
   const [errorMessage, setErrorMessage] = useState("");
   const [rawClassesObject, setRawClassesObject] = useState<ClassData[]>([]);
   const [classesData, setClassesData] = useState<ClassData[]>([]);
@@ -227,15 +229,14 @@ export default function ClassSelection() {
                 <div
                   className="w-32 h-32 mx-auto mb-2 bg-gray-700 rounded-full overflow-hidden flex items-center justify-center"
                   style={{
-                    backgroundImage: `url(${cls.imagem_url})`,
+                    backgroundImage: `url(${getClassImage(
+                      cls.nome,
+                      cls.imagem_url,
+                    )})`,
                     backgroundSize: "cover",
                     backgroundPosition: "center",
                   }}
-                >
-                  {!cls.imagem_url && (
-                    <span className="text-white text-lg">{cls.nome}</span>
-                  )}
-                </div>
+                ></div>
                 <p className="text-center text-xl text-[#F3B43F]">{cls.nome}</p>
               </div>
             ))}

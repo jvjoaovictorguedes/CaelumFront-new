@@ -7,9 +7,11 @@ interface DashboardLayoutProps {
 
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   return (
-    <div className="homeDash w-full h-[168%] bg-cover">
+    <div className="homeDash min-h-screen w-full bg-cover bg-center bg-fixed">
       <NavMenu />
-      <main className="flex-1 overflow-y-auto ml-[25%] p-6">{children}</main>
+      <main className="min-h-screen overflow-y-auto px-4 pb-8 pt-20 sm:px-6 lg:ml-72 lg:px-8 lg:pt-8">
+        {children}
+      </main>
     </div>
   );
 }

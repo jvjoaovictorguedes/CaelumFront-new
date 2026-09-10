@@ -35,6 +35,22 @@ export async function createCharacter(data: CreateCharacterData) {
       ...data,
       id_usuario: user.id,
     });
+    const createdCharacter =
+      response.data?.data?.character ??
+      response.data?.character ??
+      response.data?.data;
+    const characterId = createdCharacter?.id;
+
+    cookieStore.set("notCharacter", "false", {
+      maxAge: 60 * 60 * 24 * 7,
+      path: "/",
+    });
+    if (characterId) {
+      cookieStore.set("characterId", String(characterId), {
+        maxAge: 60 * 60 * 24 * 7,
+        path: "/",
+      });
+    }
     await clearTempCharacterData();
 
     console.log("Personagem criado com sucesso:", response.data);

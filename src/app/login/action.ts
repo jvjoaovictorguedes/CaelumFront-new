@@ -68,6 +68,7 @@ export async function login(data: CookiesData) {
     if (character.status === 404) {
       const cookieStore = await cookies();
       const notCharacter = true;
+      cookieStore.delete("characterId");
       cookieStore.set("notCharacter", JSON.stringify(notCharacter), {
         maxAge: 60 * 60 * 24 * 7,
         path: "/",

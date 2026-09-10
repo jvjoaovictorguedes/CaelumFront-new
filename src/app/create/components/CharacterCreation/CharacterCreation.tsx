@@ -7,6 +7,7 @@ import {
   saveTempCharacterData,
 } from "../../temp-character-data-action";
 import Tooltip from "@/components/Tooltip/Tooltip";
+import { getRaceImage } from "@/utils/media-url";
 
 interface RaceData {
   id: string;
@@ -35,15 +36,13 @@ export default function CharacterCreation() {
   const router = useRouter();
 
   const [name, setCharacterName] = useState("");
-  const [gender, setGender] = useState("Masculino");
+  const [gender, setGender] = useState<"Masculino" | "feminino">("Masculino");
   const [selectedRace, setSelectedRace] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
-  const [racesData, setRacesData] = useState<RaceData[][]>([]);
   const [loadingRaces, setLoadingRaces] = useState(true);
   const [rawRacesObject, setrawRacesObject] = useState<RaceData[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [cookiesUser, setCookiesUser] = useState<UserCookie | null>(null);
-  const [natureMagic, setNatureMagic] = useState<string>("");
 
   useEffect(() => {
     const fetchRaces = async () => {
@@ -58,11 +57,7 @@ export default function CharacterCreation() {
           typeof rawRacesObject === "object" &&
           !Array.isArray(rawRacesObject)
         ) {
-          const fetchedRacesArray = Object.values(
-            rawRacesObject,
-          ) as RaceData[][];
           setrawRacesObject(rawRacesObject.races);
-          setRacesData(fetchedRacesArray);
           if (rawRacesObject.races.length > 0) {
             setSelectedRace(rawRacesObject.races[0].id);
           }
@@ -104,7 +99,7 @@ export default function CharacterCreation() {
     );
   }
 
-  if (errorMessage && racesData.length === 0) {
+  if (errorMessage && rawRacesObject.length === 0) {
     return (
       <div
         className="flex items-center justify-center min-h-screen bg-cover bg-center"
@@ -142,34 +137,34 @@ export default function CharacterCreation() {
     }
 
     const roll = Math.random() * 100;
+    let naturezaMagica = "Raio";
 
     if (roll <= 2) {
-      setNatureMagic("Ying&Yang");
+      naturezaMagica = "Ying&Yang";
     }
     if (roll > 2 && roll <= 6) {
       const randomMagic = Math.random() * 100;
       if (randomMagic <= 50) {
-        setNatureMagic("Luz");
+        naturezaMagica = "Luz";
       } else {
-        setNatureMagic("Escuridao");
+        naturezaMagica = "Escuridao";
       }
     }
     if (roll > 6 && roll <= 24) {
-      setNatureMagic("Fogo");
+      naturezaMagica = "Fogo";
     }
     if (roll > 24 && roll <= 42) {
-      setNatureMagic("Agua");
+      naturezaMagica = "Agua";
     }
     if (roll > 42 && roll <= 60) {
-      setNatureMagic("Ar");
+      naturezaMagica = "Ar";
     }
     if (roll > 60 && roll <= 78) {
-      setNatureMagic("Terra");
+      naturezaMagica = "Terra";
     }
     if (roll > 78 && roll <= 100) {
-      setNatureMagic("Raio");
+      naturezaMagica = "Raio";
     }
-
     setIsLoading(true);
     const result = await saveTempCharacterData({
       nome: name,
@@ -183,7 +178,7 @@ export default function CharacterCreation() {
       pontos_distribuir: 0,
       rank: "F",
       reset: 0,
-      natureza_magica: natureMagic,
+      natureza_magica: naturezaMagica,
       forca: currentRaceTempory.bonus_forca,
       vitalidade: currentRaceTempory.bonus_vitalidade,
       agilidade: currentRaceTempory.bonus_agilidade,
@@ -260,7 +255,8 @@ export default function CharacterCreation() {
           </div>
 
           <div className="grid grid-cols-4 gap-4 mb-6">
-            {racesData[0]
+            {rawRacesObject
+              .slice()
               .sort((a, b) => Number(a.id) - Number(b.id))
               .map((race) => (
                 <div
@@ -286,11 +282,15 @@ export default function CharacterCreation() {
                     <div
                       className="w-24 h-24 mx-auto mb-2 bg-gray-700 rounded-full overflow-hidden flex items-center justify-center"
                       style={{
-                        backgroundImage: `url(${
+                        backgroundImage: `url(${getRaceImage(
+                          gender === "Masculino"
+                            ? race.nome_masculino
+                            : race.nome_feminino,
+                          gender,
                           gender === "Masculino"
                             ? race.imagem_masculina_url
-                            : race.imagem_feminina_url
-                        })`,
+                            : race.imagem_feminina_url,
+                        )})`,
                         backgroundSize: "cover",
                         backgroundPosition: "center",
                       }}
