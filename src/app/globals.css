@@ -1,0 +1,40 @@
+@import url("https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&display=swap");
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --font-imFeel: "IM Fell English SC", serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  padding: 0;
+  margin: 0;
+  height: 100vh;
+  width: 100vw;
+  overflow-x: hidden;
+}
+
+.homeMe {
+  background-image: url("../../public/images/homeMedieval.png");
+}
+
+.homeDash {
+  background-image: url("../../public/images/dashboard-screen.png");
+}
