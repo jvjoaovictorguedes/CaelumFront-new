@@ -6,10 +6,9 @@ import axiosInstance from "@/utils/axiosIntance";
 interface PurchaseResponse {
   data?: {
     character?: { dinheiro?: number };
-    quantity?: number;
+    inventoryEntry?: { quantidade?: number };
+    quantidadeComprada?: number;
   };
-  character?: { dinheiro?: number };
-  quantity?: number;
   message?: string;
 }
 
@@ -29,10 +28,14 @@ export default function ShopItem({
   const [quantity, setQuantity] = useState(0);
   const [isBuying, setIsBuying] = useState(false);
   const [message, setMessage] = useState("");
-  const price = 1;
+  const price = 1; // valor_compra do item no banco; usado aqui só para desabilitar o botão
 
   async function buyPotion() {
     if (isBuying) return;
+    if (!characterId) {
+      setMessage("Personagem não identificado.");
+      return;
+    }
     if (coins < price) {
       setMessage("Voce nao tem moedas suficientes.");
       return;
@@ -41,36 +44,22 @@ export default function ShopItem({
     setIsBuying(true);
     setMessage("");
     try {
-      const payload = {
-        characterId,
-        itemId: 3,
-        id_item: 3,
-        quantity: 1,
-      };
-      const purchaseRoutes = ["/shop/purchase", "/shop/buy", "/items/purchase"];
-      let response;
+      // ATENCAO: confirme se sua baseURL do axiosInstance já inclui "/api".
+      // Se sim, o caminho abaixo deve ser "/shop/purchase".
+      // Se a baseURL for só a raiz do servidor, use "/api/shop/purchase".
+      const response = await axiosInstance.post<PurchaseResponse>(
+        "/shop/purchase",
+        {
+          id_personagem: characterId,
+          id_item: 3,
+          quantidade: 1,
+        },
+      );
 
-      for (const route of purchaseRoutes) {
-        try {
-          response = await axiosInstance.post<PurchaseResponse>(route, payload);
-          break;
-        } catch (requestError) {
-          const status = (requestError as PurchaseError).response?.status;
-          if (status !== 404 && status !== 405) throw requestError;
-        }
-      }
-
-      if (!response) {
-        throw new Error(
-          "A API ainda nao possui uma rota de compra configurada.",
-        );
-      }
-      const purchased =
-        response.data?.data?.quantity ?? response.data?.quantity ?? 1;
+      const purchased = response.data?.data?.quantidadeComprada ?? 1;
       const updatedCoins =
-        response.data?.data?.character?.dinheiro ??
-        response.data?.character?.dinheiro ??
-        coins - price;
+        response.data?.data?.character?.dinheiro ?? coins - price;
+
       setCoins(updatedCoins);
       setQuantity((current) => current + purchased);
       setMessage("Pocao comprada e adicionada ao inventario.");

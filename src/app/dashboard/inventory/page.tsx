@@ -1,5 +1,6 @@
 import axiosInstance from "@/utils/axiosIntance";
 import { getCurrentCharacterId } from "@/utils/character-session";
+import InventoryItemCard from "./components/InventaryItemCard";
 
 interface InventoryEntry {
   id_personagem_inventario: number;
@@ -21,19 +22,11 @@ interface InventoryResponse {
   inventory?: InventoryEntry[];
 }
 
-const CORES_RARIDADE: Record<string, string> = {
-  Comum: "text-gray-700",
-  Incomum: "text-green-600",
-  Raro: "text-blue-600",
-  Epico: "text-purple-600",
-  Lendario: "text-orange-600",
-  Mitico: "text-red-600",
-};
-
 export default async function InventoryPage() {
   const characterId = await getCurrentCharacterId();
+  const characterIdNumber = characterId ? Number(characterId) : NaN;
 
-  if (!characterId) {
+  if (!characterId || !Number.isInteger(characterIdNumber)) {
     return (
       <div className="flex flex-col items-center justify-center h-full">
         <h1 className="font-imFeel text-4xl mb-4">Meu Inventário</h1>
@@ -80,30 +73,11 @@ export default async function InventoryPage() {
       ) : (
         <div className="grid w-full grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {itens.map((entrada) => (
-            <div
+            <InventoryItemCard
               key={entrada.id_personagem_inventario}
-              className="flex items-center justify-between rounded-xl border border-[#F3B43F]/60 bg-[#292018]/85 p-4 text-white shadow-lg"
-            >
-              <div>
-                <p className="font-imFeel text-xl">
-                  {entrada.Item?.nome ?? "Item desconhecido"}
-                </p>
-                <p
-                  className={`text-sm font-bold ${
-                    CORES_RARIDADE[entrada.Item?.raridade] ?? "text-[#F3B43F]"
-                  }`}
-                >
-                  {entrada.Item?.raridade ?? "Comum"} ·{" "}
-                  {entrada.Item?.tipo_item ?? "Item"}
-                </p>
-              </div>
-              <div className="text-right">
-                <p className="font-bold">x{entrada.quantidade}</p>
-                {entrada.equipado && (
-                  <p className="text-xs font-bold text-green-700">Equipado</p>
-                )}
-              </div>
-            </div>
+              entrada={entrada}
+              characterId={characterIdNumber}
+            />
           ))}
         </div>
       )}
