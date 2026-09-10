@@ -28,8 +28,31 @@ interface UserCookie {
   id: string;
 }
 
-interface RacesResponseData {
-  races: RaceData[];
+function normalizeRace(rawRace: Record<string, unknown>): RaceData {
+  const name = String(rawRace.nome ?? rawRace.name ?? "Raça");
+  const description = String(rawRace.descricao ?? rawRace.description ?? "");
+  const image = String(rawRace.imagem_url ?? rawRace.image_url ?? "");
+
+  return {
+    id: String(rawRace.id),
+    nome_masculino: String(rawRace.nome_masculino ?? name),
+    nome_feminino: String(rawRace.nome_feminino ?? name),
+    descricao_masculina: String(rawRace.descricao_masculina ?? description),
+    descricao_feminina: String(rawRace.descricao_feminina ?? description),
+    imagem_masculina_url: String(rawRace.imagem_masculina_url ?? image),
+    imagem_feminina_url: String(rawRace.imagem_feminina_url ?? image),
+    bonus_forca: Number(rawRace.bonus_forca ?? rawRace.forca ?? 0),
+    bonus_vitalidade: Number(
+      rawRace.bonus_vitalidade ?? rawRace.vitalidade ?? 0,
+    ),
+    bonus_agilidade: Number(rawRace.bonus_agilidade ?? rawRace.agilidade ?? 0),
+    bonus_inteligencia: Number(
+      rawRace.bonus_inteligencia ?? rawRace.inteligencia ?? 0,
+    ),
+    bonus_velocidade: Number(
+      rawRace.bonus_velocidade ?? rawRace.velocidade ?? 0,
+    ),
+  };
 }
 
 export default function CharacterCreation() {
@@ -51,22 +74,27 @@ export default function CharacterCreation() {
         setCookiesUser(cookieStore);
         setLoadingRaces(true);
         const response = await axiosInstance.get("/races");
-        const rawRacesObject = response.data.data as RacesResponseData;
-        if (
-          rawRacesObject &&
-          typeof rawRacesObject === "object" &&
-          !Array.isArray(rawRacesObject)
-        ) {
-          setrawRacesObject(rawRacesObject.races);
-          if (rawRacesObject.races.length > 0) {
-            setSelectedRace(rawRacesObject.races[0].id);
-          }
+        const payload = response.data?.data;
+        const races = Array.isArray(payload)
+          ? payload
+          : Array.isArray(payload?.races)
+            ? payload.races
+            : Array.isArray(response.data?.races)
+              ? response.data.races
+              : [];
+
+        if (races.length > 0) {
+          const normalizedRaces = races.map((race: unknown) =>
+            normalizeRace(race as Record<string, unknown>),
+          );
+          setrawRacesObject(normalizedRaces);
+          setSelectedRace(normalizedRaces[0].id);
         } else {
           console.error(
-            "A API /races não retornou um objeto ou array de raças esperado:",
-            rawRacesObject,
+            "A API /races não retornou raças em um formato reconhecido:",
+            response.data,
           );
-          setErrorMessage("Formato de dados inesperado da API de raças.");
+          setErrorMessage("Nenhuma raça foi encontrada na API.");
         }
       } catch (error) {
         console.error("Erro ao carregar as raças:", error);

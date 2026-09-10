@@ -44,20 +44,18 @@ export function getRaceImage(
   gender: "Masculino" | "feminino",
   imageUrl?: string | null,
 ) {
-  const resolved = resolveMediaUrl(imageUrl);
-  if (resolved) return resolved;
-
-  const race = name ? localRaceImages[normalize(name)] : undefined;
-  return race?.[gender === "Masculino" ? "male" : "female"];
+  const normalizedName = name ? normalize(name) : "";
+  const race = Object.entries(localRaceImages).find(([raceName]) =>
+    normalizedName.includes(raceName),
+  )?.[1];
+  const localImage = race?.[gender === "Masculino" ? "male" : "female"];
+  return localImage ?? resolveMediaUrl(imageUrl);
 }
 
 export function getClassImage(
   name: string | undefined,
   imageUrl?: string | null,
 ) {
-  const resolved = resolveMediaUrl(imageUrl);
-  if (resolved) return resolved;
-
   const normalizedName = name ? normalize(name) : "";
   if (normalizedName.includes("mago") || normalizedName.includes("mage")) {
     return "/images/mage.webp";
@@ -69,5 +67,5 @@ export function getClassImage(
   ) {
     return "/images/warrior.webp";
   }
-  return "/images/primordial.webp";
+  return resolveMediaUrl(imageUrl) ?? "/images/primordial.webp";
 }
