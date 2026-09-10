@@ -14,6 +14,13 @@ interface InventoryEntry {
   };
 }
 
+interface InventoryResponse {
+  data?: {
+    inventory?: InventoryEntry[];
+  };
+  inventory?: InventoryEntry[];
+}
+
 const CORES_RARIDADE: Record<string, string> = {
   Comum: "text-gray-700",
   Incomum: "text-green-600",
@@ -40,9 +47,10 @@ export default async function InventoryPage() {
   let itens: InventoryEntry[] = [];
   let erro = false;
   try {
-    const response = await axiosInstance.get("/character-inventory", {
-      params: { characterId },
-    });
+    const response = await axiosInstance.get<InventoryResponse>(
+      "/character-inventory",
+      { params: { characterId } },
+    );
     itens = response.data?.data?.inventory ?? response.data?.inventory ?? [];
   } catch (error) {
     console.error("Erro ao carregar inventário:", error);

@@ -22,6 +22,20 @@ interface CreateCharacterData {
   id_usuario?: string;
 }
 
+interface CreatedCharacter {
+  id?: string | number;
+}
+
+interface CreateCharacterResponse {
+  status?: string;
+  message?: string;
+  character?: CreatedCharacter;
+  data?: {
+    character?: CreatedCharacter;
+    id?: string | number;
+  };
+}
+
 export async function createCharacter(data: CreateCharacterData) {
   try {
     const cookieStore = await cookies();
@@ -31,10 +45,13 @@ export async function createCharacter(data: CreateCharacterData) {
     }
     const user = JSON.parse(userCookie.value);
 
-    const response = await axiosInstance.post("/characters", {
-      ...data,
-      id_usuario: user.id,
-    });
+    const response = await axiosInstance.post<CreateCharacterResponse>(
+      "/characters",
+      {
+        ...data,
+        id_usuario: user.id,
+      },
+    );
     const createdCharacter =
       response.data?.data?.character ??
       response.data?.character ??

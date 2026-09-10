@@ -42,14 +42,39 @@ export default async function AdventurePage() {
     };
   }
 
+  interface HabilidadesResponse {
+    data?: {
+      characterAbilities?: HabilidadeApi[];
+    };
+  }
+
+  interface InimigoApi {
+    nome: string;
+    nivel: number;
+    vida_atual: number;
+    vida_maxima: number;
+    forca: number;
+    vitalidade: number;
+    agilidade: number;
+    velocidade: number;
+    dano_base: number;
+  }
+
+  interface InimigoResponse {
+    data?: {
+      enemy?: InimigoApi;
+    };
+  }
+
   let habilidades: HabilidadeApi[] = [];
   try {
-    const response = await axiosInstance.get("/character-abilities", {
-      params: { characterId: character.id },
-    });
+    const response = await axiosInstance.get<HabilidadesResponse>(
+      "/character-abilities",
+      { params: { characterId: character.id } },
+    );
     habilidades = (response.data?.data?.characterAbilities ?? []).filter(
       (habilidade: HabilidadeApi) =>
-        habilidade.is_active && habilidade.Power?.tipo_poder === "Ativo"
+        habilidade.is_active && habilidade.Power?.tipo_poder === "Ativo",
     );
   } catch (error) {
     console.error("Erro ao carregar habilidades:", error);
@@ -57,7 +82,9 @@ export default async function AdventurePage() {
 
   let inimigoInicial = null;
   try {
-    const response = await axiosInstance.get(`/combat/enemy/${character.id}`);
+    const response = await axiosInstance.get<InimigoResponse>(
+      `/combat/enemy/${character.id}`,
+    );
     inimigoInicial = response.data?.data?.enemy ?? null;
   } catch (error) {
     console.error("Erro ao gerar inimigo:", error);

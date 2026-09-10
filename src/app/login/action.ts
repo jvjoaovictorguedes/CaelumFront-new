@@ -14,6 +14,14 @@ interface LoginResponseData {
   };
 }
 
+interface CharacterLookupResponse {
+  data?: {
+    character?: {
+      id: string | number;
+    };
+  };
+}
+
 interface CookiesData {
   email: string;
   password: string;
@@ -28,10 +36,7 @@ export async function login(data: CookiesData) {
       },
     );
 
-    // Antes isso buscava `/characters/{id do usuário}`, tratando o id do
-    // usuário como se fosse o id do personagem (o que só coincidia por
-    // acaso). Agora usa a rota correta, que busca pelo id_usuario.
-    const character = await axiosInstance.get(
+    const character = await axiosInstance.get<CharacterLookupResponse>(
       `/characters/by-user/${response.data.data.user.id}`,
       {
         validateStatus: (status) => status <= 404,
@@ -51,24 +56,25 @@ export async function login(data: CookiesData) {
       maxAge: 60 * 60 * 24 * 7,
       path: "/",
     });
-    if (character.status === 200) {
+    const characterId = character.data?.data?.character?.id;
+
+    if (character.status === 200 && characterId !== undefined) {
       const cookieStore = await cookies();
       const notCharacter = false;
       cookieStore.set("notCharacter", JSON.stringify(notCharacter), {
         maxAge: 60 * 60 * 24 * 7,
         path: "/",
       });
-      // Guarda o id real do personagem: sem isso, nenhuma tela do dashboard
-      // (personagem, inventário, combate) sabia qual personagem carregar.
-      cookieStore.set("characterId", String(character.data.data.character.id), {
+
+      cookieStore.set("characterId", String(characterId), {
         maxAge: 60 * 60 * 24 * 7,
         path: "/",
       });
     }
     if (character.status === 404) {
       const cookieStore = await cookies();
-      const notCharacter = true;
       cookieStore.delete("characterId");
+      const notCharacter = true;
       cookieStore.set("notCharacter", JSON.stringify(notCharacter), {
         maxAge: 60 * 60 * 24 * 7,
         path: "/",
