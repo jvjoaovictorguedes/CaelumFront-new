@@ -2,6 +2,7 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import axios from "axios";
+import axiosInstance from "@/utils/axiosIntance";
 
 export default function Register() {
   const router = useRouter();
@@ -23,10 +24,7 @@ export default function Register() {
     };
 
     try {
-      const response = await axios.post(
-        `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api"}/users/register`,
-        userData,
-      );
+      const response = await axiosInstance.post("/users/register", userData);
       console.log("Usuário registrado com sucesso:", response.data);
     } catch (error: unknown) {
       const message = axios.isAxiosError(error)
@@ -124,8 +122,8 @@ export default function Register() {
   };
 
   return (
-    <div className="bg-[#292018] p-8 rounded-lg shadow-md w-[443px] inset-0 m-auto absolute h-[600px] border-[#F3B43F] border-4">
-      <h1 className="font-bold mb-6 text-center font-imFeel text-[59px] bg-gradient-to-b from-[#F3B43F] to-[#8D6825] bg-clip-text text-transparent">
+    <div className="absolute inset-0 m-auto h-fit min-h-[600px] w-[calc(100%-2rem)] max-w-[443px] rounded-lg border-4 border-[#F3B43F] bg-[#292018] p-5 shadow-md sm:p-8">
+      <h1 className="mb-6 text-center font-imFeel text-5xl font-bold text-transparent sm:text-[59px] bg-gradient-to-b from-[#F3B43F] to-[#8D6825] bg-clip-text">
         REGISTRO
       </h1>
       <form onSubmit={handleRegisterSubmit}>
@@ -134,7 +132,7 @@ export default function Register() {
           <input
             type="text"
             id="user"
-            className="w-[364px] px-3 py-2 text-black bg-[#DFC492] rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-[#DFC492] font-imFeel text-[18px]"
+            className="w-full px-3 py-2 text-[18px] text-black bg-[#DFC492] rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-[#DFC492] font-imFeel"
             placeholder="Usuário"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
@@ -145,7 +143,7 @@ export default function Register() {
           <input
             type="password"
             id="password"
-            className="w-[364px] px-3 py-2 text-black bg-[#DFC492] rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-imFeel text-[18px] focus:bg-[#DFC492]"
+            className="w-full px-3 py-2 text-[18px] text-black bg-[#DFC492] rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-imFeel focus:bg-[#DFC492]"
             placeholder="Senha"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
@@ -156,7 +154,7 @@ export default function Register() {
           <input
             type="password"
             id="confirm-password"
-            className="w-[364px] px-3 py-2 text-black bg-[#DFC492] rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-imFeel text-[18px] focus:bg-[#DFC492]"
+            className="w-full px-3 py-2 text-[18px] text-black bg-[#DFC492] rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-imFeel focus:bg-[#DFC492]"
             placeholder="Confirmar Senha"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
@@ -167,7 +165,7 @@ export default function Register() {
           <input
             type="email"
             id="email"
-            className="w-[364px] px-3 py-2 text-black bg-[#DFC492] rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-imFeel text-[18px] focus:bg-[#DFC492]"
+            className="w-full px-3 py-2 text-[18px] text-black bg-[#DFC492] rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-imFeel focus:bg-[#DFC492]"
             placeholder="E-mail"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -178,7 +176,7 @@ export default function Register() {
           <input
             type="email"
             id="confirm-email"
-            className="w-[364px] px-3 py-2 text-black bg-[#DFC492] rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-imFeel text-[18px] focus:bg-[#DFC492]"
+            className="w-full px-3 py-2 text-[18px] text-black bg-[#DFC492] rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-imFeel focus:bg-[#DFC492]"
             placeholder="Confirmar E-mail"
             value={confirmEmail}
             onChange={(e) => setConfirmEmail(e.target.value)}

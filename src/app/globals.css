@@ -36,8 +36,8 @@ body {
   color: var(--foreground);
   padding: 0;
   margin: 0;
-  height: 100vh;
-  width: 100vw;
+  min-height: 100vh;
+  width: 100%;
   overflow-x: hidden;
 }
 
@@ -47,4 +47,7 @@ body {
 
 .homeDash {
   background-image: url("../../public/images/dashboard-screen.png");
+  background-size: cover;
+  background-position: center top;
+  background-attachment: fixed;
 }

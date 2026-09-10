@@ -38,7 +38,12 @@ async function userHasCharacter(request: NextRequest, token: string) {
 
 export async function middleware(request: NextRequest) {
   const token = request.cookies.get(TOKEN_KEY)?.value;
-  const hasCharacter = token ? await userHasCharacter(request, token) : false;
+  const useMocks = process.env.NEXT_PUBLIC_USE_MOCKS === "true";
+  const hasCharacter = useMocks
+    ? request.cookies.get("notCharacter")?.value === "false"
+    : token
+      ? await userHasCharacter(request, token)
+      : false;
   const hasTempCharacter = Boolean(
     request.cookies.get("tempCharacterData")?.value,
   );

@@ -66,6 +66,8 @@ export default function CharacterCreation() {
   const [rawRacesObject, setrawRacesObject] = useState<RaceData[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [cookiesUser, setCookiesUser] = useState<UserCookie | null>(null);
+  const [rareRace, setRareRace] = useState<RaceData | null>(null);
+  const [rareRaceRevealed, setRareRaceRevealed] = useState(false);
 
   useEffect(() => {
     const fetchRaces = async () => {
@@ -73,7 +75,10 @@ export default function CharacterCreation() {
         const cookieStore = await getUserCookie();
         setCookiesUser(cookieStore);
         setLoadingRaces(true);
-        const response = await axiosInstance.get("/races");
+        const response = await axiosInstance.get<{
+          data?: { races?: unknown[] } | unknown[];
+          races?: unknown[];
+        }>("/races");
         const payload = response.data?.data;
         const races = Array.isArray(payload)
           ? payload
@@ -87,8 +92,22 @@ export default function CharacterCreation() {
           const normalizedRaces = races.map((race: unknown) =>
             normalizeRace(race as Record<string, unknown>),
           );
-          setrawRacesObject(normalizedRaces);
-          setSelectedRace(normalizedRaces[0].id);
+          const rareRaces = normalizedRaces.filter((race: RaceData) =>
+            race.nome_masculino.toLowerCase().includes("celestial"),
+          );
+          const commonRaces = normalizedRaces.filter(
+            (race: RaceData) =>
+              !rareRaces.some((rareRace: RaceData) => rareRace.id === race.id),
+          );
+          const availableRaces =
+            commonRaces.length > 0 ? commonRaces : normalizedRaces;
+
+          setrawRacesObject(availableRaces);
+          setSelectedRace(availableRaces[0].id);
+
+          if (rareRaces.length > 0) {
+            setRareRace(rareRaces[0]);
+          }
         } else {
           console.error(
             "A API /races não retornou raças em um formato reconhecido:",
@@ -164,6 +183,21 @@ export default function CharacterCreation() {
       return;
     }
 
+    if (!rareRaceRevealed) {
+      setRareRaceRevealed(true);
+      if (rareRace && Math.random() * 100 <= 0.01) {
+        setrawRacesObject((currentRaces) =>
+          currentRaces.some((race) => race.id === rareRace.id)
+            ? currentRaces
+            : [...currentRaces, rareRace],
+        );
+        setErrorMessage(
+          "Uma raça Celestial apareceu. Você pode escolhê-la ou manter sua raça atual e confirmar novamente.",
+        );
+        return;
+      }
+    }
+
     const roll = Math.random() * 100;
     let naturezaMagica = "Raio";
 
@@ -229,8 +263,8 @@ export default function CharacterCreation() {
       className="flex items-center justify-center min-h-screen bg-cover bg-center"
       style={{ backgroundImage: "url('/images/homeMedieval.png')" }}
     >
-      <div className="bg-[#292018] p-8 rounded-lg shadow-xl w-[600px] border-[#F3B43F] border-4 font-imFeel text-white">
-        <h2 className="text-4xl text-center text-[#F3B43F] mb-6">
+      <div className="w-full max-w-[600px] rounded-lg border-4 border-[#F3B43F] bg-[#292018] p-4 font-imFeel text-white shadow-xl sm:p-8">
+        <h2 className="mb-6 text-center text-3xl text-[#F3B43F] sm:text-4xl">
           Escolha sua Raça
         </h2>
 
@@ -247,8 +281,8 @@ export default function CharacterCreation() {
             />
           </div>
 
-          <div className="mb-6 flex items-center justify-center space-x-8">
-            <label className="flex items-center cursor-pointer text-2xl">
+          <div className="mb-6 flex flex-wrap items-center justify-center gap-4 sm:gap-8">
+            <label className="flex cursor-pointer items-center text-xl sm:text-2xl">
               <input
                 type="radio"
                 name="gender"
@@ -264,7 +298,7 @@ export default function CharacterCreation() {
               </span>
               Masculino
             </label>
-            <label className="flex items-center cursor-pointer text-2xl">
+            <label className="flex cursor-pointer items-center text-xl sm:text-2xl">
               <input
                 type="radio"
                 name="gender"
@@ -282,7 +316,7 @@ export default function CharacterCreation() {
             </label>
           </div>
 
-          <div className="grid grid-cols-4 gap-4 mb-6">
+          <div className="mb-6 grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-4">
             {rawRacesObject
               .slice()
               .sort((a, b) => Number(a.id) - Number(b.id))
@@ -308,7 +342,7 @@ export default function CharacterCreation() {
                     position="bottom"
                   >
                     <div
-                      className="w-24 h-24 mx-auto mb-2 bg-gray-700 rounded-full overflow-hidden flex items-center justify-center"
+                      className="mx-auto mb-2 flex h-20 w-20 items-center justify-center overflow-hidden rounded-full bg-gray-700 sm:h-24 sm:w-24"
                       style={{
                         backgroundImage: `url(${getRaceImage(
                           gender === "Masculino"
@@ -324,7 +358,7 @@ export default function CharacterCreation() {
                       }}
                     ></div>
                   </Tooltip>
-                  <p className="text-center text-xl text-[#F3B43F]">
+                  <p className="text-center text-base text-[#F3B43F] sm:text-xl">
                     {gender === "Masculino"
                       ? race.nome_masculino
                       : race.nome_feminino}
@@ -333,8 +367,8 @@ export default function CharacterCreation() {
               ))}
           </div>
 
-          <div className="bg-[#DFC492] border-2 border-[#F3B43F] p-4 rounded-md mb-6 h-32 flex items-center justify-center text-center">
-            <p className="text-xl text-[#1f1813] leading-relaxed font-bold">
+          <div className="mb-6 flex min-h-32 items-center justify-center rounded-md border-2 border-[#F3B43F] bg-[#DFC492] p-4 text-center">
+            <p className="text-lg font-bold leading-relaxed text-[#1f1813] sm:text-xl">
               {currentRaceDescription}
             </p>
           </div>

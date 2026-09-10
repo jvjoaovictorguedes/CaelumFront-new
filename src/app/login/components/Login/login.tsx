@@ -31,7 +31,7 @@ export default function Login() {
     }
     if (password.length < MIN_PASSWORD_LENGTH) {
       setErrorMessage(
-        `A senha deve ter pelo menos ${MIN_PASSWORD_LENGTH} caracteres.`
+        `A senha deve ter pelo menos ${MIN_PASSWORD_LENGTH} caracteres.`,
       );
       return;
     }
@@ -60,8 +60,8 @@ export default function Login() {
   };
 
   return (
-    <div className="bg-[#292018] p-8 rounded-lg shadow-md w-[443px] max-w-sm inset-0 m-auto absolute h-[500px] border-[#F3B43F] border-4">
-      <h1 className="text-2xl font-bold mb-6 text-center font-imFeel text-[86px] bg-gradient-to-b from-[#F3B43F] to-[#8D6825] bg-clip-text text-transparent">
+    <div className="absolute inset-0 m-auto h-fit min-h-[500px] w-[calc(100%-2rem)] max-w-[443px] rounded-lg border-4 border-[#F3B43F] bg-[#292018] p-5 shadow-md sm:p-8">
+      <h1 className="mb-6 text-center font-imFeel text-5xl font-bold text-transparent sm:text-[86px] bg-gradient-to-b from-[#F3B43F] to-[#8D6825] bg-clip-text">
         LOGIN
       </h1>
       <form onSubmit={handleSubmit}>
@@ -69,7 +69,7 @@ export default function Login() {
           <input
             type="email"
             id="email"
-            className="w-[364px] px-3 py-2 text-black bg-[#DFC492] rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-[#DFC492] font-imFeel text-[18px]"
+            className="w-full px-3 py-2 text-[18px] text-black bg-[#DFC492] rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-[#DFC492] font-imFeel"
             placeholder="Usuário"
             onChange={(e) => setEmail(e.target.value)}
             value={email}
@@ -80,7 +80,7 @@ export default function Login() {
           <input
             type="password"
             id="password"
-            className="w-[364px] px-3 py-2 text-black bg-[#DFC492] rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-imFeel text-[18px] focus:bg-[#DFC492]"
+            className="w-full px-3 py-2 text-[18px] text-black bg-[#DFC492] rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-imFeel focus:bg-[#DFC492]"
             placeholder="Senha"
             value={password}
             onChange={(e) => setPassword(e.target.value)}

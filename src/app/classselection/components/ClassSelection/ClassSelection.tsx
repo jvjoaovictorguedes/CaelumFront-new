@@ -24,7 +24,6 @@ export default function ClassSelection() {
   const [selectedClasses, setSelectedClasses] = useState("");
   const [loadingClasses, setLoadingClasses] = useState(true);
   const [hasRolledSpecial, setHasRolledSpecial] = useState(false);
-  const [, setSpecialClasses] = useState<ClassData[]>([]);
   const [visibleClasses, setVisibleClasses] = useState<ClassData[]>([]);
   const [tempCharacterData, setTempCharacterData] =
     useState<TempCharacterData | null>(null);
@@ -47,22 +46,30 @@ export default function ClassSelection() {
           router.replace("/create");
           return;
         }
-        const response = await axiosInstance.get("/classes");
+        const response = await axiosInstance.get<{
+          data?: { classes?: ClassData[] };
+        }>("/classes");
         const responseData = response.data.data as
           | { classes?: ClassData[] }
           | undefined;
         const classes = responseData?.classes;
         if (classes) {
-          setRawClassesObject(classes);
+          const commonClasses = classes.filter(
+            (classItem) =>
+              !["primordial", "celestial"].some((rareName) =>
+                classItem.nome.toLowerCase().includes(rareName),
+              ),
+          );
 
-          if (classes.length >= 2) {
-            setClassesData(classes.slice(0, 2));
-            setVisibleClasses(classes.slice(0, 2));
+          setRawClassesObject(classes);
+          if (commonClasses.length >= 2) {
+            setClassesData(commonClasses);
+            setVisibleClasses(commonClasses);
           } else {
             setErrorMessage("Não há classes suficientes disponíveis.");
           }
-          if (classes.length > 0) {
-            setSelectedClasses(classes[0].id);
+          if (commonClasses.length > 0) {
+            setSelectedClasses(commonClasses[0].id);
           }
         } else {
           console.error(
@@ -86,18 +93,26 @@ export default function ClassSelection() {
 
   //roll 100%
   const rollSpecialClasses = () => {
-    if (hasRolledSpecial) return;
+    if (hasRolledSpecial) return false;
 
     const roll = Math.random() * 100;
 
-    if (roll <= 1) {
-      const nonDefaultClasses = rawClassesObject.slice(2, 4);
-      if (nonDefaultClasses.length >= 2) {
-        setSpecialClasses(nonDefaultClasses);
+    if (roll <= 0.01) {
+      const specialClasses = rawClassesObject.filter((classItem) =>
+        ["primordial", "celestial"].some((rareName) =>
+          classItem.nome.toLowerCase().includes(rareName),
+        ),
+      );
+      if (specialClasses.length > 0) {
         setHasRolledSpecial(true);
-        setVisibleClasses(nonDefaultClasses);
+        setVisibleClasses([...classesData, ...specialClasses]);
+        setErrorMessage(
+          "Uma classe lendaria apareceu. Escolha-a ou mantenha sua classe atual e confirme novamente.",
+        );
+        return true;
       }
     }
+    return false;
   };
 
   const currentClassDescription =
@@ -107,8 +122,6 @@ export default function ClassSelection() {
   const handleCreateFinalCharacter = async (event: React.FormEvent) => {
     event.preventDefault();
     setErrorMessage("");
-    rollSpecialClasses();
-
     if (!selectedClasses) {
       setErrorMessage("Por favor, selecione uma classe.");
       return;
@@ -132,11 +145,15 @@ export default function ClassSelection() {
       setErrorMessage("Dados de personagem incompletos. Reinicie a criação.");
       return;
     }
+    if (rollSpecialClasses()) return;
     setIsLoading(true);
 
     const finalCharacterData = {
       nome: tempCharacterData.nome,
-      genero: tempCharacterData.genero,
+      genero:
+        tempCharacterData.genero.toLowerCase() === "feminino"
+          ? "Feminino"
+          : "Masculino",
       id_raca: tempCharacterData.id_raca,
       id_classe: selectedClasses,
       nivel: tempCharacterData.nivel,
@@ -160,7 +177,7 @@ export default function ClassSelection() {
 
     if (result.success) {
       alert("Personagem criado com sucesso!");
-      router.push("/dashboard");
+      router.replace("/dashboard");
     } else {
       setErrorMessage(
         result.message || "Erro desconhecido ao criar personagem.",
@@ -200,8 +217,8 @@ export default function ClassSelection() {
       className="flex items-center justify-center min-h-screen bg-cover bg-center"
       style={{ backgroundImage: "url('/images/homeMedieval.png')" }}
     >
-      <div className="bg-[#292018] p-8 rounded-lg shadow-xl w-[600px] border-[#F3B43F] border-4 font-imFeel text-white">
-        <h2 className="text-4xl text-center text-[#F3B43F] mb-6">
+      <div className="w-full max-w-[600px] rounded-lg border-4 border-[#F3B43F] bg-[#292018] p-4 font-imFeel text-white shadow-xl sm:p-8">
+        <h2 className="mb-6 text-center text-3xl text-[#F3B43F] sm:text-4xl">
           Escolha sua Classe
         </h2>
         {hasRolledSpecial && (
@@ -213,7 +230,7 @@ export default function ClassSelection() {
           </div>
         )}
         <form onSubmit={handleCreateFinalCharacter}>
-          <div className="flex justify-center gap-8 mb-6">
+          <div className="mb-6 flex flex-wrap justify-center gap-3 sm:gap-8">
             {/* AGORA SÓ HÁ UM ÚNICO MAP PARA visibleClasses */}
             {visibleClasses.map((cls: ClassData) => (
               <div
@@ -227,7 +244,7 @@ export default function ClassSelection() {
                 onClick={() => setSelectedClasses(cls.id)}
               >
                 <div
-                  className="w-32 h-32 mx-auto mb-2 bg-gray-700 rounded-full overflow-hidden flex items-center justify-center"
+                  className="mx-auto mb-2 flex h-24 w-24 items-center justify-center overflow-hidden rounded-full bg-gray-700 sm:h-32 sm:w-32"
                   style={{
                     backgroundImage: `url(${getClassImage(
                       cls.nome,
@@ -237,7 +254,9 @@ export default function ClassSelection() {
                     backgroundPosition: "center",
                   }}
                 ></div>
-                <p className="text-center text-xl text-[#F3B43F]">{cls.nome}</p>
+                <p className="text-center text-lg text-[#F3B43F] sm:text-xl">
+                  {cls.nome}
+                </p>
               </div>
             ))}
           </div>

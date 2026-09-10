@@ -11,6 +11,10 @@ const localRaceImages: Record<string, { male: string; female: string }> = {
   anao: { male: "/images/dwarf.png", female: "/images/female-dwarf.webp" },
   orc: { male: "/images/orc.png", female: "/images/female-orc.webp" },
   orca: { male: "/images/orc.png", female: "/images/female-orc.webp" },
+  celestial: {
+    male: "/images/celestial.webp",
+    female: "/images/celestial.webp",
+  },
 };
 
 function normalize(value: string) {

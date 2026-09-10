@@ -55,7 +55,8 @@ export async function createCharacter(data: CreateCharacterData) {
 
     console.log("Personagem criado com sucesso:", response.data);
     return { success: true, character: response.data };
-  } catch {
+  } catch (error) {
+    console.error("Erro ao criar personagem:", error);
     return { success: false, message: "Erro ao criar personagem." };
   }
 }
