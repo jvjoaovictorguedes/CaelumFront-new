@@ -79,7 +79,7 @@ export default function NavMenu() {
         />
       )}
       <nav
-        className={`fixed inset-y-0 left-0 z-40 w-[min(18rem,calc(100vw-1rem))] overflow-y-auto bg-[#BC8418] px-3 py-4 shadow-2xl transition-transform duration-200 lg:w-72 lg:translate-x-0 ${
+        className={`dashboard-nav fixed inset-y-0 left-0 z-40 overflow-y-auto bg-[#BC8418] px-3 py-4 shadow-2xl transition-transform duration-200 lg:translate-x-0 ${
           menuAberto ? "translate-x-0" : "-translate-x-full"
         }`}
       >

@@ -1,4 +1,3 @@
-@import url("https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&display=swap");
 @import "tailwindcss";
 
 :root {
@@ -11,7 +10,7 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-  --font-imFeel: "IM Fell English SC", serif;
+  --font-imFeel: var(--font-im-fell), serif;
   --animate-fade-in: fadeIn 0.2s ease-out forwards;
 }
 
@@ -50,4 +49,22 @@ body {
   background-size: cover;
   background-position: center top;
   background-attachment: fixed;
+}
+
+:root {
+  --dashboard-nav-width: 18rem;
+}
+
+.dashboard-nav {
+  width: min(var(--dashboard-nav-width), calc(100vw - 1rem));
+}
+
+.dashboard-main {
+  min-width: 0;
+}
+
+@media (min-width: 1024px) {
+  .dashboard-main {
+    margin-left: var(--dashboard-nav-width);
+  }
 }
