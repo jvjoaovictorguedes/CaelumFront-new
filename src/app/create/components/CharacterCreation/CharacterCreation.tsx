@@ -136,6 +136,10 @@ export default function CharacterCreation() {
     const currentRaceTempory = rawRacesObject.find(
       (race) => race.id === selectedRace,
     );
+    if (!currentRaceTempory || !cookiesUser) {
+      setErrorMessage("Não foi possível carregar os dados da raça ou usuário.");
+      return;
+    }
 
     const roll = Math.random() * 100;
 
