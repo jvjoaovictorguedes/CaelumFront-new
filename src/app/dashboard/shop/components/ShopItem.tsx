@@ -13,7 +13,18 @@ interface PurchaseResponse {
   message?: string;
 }
 
-export default function ShopItem({ initialCoins }: { initialCoins: number }) {
+interface PurchaseError {
+  response?: { status?: number; data?: { message?: string } };
+  message?: string;
+}
+
+export default function ShopItem({
+  characterId,
+  initialCoins,
+}: {
+  characterId?: number;
+  initialCoins: number;
+}) {
   const [coins, setCoins] = useState(initialCoins);
   const [quantity, setQuantity] = useState(0);
   const [isBuying, setIsBuying] = useState(false);
@@ -30,10 +41,30 @@ export default function ShopItem({ initialCoins }: { initialCoins: number }) {
     setIsBuying(true);
     setMessage("");
     try {
-      const response = await axiosInstance.post<PurchaseResponse>(
-        "/shop/purchase",
-        { itemId: 3, quantity: 1 },
-      );
+      const payload = {
+        characterId,
+        itemId: 3,
+        id_item: 3,
+        quantity: 1,
+      };
+      const purchaseRoutes = ["/shop/purchase", "/shop/buy", "/items/purchase"];
+      let response;
+
+      for (const route of purchaseRoutes) {
+        try {
+          response = await axiosInstance.post<PurchaseResponse>(route, payload);
+          break;
+        } catch (requestError) {
+          const status = (requestError as PurchaseError).response?.status;
+          if (status !== 404 && status !== 405) throw requestError;
+        }
+      }
+
+      if (!response) {
+        throw new Error(
+          "A API ainda nao possui uma rota de compra configurada.",
+        );
+      }
       const purchased =
         response.data?.data?.quantity ?? response.data?.quantity ?? 1;
       const updatedCoins =
@@ -43,9 +74,13 @@ export default function ShopItem({ initialCoins }: { initialCoins: number }) {
       setCoins(updatedCoins);
       setQuantity((current) => current + purchased);
       setMessage("Pocao comprada e adicionada ao inventario.");
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Erro ao comprar pocao:", error);
-      setMessage("Nao foi possivel concluir a compra.");
+      const apiMessage = (error as PurchaseError).response?.data?.message;
+      const errorMessage = (error as PurchaseError).message;
+      setMessage(
+        apiMessage ?? errorMessage ?? "Nao foi possivel concluir a compra.",
+      );
     } finally {
       setIsBuying(false);
     }

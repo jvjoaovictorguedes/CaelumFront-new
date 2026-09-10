@@ -24,7 +24,10 @@ export default async function ShopPage() {
       </div>
 
       <section className="grid w-full gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <ShopItem initialCoins={character?.dinheiro ?? 15} />
+        <ShopItem
+          characterId={character?.id}
+          initialCoins={character?.dinheiro ?? 15}
+        />
       </section>
     </div>
   );
