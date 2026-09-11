@@ -27,7 +27,8 @@ interface CharacterState {
   inteligencia: number;
   vida_atual: number;
   mana_atual: number;
-  experiencia?: number;
+  experiencia: number;
+  pontos_distribuir: number;
 }
 
 interface EnemyState {
@@ -59,6 +60,13 @@ export default function CombatArena({
 
   const [vidaAtual, setVidaAtual] = useState(character.vida_atual);
   const [manaAtual, setManaAtual] = useState(character.mana_atual);
+  const [nivelAtual, setNivelAtual] = useState(character.nivel);
+const [experienciaAtual, setExperienciaAtual] = useState(
+  character.experiencia ?? 0,
+);
+const [pontosDistribuir, setPontosDistribuir] = useState(
+  character.pontos_distribuir ?? 0,
+);
   const [enemy, setEnemy] = useState<EnemyState>(initialEnemy);
   const [log, setLog] = useState<string[]>([
     `Um(a) ${initialEnemy.nome} apareceu!`,
@@ -71,8 +79,7 @@ export default function CombatArena({
     experiencia: number;
     dinheiro: number;
   } | null>(null);
-  const experienciaAtual = character.experiencia ?? 0;
-  const experienciaNivel = Math.max(100, character.nivel * 100);
+const experienciaNivel = Math.max(100, nivelAtual * 100);
 
   interface RespostaCombate {
     data: {
@@ -80,7 +87,13 @@ export default function CombatArena({
       enemy: EnemyState;
       done: boolean;
       victory: boolean;
-      character: { vida_atual: number; mana_atual: number };
+      character: {
+  vida_atual: number;
+  mana_atual: number;
+  nivel: number;
+  experiencia: number;
+  pontos_distribuir: number;
+};
       rewards?: { experiencia: number; dinheiro: number };
     };
   }
@@ -103,8 +116,11 @@ export default function CombatArena({
       const data = response.data.data;
       setLog((atual) => [...atual, ...data.log]);
       setEnemy(data.enemy);
-      setVidaAtual(data.character.vida_atual);
-      setManaAtual(data.character.mana_atual);
+setVidaAtual(data.character.vida_atual);
+setManaAtual(data.character.mana_atual);
+setNivelAtual(data.character.nivel);
+setExperienciaAtual(data.character.experiencia);
+setPontosDistribuir(data.character.pontos_distribuir);
 
       if (data.done) {
         setResultado(data.victory ? "vitoria" : "derrota");
@@ -143,9 +159,9 @@ export default function CombatArena({
       </div>
 
       <div className="grid w-full grid-cols-1 gap-4 md:grid-cols-2">
-        <div className="rounded-2xl border border-green-900/20 bg-green-100/70 p-4 shadow-lg">
+        <div className="rounded-2xl border border-green-900/20 bg-[#292018]/90 p-4 shadow-lg">
           <p className="font-imFeel text-xl mb-1">
-            {character.nome} (Nv. {character.nivel})
+            {character.nome} (Nv. {nivelAtual}) (<span className="text-sm text-white/70">Pontos à distribuir: {pontosDistribuir}</span>)
           </p>
           <BarraDeStatus
             label="Vida"
@@ -161,7 +177,7 @@ export default function CombatArena({
           />
         </div>
 
-        <div className="rounded-2xl border border-red-900/20 bg-red-100/70 p-4 shadow-lg">
+        <div className="rounded-2xl border border-red-900/20 bg-[#292018]/90 p-4 shadow-lg">
           <p className="font-imFeel text-xl mb-1">
             {enemy.nome} (Nv. {enemy.nivel})
           </p>

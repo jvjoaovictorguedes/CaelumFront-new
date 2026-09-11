@@ -20,7 +20,18 @@ interface CurrentCharacter {
   rank?: string;
   Race?: {
     nome?: string;
-    imagem_masculina_url?: string;
+    nome_masculino?: string;
+    nome_feminino?: string;
+    bonus_agilidade: number;
+    bonus_forca: number;
+    bonus_inteligencia: number;
+    bonus_velocidade: number;
+    bonus_vitalidade: number;
+    descricao_feminina: string;
+    descricao_masculina: string;
+    id: string;
+    imagem_feminina_url: string;
+    imagem_masculina_url: string;
   };
   Class?: {
     nome?: string;
@@ -33,9 +44,6 @@ interface CurrentCharacterResponse {
   };
 }
 
-// Helper de servidor: pega o id do personagem salvo no login e busca os
-// dados completos dele na API. Usado pelas páginas do dashboard
-// (personagem, inventário, aventura) para não duplicar essa lógica.
 export async function getCurrentCharacter() {
   const cookieStore = await cookies();
   const characterId = cookieStore.get("characterId")?.value;

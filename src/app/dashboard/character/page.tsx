@@ -1,5 +1,6 @@
 import { getCurrentCharacter } from "@/utils/character-session";
 import { getRaceImage } from "@/utils/media-url";
+import CharacterAttributes from "./components/CharacterAttributes";
 
 const ATRIBUTOS = [
   { label: "Força", campo: "forca" },
@@ -11,7 +12,7 @@ const ATRIBUTOS = [
 
 export default async function CharacterPage() {
   const character = await getCurrentCharacter();
-
+  console.log
   if (!character) {
     return (
       <div className="flex flex-col items-center justify-center h-full">
@@ -61,7 +62,9 @@ export default async function CharacterPage() {
           </h1>
           <p className="text-base text-white/70 sm:text-lg">
             Nível {character.nivel} ·{" "}
-            {character.Race?.nome ?? "Raça desconhecida"} ·{" "}
+            {character.genero === "feminino"
+              ? character.Race?.nome_feminino
+              : character.Race?.nome_masculino} ·{" "}
             {character.Class?.nome ?? "Classe desconhecida"}
           </p>
           <div className="mt-3 max-w-xl">
@@ -81,8 +84,8 @@ export default async function CharacterPage() {
         </div>
       </div>
 
-      <div className="grid w-full gap-4 md:grid-cols-2">
-        <div className="rounded-2xl border border-black/10 bg-white/50 p-4 shadow-lg">
+      <div className="grid w-full gap-4 md:grid-cols-1">
+        <div className="rounded-2xl border border-black/10 bg-[#3a2f24] p-4 shadow-lg">
           <div className="mb-2">
             <div className="flex justify-between text-sm font-bold mb-1">
               <span>Vida</span>
@@ -124,36 +127,20 @@ export default async function CharacterPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3 rounded-2xl border border-black/10 bg-white/50 p-4 shadow-lg sm:grid-cols-3">
-          {ATRIBUTOS.map(({ label, campo }) => (
-            <div
-              key={campo}
-              className="bg-[#F3B43F]/30 rounded-lg p-3 flex justify-between items-center"
-            >
-              <span className="font-imFeel text-xl">{label}</span>
-              <span className="font-bold text-xl">{character[campo]}</span>
-            </div>
-          ))}
-          <div className="col-span-2 flex items-center justify-between rounded-lg bg-[#F3B43F]/30 p-3 sm:col-span-1">
-            <span className="font-imFeel text-xl">Pontos para distribuir</span>
-            <span className="font-bold text-xl">
-              {character.pontos_distribuir ?? 0}
-            </span>
-          </div>
-        </div>
+        <CharacterAttributes character={character} />
       </div>
 
       <div className="grid w-full grid-cols-3 gap-3 text-center">
-        <div className="bg-black/10 rounded-lg p-2">
-          <p className="text-sm text-black/60">Experiência</p>
+        <div className="bg-white/40 rounded-lg p-2">
+          <p className="text-sm text-black/80">Experiência</p>
           <p className="font-bold">{character.experiencia}</p>
         </div>
-        <div className="bg-black/10 rounded-lg p-2">
-          <p className="text-sm text-black/60">Moedas</p>
+        <div className="bg-white/40 rounded-lg p-2">
+          <p className="text-sm text-black/80">Moedas</p>
           <p className="font-bold">{character.dinheiro}</p>
         </div>
-        <div className="bg-black/10 rounded-lg p-2">
-          <p className="text-sm text-black/60">Rank</p>
+        <div className="bg-white/40 rounded-lg p-2">
+          <p className="text-sm text-black/80">Rank</p>
           <p className="font-bold">{character.rank}</p>
         </div>
       </div>

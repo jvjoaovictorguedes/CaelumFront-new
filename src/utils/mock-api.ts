@@ -1,13 +1,5 @@
 import type { AxiosRequestConfig, AxiosResponse } from "axios";
 
-interface MockResponse<T> {
-  data: T;
-  status: number;
-  statusText: string;
-  headers: Record<string, string>;
-  config: AxiosRequestConfig;
-}
-
 interface MockRace {
   id: string;
   nome_masculino: string;
@@ -126,7 +118,8 @@ const classes: MockClass[] = [
   },
 ];
 
-const mockHasCharacter = process.env.NEXT_PUBLIC_MOCK_HAS_CHARACTER === "true";
+const mockHasCharacter =
+  process.env.NEXT_PUBLIC_MOCK_HAS_CHARACTER === "true";
 
 let character = {
   id: 1,
@@ -186,30 +179,60 @@ function response<T>(
 }
 
 export class MockApiClient {
-  async get<T = unknown>(url: string, config: AxiosRequestConfig = {}) {
+  async get<T = unknown>(
+    url: string,
+    config: AxiosRequestConfig = {},
+  ) {
     if (url === "/races") {
-      return response<T>({ status: "success", data: { races } } as T, config);
+      return response<T>(
+        {
+          status: "success",
+          data: { races },
+        } as T,
+        config,
+      );
     }
+
     if (url === "/classes") {
-      return response<T>({ status: "success", data: { classes } } as T, config);
+      return response<T>(
+        {
+          status: "success",
+          data: { classes },
+        } as T,
+        config,
+      );
     }
+
     if (url.startsWith("/characters/by-user")) {
       const result = response<T>(
         mockHasCharacter
-          ? ({ status: "success", data: { character } } as T)
-          : ({ status: "fail", message: "Usuário sem personagem." } as T),
+          ? {
+              status: "success",
+              data: { character },
+            } as T
+          : {
+              status: "fail",
+              message: "Usuário sem personagem.",
+            } as T,
         config,
       );
+
       result.status = mockHasCharacter ? 200 : 404;
       result.statusText = mockHasCharacter ? "OK" : "Not Found";
+
       return result;
     }
+
     if (url.startsWith("/characters/")) {
       return response<T>(
-        { status: "success", data: { character } } as T,
+        {
+          status: "success",
+          data: { character },
+        } as T,
         config,
       );
     }
+
     if (url === "/character-inventory") {
       return response<T>(
         {
@@ -246,6 +269,7 @@ export class MockApiClient {
         config,
       );
     }
+
     if (url === "/character-abilities") {
       return response<T>(
         {
@@ -261,6 +285,7 @@ export class MockApiClient {
         config,
       );
     }
+
     if (url.startsWith("/combat/enemy")) {
       return response<T>(
         {
@@ -282,6 +307,7 @@ export class MockApiClient {
         config,
       );
     }
+
     throw new Error(`Mock GET nao implementado: ${url}`);
   }
 
@@ -290,20 +316,37 @@ export class MockApiClient {
     body?: unknown,
     config: AxiosRequestConfig = {},
   ) {
+    // ==========================================
+    // LOGIN
+    // ==========================================
+
     if (url === "/users/login") {
       return response<T>(
         {
           status: "success",
           token: "mock-token",
           data: {
-            user: { id: "1", username: "dev", email: "dev@caelum.local" },
+            user: {
+              id: "1",
+              username: "dev",
+              email: "dev@caelum.local",
+            },
           },
         } as T,
         config,
       );
     }
+
+    // ==========================================
+    // REGISTRO
+    // ==========================================
+
     if (url === "/users/register") {
-      const user = body as { username?: string; email?: string };
+      const user = body as {
+        username?: string;
+        email?: string;
+      };
+
       return response<T>(
         {
           status: "success",
@@ -319,38 +362,252 @@ export class MockApiClient {
         config,
       );
     }
+
+    // ==========================================
+    // CRIAR / ATUALIZAR PERSONAGEM
+    // ==========================================
+
     if (url === "/characters") {
-      character = { ...character, ...(body as Partial<typeof character>) };
+      character = {
+        ...character,
+        ...(body as Partial<typeof character>),
+      };
+
       return response<T>(
-        { status: "success", data: { character } } as T,
+        {
+          status: "success",
+          data: { character },
+        } as T,
         config,
       );
     }
+
+    // ==========================================
+    // COMPRA NA LOJA
+    // ==========================================
+
     if (url === "/shop/purchase") {
-      const request = body as { itemId?: number; quantity?: number };
+      const request = body as {
+        itemId?: number;
+        quantity?: number;
+      };
+
       const quantity = Math.max(1, request.quantity ?? 1);
       const price = quantity;
-      const result = response<T>(
+
+      if (request.itemId !== 3 || character.dinheiro < price) {
+        const result = response<T>(
+          {
+            status: "fail",
+            message: "Compra invalida ou moedas insuficientes.",
+          } as T,
+          config,
+        );
+
+        result.status = 400;
+        result.statusText = "Bad Request";
+
+        return result;
+      }
+
+      character = {
+        ...character,
+        dinheiro: character.dinheiro - price,
+      };
+
+      potionQuantity += quantity;
+
+      return response<T>(
         {
           status: "success",
           data: {
             quantity,
-            character: { dinheiro: character.dinheiro - price },
+            character: {
+              dinheiro: character.dinheiro,
+            },
           },
         } as T,
         config,
       );
+    }
 
-      if (request.itemId !== 3 || character.dinheiro < price) {
+    // ==========================================
+    // DISTRIBUIÇÃO ALEATÓRIA DE ATRIBUTOS
+    // ==========================================
+
+    if (
+      url.startsWith("/attributes/") &&
+      url.endsWith("/random")
+    ) {
+      const atributosValidos = [
+        "forca",
+        "vitalidade",
+        "agilidade",
+        "inteligencia",
+        "velocidade",
+      ] as const;
+
+      if (character.pontos_distribuir <= 0) {
+        const result = response<T>(
+          {
+            status: "fail",
+            message:
+              "O personagem não possui pontos para distribuir.",
+          } as T,
+          config,
+        );
+
         result.status = 400;
         result.statusText = "Bad Request";
-        throw new Error("Compra invalida ou moedas insuficientes.");
+
+        return result;
       }
 
-      character = { ...character, dinheiro: character.dinheiro - price };
-      potionQuantity += quantity;
-      return result;
+      let personagemAtualizado = {
+        ...character,
+      };
+
+      for (
+        let i = 0;
+        i < character.pontos_distribuir;
+        i++
+      ) {
+        const atributoAleatorio =
+          atributosValidos[
+            Math.floor(
+              Math.random() * atributosValidos.length,
+            )
+          ];
+
+        personagemAtualizado = {
+          ...personagemAtualizado,
+          [atributoAleatorio]:
+            personagemAtualizado[atributoAleatorio] + 1,
+        };
+      }
+
+      personagemAtualizado.pontos_distribuir = 0;
+
+      character = personagemAtualizado;
+
+      return response<T>(
+        {
+          status: "success",
+          message: "Pontos distribuídos aleatoriamente.",
+          character,
+        } as T,
+        config,
+      );
     }
+
+    // ==========================================
+    // DISTRIBUIÇÃO MANUAL DE ATRIBUTO
+    // ==========================================
+
+    if (url.startsWith("/attributes/")) {
+      const request = body as {
+        atributo?: string;
+        quantidade?: number;
+      };
+      type AtributoDistribuivel = | "forca" | "vitalidade" | "agilidade" | "inteligencia" | "velocidade";
+
+const atributosValidos: AtributoDistribuivel[] = [ "forca", "vitalidade", "agilidade", "inteligencia", "velocidade", ];
+
+      const atributo = request.atributo;
+      const quantidade = request.quantidade ?? 1;
+
+      // Atributo inválido
+      if (
+        !atributo ||
+        !atributosValidos.includes(
+          atributo as (typeof atributosValidos)[number],
+        )
+      ) {
+        const result = response<T>(
+          {
+            status: "fail",
+            message: "Atributo inválido.",
+          } as T,
+          config,
+        );
+
+        result.status = 400;
+        result.statusText = "Bad Request";
+
+        return result;
+      }
+
+      // Sem pontos
+      if (character.pontos_distribuir <= 0) {
+        const result = response<T>(
+          {
+            status: "fail",
+            message:
+              "O personagem não possui pontos para distribuir.",
+          } as T,
+          config,
+        );
+
+        result.status = 400;
+        result.statusText = "Bad Request";
+
+        return result;
+      }
+
+      // Quantidade inválida
+      if (
+        !Number.isInteger(quantidade) ||
+        quantidade <= 0
+      ) {
+        const result = response<T>(
+          {
+            status: "fail",
+            message:
+              "A quantidade de pontos deve ser maior que zero.",
+          } as T,
+          config,
+        );
+
+        result.status = 400;
+        result.statusText = "Bad Request";
+
+        return result;
+      }
+
+      // Pontos insuficientes
+      if (quantidade > character.pontos_distribuir) {
+        const result = response<T>(
+          {
+            status: "fail",
+            message:
+              "O personagem não possui pontos suficientes.",
+          } as T,
+          config,
+        );
+
+        result.status = 400;
+        result.statusText = "Bad Request";
+
+        return result;
+      }
+
+      // Atualiza o atributo e desconta os pontos
+      const atributoValido = atributo as AtributoDistribuivel;
+character = { ...character, [atributoValido]: character[atributoValido] + quantidade, pontos_distribuir: character.pontos_distribuir - quantidade, };
+      return response<T>(
+        {
+          status: "success",
+          message: `Pontos distribuídos em ${atributo}.`,
+          character,
+        } as T,
+        config,
+      );
+    }
+
+    // ==========================================
+    // COMBATE
+    // ==========================================
+
     if (url === "/combat/action") {
       const request = body as {
         enemy: {
@@ -359,25 +616,53 @@ export class MockApiClient {
           nome: string;
           nivel: number;
         };
-        action: { type: string; powerId?: number };
+        action: {
+          type: string;
+          powerId?: number;
+        };
       };
-      const power = powers.find((item) => item.id === request.action.powerId);
+
+      const power = powers.find(
+        (item) => item.id === request.action.powerId,
+      );
+
       const damage =
-        request.action.type === "power" ? (power?.dano_base ?? 16) : 14;
+        request.action.type === "power"
+          ? (power?.dano_base ?? 16)
+          : 14;
+
       const healing = power?.cura_base ?? 0;
-      const enemyLife = Math.max(0, request.enemy.vida_atual - damage);
+
+      const enemyLife = Math.max(
+        0,
+        request.enemy.vida_atual - damage,
+      );
+
       character = {
         ...character,
-        vida_atual: Math.max(1, character.vida_atual - 4 + healing),
+
+        vida_atual: Math.max(
+          1,
+          character.vida_atual - 4 + healing,
+        ),
+
         mana_atual: Math.max(
           0,
-          character.mana_atual - (power?.custo_mana ?? 0),
+          character.mana_atual -
+            (power?.custo_mana ?? 0),
         ),
+
         experiencia:
-          enemyLife === 0 ? character.experiencia + 20 : character.experiencia,
+          enemyLife === 0
+            ? character.experiencia + 20
+            : character.experiencia,
+
         dinheiro:
-          enemyLife === 0 ? character.dinheiro + 10 : character.dinheiro,
+          enemyLife === 0
+            ? character.dinheiro + 10
+            : character.dinheiro,
       };
+
       return response<T>(
         {
           status: "success",
@@ -386,20 +671,40 @@ export class MockApiClient {
               `O heroi causou ${damage} de dano.`,
               "O inimigo respondeu com 4 de dano.",
             ],
-            enemy: { ...request.enemy, vida_atual: enemyLife },
+
+            enemy: {
+              ...request.enemy,
+              vida_atual: enemyLife,
+            },
+
             done: enemyLife === 0,
+
             victory: enemyLife === 0,
+
             character: {
               vida_atual: character.vida_atual,
               mana_atual: character.mana_atual,
             },
+
             rewards:
-              enemyLife === 0 ? { experiencia: 20, dinheiro: 10 } : undefined,
+              enemyLife === 0
+                ? {
+                    experiencia: 20,
+                    dinheiro: 10,
+                  }
+                : undefined,
           },
         } as T,
         config,
       );
     }
-    throw new Error(`Mock POST nao implementado: ${url}`);
+
+    // ==========================================
+    // ROTA NÃO IMPLEMENTADA
+    // ==========================================
+
+    throw new Error(
+      `Mock POST nao implementado: ${url}`,
+    );
   }
 }
