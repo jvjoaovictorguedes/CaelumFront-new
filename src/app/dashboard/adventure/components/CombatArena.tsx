@@ -27,8 +27,8 @@ interface CharacterState {
   inteligencia: number;
   vida_atual: number;
   mana_atual: number;
-  experiencia: number;
-  pontos_distribuir: number;
+  experiencia?: number;
+  pontos_distribuir?: number;
 }
 
 interface EnemyState {

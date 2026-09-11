@@ -89,7 +89,7 @@ export default function ClassSelection() {
     };
 
     fetchClasses();
-  }, []);
+  }, [router]);
 
   //roll 100%
   const rollSpecialClasses = () => {
@@ -231,7 +231,6 @@ export default function ClassSelection() {
         )}
         <form onSubmit={handleCreateFinalCharacter}>
           <div className="mb-6 flex flex-wrap justify-center gap-3 sm:gap-8">
-            {/* AGORA SÓ HÁ UM ÚNICO MAP PARA visibleClasses */}
             {visibleClasses.map((cls: ClassData) => (
               <div
                 key={cls.id}
