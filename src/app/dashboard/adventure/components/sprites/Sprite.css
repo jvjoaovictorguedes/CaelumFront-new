@@ -1,0 +1,68 @@
+/* Arena de Batalha */
+.battle-arena {
+    position: relative;
+    width: 500px;
+    height: 500px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient(circle, #2a1b12 0%, #0d0806 70%, #000 100%);
+    border: 3px solid #8b0000;
+    border-radius: 12px;
+    box-shadow: 0 0 30px rgba(139, 0, 0, 0.6);
+    overflow: hidden;
+}
+
+/* O Sprite do Minotauro */
+.minotaur-sprite {
+    width: 420px;
+    height: 420px;
+    background-image: url('/public/images/minotauro.jpg'); 
+    background-size: cover;
+    background-position: center;
+    border-radius: 8px;
+    cursor: pointer;
+    
+    /* Ponto de apoio para a animação balançar a partir dos pés */
+    transform-origin: bottom center;
+    
+    /* Animação contínua de espera (Idle) rodando para sempre */
+    animation: idleStance 3s ease-in-out infinite;
+    transition: filter 0.3s ease;
+    filter: drop-shadow(0 10px 15px rgba(0,0,0,0.9));
+}
+
+.minotaur-sprite:hover {
+    filter: drop-shadow(0 10px 20px rgba(255, 69, 0, 0.8)) brightness(1.1);
+}
+
+/* 1. Animação de Respiração / Espera (Idle) */
+@keyframes idleStance {
+    0%, 100% {
+        transform: translateY(0) scale(1) rotate(0deg);
+    }
+    50% {
+        transform: translateY(-8px) scale(1.02) rotate(0.5deg);
+    }
+}
+
+/* 2. Animação de Ataque com o Machado */
+.minotaur-sprite.attack {
+    animation: axeSwing 0.5s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+@keyframes axeSwing {
+    0% { 
+        transform: translateX(0) rotate(0deg); 
+    }
+    30% { 
+        transform: translateX(-30px) rotate(-10deg) scale(1.05); 
+    }
+    50% { 
+        transform: translateX(40px) rotate(15deg) scale(1.1); 
+        filter: brightness(1.3) drop-shadow(0 0 20px rgba(255,0,0,0.8)); 
+    }
+    100% { 
+        transform: translateX(0) rotate(0deg); 
+    }
+}

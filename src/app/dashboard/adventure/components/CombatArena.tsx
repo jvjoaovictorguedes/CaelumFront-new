@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import axiosInstance from "@/utils/axiosIntance";
 import PlayerSprite from "./sprites/PlayerSprite";
 import EnemySprite from "./sprites/EnemySprite";
+import MinotaurSprite from "./sprites/MinotauroSprite";
 
 type EstadoAnimacao =
   | "idle"
@@ -101,9 +102,6 @@ const experienciaNivel = Math.max(100, nivelAtual * 100);
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
-  // Toca a sequência de animação de um turno: primeiro o ataque do
-  // jogador (com reação do inimigo), depois — se o combate não acabou
-  // ali — o contra-ataque do inimigo (com reação do jogador).
   async function tocarAnimacaoDoTurno({
     inimigoLevouDano,
     jogadorLevouDano,
