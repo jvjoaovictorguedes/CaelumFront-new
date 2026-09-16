@@ -789,4 +789,24 @@ character = { ...character, [atributoValido]: character[atributoValido] + quanti
 
     throw new Error(`Mock DELETE nao implementado: ${url}`);
   }
+
+  async patch<T = unknown>(
+    url: string,
+    body?: Record<string, unknown>,
+    config: AxiosRequestConfig = {},
+  ) {
+    if (url.startsWith("/characters/")) {
+      character = { ...character, ...body };
+      return response<T>(
+        {
+          status: "success",
+          message: "Personagem atualizado com sucesso!",
+          data: { character },
+        } as T,
+        config,
+      );
+    }
+
+    throw new Error(`Mock PATCH nao implementado: ${url}`);
+  }
 }

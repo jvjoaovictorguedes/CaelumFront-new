@@ -2,6 +2,7 @@ import { getCurrentCharacter } from "@/utils/character-session";
 import { getRaceImage } from "@/utils/media-url";
 import CharacterAttributes from "./components/CharacterAttributes";
 import EquipmentPanel from "./components/EquipmentPanel";
+import GenderToggleButton from "./components/GenderToggleButton";
 
 const ATRIBUTOS = [
   { label: "Força", campo: "forca" },
@@ -44,7 +45,7 @@ export default async function CharacterPage() {
   );
   const imagemRaca = getRaceImage(
     character.Race?.nome,
-    character.genero === "feminino" ? "feminino" : "Masculino",
+    character.genero === "Feminino" ? "feminino" : "Masculino",
     character.Race?.imagem_masculina_url,
   );
 
@@ -64,12 +65,15 @@ export default async function CharacterPage() {
           <h1 className="truncate font-imFeel text-4xl sm:text-5xl">
             {character.nome}
           </h1>
-          <p className="text-base text-white/70 sm:text-lg">
-            Nível {character.nivel} ·{" "}
-            {character.genero === "feminino"
-              ? character.Race?.nome_feminino
-              : character.Race?.nome_masculino} ·{" "}
-            {character.Class?.nome ?? "Classe desconhecida"}
+          <p className="flex flex-wrap items-center gap-x-1 text-base text-white/70 sm:text-lg">
+            <span>
+              Nível {character.nivel} ·{" "}
+              {character.genero === "Feminino"
+                ? character.Race?.nome_feminino
+                : character.Race?.nome_masculino}
+            </span>
+            <GenderToggleButton characterId={character.id} generoAtual={character.genero} />
+            <span>· {character.Class?.nome ?? "Classe desconhecida"}</span>
           </p>
           <div className="mt-3 max-w-xl">
             <div className="mb-1 flex justify-between text-sm font-bold">
