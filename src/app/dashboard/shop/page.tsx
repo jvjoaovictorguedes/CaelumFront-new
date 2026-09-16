@@ -1,8 +1,24 @@
+import axiosInstance from "@/utils/axiosIntance";
 import { getCurrentCharacter } from "@/utils/character-session";
 import ShopItem from "./components/ShopItem";
 
+const ID_POCAO_DE_VIDA = 3;
+
+async function buscarPrecoDaPocao() {
+  try {
+    const resposta = await axiosInstance.get<{ data?: { item?: { valor_compra?: number } } }>(
+      `/items/${ID_POCAO_DE_VIDA}`,
+    );
+    return resposta.data?.data?.item?.valor_compra ?? 1;
+  } catch (error) {
+    console.error("Erro ao buscar preco da pocao de vida:", error);
+    return 1;
+  }
+}
+
 export default async function ShopPage() {
   const character = await getCurrentCharacter();
+  const precoPocao = await buscarPrecoDaPocao();
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-5 p-2 sm:p-4">
@@ -27,6 +43,7 @@ export default async function ShopPage() {
         <ShopItem
           characterId={character?.id}
           initialCoins={character?.dinheiro ?? 15}
+          price={precoPocao}
         />
       </section>
     </div>

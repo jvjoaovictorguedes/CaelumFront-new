@@ -336,6 +336,22 @@ export class MockApiClient {
       );
     }
 
+    if (url.startsWith("/items/")) {
+      return response<T>(
+        {
+          status: "success",
+          data: {
+            item: {
+              id: 3,
+              nome: "Pocao de Vida",
+              valor_compra: 4,
+            },
+          },
+        } as T,
+        config,
+      );
+    }
+
     throw new Error(`Mock GET nao implementado: ${url}`);
   }
 

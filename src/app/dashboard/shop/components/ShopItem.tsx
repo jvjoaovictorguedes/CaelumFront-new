@@ -20,15 +20,16 @@ interface PurchaseError {
 export default function ShopItem({
   characterId,
   initialCoins,
+  price,
 }: {
   characterId?: number;
   initialCoins: number;
+  price: number;
 }) {
   const [coins, setCoins] = useState(initialCoins);
   const [quantity, setQuantity] = useState(0);
   const [isBuying, setIsBuying] = useState(false);
   const [message, setMessage] = useState("");
-  const price = 1; // valor_compra do item no banco; usado aqui só para desabilitar o botão
 
   async function buyPotion() {
     if (isBuying) return;
@@ -95,7 +96,9 @@ export default function ShopItem({
       </div>
       <div className="mt-5 flex items-center justify-between gap-3 border-t border-white/15 pt-4">
         <div>
-          <p className="text-xl font-bold text-[#F3B43F]">1 moeda</p>
+          <p className="text-xl font-bold text-[#F3B43F]">
+            {price} {price === 1 ? "moeda" : "moedas"}
+          </p>
           {quantity > 0 && (
             <p className="text-sm text-white/70">No inventario: x{quantity}</p>
           )}
