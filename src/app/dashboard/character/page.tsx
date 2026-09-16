@@ -138,7 +138,7 @@ export default async function CharacterPage() {
         <CharacterAttributes character={character} bonus={bonus} />
       </div>
 
-      <EquipmentPanel characterId={character.id} />
+      <EquipmentPanel characterId={character.id} classe={character.Class?.nome} />
 
       <div className="grid w-full grid-cols-3 gap-3 text-center">
         <div className="bg-white/40 rounded-lg p-2">

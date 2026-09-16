@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import axiosInstance from "@/utils/axiosIntance";
+import { getClassPortrait } from "@/utils/media-url";
 
 type Slot =
   | "Cabeca"
@@ -13,15 +14,22 @@ type Slot =
   | "Acessorio1"
   | "Acessorio2";
 
-const SLOTS: { slot: Slot; label: string }[] = [
-  { slot: "Cabeca", label: "Cabeça" },
-  { slot: "Torso", label: "Torso" },
-  { slot: "Maos", label: "Mãos" },
-  { slot: "Pes", label: "Pés" },
-  { slot: "ArmaPrincipal", label: "Arma Principal" },
-  { slot: "ArmaSecundaria", label: "Arma Secundária" },
-  { slot: "Acessorio1", label: "Acessório 1" },
-  { slot: "Acessorio2", label: "Acessório 2" },
+// Posição de cada slot em cima do retrato do personagem (% do box da
+// imagem), calibrada pelas duas ilustrações reais (guerreiro-lutador.jpg/
+// mago-lutador.jpg): cabeça no topo, mão da arma sempre do lado esquerdo
+// de quem olha (onde as duas artes seguram espada/cajado), a outra mão
+// (escudo/orbe) do lado direito, pés embaixo. Não é um encaixe pixel a
+// pixel — é o mesmo tipo de "boneco de papel" do mockup do Figma, só que
+// com badge + nome em vez de peça de armadura recortada.
+const SLOTS: { slot: Slot; label: string; top: string; left: string }[] = [
+  { slot: "Cabeca", label: "Cabeça", top: "8%", left: "50%" },
+  { slot: "Acessorio1", label: "Acessório 1", top: "20%", left: "28%" },
+  { slot: "Acessorio2", label: "Acessório 2", top: "20%", left: "72%" },
+  { slot: "Torso", label: "Torso", top: "34%", left: "50%" },
+  { slot: "ArmaPrincipal", label: "Arma Principal", top: "52%", left: "20%" },
+  { slot: "ArmaSecundaria", label: "Arma Secundária", top: "48%", left: "80%" },
+  { slot: "Maos", label: "Mãos", top: "63%", left: "50%" },
+  { slot: "Pes", label: "Pés", top: "92%", left: "50%" },
 ];
 
 // Tipos de item que fazem sentido arrastar pra um slot. Consumível,
@@ -57,8 +65,10 @@ interface InventarioEntry {
 
 export default function EquipmentPanel({
   characterId,
+  classe,
 }: {
   characterId: number;
+  classe?: string;
 }) {
   const [equipamentos, setEquipamentos] = useState<
     Record<Slot, ItemInfo | null>
@@ -163,9 +173,23 @@ export default function EquipmentPanel({
     equipar(slot, idItem);
   }
 
-  const itensEquipaveis = inventario.filter((entrada) =>
-    TIPOS_EQUIPAVEIS.includes(entrada.Item?.tipo_item),
-  );
+  // Quantas cópias de cada item já estão presas em algum slot — pra tirar
+  // da lista de arrastar exatamente a quantidade já em uso. Sem isso dava
+  // pra arrastar a mesma espada de novo pra outro slot mesmo já estando
+  // equipada (o back agora bloqueia, mas a lista continuava mostrando o
+  // item como "livre" do mesmo jeito).
+  const equipadoPorItem = new Map<number, number>();
+  for (const item of Object.values(equipamentos)) {
+    if (item) equipadoPorItem.set(item.id, (equipadoPorItem.get(item.id) ?? 0) + 1);
+  }
+
+  const itensEquipaveis = inventario
+    .filter((entrada) => TIPOS_EQUIPAVEIS.includes(entrada.Item?.tipo_item))
+    .map((entrada) => ({
+      ...entrada,
+      disponivel: entrada.quantidade - (equipadoPorItem.get(entrada.Item.id) ?? 0),
+    }))
+    .filter((entrada) => entrada.disponivel > 0);
 
   if (carregando) {
     return (
@@ -181,13 +205,12 @@ export default function EquipmentPanel({
         Equipamentos
       </p>
 
-      {/*
-        Sem imagem de personagem por enquanto: os slots ficam num grid
-        simples. Quando tiver a arte, essa div vira o fundo (bg-cover) e
-        cada slot recebe posição absoluta em cima da silhueta.
-      */}
-      <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {SLOTS.map(({ slot, label }) => {
+      <div
+        className="relative mx-auto mb-5 aspect-square w-full max-w-sm overflow-hidden rounded-2xl border border-white/10 bg-black/40 bg-cover bg-center"
+        style={{ backgroundImage: `url(${getClassPortrait(classe)})` }}
+      >
+        <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-black/40" />
+        {SLOTS.map(({ slot, label, top, left }) => {
           const itemNoSlot = equipamentos[slot];
           const emFoco = slotSobre === slot;
           return (
@@ -199,33 +222,34 @@ export default function EquipmentPanel({
               }}
               onDragLeave={() => setSlotSobre((atual) => (atual === slot ? null : atual))}
               onDrop={(e) => handleDrop(slot, e)}
-              className={`flex min-h-[92px] flex-col items-center justify-center gap-1 rounded-xl border-2 p-2 text-center transition-colors ${
+              style={{ top, left }}
+              className={`absolute flex w-24 -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-0.5 rounded-lg border-2 px-1.5 py-1 text-center backdrop-blur-sm transition-colors ${
                 emFoco
-                  ? "border-[#F3B43F] bg-[#3a2f24]"
+                  ? "border-[#F3B43F] bg-[#3a2f24]/90"
                   : itemNoSlot
-                    ? "border-[#F3B43F]/70 bg-[#3a2f24]/70"
-                    : "border-dashed border-white/25 bg-black/20"
+                    ? "border-[#F3B43F]/70 bg-[#1c150f]/80"
+                    : "border-dashed border-white/40 bg-black/40"
               }`}
             >
-              <span className="text-[10px] uppercase tracking-wide text-white/50">
+              <span className="text-[9px] uppercase tracking-wide text-white/60">
                 {label}
               </span>
               {itemNoSlot ? (
                 <>
-                  <span className="text-sm font-bold text-[#F3B43F]">
+                  <span className="text-xs font-bold leading-tight text-[#F3B43F]">
                     {itemNoSlot.nome}
                   </span>
                   <button
                     type="button"
                     onClick={() => desequipar(slot)}
                     disabled={processando}
-                    className="text-[10px] text-white/60 underline hover:text-white disabled:opacity-50"
+                    className="text-[9px] text-white/60 underline hover:text-white disabled:opacity-50"
                   >
                     desequipar
                   </button>
                 </>
               ) : (
-                <span className="text-xs text-white/40">Vazio</span>
+                <span className="text-[10px] text-white/40">Vazio</span>
               )}
             </div>
           );
@@ -241,7 +265,7 @@ export default function EquipmentPanel({
       </p>
       {itensEquipaveis.length === 0 ? (
         <p className="text-sm text-white/60">
-          Você não tem nenhum item equipável no inventário.
+          Você não tem nenhum item equipável disponível no inventário.
         </p>
       ) : (
         <div className="flex flex-wrap gap-3">
@@ -262,7 +286,7 @@ export default function EquipmentPanel({
                 {entrada.Item.nome}
               </p>
               <p className="text-[10px] text-white/50">
-                {entrada.Item.tipo_item} · x{entrada.quantidade}
+                {entrada.Item.tipo_item} · x{entrada.disponivel}
               </p>
             </div>
           ))}
