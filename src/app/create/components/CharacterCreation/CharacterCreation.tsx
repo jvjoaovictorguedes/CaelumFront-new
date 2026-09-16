@@ -227,6 +227,13 @@ export default function CharacterCreation() {
     if (roll > 78 && roll <= 100) {
       naturezaMagica = "Raio";
     }
+    // Mesmas fórmulas usadas no resto do jogo (combate, uso de item):
+    // vidaMaxima = 30 + vitalidade*6, manaMaxima = 20 + inteligencia*5.
+    // Sem isso, o personagem nascia com vida/mana fixas (100/50) que podiam
+    // passar do máximo calculado pelos atributos da raça escolhida.
+    const vidaInicial = 30 + currentRaceTempory.bonus_vitalidade * 6;
+    const manaInicial = 20 + currentRaceTempory.bonus_inteligencia * 5;
+
     setIsLoading(true);
     const result = await saveTempCharacterData({
       nome: name,
@@ -235,8 +242,8 @@ export default function CharacterCreation() {
       nivel: 1,
       experiencia: 0,
       dinheiro: 15,
-      vida_atual: 100,
-      mana_atual: 50,
+      vida_atual: vidaInicial,
+      mana_atual: manaInicial,
       pontos_distribuir: 0,
       rank: "F",
       reset: 0,
