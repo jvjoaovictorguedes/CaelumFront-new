@@ -3,16 +3,24 @@ import { getCurrentCharacter } from "@/utils/character-session";
 import ShopItem from "./components/ShopItem";
 
 const ID_POCAO_DE_VIDA = 3;
+const ID_POCAO_DE_MANA = 4;
 
 async function buscarPrecoDaPocao() {
   try {
-    const resposta = await axiosInstance.get<{ data?: { item?: { valor_compra?: number } } }>(
+    //AJUSTE COM A POCAO DE MANDA TAMBÉM
+    const respostaVida = await axiosInstance.get<{ data?: { item?: { valor_compra?: number } } }>(
       `/items/${ID_POCAO_DE_VIDA}`,
     );
-    return resposta.data?.data?.item?.valor_compra ?? 1;
+    const respostaMana = await axiosInstance.get<{ data?: { item?: { valor_compra?: number } } }>(
+      `/items/${ID_POCAO_DE_MANA}`,
+    );
+    return {
+      vida: respostaVida.data?.data?.item?.valor_compra ?? 1,
+      mana: respostaMana.data?.data?.item?.valor_compra ?? 1,
+    };
   } catch (error) {
     console.error("Erro ao buscar preco da pocao de vida:", error);
-    return 1;
+    return { vida: 1, mana: 1 };
   }
 }
 
@@ -42,8 +50,13 @@ export default async function ShopPage() {
       <section className="grid w-full gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <ShopItem
           characterId={character?.id}
-          initialCoins={character?.dinheiro ?? 15}
-          price={precoPocao}
+          initialCoins={character?.dinheiro ?? 15}  
+          price={precoPocao.vida}
+        />
+        <ShopItem
+          characterId={character?.id}
+          initialCoins={character?.dinheiro ?? 15}  
+          price={precoPocao.mana}
         />
       </section>
     </div>
