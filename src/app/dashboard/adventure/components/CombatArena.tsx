@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import axiosInstance from "@/utils/axiosIntance";
 import PlayerSprite from "./sprites/PlayerSprite";
 import EnemySprite from "./sprites/EnemySprite";
+import MinotaurSprite from "./sprites/MinotauroSprite";
 
 type EstadoAnimacao =
   | "idle"
@@ -101,9 +102,6 @@ const experienciaNivel = Math.max(100, nivelAtual * 100);
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
-  // Toca a sequência de animação de um turno: primeiro o ataque do
-  // jogador (com reação do inimigo), depois — se o combate não acabou
-  // ali — o contra-ataque do inimigo (com reação do jogador).
   async function tocarAnimacaoDoTurno({
     inimigoLevouDano,
     jogadorLevouDano,
@@ -226,7 +224,7 @@ setPontosDistribuir(data.character.pontos_distribuir);
       </div>
 
       <div className="flex items-center justify-between gap-4 rounded-2xl border-2 border-[#F3B43F]/60 bg-gradient-to-b from-[#3a2f24] to-[#1f1813] p-6 shadow-xl overflow-hidden">
-        <PlayerSprite
+        <MinotaurSprite
           className={`battle-sprite h-28 w-28 sm:h-36 sm:w-36 ${animJogador !== "idle" ? animJogador : ""}`}
         />
         <p className="font-imFeel text-2xl text-[#F3B43F]/70 select-none">VS</p>
