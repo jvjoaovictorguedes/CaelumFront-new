@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import axiosInstance from "@/utils/axiosIntance";
-import { getClassPortrait } from "@/utils/media-url";
+import ClassSilhouette from "./ClassSilhouette";
 
 type Slot =
   | "Cabeca"
@@ -205,11 +205,8 @@ export default function EquipmentPanel({
         Equipamentos
       </p>
 
-      <div
-        className="relative mx-auto mb-5 aspect-square w-full max-w-sm overflow-hidden rounded-2xl border border-white/10 bg-black/40 bg-cover bg-center"
-        style={{ backgroundImage: `url(${getClassPortrait(classe)})` }}
-      >
-        <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-black/40" />
+      <div className="relative mx-auto mb-5 aspect-square w-full max-w-sm overflow-hidden rounded-2xl border border-white/10 bg-[#3a2f24]">
+        <ClassSilhouette classe={classe} />
         {SLOTS.map(({ slot, label, top, left }) => {
           const itemNoSlot = equipamentos[slot];
           const emFoco = slotSobre === slot;
