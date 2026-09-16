@@ -105,6 +105,7 @@ export default function PvpArena({
         <div className="flex flex-col items-center gap-2">
           <SpriteA
             className={`battle-sprite h-24 w-24 sm:h-32 sm:w-32 ${animA}`}
+            animState={animA}
             stroke="#F3B43F"
           />
           <p className="text-sm font-bold text-[#F3B43F]">{desafiante.nome}</p>
@@ -113,6 +114,7 @@ export default function PvpArena({
         <div className="flex flex-col items-center gap-2">
           <SpriteB
             className={`battle-sprite h-24 w-24 sm:h-32 sm:w-32 ${animB}`}
+            animState={animB}
             stroke="#e05252"
             flip
           />

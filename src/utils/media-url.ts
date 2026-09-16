@@ -56,6 +56,18 @@ export function getRaceImage(
   return localImage ?? resolveMediaUrl(imageUrl);
 }
 
+// Ilustração de corpo inteiro (guerreiro/mago) usada no avatar do menu
+// lateral — mesmo critério de normalização usado em getClassImage/
+// spriteForClass, só que apontando pras artes de personagem completas em
+// vez do ícone pequeno de seleção de classe.
+export function getClassPortrait(name: string | undefined) {
+  const normalizedName = name ? normalize(name) : "";
+  if (normalizedName.includes("mago") || normalizedName.includes("mage")) {
+    return "/images/mago-lutador.jpg";
+  }
+  return "/images/guerreiro-lutador.jpg";
+}
+
 export function getClassImage(
   name: string | undefined,
   imageUrl?: string | null,

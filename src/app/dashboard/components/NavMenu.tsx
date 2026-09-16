@@ -3,6 +3,7 @@
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import axiosInstance from "@/utils/axiosIntance";
+import { getClassPortrait } from "@/utils/media-url";
 
 interface NavMenuItem {
   name: string;
@@ -14,8 +15,10 @@ const INTERVALO_POLL_NOTIFICACOES_MS = 15000;
 
 export default function NavMenu({
   currentUserId,
+  classe,
 }: {
   currentUserId?: number;
+  classe?: string;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -134,7 +137,7 @@ export default function NavMenu({
           <div
             className="h-40 w-40 cursor-pointer rounded-full border-4 border-[#F3B43F] bg-[#292018]"
             style={{
-              backgroundImage: "url('/images/meu-avatar.webp')",
+              backgroundImage: `url('${getClassPortrait(classe)}')`,
               backgroundSize: "cover",
               backgroundPosition: "center",
             }}

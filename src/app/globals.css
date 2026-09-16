@@ -202,3 +202,16 @@ body {
 .battle-sprite.anim-derrota {
   animation: battle-defeat 0.8s ease-out forwards;
 }
+
+/* Folhas de sprite 2D (Knight_1, Fire Wizard, Lightning Mage, Wanderer
+   Magican): cada frame é mostrado avançando background-position em passos
+   discretos — duração e número de passos vêm inline por instância, ver
+   AnimatedSpriteSheet.tsx. */
+@keyframes sprite-steps {
+  from {
+    background-position: 0% 0;
+  }
+  to {
+    background-position: 100% 0;
+  }
+}

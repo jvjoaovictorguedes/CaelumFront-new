@@ -133,7 +133,7 @@ export default function LiveDuelArena({ meuCharacterId }: { meuCharacterId: numb
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
       <div className="flex items-center justify-between gap-4 rounded-2xl border-2 border-[#F3B43F]/60 bg-gradient-to-b from-[#3a2f24] to-[#1f1813] p-6 shadow-xl">
         <div className="flex flex-col items-center gap-2">
-          <SpriteA className={`battle-sprite h-24 w-24 sm:h-32 sm:w-32 ${animA}`} stroke="#F3B43F" />
+          <SpriteA className={`battle-sprite h-24 w-24 sm:h-32 sm:w-32 ${animA}`} animState={animA} stroke="#F3B43F" />
           <p className="text-sm font-bold text-[#F3B43F]">
             {duelo.a.nome} {duelo.a.id === meuCharacterId && "(Você)"}
           </p>
@@ -150,7 +150,7 @@ export default function LiveDuelArena({ meuCharacterId }: { meuCharacterId: numb
           )}
         </div>
         <div className="flex flex-col items-center gap-2">
-          <SpriteB className={`battle-sprite h-24 w-24 sm:h-32 sm:w-32 ${animB}`} stroke="#e05252" flip />
+          <SpriteB className={`battle-sprite h-24 w-24 sm:h-32 sm:w-32 ${animB}`} animState={animB} stroke="#e05252" flip />
           <p className="text-sm font-bold text-[#e05252]">
             {duelo.b.nome} {duelo.b.id === meuCharacterId && "(Você)"}
           </p>

@@ -356,6 +356,7 @@ export default function CombatArena({
           </div>
           <PlayerSprite
             className={`battle-sprite h-28 w-28 sm:h-36 sm:w-36 ${animJogador !== "idle" ? animJogador : ""}`}
+            animState={animJogador}
           />
         </div>
 
