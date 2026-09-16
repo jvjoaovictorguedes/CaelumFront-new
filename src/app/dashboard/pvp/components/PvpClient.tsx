@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import axiosInstance from "@/utils/axiosIntance";
 import PvpArena, { type ResultadoDuelo } from "./PvpArena";
+import LiveDuelArena from "./LiveDuelArena";
+import { usePvpSocket } from "@/contexts/PvpSocketContext";
 
 interface OponenteApi {
   id: number;
@@ -43,6 +45,31 @@ export default function PvpClient({
   const [resultado, setResultado] = useState<ResultadoDuelo | null>(null);
   const [erro, setErro] = useState("");
 
+  const {
+    onlineIds,
+    duelo,
+    resultadoFinal,
+    desafiar: desafiarAoVivo,
+    desafioEnviadoPara,
+    erro: erroSocket,
+    limparErro: limparErroSocket,
+  } = usePvpSocket();
+
+  const duelosProcessadosRef = useRef<Set<number>>(new Set());
+
+  useEffect(() => {
+    if (!resultadoFinal || duelosProcessadosRef.current.has(resultadoFinal.duelId)) return;
+    duelosProcessadosRef.current.add(resultadoFinal.duelId);
+    const venci = resultadoFinal.vencedorChave === (duelo?.a.id === character.id ? "A" : "B");
+    setStatus((atual) => ({
+      total_batalhas: (atual?.total_batalhas ?? 0) + 1,
+      vitorias: (atual?.vitorias ?? 0) + (venci ? 1 : 0),
+      derrotas: (atual?.derrotas ?? 0) + (venci ? 0 : 1),
+      sequencia_vitorias: venci ? (atual?.sequencia_vitorias ?? 0) + 1 : 0,
+      maximo_sequencia_vitorias: atual?.maximo_sequencia_vitorias ?? 0,
+    }));
+  }, [resultadoFinal, duelo, character.id]);
+
   async function desafiar(idOponente: number) {
     if (carregandoId) return;
     setCarregandoId(idOponente);
@@ -74,6 +101,14 @@ export default function PvpClient({
     }
   }
 
+  if (duelo) {
+    return (
+      <div className="mx-auto flex w-full max-w-5xl flex-col gap-5 p-2 sm:p-4">
+        <LiveDuelArena meuCharacterId={character.id} />
+      </div>
+    );
+  }
+
   if (resultado) {
     return (
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-5 p-2 sm:p-4">
@@ -99,6 +134,14 @@ export default function PvpClient({
       </div>
 
       {erro && <p className="text-sm text-red-400">{erro}</p>}
+      {erroSocket && (
+        <p className="text-sm text-red-400">
+          {erroSocket}{" "}
+          <button onClick={limparErroSocket} className="underline">
+            fechar
+          </button>
+        </p>
+      )}
 
       <div className="rounded-2xl border-2 border-[#F3B43F]/60 bg-[#292018]/90 p-4 text-white shadow-lg">
         <p className="mb-3 text-sm uppercase tracking-widest text-[#F3B43F]">
@@ -115,25 +158,46 @@ export default function PvpClient({
                 oponente.genero === "Feminino"
                   ? oponente.Race?.nome_feminino
                   : oponente.Race?.nome_masculino;
+              const estaOnline = onlineIds.has(oponente.id);
+              const aguardandoResposta = desafioEnviadoPara === oponente.id;
               return (
                 <div
                   key={oponente.id}
                   className="flex items-center justify-between rounded-xl border border-white/10 bg-[#3a2f24] px-4 py-3"
                 >
                   <div>
-                    <p className="font-bold text-[#F3B43F]">{oponente.nome}</p>
+                    <p className="font-bold text-[#F3B43F]">
+                      {oponente.nome}{" "}
+                      <span
+                        className={`ml-1 inline-block h-2 w-2 rounded-full align-middle ${
+                          estaOnline ? "bg-green-400" : "bg-white/20"
+                        }`}
+                        title={estaOnline ? "Online" : "Offline"}
+                      />
+                    </p>
                     <p className="text-xs text-white/60">
                       Nv. {oponente.nivel} · {nomeRaca ?? "?"} ·{" "}
                       {oponente.Class?.nome ?? "?"}
                     </p>
                   </div>
-                  <button
-                    onClick={() => desafiar(oponente.id)}
-                    disabled={carregandoId !== null}
-                    className="rounded-lg border-2 border-[#F3B43F] bg-[#BC8418] px-3 py-1.5 text-sm font-bold text-black transition hover:bg-[#a5710f] disabled:opacity-50"
-                  >
-                    {carregandoId === oponente.id ? "Duelando..." : "Desafiar"}
-                  </button>
+                  <div className="flex flex-col gap-1.5 sm:flex-row">
+                    {estaOnline && (
+                      <button
+                        onClick={() => desafiarAoVivo(oponente.id)}
+                        disabled={aguardandoResposta || desafioEnviadoPara !== null}
+                        className="rounded-lg border-2 border-green-400 bg-transparent px-3 py-1.5 text-sm font-bold text-green-400 transition hover:bg-green-400/10 disabled:opacity-50"
+                      >
+                        {aguardandoResposta ? "Aguardando..." : "Duelo ao vivo"}
+                      </button>
+                    )}
+                    <button
+                      onClick={() => desafiar(oponente.id)}
+                      disabled={carregandoId !== null}
+                      className="rounded-lg border-2 border-[#F3B43F] bg-[#BC8418] px-3 py-1.5 text-sm font-bold text-black transition hover:bg-[#a5710f] disabled:opacity-50"
+                    >
+                      {carregandoId === oponente.id ? "Duelando..." : "Desafiar"}
+                    </button>
+                  </div>
                 </div>
               );
             })}
