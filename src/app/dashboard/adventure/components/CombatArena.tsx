@@ -41,7 +41,9 @@ interface CharacterState {
   vitalidade: number;
   inteligencia: number;
   vida_atual: number;
+  vida_maxima?: number;
   mana_atual: number;
+  mana_maxima?: number;
   experiencia?: number;
   pontos_distribuir?: number;
 }
@@ -70,8 +72,11 @@ export default function CombatArena({
   initialEnemy,
 }: CombatArenaProps) {
   const router = useRouter();
-  const vidaMaxima = 30 + character.vitalidade * 6;
-  const manaMaxima = 20 + character.inteligencia * 5;
+  // vida_maxima/mana_maxima vêm prontos do backend (já com bônus de
+  // equipamento e multiplicador da classe) — a fórmula aqui é só um
+  // fallback de segurança pra quando esses campos não vierem.
+  const vidaMaxima = character.vida_maxima ?? 30 + character.vitalidade * 6;
+  const manaMaxima = character.mana_maxima ?? 20 + character.inteligencia * 5;
 
   const [vidaAtual, setVidaAtual] = useState(character.vida_atual);
   const [manaAtual, setManaAtual] = useState(character.mana_atual);

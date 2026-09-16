@@ -10,6 +10,7 @@ interface CurrentCharacter {
   vida_atual: number;
   vida_maxima?: number;
   mana_atual: number;
+  mana_maxima?: number;
   forca: number;
   vitalidade: number;
   agilidade: number;

@@ -29,14 +29,14 @@ export default async function CharacterPage() {
   }
 
   const bonus = character.bonus_atributos;
-  const vitalidadeEfetiva = character.vitalidade + (bonus?.vitalidade ?? 0);
-  const inteligenciaEfetiva = character.inteligencia + (bonus?.inteligencia ?? 0);
-  const vidaMaximaCalculada = 30 + vitalidadeEfetiva * 6;
+  // vida_maxima/mana_maxima vêm prontos do backend (já considerando
+  // bônus de equipamento e o multiplicador da classe) — evita reimplementar
+  // a fórmula aqui e ela desalinhar da fórmula de verdade usada em combate.
   const vidaMaxima = Math.max(
-    character.vida_maxima ?? vidaMaximaCalculada,
+    character.vida_maxima ?? 30 + character.vitalidade * 6,
     character.vida_atual,
   );
-  const manaMaxima = 20 + inteligenciaEfetiva * 5;
+  const manaMaxima = character.mana_maxima ?? 20 + character.inteligencia * 5;
   const experienciaAtual = character.experiencia ?? 0;
   const experienciaNivel = Math.max(100, character.nivel * 100);
   const experienciaPercentual = Math.min(
