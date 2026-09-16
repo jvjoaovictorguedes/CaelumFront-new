@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import axiosInstance from "@/utils/axiosIntance";
-import PlayerSprite from "./sprites/PlayerSprite";
+import { spriteForClass } from "./sprites/spriteForClass";
 import { spriteForEnemy } from "./sprites/spriteForEnemy";
 import MinotauroSprite from "./sprites/MinotauroSprite";
 
@@ -46,6 +46,7 @@ interface CharacterState {
   mana_maxima?: number;
   experiencia?: number;
   pontos_distribuir?: number;
+  Class?: { nome?: string };
 }
 
 interface EnemyState {
@@ -80,6 +81,7 @@ export default function CombatArena({
   const router = useRouter();
   const vidaMaxima = character.vida_maxima ?? 30 + character.vitalidade * 6;
   const manaMaxima = character.mana_maxima ?? 20 + character.inteligencia * 5;
+  const PlayerSprite = spriteForClass(character.Class?.nome);
 
   const [vidaAtual, setVidaAtual] = useState(character.vida_atual);
   const [manaAtual, setManaAtual] = useState(character.mana_atual);

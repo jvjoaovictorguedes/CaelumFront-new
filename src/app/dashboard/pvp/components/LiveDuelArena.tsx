@@ -150,7 +150,7 @@ export default function LiveDuelArena({ meuCharacterId }: { meuCharacterId: numb
           )}
         </div>
         <div className="flex flex-col items-center gap-2">
-          <SpriteB className={`battle-sprite h-24 w-24 sm:h-32 sm:w-32 ${animB}`} stroke="#e05252" />
+          <SpriteB className={`battle-sprite h-24 w-24 sm:h-32 sm:w-32 ${animB}`} stroke="#e05252" flip />
           <p className="text-sm font-bold text-[#e05252]">
             {duelo.b.nome} {duelo.b.id === meuCharacterId && "(Você)"}
           </p>

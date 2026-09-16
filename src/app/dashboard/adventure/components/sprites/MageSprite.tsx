@@ -1,35 +1,30 @@
-// Sprite genérico de Mago. Placeholder simples de propósito — troque
-// por uma ilustração de verdade quando tiver uma (mesma assinatura de
-// props, só troque o conteúdo do <svg>).
+import Image from "next/image";
+
+interface MageSpriteProps {
+  className?: string;
+  stroke?: string;
+  flip?: boolean;
+}
+
+// Sprite do Mago — ilustração real (public/images/mago-lutador.jpg) no lugar
+// do placeholder em SVG. Mesma lógica do PlayerSprite: animação vem de fora
+// via className, `flip` espelha o desenho pro lado direito da tela (PvP).
 export default function MageSprite({
   className = "",
   stroke = "#F3B43F",
-}: {
-  className?: string;
-  stroke?: string;
-}) {
+  flip = false,
+}: MageSpriteProps) {
   return (
-    <svg
-      viewBox="0 0 120 160"
-      className={className}
-      role="img"
-      aria-label="Personagem Mago"
-    >
-      <g fill="none" stroke={stroke} strokeWidth="4" strokeLinejoin="round" strokeLinecap="round">
-        {/* chapéu de mago */}
-        <path d="M60 10 L78 40 L42 40 Z" />
-        <ellipse cx="60" cy="40" rx="22" ry="6" />
-        {/* cabeça */}
-        <circle cx="60" cy="55" r="14" />
-        {/* manto */}
-        <path d="M60 69 L35 150 L85 150 Z" />
-        {/* braço com cajado */}
-        <path d="M60 85 L95 70" />
-        <line x1="95" y1="45" x2="95" y2="90" strokeWidth="4" />
-        <circle cx="95" cy="42" r="6" />
-        {/* outro braço */}
-        <path d="M60 85 L30 100" />
-      </g>
-    </svg>
+    <div className={className}>
+      <Image
+        src="/images/mago-lutador.jpg"
+        alt="Mago"
+        width={220}
+        height={220}
+        className={`h-full w-full rounded-2xl border-2 object-cover shadow-[0_0_16px_rgba(243,180,63,0.5)] select-none pointer-events-none ${flip ? "scale-x-[-1]" : ""}`}
+        style={{ borderColor: stroke }}
+        priority
+      />
+    </div>
   );
 }

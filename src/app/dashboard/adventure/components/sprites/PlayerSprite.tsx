@@ -2,45 +2,30 @@ import Image from "next/image";
 
 interface PlayerSpriteProps {
   className?: string;
-  animState?: string; // "idle", "anim-atacando-direita", "anim-atingido", etc.
+  stroke?: string;
+  flip?: boolean;
 }
+
+// Sprite do Guerreiro — ilustração real (public/images/guerreiro-lutador.jpg)
+// no lugar do placeholder em SVG. Ataque, dano, esquiva, vitória/derrota já
+// chegam prontos via className (battle-sprite + anim-* de globals.css), este
+// componente só cuida da arte. `flip` espelha o desenho pra quando o
+// personagem fica do lado direito da tela (ex.: PvP), já que a ilustração
+// foi desenhada de frente/virada pra direita.
 export default function PlayerSprite({
   className = "",
-  animState = "idle",
+  stroke = "#F3B43F",
+  flip = false,
 }: PlayerSpriteProps) {
-  let imagemSrc = "/public/image/guerreiro-lutador.jpg"; // Padrão parado
-
-  if (animState.includes("atacando")) {
-    imagemSrc = "/public/image/guerreiro-lutador-atacando.jpg";
-  } else if (animState.includes("atingido")) {
-    imagemSrc = "/public/image/guerreiro-lutador-atingido.jpg";
-  } else if (animState.includes("esquivando")) {
-    imagemSrc = "/public/image/guerreiro-lutador-esquivando.jpg";
-  } else if (animState.includes("vitoria")) {
-    imagemSrc = "/public/image/guerreiro-lutador-vitoria.jpg";
-  }
-
   return (
-    <div className={`relative transition-transform duration-300 ${className}`}>
-      <style>{`
-        /* Efeito de movimento (Dash) para a frente ao atacar */
-        .battle-sprite.anim-atacando-direita {
-          transform: translateX(35px) scale(1.05);
-        }
-        /* Efeito de recuo ao tomar dano */
-        .battle-sprite.anim-atingido {
-          filter: drop-shadow(0 0 10px rgba(255, 0, 0, 0.9));
-          transform: translateX(-15px);
-        }
-      `}</style>
-
-      {/* Usamos a tag Image do Next.js para alta performance */}
+    <div className={className}>
       <Image
-        src={imagemSrc}
-        alt="Personagem Jogador"
-        width={140}
-        height={140}
-        className="object-contain drop-shadow-[0_5px_5px_rgba(0,0,0,0.8)] select-none pointer-events-none"
+        src="/images/guerreiro-lutador.jpg"
+        alt="Guerreiro"
+        width={220}
+        height={220}
+        className={`h-full w-full rounded-2xl border-2 object-cover shadow-[0_0_16px_rgba(243,180,63,0.5)] select-none pointer-events-none ${flip ? "scale-x-[-1]" : ""}`}
+        style={{ borderColor: stroke }}
         priority
       />
     </div>

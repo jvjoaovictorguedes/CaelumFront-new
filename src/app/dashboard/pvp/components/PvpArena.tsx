@@ -114,6 +114,7 @@ export default function PvpArena({
           <SpriteB
             className={`battle-sprite h-24 w-24 sm:h-32 sm:w-32 ${animB}`}
             stroke="#e05252"
+            flip
           />
           <p className="text-sm font-bold text-[#e05252]">{desafiado.nome}</p>
         </div>
