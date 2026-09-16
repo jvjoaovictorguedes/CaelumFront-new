@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import axiosInstance from "@/utils/axiosIntance";
 import PlayerSprite from "./sprites/PlayerSprite";
 import { spriteForEnemy } from "./sprites/spriteForEnemy";
+import MinotauroSprite from "./sprites/MinotauroSprite";
 
 type EstadoAnimacao =
   | "idle"
@@ -228,7 +229,7 @@ setPontosDistribuir(data.character.pontos_distribuir);
           className={`battle-sprite h-28 w-28 sm:h-36 sm:w-36 ${animJogador !== "idle" ? animJogador : ""}`}
         />
         <p className="font-imFeel text-2xl text-[#F3B43F]/70 select-none">VS</p>
-        <SpriteInimigo
+        <MinotauroSprite
           className={`battle-sprite h-28 w-28 sm:h-36 sm:w-36 ${animInimigo !== "idle" ? animInimigo : ""}`}
         />
       </div>
