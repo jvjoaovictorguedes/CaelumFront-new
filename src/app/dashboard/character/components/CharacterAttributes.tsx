@@ -12,6 +12,14 @@ const ATRIBUTOS = [
   { label: "Velocidade", campo: "velocidade" },
 ] as const;
 
+interface BonusAtributos {
+  forca: number;
+  vitalidade: number;
+  agilidade: number;
+  inteligencia: number;
+  velocidade: number;
+}
+
 interface CharacterAttributesProps {
   character: {
     id: number;
@@ -22,6 +30,7 @@ interface CharacterAttributesProps {
     velocidade: number;
     pontos_distribuir?: number;
   };
+  bonus?: BonusAtributos;
 }
 interface CharacterResponse {
   character: {
@@ -37,6 +46,7 @@ interface CharacterResponse {
 
 export default function CharacterAttributes({
   character,
+  bonus,
 }: CharacterAttributesProps) {
   const [atributos, setAtributos] = useState({
     forca: character.forca,
@@ -145,6 +155,11 @@ export default function CharacterAttributes({
             <span className="font-imFeel text-xl mr-2">{label}</span>
 
             <span className="font-bold text-xl">{atributos[campo]}</span>
+            {bonus && bonus[campo] > 0 && (
+              <span className="ml-1 text-sm font-bold text-green-600">
+                (+{bonus[campo]})
+              </span>
+            )}
           </div>
 
           <button

@@ -18,6 +18,13 @@ interface CurrentCharacter {
   dinheiro?: number;
   pontos_distribuir?: number;
   rank?: string;
+  bonus_atributos?: {
+    forca: number;
+    vitalidade: number;
+    agilidade: number;
+    inteligencia: number;
+    velocidade: number;
+  };
   Race?: {
     nome?: string;
     nome_masculino?: string;

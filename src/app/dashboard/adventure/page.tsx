@@ -110,7 +110,11 @@ export default async function AdventurePage() {
       // na tela: o CombatArena reaproveitava o estado antigo mesmo
       // recebendo um inimigo/personagem novos via props.
       key={`${inimigoInicial.nome}-${character.vida_atual}-${Date.now()}`}
-      character={character}
+      character={{
+        ...character,
+        vitalidade: character.vitalidade + (character.bonus_atributos?.vitalidade ?? 0),
+        inteligencia: character.inteligencia + (character.bonus_atributos?.inteligencia ?? 0),
+      }}
       abilities={habilidades}
       initialEnemy={inimigoInicial}
     />
