@@ -1,7 +1,8 @@
 "use client";
 
 import { useRouter, usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import axiosInstance from "@/utils/axiosIntance";
 
 interface NavMenuItem {
   name: string;
@@ -9,10 +10,56 @@ interface NavMenuItem {
   path: string;
 }
 
-export default function NavMenu() {
+const INTERVALO_POLL_NOTIFICACOES_MS = 15000;
+
+export default function NavMenu({
+  currentUserId,
+}: {
+  currentUserId?: number;
+}) {
   const router = useRouter();
   const pathname = usePathname();
   const [menuAberto, setMenuAberto] = useState(false);
+  const [mensagensNaoLidas, setMensagensNaoLidas] = useState(0);
+
+  useEffect(() => {
+    if (!currentUserId) return;
+
+    let cancelado = false;
+
+    async function verificarNaoLidas() {
+      try {
+        const resposta = await axiosInstance.get<{
+          data?: { naoLidas?: number };
+        }>(`/messages/unread-count/${currentUserId}`);
+        if (!cancelado) {
+          setMensagensNaoLidas(resposta.data?.data?.naoLidas ?? 0);
+        }
+      } catch (error) {
+        console.error("Erro ao verificar mensagens não lidas:", error);
+      }
+    }
+
+    verificarNaoLidas();
+    const intervalo = setInterval(
+      verificarNaoLidas,
+      INTERVALO_POLL_NOTIFICACOES_MS,
+    );
+
+    return () => {
+      cancelado = true;
+      clearInterval(intervalo);
+    };
+  }, [currentUserId]);
+
+  // Zera o badge assim que o jogador entra na própria tela de
+  // mensagens (a conversa aberta lá já marca como lida no backend).
+  useEffect(() => {
+    if (pathname.startsWith("/dashboard/messages")) {
+      const tempo = setTimeout(() => setMensagensNaoLidas(0), 1000);
+      return () => clearTimeout(tempo);
+    }
+  }, [pathname]);
 
   const navItems: NavMenuItem[] = [
     {
@@ -95,34 +142,46 @@ export default function NavMenu() {
         </div>
         <div className="flex w-full items-center justify-center py-6">
           <ul className="flex w-full flex-col items-center gap-2">
-            {navItems.map((item) => (
-              <li key={item.path} className="flex w-full flex-row">
-                <a
-                  onClick={(e) => {
-                    e.preventDefault();
-                    handleNavigation(item.path);
-                  }}
-                  className={`flex w-full items-center rounded-lg p-2 transition-colors duration-200
-                  ${
-                    pathname.startsWith(item.path)
-                      ? "bg-[rgba(0,0,0,0.3)] border-1 border-black shadow-inner"
-                      : "hover:bg-[rgba(0,0,0,0.1)]"
-                  }`}
-                >
-                  <span
-                    className="h-11 w-11 flex-shrink-0 rounded-md"
-                    style={{
-                      backgroundImage: `url("${item.iconUrl}")`,
-                      backgroundSize: "cover",
-                      backgroundPosition: "center",
+            {navItems.map((item) => {
+              const ehMensagens = item.path === "/dashboard/messages";
+              const mostrarBadge = ehMensagens && mensagensNaoLidas > 0;
+
+              return (
+                <li key={item.path} className="flex w-full flex-row">
+                  <a
+                    onClick={(e) => {
+                      e.preventDefault();
+                      handleNavigation(item.path);
                     }}
-                  ></span>
-                  <p className="ml-3 truncate font-imFeel text-lg font-bold text-black sm:text-xl">
-                    {item.name}
-                  </p>
-                </a>
-              </li>
-            ))}
+                    className={`flex w-full items-center rounded-lg p-2 transition-colors duration-200
+                    ${
+                      pathname.startsWith(item.path)
+                        ? "bg-[rgba(0,0,0,0.3)] border-1 border-black shadow-inner"
+                        : "hover:bg-[rgba(0,0,0,0.1)]"
+                    }`}
+                  >
+                    <span className="relative h-11 w-11 flex-shrink-0">
+                      <span
+                        className="block h-full w-full rounded-md"
+                        style={{
+                          backgroundImage: `url("${item.iconUrl}")`,
+                          backgroundSize: "cover",
+                          backgroundPosition: "center",
+                        }}
+                      ></span>
+                      {mostrarBadge && (
+                        <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full border-2 border-[#BC8418] bg-red-600 px-1 text-[10px] font-bold leading-none text-white">
+                          {mensagensNaoLidas > 9 ? "9+" : mensagensNaoLidas}
+                        </span>
+                      )}
+                    </span>
+                    <p className="ml-3 truncate font-imFeel text-lg font-bold text-black sm:text-xl">
+                      {item.name}
+                    </p>
+                  </a>
+                </li>
+              );
+            })}
           </ul>
         </div>
       </nav>
