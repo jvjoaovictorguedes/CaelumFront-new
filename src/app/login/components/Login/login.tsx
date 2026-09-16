@@ -70,7 +70,7 @@ export default function Login() {
             type="email"
             id="email"
             className="w-full px-3 py-2 text-[18px] text-black bg-[#DFC492] rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-[#DFC492] font-imFeel"
-            placeholder="Usuário"
+            placeholder="E-mail"
             onChange={(e) => setEmail(e.target.value)}
             value={email}
             disabled={isLoading}

@@ -185,7 +185,7 @@ export default function CharacterCreation() {
 
     if (!rareRaceRevealed) {
       setRareRaceRevealed(true);
-      if (rareRace && Math.random() * 100 <= 0.01) {
+      if (rareRace && Math.random() * 100 <= 0.9) {
         setrawRacesObject((currentRaces) =>
           currentRaces.some((race) => race.id === rareRace.id)
             ? currentRaces
