@@ -104,6 +104,12 @@ export default async function AdventurePage() {
 
   return (
     <CombatArena
+      // Força o componente a remontar (resetando resultado/vida/estado
+      // interno) sempre que essa página é renderizada de novo no
+      // servidor — sem isso, router.refresh() não tinha efeito nenhum
+      // na tela: o CombatArena reaproveitava o estado antigo mesmo
+      // recebendo um inimigo/personagem novos via props.
+      key={`${inimigoInicial.nome}-${character.vida_atual}-${Date.now()}`}
       character={character}
       abilities={habilidades}
       initialEnemy={inimigoInicial}

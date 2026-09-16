@@ -227,7 +227,11 @@ setPontosDistribuir(data.character.pontos_distribuir);
             </p>
           )}
           <button
-            onClick={() => router.refresh()}
+            onClick={() =>
+              resultado === "vitoria"
+                ? router.refresh()
+                : router.push("/dashboard")
+            }
             className="rounded-lg bg-[#BC8418] px-4 py-2 font-bold text-black hover:bg-[#a5710f]"
           >
             {resultado === "vitoria" ? "Buscar outro inimigo" : "Voltar"}
