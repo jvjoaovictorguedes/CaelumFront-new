@@ -16,26 +16,6 @@ export default function Register() {
   const [errorMessage, setErrorMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  async function registerUser() {
-    const userData = {
-      username: username,
-      email: email,
-      password: password,
-    };
-
-    try {
-      const response = await axiosInstance.post("/users/register", userData);
-      console.log("Usuário registrado com sucesso:", response.data);
-    } catch (error: unknown) {
-      const message = axios.isAxiosError(error)
-        ? error.response?.data
-        : error instanceof Error
-          ? error.message
-          : error;
-      console.error("Erro ao registrar usuário:", message);
-    }
-  }
-
   const MIN_USERNAME_LENGTH = 3;
   const MAX_USERNAME_LENGTH = 20;
   const MIN_PASSWORD_LENGTH = 8;
@@ -100,22 +80,19 @@ export default function Register() {
     setIsLoading(true);
 
     try {
-      // Simulação de requisição ao backend (SUBSTITUA POR SUA API REAL)
-      // Em um cenário real, você faria um fetch/axios para o seu endpoint de registro
-      // await fetch('/api/register', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ username, email, password }),
-      // });
-
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-
-      console.log({ username, email, password, acceptTerms });
-      alert("Registro bem-sucedido! Redirecionando para o login...");
+      await axiosInstance.post("/users/register", {
+        username,
+        email,
+        password,
+      });
       router.push("/login");
-    } catch (error) {
-      console.error("Erro durante o registro:", error);
-      setErrorMessage("Ocorreu um erro ao tentar registrar. Tente novamente.");
+    } catch (error: unknown) {
+      const mensagem = axios.isAxiosError(error)
+        ? error.response?.data?.message
+        : undefined;
+      setErrorMessage(
+        mensagem ?? "Ocorreu um erro ao tentar registrar. Tente novamente.",
+      );
     } finally {
       setIsLoading(false);
     }
@@ -216,7 +193,6 @@ export default function Register() {
           </div>
           <button
             type="submit"
-            onClick={registerUser}
             className="w-max h-[51px] bg-[#8D6825] font-imFeel text-white text-4xl mb-4 hover:bg-gradient-to-b rounded-2xl cursor-pointer hover:to-[#8D6825] hover:from-[#684424] border-[#F3B43F] border-4 items-center flex justify-center"
             disabled={isLoading}
           >
