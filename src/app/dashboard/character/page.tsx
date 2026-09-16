@@ -1,6 +1,7 @@
 import { getCurrentCharacter } from "@/utils/character-session";
 import { getRaceImage } from "@/utils/media-url";
 import CharacterAttributes from "./components/CharacterAttributes";
+import EquipmentPanel from "./components/EquipmentPanel";
 
 const ATRIBUTOS = [
   { label: "Força", campo: "forca" },
@@ -129,6 +130,8 @@ export default async function CharacterPage() {
 
         <CharacterAttributes character={character} />
       </div>
+
+      <EquipmentPanel characterId={character.id} />
 
       <div className="grid w-full grid-cols-3 gap-3 text-center">
         <div className="bg-white/40 rounded-lg p-2">

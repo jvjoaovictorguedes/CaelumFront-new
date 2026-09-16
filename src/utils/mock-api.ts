@@ -144,6 +144,15 @@ let character = {
 
 let potionQuantity = 2;
 
+const swordItem = {
+  id: 2,
+  nome: "Espada de Ferro",
+  tipo_item: "Arma",
+  raridade: "Incomum",
+};
+
+const mockEquipamentos: Record<string, { id_item: number; item: typeof swordItem } | undefined> = {};
+
 const powers = [
   {
     id: 1,
@@ -303,6 +312,25 @@ export class MockApiClient {
               dano_base: 8,
             },
           },
+        } as T,
+        config,
+      );
+    }
+
+    if (url.startsWith("/character-equipment/")) {
+      const equipamentos = Object.entries(mockEquipamentos)
+        .filter(([, valor]) => valor)
+        .map(([slot, valor]) => ({
+          id_personagem: character.id,
+          slot,
+          id_item: valor!.id_item,
+          item: valor!.item,
+        }));
+      return response<T>(
+        {
+          status: "success",
+          results: equipamentos.length,
+          data: { equipamentos },
         } as T,
         config,
       );
@@ -703,8 +731,46 @@ character = { ...character, [atributoValido]: character[atributoValido] + quanti
     // ROTA NÃO IMPLEMENTADA
     // ==========================================
 
+    if (url === "/character-equipment/equip") {
+      const { slot, id_item } = (body ?? {}) as {
+        slot?: string;
+        id_item?: number;
+      };
+      if (!slot) {
+        throw new Error("Mock equip: slot obrigatorio");
+      }
+      mockEquipamentos[slot] = { id_item: id_item ?? swordItem.id, item: swordItem };
+      return response<T>(
+        {
+          status: "success",
+          message: "Item equipado com sucesso!",
+          data: { equipamento: { id_personagem: character.id, slot, id_item } },
+        } as T,
+        config,
+      );
+    }
+
     throw new Error(
       `Mock POST nao implementado: ${url}`,
     );
+  }
+
+  async delete<T = unknown>(
+    url: string,
+    config: AxiosRequestConfig & { data?: { slot?: string } } = {},
+  ) {
+    if (url === "/character-equipment/unequip") {
+      const slot = config.data?.slot;
+      if (slot) delete mockEquipamentos[slot];
+      return response<T>(
+        {
+          status: "success",
+          message: "Item desequipado com sucesso!",
+        } as T,
+        config,
+      );
+    }
+
+    throw new Error(`Mock DELETE nao implementado: ${url}`);
   }
 }
