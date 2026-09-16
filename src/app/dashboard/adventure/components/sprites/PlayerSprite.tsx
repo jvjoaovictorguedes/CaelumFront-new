@@ -1,7 +1,13 @@
-// Sprite genérico do herói. Placeholder simples de propósito — troque
-// por uma ilustração de verdade quando tiver uma (mesma assinatura de
-// props, só troque o conteúdo do <svg>).
-export default function PlayerSprite({ className = "" }: { className?: string }) {
+// Sprite genérico de Guerreiro. Placeholder simples de propósito —
+// troque por uma ilustração de verdade quando tiver uma (mesma
+// assinatura de props, só troque o conteúdo do <svg>).
+export default function PlayerSprite({
+  className = "",
+  stroke = "#F3B43F",
+}: {
+  className?: string;
+  stroke?: string;
+}) {
   return (
     <svg
       viewBox="0 0 120 160"
@@ -9,7 +15,7 @@ export default function PlayerSprite({ className = "" }: { className?: string })
       role="img"
       aria-label="Seu personagem"
     >
-      <g fill="none" stroke="#F3B43F" strokeWidth="4" strokeLinejoin="round" strokeLinecap="round">
+      <g fill="none" stroke={stroke} strokeWidth="4" strokeLinejoin="round" strokeLinecap="round">
         {/* cabeça */}
         <circle cx="60" cy="28" r="18" />
         {/* corpo */}

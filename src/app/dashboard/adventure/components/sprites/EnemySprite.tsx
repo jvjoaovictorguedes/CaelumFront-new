@@ -1,7 +1,13 @@
 // Sprite genérico do inimigo. Placeholder simples de propósito — troque
 // por uma ilustração de verdade por tipo de monstro quando tiver uma
 // (mesma assinatura de props, só troque o conteúdo do <svg>).
-export default function EnemySprite({ className = "" }: { className?: string }) {
+export default function EnemySprite({
+  className = "",
+  stroke = "#e05252",
+}: {
+  className?: string;
+  stroke?: string;
+}) {
   return (
     <svg
       viewBox="0 0 140 140"
@@ -9,12 +15,12 @@ export default function EnemySprite({ className = "" }: { className?: string }) 
       role="img"
       aria-label="Inimigo"
     >
-      <g fill="none" stroke="#e05252" strokeWidth="4" strokeLinejoin="round" strokeLinecap="round">
+      <g fill="none" stroke={stroke} strokeWidth="4" strokeLinejoin="round" strokeLinecap="round">
         {/* corpo */}
         <path d="M30 100 C20 70 30 40 70 40 C110 40 120 70 110 100 Z" />
         {/* olhos */}
-        <circle cx="55" cy="65" r="5" fill="#e05252" stroke="none" />
-        <circle cx="85" cy="65" r="5" fill="#e05252" stroke="none" />
+        <circle cx="55" cy="65" r="5" fill={stroke} stroke="none" />
+        <circle cx="85" cy="65" r="5" fill={stroke} stroke="none" />
         {/* chifres */}
         <path d="M45 42 L38 20" />
         <path d="M95 42 L102 20" />
