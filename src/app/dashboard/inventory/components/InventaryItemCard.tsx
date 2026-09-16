@@ -58,7 +58,7 @@ export default function InventoryItemCard({
     setMessage("");
     try {
       const response = await axiosInstance.post<UseItemResponse>(
-        "/character-inventory/use",
+        "/character-items/use",
         {
           id_personagem: characterId,
           id_item: entrada.Item.id,
