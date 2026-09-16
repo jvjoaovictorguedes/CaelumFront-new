@@ -224,7 +224,7 @@ setPontosDistribuir(data.character.pontos_distribuir);
       </div>
 
       <div className="flex items-center justify-between gap-4 rounded-2xl border-2 border-[#F3B43F]/60 bg-gradient-to-b from-[#3a2f24] to-[#1f1813] p-6 shadow-xl overflow-hidden">
-        <MinotaurSprite
+        <PlayerSprite
           className={`battle-sprite h-28 w-28 sm:h-36 sm:w-36 ${animJogador !== "idle" ? animJogador : ""}`}
         />
         <p className="font-imFeel text-2xl text-[#F3B43F]/70 select-none">VS</p>
