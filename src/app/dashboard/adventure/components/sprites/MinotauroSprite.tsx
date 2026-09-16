@@ -1,30 +1,14 @@
-import React, { useState } from 'react';
-import './Sprite.css';
-
-interface MinotaurSpriteProps {
-  className?: string;
-  onAttackComplete?: () => void;
-}
-
-export default function MinotaurSprite({ className = "" }: MinotaurSpriteProps) {
-  const [isAttacking, setIsAttacking] = useState(false);
-
-  const handleAttack = () => {
-    if (isAttacking) return;
-    setIsAttacking(true);
-
-    setTimeout(() => {
-      setIsAttacking(false);
-    }, 500);
-  };
-
+// Sprite do Minotauro — usa a ilustração real em vez de SVG genérico.
+// Recebe className com as mesmas classes (battle-sprite + anim-*) que
+// PlayerSprite/EnemySprite recebem, então herda de graça as mesmas
+// animações de ataque/dano/esquiva/vitória/derrota definidas em
+// globals.css — nada de CSS ou estado de animação próprio aqui.
+export default function MinotauroSprite({ className = "" }: { className?: string }) {
   return (
-    <div className={`battle-arena ${className}`}>
-      <div 
-        className={`minotaur-sprite ${isAttacking ? 'attack' : ''}`}
-        onClick={handleAttack}
-        title="Clique para atacar!"
-      />
-    </div>
+    <img
+      src="/images/minotauro.jpg"
+      alt="Minotauro"
+      className={`${className} rounded-2xl border-2 border-[#8b0000] object-cover shadow-[0_0_16px_rgba(139,0,0,0.5)]`}
+    />
   );
 }

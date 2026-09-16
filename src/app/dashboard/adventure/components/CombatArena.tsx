@@ -4,8 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import axiosInstance from "@/utils/axiosIntance";
 import PlayerSprite from "./sprites/PlayerSprite";
-import EnemySprite from "./sprites/EnemySprite";
-import MinotaurSprite from "./sprites/MinotauroSprite";
+import { spriteForEnemy } from "./sprites/spriteForEnemy";
 
 type EstadoAnimacao =
   | "idle"
@@ -97,6 +96,7 @@ const [pontosDistribuir, setPontosDistribuir] = useState(
   const [animJogador, setAnimJogador] = useState<EstadoAnimacao>("idle");
   const [animInimigo, setAnimInimigo] = useState<EstadoAnimacao>("idle");
 const experienciaNivel = Math.max(100, nivelAtual * 100);
+  const SpriteInimigo = spriteForEnemy(enemy.nome);
 
   function espera(ms: number) {
     return new Promise((resolve) => setTimeout(resolve, ms));
@@ -228,7 +228,7 @@ setPontosDistribuir(data.character.pontos_distribuir);
           className={`battle-sprite h-28 w-28 sm:h-36 sm:w-36 ${animJogador !== "idle" ? animJogador : ""}`}
         />
         <p className="font-imFeel text-2xl text-[#F3B43F]/70 select-none">VS</p>
-        <EnemySprite
+        <SpriteInimigo
           className={`battle-sprite h-28 w-28 sm:h-36 sm:w-36 ${animInimigo !== "idle" ? animInimigo : ""}`}
         />
       </div>
