@@ -13,7 +13,13 @@ export interface SpriteFrame {
   loop?: boolean;
 }
 
-export type EstadoSprite = "idle" | "attack" | "hurt" | "dead" | "victory";
+export type EstadoSprite =
+  | "idle"
+  | "attack"
+  | "poder"
+  | "hurt"
+  | "dead"
+  | "victory";
 
 export type SpriteSet = Record<EstadoSprite, SpriteFrame>;
 
@@ -45,6 +51,9 @@ export const SPRITE_SETS: Record<string, SpriteSet> = {
   Knight_1: {
     idle: { file: "Idle.png", frames: 4, fps: 6 },
     attack: { file: "Attack 1.png", frames: 5, fps: 10 },
+    // Guerreiro não conjura — poder ainda é um golpe físico, reaproveita
+    // o mesmo frame do ataque básico.
+    poder: { file: "Attack 1.png", frames: 5, fps: 10 },
     hurt: { file: "Hurt.png", frames: 2, fps: 8 },
     dead: { file: "Hurt.png", frames: 2, fps: 4, loop: false },
     victory: { file: "Idle.png", frames: 4, fps: 6 },
@@ -52,6 +61,7 @@ export const SPRITE_SETS: Record<string, SpriteSet> = {
   "Fire Wizard": {
     idle: { file: "Idle.png", frames: 7, fps: 7 },
     attack: { file: "Attack_1.png", frames: 4, fps: 10 },
+    poder: { file: "Fireball.png", frames: 8, fps: 10 },
     hurt: { file: "Hurt.png", frames: 3, fps: 8 },
     dead: { file: "Hurt.png", frames: 3, fps: 4, loop: false },
     victory: { file: "Idle.png", frames: 7, fps: 7 },
@@ -59,6 +69,7 @@ export const SPRITE_SETS: Record<string, SpriteSet> = {
   "Lightning Mage": {
     idle: { file: "Idle.png", frames: 7, fps: 7 },
     attack: { file: "Attack_2.png", frames: 4, fps: 10 },
+    poder: { file: "Light_ball.png", frames: 7, fps: 10 },
     hurt: { file: "Hurt.png", frames: 3, fps: 8 },
     dead: { file: "Hurt.png", frames: 3, fps: 4, loop: false },
     victory: { file: "Idle.png", frames: 7, fps: 7 },
@@ -66,6 +77,10 @@ export const SPRITE_SETS: Record<string, SpriteSet> = {
   "Wanderer Magican": {
     idle: { file: "Idle.png", frames: 8, fps: 7 },
     attack: { file: "Attack_1.png", frames: 7, fps: 11 },
+    // Pose de conjuração (arremesso de energia) — usada quando o jogador
+    // usa um poder em vez do ataque básico. Com fireTint vira o visual da
+    // Bola de Fogo, sem precisar de um asset novo.
+    poder: { file: "Magic_arrow.png", frames: 6, fps: 9 },
     hurt: { file: "Hurt.png", frames: 4, fps: 8 },
     dead: { file: "Hurt.png", frames: 4, fps: 4, loop: false },
     victory: { file: "Idle.png", frames: 8, fps: 7 },

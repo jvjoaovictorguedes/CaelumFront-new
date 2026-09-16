@@ -206,12 +206,21 @@ body {
 /* Folhas de sprite 2D (Knight_1, Fire Wizard, Lightning Mage, Wanderer
    Magican): cada frame é mostrado avançando background-position em passos
    discretos — duração e número de passos vêm inline por instância, ver
-   AnimatedSpriteSheet.tsx. */
+   AnimatedSpriteSheet.tsx.
+   O "to" usa --sprite-end (setado por instância) em vez de 100% fixo: com
+   N frames e background-size N*100%, o deslocamento máximo de background-
+   position (0-100%) corresponde ao intervalo [0, N-1] em "frames", não
+   [0, N] — usar 100% fixo faz cada frame ficar meio pixel adiantado do
+   anterior e as bordas de dois frames vizinhos aparecerem misturadas
+   (era isso que fazia o personagem "sumir" em alguns frames do ciclo:
+   metade da caixa mostrava o fim de um frame, metade o começo do
+   próximo). --sprite-end = N/(N-1)*100% corrige o alinhamento pra cair
+   exatamente em cada frame. */
 @keyframes sprite-steps {
   from {
     background-position: 0% 0;
   }
   to {
-    background-position: 100% 0;
+    background-position: var(--sprite-end, 100%) 0;
   }
 }

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import axiosInstance from "@/utils/axiosIntance";
 import { spriteForClass } from "./sprites/spriteForClass";
+import type { EstadoSprite } from "./sprites/spriteSheets";
 import { spriteForEnemy } from "./sprites/spriteForEnemy";
 import MinotauroSprite from "./sprites/MinotauroSprite";
 
@@ -106,6 +107,14 @@ export default function CombatArena({
   } | null>(null);
   const [animJogador, setAnimJogador] = useState<EstadoAnimacao>("idle");
   const [animInimigo, setAnimInimigo] = useState<EstadoAnimacao>("idle");
+  // Pose do jogador quando usa um poder (em vez do golpe básico) — o
+  // dash/hit em si continua igual (animJogador), só a arte interna muda
+  // pra pose de conjuração. fogo recolore essa pose pra representar poderes
+  // com "fogo" no nome (ex.: Bola de Fogo), sem precisar de asset novo.
+  const [poseJogador, setPoseJogador] = useState<{
+    pose: EstadoSprite | undefined;
+    fogo: boolean;
+  }>({ pose: undefined, fogo: false });
 
   // Estado para efeito visual de escudo/cura arcana no jogador
   const [isShieldActive, setIsShieldActive] = useState(false);
@@ -143,6 +152,8 @@ export default function CombatArena({
     danoInimigo,
     variacaoVidaJogador,
     usouCura,
+    usouPoder,
+    usouPoderDeFogo,
   }: {
     inimigoLevouDano: boolean;
     jogadorLevouDano: boolean;
@@ -151,11 +162,17 @@ export default function CombatArena({
     danoInimigo: number;
     variacaoVidaJogador: number;
     usouCura: boolean;
+    usouPoder: boolean;
+    usouPoderDeFogo: boolean;
   }) {
     if (usouCura) {
       setIsShieldActive(true);
       triggerFloatingText("player", "✨ ESCUDO ARCANO!", "#00ffff");
       await espera(400);
+    }
+
+    if (usouPoder && !usouCura) {
+      setPoseJogador({ pose: "poder", fogo: usouPoderDeFogo });
     }
 
     // Fase 1: Ação do Jogador
@@ -170,12 +187,15 @@ export default function CombatArena({
 
     if (acabouNaVitoria) {
       setIsShieldActive(false);
+      setPoseJogador({ pose: undefined, fogo: false });
       setAnimJogador("anim-vitoria");
       setAnimInimigo("anim-derrota");
       return;
     }
 
-    // Fase 2: Inimigo revida / Turno do Inimigo
+    // Fase 2: Inimigo revida / Turno do Inimigo — a pose de conjuração só
+    // vale pra fase do golpe do jogador, aqui já volta ao normal.
+    setPoseJogador({ pose: undefined, fogo: false });
     setAnimJogador("idle");
     setAnimInimigo("anim-atacando-esquerda");
     await espera(50); // <--- Corrigido aqui!
@@ -230,6 +250,10 @@ export default function CombatArena({
     const usouCura = Boolean(
       poderUsado && (poderUsado.cura_base > 0 || poderUsado.nome.toLowerCase().includes("cura"))
     );
+    const usouPoder = action.type === "power";
+    const usouPoderDeFogo = Boolean(
+      poderUsado && poderUsado.nome.toLowerCase().includes("fogo"),
+    );
 
     try {
       const response = await axiosInstance.post<RespostaCombate>(
@@ -267,6 +291,8 @@ export default function CombatArena({
         danoInimigo,
         variacaoVidaJogador,
         usouCura,
+        usouPoder,
+        usouPoderDeFogo,
       });
 
       if (data.done) {
@@ -357,6 +383,8 @@ export default function CombatArena({
           <PlayerSprite
             className={`battle-sprite h-28 w-28 sm:h-36 sm:w-36 ${animJogador !== "idle" ? animJogador : ""}`}
             animState={animJogador}
+            poseOverride={poseJogador.pose}
+            fireTint={poseJogador.fogo}
           />
         </div>
 

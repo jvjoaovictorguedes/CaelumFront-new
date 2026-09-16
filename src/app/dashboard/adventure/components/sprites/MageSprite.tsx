@@ -1,10 +1,13 @@
 import AnimatedSpriteSheet from "./AnimatedSpriteSheet";
+import type { EstadoSprite } from "./spriteSheets";
 
 interface MageSpriteProps {
   className?: string;
   animState?: string;
   stroke?: string;
   flip?: boolean;
+  poseOverride?: EstadoSprite;
+  fireTint?: boolean;
 }
 
 // Sprite do Mago — animação 2D de verdade (folha Wanderer Magican, ver
@@ -16,6 +19,8 @@ export default function MageSprite({
   animState = "idle",
   stroke = "#F3B43F",
   flip = false,
+  poseOverride,
+  fireTint = false,
 }: MageSpriteProps) {
   return (
     <AnimatedSpriteSheet
@@ -24,6 +29,8 @@ export default function MageSprite({
       animState={animState}
       stroke={stroke}
       flip={flip}
+      poseOverride={poseOverride}
+      fireTint={fireTint}
     />
   );
 }

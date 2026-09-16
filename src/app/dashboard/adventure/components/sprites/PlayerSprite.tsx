@@ -1,10 +1,13 @@
 import AnimatedSpriteSheet from "./AnimatedSpriteSheet";
+import type { EstadoSprite } from "./spriteSheets";
 
 interface PlayerSpriteProps {
   className?: string;
   animState?: string;
   stroke?: string;
   flip?: boolean;
+  poseOverride?: EstadoSprite;
+  fireTint?: boolean;
 }
 
 // Sprite do Guerreiro — animação 2D de verdade (folha Knight_1, ver
@@ -18,6 +21,8 @@ export default function PlayerSprite({
   animState = "idle",
   stroke = "#F3B43F",
   flip = false,
+  poseOverride,
+  fireTint = false,
 }: PlayerSpriteProps) {
   return (
     <AnimatedSpriteSheet
@@ -26,6 +31,8 @@ export default function PlayerSprite({
       animState={animState}
       stroke={stroke}
       flip={flip}
+      poseOverride={poseOverride}
+      fireTint={fireTint}
     />
   );
 }
