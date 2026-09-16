@@ -3,6 +3,20 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import axiosInstance from "@/utils/axiosIntance";
+import PlayerSprite from "./sprites/PlayerSprite";
+import EnemySprite from "./sprites/EnemySprite";
+
+type EstadoAnimacao =
+  | "idle"
+  | "anim-atacando-direita"
+  | "anim-atacando-esquerda"
+  | "anim-atingido"
+  | "anim-esquivando-direita"
+  | "anim-esquivando-esquerda"
+  | "anim-vitoria"
+  | "anim-derrota";
+
+const DURACAO_ANIMACAO_MS = 550;
 
 interface Power {
   id: number;
@@ -79,7 +93,47 @@ const [pontosDistribuir, setPontosDistribuir] = useState(
     experiencia: number;
     dinheiro: number;
   } | null>(null);
+  const [animJogador, setAnimJogador] = useState<EstadoAnimacao>("idle");
+  const [animInimigo, setAnimInimigo] = useState<EstadoAnimacao>("idle");
 const experienciaNivel = Math.max(100, nivelAtual * 100);
+
+  function espera(ms: number) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  // Toca a sequência de animação de um turno: primeiro o ataque do
+  // jogador (com reação do inimigo), depois — se o combate não acabou
+  // ali — o contra-ataque do inimigo (com reação do jogador).
+  async function tocarAnimacaoDoTurno({
+    inimigoLevouDano,
+    jogadorLevouDano,
+    acabouNaVitoria,
+    acabouNaDerrota,
+  }: {
+    inimigoLevouDano: boolean;
+    jogadorLevouDano: boolean;
+    acabouNaVitoria: boolean;
+    acabouNaDerrota: boolean;
+  }) {
+    setAnimJogador("anim-atacando-direita");
+    setAnimInimigo(inimigoLevouDano ? "anim-atingido" : "anim-esquivando-direita");
+    await espera(DURACAO_ANIMACAO_MS);
+
+    if (acabouNaVitoria) {
+      setAnimJogador("anim-vitoria");
+      setAnimInimigo("anim-derrota");
+      return;
+    }
+
+    setAnimJogador("idle");
+    setAnimInimigo("anim-atacando-esquerda");
+    await espera(50);
+    setAnimJogador(jogadorLevouDano ? "anim-atingido" : "anim-esquivando-esquerda");
+    await espera(DURACAO_ANIMACAO_MS);
+
+    setAnimInimigo("idle");
+    setAnimJogador(acabouNaDerrota ? "anim-derrota" : "idle");
+  }
 
   interface RespostaCombate {
     data: {
@@ -114,6 +168,12 @@ const experienciaNivel = Math.max(100, nivelAtual * 100);
       );
 
       const data = response.data.data;
+
+      const inimigoLevouDano = data.enemy.vida_atual < enemy.vida_atual;
+      const jogadorLevouDano = data.character.vida_atual < vidaAtual;
+      const acabouNaVitoria = data.done && data.victory;
+      const acabouNaDerrota = data.done && !data.victory;
+
       setLog((atual) => [...atual, ...data.log]);
       setEnemy(data.enemy);
 setVidaAtual(data.character.vida_atual);
@@ -121,6 +181,13 @@ setManaAtual(data.character.mana_atual);
 setNivelAtual(data.character.nivel);
 setExperienciaAtual(data.character.experiencia);
 setPontosDistribuir(data.character.pontos_distribuir);
+
+      await tocarAnimacaoDoTurno({
+        inimigoLevouDano,
+        jogadorLevouDano,
+        acabouNaVitoria,
+        acabouNaDerrota,
+      });
 
       if (data.done) {
         setResultado(data.victory ? "vitoria" : "derrota");
@@ -156,6 +223,16 @@ setPontosDistribuir(data.character.pontos_distribuir);
             }}
           />
         </div>
+      </div>
+
+      <div className="flex items-center justify-between gap-4 rounded-2xl border-2 border-[#F3B43F]/60 bg-gradient-to-b from-[#3a2f24] to-[#1f1813] p-6 shadow-xl overflow-hidden">
+        <PlayerSprite
+          className={`battle-sprite h-28 w-28 sm:h-36 sm:w-36 ${animJogador !== "idle" ? animJogador : ""}`}
+        />
+        <p className="font-imFeel text-2xl text-[#F3B43F]/70 select-none">VS</p>
+        <EnemySprite
+          className={`battle-sprite h-28 w-28 sm:h-36 sm:w-36 ${animInimigo !== "idle" ? animInimigo : ""}`}
+        />
       </div>
 
       <div className="grid w-full grid-cols-1 gap-4 md:grid-cols-2">
