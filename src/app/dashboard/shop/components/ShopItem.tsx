@@ -50,9 +50,11 @@ export interface ShopItemData {
     | "Currencia";
   raridade?: string;
   disponivel_loja?: boolean;
-  WeaponProperties?: WeaponProperties | null;
-  ArmorProperties?: ArmorProperties | null;
-  ConsumableProperties?: ConsumableProperties | null;
+  // Alias explícito do backend (src/models/associations.js) — não é
+  // mais a singularização automática do Sequelize.
+  weaponProperties?: WeaponProperties | null;
+  armorProperties?: ArmorProperties | null;
+  consumableProperties?: ConsumableProperties | null;
 }
 
 interface PurchaseResponse {
@@ -149,18 +151,18 @@ function atributoPrincipalDaArmadura(armor: ArmorProperties): Atributo | null {
 
 function itemEhRecomendado(item: ShopItemData, atributoRecomendado: Atributo | null) {
   if (!atributoRecomendado) return false;
-  if (item.WeaponProperties) {
-    return item.WeaponProperties.bonus_atributo === atributoRecomendado;
+  if (item.weaponProperties) {
+    return item.weaponProperties.bonus_atributo === atributoRecomendado;
   }
-  if (item.ArmorProperties) {
-    return atributoPrincipalDaArmadura(item.ArmorProperties) === atributoRecomendado;
+  if (item.armorProperties) {
+    return atributoPrincipalDaArmadura(item.armorProperties) === atributoRecomendado;
   }
   return false;
 }
 
 function ListaDeAtributos({ item }: { item: ShopItemData }) {
-  if (item.WeaponProperties) {
-    const arma = item.WeaponProperties;
+  if (item.weaponProperties) {
+    const arma = item.weaponProperties;
     return (
       <ul className="mt-3 space-y-1 text-sm">
         <li className="text-white/90">
@@ -175,8 +177,8 @@ function ListaDeAtributos({ item }: { item: ShopItemData }) {
     );
   }
 
-  if (item.ArmorProperties) {
-    const armor = item.ArmorProperties;
+  if (item.armorProperties) {
+    const armor = item.armorProperties;
     const bonus: [Atributo, number][] = [
       ["Forca", armor.bonus_forca],
       ["Vitalidade", armor.bonus_vitalidade],
@@ -201,8 +203,8 @@ function ListaDeAtributos({ item }: { item: ShopItemData }) {
     );
   }
 
-  if (item.ConsumableProperties) {
-    const consumivel = item.ConsumableProperties;
+  if (item.consumableProperties) {
+    const consumivel = item.consumableProperties;
     return (
       <ul className="mt-3 space-y-1 text-sm">
         {consumivel.efeito_vida > 0 && (

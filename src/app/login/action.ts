@@ -34,6 +34,11 @@ export async function login(data: CookiesData) {
       {
         email: data.email,
         password: data.password,
+        // O backend usa isso pra decidir a validade do JWT em si (curta
+        // por padrão, ~7 dias com lembrar-me) — sem mandar isso, o
+        // cookie durava 7 dias mas o token expirava em 1h de qualquer
+        // jeito, e "lembrar-me" não funcionava de verdade.
+        rememberMe: Boolean(data.rememberMe),
       },
     );
 
