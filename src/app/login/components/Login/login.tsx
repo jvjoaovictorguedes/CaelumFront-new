@@ -28,7 +28,7 @@ export default function Login() {
     setErrorMessage("");
     setIsLoading(true);
 
-    const result = await login({ email, password });
+    const result = await login({ email, password, rememberMe });
 
     if (isLoading) return;
 
@@ -121,6 +121,15 @@ export default function Login() {
           </button>
         </div>
         <div className="flex items-center justify-center mt-4">
+          <button
+            type="button"
+            onClick={() => router.push("/forgot-password")}
+            className="font-imFeel text-lg text-[#F3B43F] underline hover:text-white"
+          >
+            Esqueci minha senha
+          </button>
+        </div>
+        <div className="flex items-center justify-center mt-3">
           <label
             htmlFor="remember"
             className="flex items-center cursor-pointer font-imFeel text-2xl"
@@ -139,17 +148,8 @@ export default function Login() {
                 <span className="w-3 h-3 bg-[#F3B43F] rounded-full"></span>
               )}
             </span>
-            Lembrar-me a senha
+            Lembrar-me
           </label>
-        </div>
-        <div className="flex items-center justify-center mt-3">
-          <button
-            type="button"
-            onClick={() => router.push("/forgot-password")}
-            className="font-imFeel text-lg text-[#F3B43F] underline hover:text-white"
-          >
-            Esqueci minha senha
-          </button>
         </div>
       </form>
     </div>
