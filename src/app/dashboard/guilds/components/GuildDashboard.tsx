@@ -9,14 +9,16 @@ import GuildChatTab from "./GuildChatTab";
 import GuildTreasuryTab from "./GuildTreasuryTab";
 import GuildContributionTab from "./GuildContributionTab";
 import GuildLogsTab from "./GuildLogsTab";
+import GuildGatePortalTab from "./GuildGatePortalTab";
 
-type Aba = "membros" | "chat" | "tesouro" | "contribuicao" | "logs";
+type Aba = "membros" | "chat" | "tesouro" | "contribuicao" | "portal" | "logs";
 
 const ABAS: { chave: Aba; label: string }[] = [
   { chave: "membros", label: "Membros" },
   { chave: "chat", label: "Chat" },
   { chave: "tesouro", label: "Tesouro" },
   { chave: "contribuicao", label: "Contribuição" },
+  { chave: "portal", label: "Portal" },
   { chave: "logs", label: "Logs" },
 ];
 
@@ -125,7 +127,7 @@ export default function GuildDashboard({
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="text-sm uppercase tracking-widest text-[#F3B43F]">
-              {guild.sigla} · Nível {guild.nivel}
+              {guild.sigla} · Nível {guild.nivel} · Ranque {guild.rank ?? "F"}
             </p>
             <h1 className="font-imFeel text-4xl sm:text-5xl">{guild.nome}</h1>
             {guild.descricao && <p className="mt-1 text-white/70">{guild.descricao}</p>}
@@ -239,6 +241,7 @@ export default function GuildDashboard({
         <GuildTreasuryTab guild={guild} characterId={characterId} pode={pode} onMudou={recarregarGuild} />
       )}
       {aba === "contribuicao" && <GuildContributionTab idGuild={guild.id} />}
+      {aba === "portal" && <GuildGatePortalTab idGuild={guild.id} pode={pode} />}
       {aba === "logs" && <GuildLogsTab idGuild={guild.id} />}
     </div>
   );

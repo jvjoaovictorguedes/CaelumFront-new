@@ -17,6 +17,9 @@ export interface GuildResumo {
   // Só vem preenchido quando quem pediu já é membro da guilda (o back
   // omite pra jogador de fora, ver seção 13 do documento de design).
   tesouro?: number;
+  // Mesma escada de rank do personagem (F...S++) — sobe derrotando o
+  // Portal de Guilda coletivamente (ver GuildGatePortalTab.tsx).
+  rank?: string;
 }
 
 export type Cargo = "Fundador" | "Oficial" | "Veterano" | "Membro" | "Recruta";
@@ -85,6 +88,7 @@ export const PERMISSOES = [
   "editar_identidade",
   "editar_cargos",
   "autorizar_gastos",
+  "iniciar_portal",
 ] as const;
 
 export type Permissao = (typeof PERMISSOES)[number];
