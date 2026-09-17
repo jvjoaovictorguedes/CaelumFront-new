@@ -68,6 +68,27 @@ export function getClassPortrait(name: string | undefined) {
   return "/images/guerreiro-lutador.jpg";
 }
 
+// Fundo "boneco de papel" da tela de equipamentos (public/CharacterBackground)
+// — mesmo critério de normalização de getClassImage, com "primordial" como
+// fallback pra qualquer classe/linhagem que ainda não tenha arte própria.
+export function getClassBackground(name: string | undefined) {
+  const normalizedName = name ? normalize(name) : "";
+  if (normalizedName.includes("mago") || normalizedName.includes("mage")) {
+    return "/CharacterBackground/mago-personagem-itens.webp";
+  }
+  if (
+    normalizedName.includes("guerreiro") ||
+    normalizedName.includes("guerreira") ||
+    normalizedName.includes("warrior")
+  ) {
+    return "/CharacterBackground/guerreiro-personagem-itens.webp";
+  }
+  if (normalizedName.includes("celestial")) {
+    return "/CharacterBackground/celestial-personagem-itens.webp";
+  }
+  return "/CharacterBackground/primordial-personagem-itens.webp";
+}
+
 export function getClassImage(
   name: string | undefined,
   imageUrl?: string | null,

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import axiosInstance from "@/utils/axiosIntance";
-import ClassSilhouette from "./ClassSilhouette";
+import { getClassBackground, resolveMediaUrl } from "@/utils/media-url";
 
 type Slot =
   | "Cabeca"
@@ -14,40 +14,52 @@ type Slot =
   | "Acessorio1"
   | "Acessorio2";
 
-// Posição de cada slot em cima do retrato do personagem (% do box da
-// imagem), calibrada pelas duas ilustrações reais (guerreiro-lutador.jpg/
-// mago-lutador.jpg): cabeça no topo, mão da arma sempre do lado esquerdo
-// de quem olha (onde as duas artes seguram espada/cajado), a outra mão
-// (escudo/orbe) do lado direito, pés embaixo. Não é um encaixe pixel a
-// pixel — é o mesmo tipo de "boneco de papel" do mockup do Figma, só que
-// com badge + nome em vez de peça de armadura recortada.
+// Só 5 slots ativos por enquanto (cabeça, dorso, arma principal, arma
+// secundária, pés) — Mãos e os dois Acessórios ficam de fora da UI até
+// terem arte própria, mas o tipo Slot e o objeto `equipamentos` continuam
+// cobrindo os 8 pra não quebrar nada que o back já valida.
+//
+// Posição de cada slot em cima do fundo "boneco de papel" (ver
+// public/CharacterBackground/*-personagem-itens.webp): braços abertos e
+// apontando um pouco pra baixo, então a arma fica mais pro canto que no
+// meio da lateral.
 const SLOTS: { slot: Slot; label: string; top: string; left: string }[] = [
   { slot: "Cabeca", label: "Cabeça", top: "8%", left: "50%" },
-  { slot: "Acessorio1", label: "Acessório 1", top: "20%", left: "28%" },
-  { slot: "Acessorio2", label: "Acessório 2", top: "20%", left: "72%" },
-  { slot: "Torso", label: "Torso", top: "34%", left: "50%" },
-  { slot: "ArmaPrincipal", label: "Arma Principal", top: "52%", left: "20%" },
-  { slot: "ArmaSecundaria", label: "Arma Secundária", top: "48%", left: "80%" },
-  { slot: "Maos", label: "Mãos", top: "63%", left: "50%" },
+  { slot: "Torso", label: "Torso", top: "32%", left: "50%" },
+  { slot: "ArmaPrincipal", label: "Arma Principal", top: "48%", left: "12%" },
+  { slot: "ArmaSecundaria", label: "Arma Secundária", top: "48%", left: "88%" },
   { slot: "Pes", label: "Pés", top: "92%", left: "50%" },
 ];
 
-// Tipos de item que fazem sentido arrastar pra um slot. Consumível,
-// Material, QuestItem e Moeda não são equipáveis.
-const TIPOS_EQUIPAVEIS = [
-  "Armadura",
-  "Capacete",
-  "Escudo",
-  "Arma",
-  "Acessorio1",
-  "Acessorio2",
-];
+// Tipos de item que fazem sentido arrastar pra um slot ativo. Acessorio1/2
+// ficam de fora enquanto o slot correspondente não existir na UI —
+// Consumível, Material, QuestItem e Moeda nunca foram equipáveis.
+const TIPOS_EQUIPAVEIS = ["Armadura", "Capacete", "Escudo", "Arma"];
 
 interface ItemInfo {
   id: number;
   nome: string;
   tipo_item: string;
   raridade: string;
+  imagem_url?: string | null;
+}
+
+// Enquanto o item não tem `imagem_url` própria (a maioria, por ora — só a
+// Espada de Ferro tem), mostra a inicial do nome num badge em vez de um
+// ícone genérico/quebrado.
+function ItemThumb({ item, className = "" }: { item: ItemInfo; className?: string }) {
+  const src = resolveMediaUrl(item.imagem_url);
+  if (src) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src={src} alt={item.nome} className={`object-contain ${className}`} />;
+  }
+  return (
+    <div
+      className={`flex items-center justify-center text-lg font-bold text-[#F3B43F]/80 ${className}`}
+    >
+      {item.nome.charAt(0).toUpperCase()}
+    </div>
+  );
 }
 
 interface EquipamentoApi {
@@ -205,8 +217,10 @@ export default function EquipmentPanel({
         Equipamentos
       </p>
 
-      <div className="relative mx-auto mb-5 aspect-square w-full max-w-sm overflow-hidden rounded-2xl border border-white/10 bg-[#3a2f24]">
-        <ClassSilhouette classe={classe} />
+      <div
+        className="relative mx-auto mb-5 aspect-square w-full max-w-sm overflow-hidden rounded-2xl border border-white/10 bg-[#3a2f24] bg-contain bg-center bg-no-repeat"
+        style={{ backgroundImage: `url(${getClassBackground(classe)})` }}
+      >
         {SLOTS.map(({ slot, label, top, left }) => {
           const itemNoSlot = equipamentos[slot];
           const emFoco = slotSobre === slot;
@@ -220,34 +234,46 @@ export default function EquipmentPanel({
               onDragLeave={() => setSlotSobre((atual) => (atual === slot ? null : atual))}
               onDrop={(e) => handleDrop(slot, e)}
               style={{ top, left }}
-              className={`absolute flex w-24 -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-0.5 rounded-lg border-2 px-1.5 py-1 text-center backdrop-blur-sm transition-colors ${
-                emFoco
-                  ? "border-[#F3B43F] bg-[#3a2f24]/90"
-                  : itemNoSlot
-                    ? "border-[#F3B43F]/70 bg-[#1c150f]/80"
-                    : "border-dashed border-white/40 bg-black/40"
-              }`}
+              className="group absolute h-16 w-16 -translate-x-1/2 -translate-y-1/2"
             >
-              <span className="text-[9px] uppercase tracking-wide text-white/60">
-                {label}
-              </span>
-              {itemNoSlot ? (
-                <>
-                  <span className="text-xs font-bold leading-tight text-[#F3B43F]">
-                    {itemNoSlot.nome}
+              <div
+                className={`relative h-full w-full overflow-hidden rounded-lg border-2 backdrop-blur-sm transition-colors ${
+                  emFoco
+                    ? "border-[#F3B43F] bg-[#3a2f24]/90"
+                    : itemNoSlot
+                      ? "border-[#F3B43F]/70 bg-[#1c150f]/80"
+                      : "border-dashed border-white/40 bg-black/40"
+                }`}
+              >
+                {itemNoSlot && (
+                  <ItemThumb item={itemNoSlot} className="h-full w-full p-2" />
+                )}
+
+                {/* Nome/label só aparecem no hover — o resto do tempo é só a
+                    imagem (ou o box vazio), pra manter o boneco de papel limpo. */}
+                <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-0.5 bg-black/85 p-1 text-center opacity-0 transition-opacity group-hover:opacity-100">
+                  <span className="text-[9px] uppercase tracking-wide text-white/60">
+                    {label}
                   </span>
-                  <button
-                    type="button"
-                    onClick={() => desequipar(slot)}
-                    disabled={processando}
-                    className="text-[9px] text-white/60 underline hover:text-white disabled:opacity-50"
-                  >
-                    desequipar
-                  </button>
-                </>
-              ) : (
-                <span className="text-[10px] text-white/40">Vazio</span>
-              )}
+                  {itemNoSlot ? (
+                    <>
+                      <span className="text-[10px] font-bold leading-tight text-[#F3B43F]">
+                        {itemNoSlot.nome}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => desequipar(slot)}
+                        disabled={processando}
+                        className="pointer-events-auto text-[9px] text-white/60 underline hover:text-white disabled:opacity-50"
+                      >
+                        desequipar
+                      </button>
+                    </>
+                  ) : (
+                    <span className="text-[9px] text-white/40">Vazio</span>
+                  )}
+                </div>
+              </div>
             </div>
           );
         })}
@@ -276,15 +302,22 @@ export default function EquipmentPanel({
                   String(entrada.Item.id),
                 )
               }
-              className="cursor-grab select-none rounded-lg border-2 border-[#F3B43F]/60 bg-[#3a2f24] px-3 py-2 text-center active:cursor-grabbing"
-              title={`${entrada.Item.nome} (${entrada.Item.tipo_item})`}
+              className="group relative h-16 w-16 cursor-grab select-none rounded-lg border-2 border-[#F3B43F]/60 bg-[#3a2f24] active:cursor-grabbing"
             >
-              <p className="text-sm font-bold text-white">
-                {entrada.Item.nome}
-              </p>
-              <p className="text-[10px] text-white/50">
-                {entrada.Item.tipo_item} · x{entrada.disponivel}
-              </p>
+              <ItemThumb item={entrada.Item} className="h-full w-full p-2" />
+              <span className="pointer-events-none absolute -bottom-1 -right-1 rounded bg-black/80 px-1 text-[9px] font-bold text-white">
+                x{entrada.disponivel}
+              </span>
+
+              {/* Nome/tipo só aparecem no hover, igual aos slots. */}
+              <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-0.5 rounded-lg bg-black/85 p-1 text-center opacity-0 transition-opacity group-hover:opacity-100">
+                <span className="text-[10px] font-bold leading-tight text-white">
+                  {entrada.Item.nome}
+                </span>
+                <span className="text-[9px] text-white/50">
+                  {entrada.Item.tipo_item}
+                </span>
+              </div>
             </div>
           ))}
         </div>
