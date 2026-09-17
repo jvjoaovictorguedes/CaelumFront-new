@@ -1,41 +1,36 @@
 import axiosInstance from "@/utils/axiosIntance";
 import { getCurrentCharacter } from "@/utils/character-session";
-import ShopItem from "./components/ShopItem";
-
-interface Item {
-  id: number;
-  nome: string;
-  descricao?: string;
-  valor_compra: number;
-  valor_venda: number;
-  imagem?: string;
-  categoria?: string;
-  raridade?: string;
-  disponivel_loja?: boolean;
-}
+import ShopItem, { type ShopItemData } from "./components/ShopItem";
 
 interface ItemsResponse {
   data?: {
-    items?: Item[];
+    items?: ShopItemData[];
   };
 }
 
 const MOSTRAR_ITENS_RAROS = false;
 
+// Agrupa a vitrine por tipo pra ficar fácil de escanear (arma, armadura,
+// consumível...) em vez de uma grade única misturando tudo.
+const ORDEM_TIPOS: { tipo: ShopItemData["tipo_item"]; titulo: string }[] = [
+  { tipo: "Arma", titulo: "Armas" },
+  { tipo: "Capacete", titulo: "Elmos" },
+  { tipo: "Armadura", titulo: "Armaduras" },
+  { tipo: "Escudo", titulo: "Escudos" },
+  { tipo: "Consumivel", titulo: "Consumíveis" },
+  { tipo: "Material", titulo: "Materiais" },
+];
+
 /**
  * Busca todos os itens cadastrados na API
  */
-async function buscarItensDaLoja(): Promise<Item[]> {
+async function buscarItensDaLoja(): Promise<ShopItemData[]> {
   try {
-    const resposta =
-      await axiosInstance.get<ItemsResponse>("/items");
+    const resposta = await axiosInstance.get<ItemsResponse>("/items");
 
     return resposta.data?.data?.items ?? [];
   } catch (error) {
-    console.error(
-      "Erro ao buscar itens da loja:",
-      error,
-    );
+    console.error("Erro ao buscar itens da loja:", error);
 
     return [];
   }
@@ -47,6 +42,7 @@ export default async function ShopPage() {
   const itens = await buscarItensDaLoja();
 
   const moedas = character?.dinheiro ?? 15;
+  const classeDoPersonagem = character?.Class?.nome;
 
   const itensDaLoja = itens.filter((item) => {
     // O backend é a autoridade sobre o que está à venda
@@ -56,10 +52,7 @@ export default async function ShopPage() {
       return false;
     }
 
-    if (
-      !MOSTRAR_ITENS_RAROS &&
-      item.raridade?.toLowerCase() === "raro"
-    ) {
+    if (!MOSTRAR_ITENS_RAROS && item.raridade?.toLowerCase() === "raro") {
       return false;
     }
 
@@ -76,33 +69,41 @@ export default async function ShopPage() {
 
         <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
           <div>
-            <h1 className="font-imFeel text-4xl sm:text-5xl">
-              Loja
-            </h1>
+            <h1 className="font-imFeel text-4xl sm:text-5xl">Loja</h1>
 
             <p className="mt-2 text-white/70">
-              Equipamentos e consumíveis para sua
-              próxima aventura.
+              Equipamentos e consumíveis para sua próxima aventura.
             </p>
           </div>
 
-          <p className="text-lg font-bold text-[#F3B43F]">
-            Moedas: {moedas}
-          </p>
+          <p className="text-lg font-bold text-[#F3B43F]">Moedas: {moedas}</p>
         </div>
       </div>
 
-      {/* ITENS */}
-      <section className="grid w-full gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {itensDaLoja.map((item) => (
-          <ShopItem
-            key={item.id}
-            characterId={character?.id}
-            initialCoins={moedas}
-            item={item}
-          />
-        ))}
-      </section>
+      {/* ITENS, AGRUPADOS POR TIPO */}
+      {ORDEM_TIPOS.map(({ tipo, titulo }) => {
+        const itensDoTipo = itensDaLoja.filter((item) => item.tipo_item === tipo);
+        if (itensDoTipo.length === 0) return null;
+
+        return (
+          <section key={tipo} className="flex flex-col gap-3">
+            <h2 className="font-imFeel text-2xl text-[#F3B43F] sm:text-3xl">
+              {titulo}
+            </h2>
+            <div className="grid w-full gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {itensDoTipo.map((item) => (
+                <ShopItem
+                  key={item.id}
+                  characterId={character?.id}
+                  initialCoins={moedas}
+                  item={item}
+                  classeDoPersonagem={classeDoPersonagem}
+                />
+              ))}
+            </div>
+          </section>
+        );
+      })}
 
       {/* CASO NÃO TENHA ITENS */}
       {itensDaLoja.length === 0 && (
