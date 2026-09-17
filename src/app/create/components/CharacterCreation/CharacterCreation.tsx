@@ -198,35 +198,12 @@ export default function CharacterCreation() {
       }
     }
 
-    const roll = Math.random() * 100;
-    let naturezaMagica = "Raio";
-
-    if (roll <= 2) {
-      naturezaMagica = "Ying&Yang";
-    }
-    if (roll > 2 && roll <= 6) {
-      const randomMagic = Math.random() * 100;
-      if (randomMagic <= 50) {
-        naturezaMagica = "Luz";
-      } else {
-        naturezaMagica = "Escuridao";
-      }
-    }
-    if (roll > 6 && roll <= 24) {
-      naturezaMagica = "Fogo";
-    }
-    if (roll > 24 && roll <= 42) {
-      naturezaMagica = "Agua";
-    }
-    if (roll > 42 && roll <= 60) {
-      naturezaMagica = "Ar";
-    }
-    if (roll > 60 && roll <= 78) {
-      naturezaMagica = "Terra";
-    }
-    if (roll > 78 && roll <= 100) {
-      naturezaMagica = "Raio";
-    }
+    // natureza_magica não é mais escolhida/sorteada aqui: o backend sorteia
+    // sozinho na criação (characterController.createCharacter), sempre —
+    // isso fechava uma falha onde o cliente podia garantir a natureza rara
+    // só mandando o valor certo, e corrigia um typo aqui ("Ying&Yang" não
+    // batia com o enum "Yin&Yang" do banco, quebrando a criação pra quem
+    // caísse nesse sorteio).
     // Mesmas fórmulas usadas no resto do jogo (combate, uso de item):
     // vidaMaxima = 30 + vitalidade*6, manaMaxima = 20 + inteligencia*5.
     // Sem isso, o personagem nascia com vida/mana fixas (100/50) que podiam
@@ -247,7 +224,6 @@ export default function CharacterCreation() {
       pontos_distribuir: 0,
       rank: "F",
       reset: 0,
-      natureza_magica: naturezaMagica,
       forca: currentRaceTempory.bonus_forca,
       vitalidade: currentRaceTempory.bonus_vitalidade,
       agilidade: currentRaceTempory.bonus_agilidade,
