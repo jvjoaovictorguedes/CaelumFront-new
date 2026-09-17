@@ -13,8 +13,6 @@ Mensagens </h1>
     </p>
   </div>
 );
-
 }
-
 return <MessagesClient currentUserId={Number(user.id)} />;
 }
