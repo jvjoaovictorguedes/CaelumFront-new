@@ -1,6 +1,8 @@
 import { getCurrentCharacter } from "@/utils/character-session";
 import { getRaceImage } from "@/utils/media-url";
+import AbilitiesPanel from "./components/AbilitiesPanel";
 import CharacterAttributes from "./components/CharacterAttributes";
+import CharacterTabs from "./components/CharacterTabs";
 import EquipmentPanel from "./components/EquipmentPanel";
 import GenderToggleButton from "./components/GenderToggleButton";
 
@@ -105,73 +107,85 @@ export default async function CharacterPage() {
         </div>
       </div>
 
-      <div className="grid w-full gap-4 md:grid-cols-1">
-        <div className="rounded-2xl border border-black/10 bg-[#3a2f24] p-4 shadow-lg">
-          <div className="mb-2">
-            <div className="flex justify-between text-sm font-bold mb-1">
-              <span>Vida</span>
-              <span>
-                {character.vida_atual} / {vidaMaxima}
-              </span>
-            </div>
-            <div className="h-4 w-full overflow-hidden rounded-full bg-black/20">
-              <div
-                className="h-full bg-red-600"
-                style={{
-                  width: `${Math.min(
-                    100,
-                    (character.vida_atual / vidaMaxima) * 100,
-                  )}%`,
-                }}
-              />
-            </div>
-            {tempoRegenTexto && (
-              <p className="mt-1 text-right text-xs text-white/60">
-                Recupera tudo em {tempoRegenTexto}
-              </p>
-            )}
+      <div className="rounded-2xl border border-black/10 bg-[#3a2f24] p-4 shadow-lg">
+        <div className="mb-2">
+          <div className="flex justify-between text-sm font-bold mb-1">
+            <span>Vida</span>
+            <span>
+              {character.vida_atual} / {vidaMaxima}
+            </span>
           </div>
+          <div className="h-4 w-full overflow-hidden rounded-full bg-black/20">
+            <div
+              className="h-full bg-red-600"
+              style={{
+                width: `${Math.min(
+                  100,
+                  (character.vida_atual / vidaMaxima) * 100,
+                )}%`,
+              }}
+            />
+          </div>
+          {tempoRegenTexto && (
+            <p className="mt-1 text-right text-xs text-white/60">
+              Recupera tudo em {tempoRegenTexto}
+            </p>
+          )}
+        </div>
 
-          <div>
-            <div className="flex justify-between text-sm font-bold mb-1">
-              <span>Mana</span>
-              <span>
-                {character.mana_atual} / {manaMaxima}
-              </span>
-            </div>
-            <div className="h-4 w-full overflow-hidden rounded-full bg-black/20">
-              <div
-                className="h-full bg-blue-600"
-                style={{
-                  width: `${Math.min(
-                    100,
-                    (character.mana_atual / manaMaxima) * 100,
-                  )}%`,
-                }}
-              />
-            </div>
+        <div>
+          <div className="flex justify-between text-sm font-bold mb-1">
+            <span>Mana</span>
+            <span>
+              {character.mana_atual} / {manaMaxima}
+            </span>
+          </div>
+          <div className="h-4 w-full overflow-hidden rounded-full bg-black/20">
+            <div
+              className="h-full bg-blue-600"
+              style={{
+                width: `${Math.min(
+                  100,
+                  (character.mana_atual / manaMaxima) * 100,
+                )}%`,
+              }}
+            />
           </div>
         </div>
-
-        <CharacterAttributes character={character} bonus={bonus} />
       </div>
 
-      <EquipmentPanel characterId={character.id} classe={character.Class?.nome} />
+      <CharacterTabs
+        equipamentos={
+          <EquipmentPanel characterId={character.id} classe={character.Class?.nome} />
+        }
+        habilidades={<AbilitiesPanel characterId={character.id} />}
+        atributos={
+          <div className="flex flex-col gap-4">
+            <CharacterAttributes character={character} bonus={bonus} />
 
-      <div className="grid w-full grid-cols-3 gap-3 text-center">
-        <div className="bg-white/40 rounded-lg p-2">
-          <p className="text-sm text-black/80">Experiência</p>
-          <p className="font-bold">{character.experiencia}</p>
-        </div>
-        <div className="bg-white/40 rounded-lg p-2">
-          <p className="text-sm text-black/80">Moedas</p>
-          <p className="font-bold">{character.dinheiro}</p>
-        </div>
-        <div className="bg-white/40 rounded-lg p-2">
-          <p className="text-sm text-black/80">Rank</p>
-          <p className="font-bold">{character.rank}</p>
-        </div>
-      </div>
+            <div className="grid w-full grid-cols-2 gap-3 text-center sm:grid-cols-4">
+              <div className="bg-white/40 rounded-lg p-2">
+                <p className="text-sm text-black/80">Experiência</p>
+                <p className="font-bold">{character.experiencia}</p>
+              </div>
+              <div className="bg-white/40 rounded-lg p-2">
+                <p className="text-sm text-black/80">Moedas</p>
+                <p className="font-bold">{character.dinheiro}</p>
+              </div>
+              <div className="bg-white/40 rounded-lg p-2">
+                <p className="text-sm text-black/80">Rank</p>
+                <p className="font-bold">{character.rank}</p>
+              </div>
+              <div className="bg-white/40 rounded-lg p-2">
+                <p className="text-sm text-black/80">Guilda</p>
+                <p className="font-bold">
+                  {character.guilda ? character.guilda.sigla : "Nenhuma"}
+                </p>
+              </div>
+            </div>
+          </div>
+        }
+      />
     </div>
   );
 }

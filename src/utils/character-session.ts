@@ -46,6 +46,11 @@ interface CurrentCharacter {
   Class?: {
     nome?: string;
   };
+  guilda?: {
+    id: number;
+    nome: string;
+    sigla: string;
+  } | null;
 }
 
 interface CurrentCharacterResponse {
