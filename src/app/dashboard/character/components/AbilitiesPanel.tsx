@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import axiosInstance from "@/utils/axiosIntance";
+import { resolveMediaUrl } from "@/utils/media-url";
 
 interface PoderApi {
   id_power: number;
@@ -14,11 +15,34 @@ interface PoderApi {
   cooldown: number | null;
   escala_atributo: string;
   valor_escala: number;
+  imagem_url?: string | null;
   origem: "classe" | "raca";
   nivel_necessario: number;
   aprendido: boolean;
   ativo: boolean;
   id_character_ability: number | null;
+}
+
+// Enquanto o poder não tem `imagem_url` própria, mostra a inicial do nome
+// num badge — mesmo critério do ItemThumb em EquipmentPanel.tsx — em vez de
+// um quadrado vazio ou ícone genérico quebrado.
+function PoderThumb({ poder }: { poder: PoderApi }) {
+  const src = resolveMediaUrl(poder.imagem_url);
+  if (src) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={src}
+        alt={poder.nome}
+        className="h-full w-full rounded-lg object-cover"
+      />
+    );
+  }
+  return (
+    <div className="flex h-full w-full items-center justify-center rounded-lg text-lg font-bold text-[#F3B43F]/80">
+      {poder.nome.charAt(0).toUpperCase()}
+    </div>
+  );
 }
 
 const ORIGEM_LABEL: Record<PoderApi["origem"], string> = {
@@ -117,13 +141,17 @@ export default function AbilitiesPanel({ characterId }: { characterId: number })
                 return (
                   <div
                     key={poder.id_power}
-                    className={`flex items-center justify-between gap-3 rounded-xl border p-3 ${
+                    className={`flex items-center gap-3 rounded-xl border p-3 ${
                       bloqueado
                         ? "border-white/10 bg-black/20 opacity-60"
                         : "border-[#F3B43F]/40 bg-[#3a2f24]"
                     }`}
                   >
-                    <div className="min-w-0">
+                    <div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg border border-white/10 bg-black/30">
+                      <PoderThumb poder={poder} />
+                    </div>
+
+                    <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="font-imFeel text-lg">{poder.nome}</span>
                         <span className="rounded bg-black/40 px-2 py-0.5 text-[10px] uppercase tracking-wide text-white/60">
