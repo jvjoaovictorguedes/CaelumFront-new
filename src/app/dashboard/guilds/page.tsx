@@ -1,5 +1,26 @@
-import ComingSoon from "@/components/ComingSoon/ComingSoon";
+import { getCurrentCharacter } from "@/utils/character-session";
+import GuildsClient from "./components/GuildsClient";
 
-export default function GuildsPage() {
-  return <ComingSoon titulo="Guildas" />;
+export default async function GuildsPage() {
+  const character = await getCurrentCharacter();
+
+  if (!character) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center p-8 text-center text-white">
+        <h1 className="font-imFeel mb-4 text-4xl">Nenhum personagem encontrado</h1>
+        <p className="text-lg text-white/70">
+          Crie um personagem para acessar as guildas de Caelum.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <GuildsClient
+      characterId={character.id}
+      characterNome={character.nome}
+      characterNivel={character.nivel}
+      characterDinheiro={character.dinheiro ?? 0}
+    />
+  );
 }
