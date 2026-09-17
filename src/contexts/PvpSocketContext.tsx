@@ -10,6 +10,7 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 import { io, type Socket } from "socket.io-client";
+import axiosInstance from "@/utils/axiosIntance";
 
 export interface LutadorDuelo {
   id: number;
@@ -131,10 +132,23 @@ export function PvpSocketProvider({
 
     socket.on("connect", () => {
       setConectado(true);
-      socket.emit("identificar", { characterId });
-      socket.emit("pvp:listar-online", {}, (resposta: { online?: string[] }) => {
-        setOnlineIds(new Set((resposta?.online ?? []).map(Number)));
-      });
+      // O JWT é httpOnly (o browser não tem acesso), então o socket não
+      // consegue mandar um Bearer no identificar — busca um ticket de
+      // curtíssima duração via HTTP (que passa pelo proxy same-origin e
+      // carrega o cookie) e manda ele, nunca o characterId cru.
+      axiosInstance
+        .get<{ data?: { ticket?: string } }>("/users/socket-ticket")
+        .then((resp) => {
+          const ticket = resp.data?.data?.ticket;
+          if (!ticket) return;
+          socket.emit("identificar", { ticket });
+          socket.emit("pvp:listar-online", {}, (resposta: { online?: string[] }) => {
+            setOnlineIds(new Set((resposta?.online ?? []).map(Number)));
+          });
+        })
+        .catch(() => {
+          setErro("Não foi possível autenticar a conexão em tempo real.");
+        });
     });
 
     socket.on("disconnect", () => setConectado(false));

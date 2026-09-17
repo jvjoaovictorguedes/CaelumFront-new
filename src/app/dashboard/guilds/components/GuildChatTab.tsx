@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { io, type Socket } from "socket.io-client";
+import axiosInstance from "@/utils/axiosIntance";
 
 interface MensagemChat {
   idPersonagem: number;
@@ -38,10 +39,19 @@ export default function GuildChatTab({
 
     socket.on("connect", () => {
       setConectado(true);
-      socket.emit("identificar", { characterId });
-      socket.emit("guild:join-room", {}, (resposta: { erro?: string }) => {
-        if (resposta?.erro) console.error("Erro ao entrar na sala de chat:", resposta.erro);
-      });
+      // Igual ao PvP ao vivo: busca um ticket de curta duração (o JWT é
+      // httpOnly) em vez de mandar o characterId cru pro socket.
+      axiosInstance
+        .get<{ data?: { ticket?: string } }>("/users/socket-ticket")
+        .then((resp) => {
+          const ticket = resp.data?.data?.ticket;
+          if (!ticket) return;
+          socket.emit("identificar", { ticket });
+          socket.emit("guild:join-room", {}, (resposta: { erro?: string }) => {
+            if (resposta?.erro) console.error("Erro ao entrar na sala de chat:", resposta.erro);
+          });
+        })
+        .catch((erro) => console.error("Erro ao autenticar conexão de chat:", erro));
     });
 
     socket.on("disconnect", () => setConectado(false));
