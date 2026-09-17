@@ -7,20 +7,12 @@ import ClassSilhouette from "./ClassSilhouette";
 type Slot =
   | "Cabeca"
   | "Torso"
-  | "Maos"
   | "Pes"
   | "ArmaPrincipal"
   | "ArmaSecundaria"
   | "Acessorio1"
   | "Acessorio2";
 
-// Posição de cada slot em cima do retrato do personagem (% do box da
-// imagem), calibrada pelas duas ilustrações reais (guerreiro-lutador.jpg/
-// mago-lutador.jpg): cabeça no topo, mão da arma sempre do lado esquerdo
-// de quem olha (onde as duas artes seguram espada/cajado), a outra mão
-// (escudo/orbe) do lado direito, pés embaixo. Não é um encaixe pixel a
-// pixel — é o mesmo tipo de "boneco de papel" do mockup do Figma, só que
-// com badge + nome em vez de peça de armadura recortada.
 const SLOTS: { slot: Slot; label: string; top: string; left: string }[] = [
   { slot: "Cabeca", label: "Cabeça", top: "8%", left: "50%" },
   { slot: "Acessorio1", label: "Acessório 1", top: "20%", left: "28%" },
@@ -28,12 +20,8 @@ const SLOTS: { slot: Slot; label: string; top: string; left: string }[] = [
   { slot: "Torso", label: "Torso", top: "34%", left: "50%" },
   { slot: "ArmaPrincipal", label: "Arma Principal", top: "52%", left: "20%" },
   { slot: "ArmaSecundaria", label: "Arma Secundária", top: "48%", left: "80%" },
-  { slot: "Maos", label: "Mãos", top: "63%", left: "50%" },
   { slot: "Pes", label: "Pés", top: "92%", left: "50%" },
 ];
-
-// Tipos de item que fazem sentido arrastar pra um slot. Consumível,
-// Material, QuestItem e Moeda não são equipáveis.
 const TIPOS_EQUIPAVEIS = [
   "Armadura",
   "Capacete",
@@ -75,7 +63,6 @@ export default function EquipmentPanel({
   >({
     Cabeca: null,
     Torso: null,
-    Maos: null,
     Pes: null,
     ArmaPrincipal: null,
     ArmaSecundaria: null,
@@ -103,7 +90,6 @@ export default function EquipmentPanel({
       const mapaEquipado: Record<Slot, ItemInfo | null> = {
         Cabeca: null,
         Torso: null,
-        Maos: null,
         Pes: null,
         ArmaPrincipal: null,
         ArmaSecundaria: null,
@@ -172,12 +158,6 @@ export default function EquipmentPanel({
     if (!idItem || processando) return;
     equipar(slot, idItem);
   }
-
-  // Quantas cópias de cada item já estão presas em algum slot — pra tirar
-  // da lista de arrastar exatamente a quantidade já em uso. Sem isso dava
-  // pra arrastar a mesma espada de novo pra outro slot mesmo já estando
-  // equipada (o back agora bloqueia, mas a lista continuava mostrando o
-  // item como "livre" do mesmo jeito).
   const equipadoPorItem = new Map<number, number>();
   for (const item of Object.values(equipamentos)) {
     if (item) equipadoPorItem.set(item.id, (equipadoPorItem.get(item.id) ?? 0) + 1);

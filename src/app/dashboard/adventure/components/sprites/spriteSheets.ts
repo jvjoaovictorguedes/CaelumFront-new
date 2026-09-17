@@ -1,11 +1,4 @@
-// Config das folhas de sprite reais (public/Knight_1, public/Fire Wizard,
-// public/Lightning Mage, public/Wanderer Magican). Cada arquivo é uma tira
-// horizontal de frames quadrados de 128x128 — `frames` é só
-// largura-total/128, contado direto na imagem. Guerreiro usa sempre
-// Knight_1; Mago usa sempre Wanderer Magican (as outras duas pastas de
-// mago, Fire Wizard/Lightning Mage, ficam disponíveis aqui pra quando
-// alguém quiser variar por elemento, mas não estão plugadas em lugar
-// nenhum ainda).
+
 export interface SpriteFrame {
   file: string;
   frames: number;
@@ -23,10 +16,6 @@ export type EstadoSprite =
 
 export type SpriteSet = Record<EstadoSprite, SpriteFrame>;
 
-// Cada frame de 128x128 tem bastante espaço vazio em volta do personagem
-// (pra caber o alcance do golpe/queda), então o zoom crop precisa saber
-// onde o "chão" dele fica dentro do frame — Knight fica encostado à
-// esquerda, os magos ficam centralizados. Ver AnimatedSpriteSheet.tsx.
 export interface SpriteOrigin {
   x: string;
   y: string;
@@ -39,20 +28,10 @@ export const SPRITE_ORIGINS: Record<string, SpriteOrigin> = {
   "Wanderer Magican": { x: "50%", y: "85%" },
 };
 
-// "dead"/"victory" usam os arquivos de Hurt/Idle em vez de Dead/Jump de
-// propósito: Dead.png e Jump.png derrubam/levantam o personagem de um
-// jeito que sai da área da folha ajustada pro zoom (ponto de origem em
-// SPRITE_ORIGINS, calibrado pra pose parada) — o corpo ficava cortado fora
-// da caixa. O efeito de "derrota" (gira, apaga) e "vitória" (pula, cresce)
-// já vem de fora via anim-derrota/anim-vitoria (globals.css, aplicadas no
-// wrapper), então a arte interna só precisa continuar numa pose que caiba
-// bem no crop.
 export const SPRITE_SETS: Record<string, SpriteSet> = {
   Knight_1: {
     idle: { file: "Idle.png", frames: 4, fps: 6 },
     attack: { file: "Attack 1.png", frames: 5, fps: 10 },
-    // Guerreiro não conjura — poder ainda é um golpe físico, reaproveita
-    // o mesmo frame do ataque básico.
     poder: { file: "Attack 1.png", frames: 5, fps: 10 },
     hurt: { file: "Hurt.png", frames: 2, fps: 8 },
     dead: { file: "Hurt.png", frames: 2, fps: 4, loop: false },
