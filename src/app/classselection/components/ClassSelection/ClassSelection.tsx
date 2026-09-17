@@ -155,14 +155,24 @@ export default function ClassSelection() {
   // cliente só pede o resultado e mostra o que veio. Sem isso, um
   // cliente podia pular o sorteio e mandar direto o id de uma classe
   // rara em POST /characters.
-  const rollSpecialClasses = async () => {
-    if (hasRolledSpecial) return false;
-    setHasRolledSpecial(true);
+  //
+  // Devolve um resultado de 3 estados ("revelado" / "nada" / "erro"),
+  // não um boolean: antes, `hasRolledSpecial` virava true ANTES da
+  // chamada de rede, e um erro de rede (timeout, conexão caindo) caía
+  // no mesmo `return false` de "sorteou e não ganhou" — o fluxo seguia
+  // direto pra criar o personagem como se o sorteio tivesse realmente
+  // acontecido, sem nunca ter chegado no servidor, e sem chance de
+  // tentar de novo (a flag já tinha travado em true). Agora só trava a
+  // flag quando o servidor responde de verdade (ganhou ou não); erro de
+  // rede mostra mensagem e deixa o jogador tentar "Confirmar" de novo.
+  const rollSpecialClasses = async (): Promise<"revelado" | "nada" | "erro"> => {
+    if (hasRolledSpecial) return "nada";
 
     try {
       const sorteio = await axiosInstance.post<SorteioClasseRaraResponse>(
         "/classes/sortear-raro",
       );
+      setHasRolledSpecial(true);
       const resultado = sorteio.data?.data;
       if (resultado?.raro && resultado.classe) {
         setVisibleClasses([...classesData, resultado.classe]);
@@ -170,12 +180,16 @@ export default function ClassSelection() {
         setErrorMessage(
           "Uma classe lendaria apareceu. Escolha-a ou mantenha sua classe atual e confirme novamente.",
         );
-        return true;
+        return "revelado";
       }
+      return "nada";
     } catch (error) {
       console.error("Erro ao sortear classe rara:", error);
+      setErrorMessage(
+        "Não foi possível verificar o sorteio de classe rara (falha de conexão). Tente confirmar novamente.",
+      );
+      return "erro";
     }
-    return false;
   };
 
   // Mesma ideia da classe rara, mas pra raça: o servidor sorteia
@@ -183,23 +197,27 @@ export default function ClassSelection() {
   // raras disponíveis (Celestial e Primordial) pra escolher — em vez de
   // uma tela normal de seleção, mostramos a revelação dramática em
   // renderReveloRacaRara() e o jogador finaliza a criação escolhendo ali.
-  const rollRareRace = async () => {
-    if (hasRolledRareRace) return false;
-    setHasRolledRareRace(true);
+  const rollRareRace = async (): Promise<"revelado" | "nada" | "erro"> => {
+    if (hasRolledRareRace) return "nada";
 
     try {
       const sorteio = await axiosInstance.post<SorteioRacaRaraResponse>(
         "/races/sortear-raro",
       );
+      setHasRolledRareRace(true);
       const resultado = sorteio.data?.data;
       if (resultado?.raro && resultado.opcoes && resultado.opcoes.length > 0) {
         setRareRaceOptions(resultado.opcoes);
-        return true;
+        return "revelado";
       }
+      return "nada";
     } catch (error) {
       console.error("Erro ao sortear raça rara:", error);
+      setErrorMessage(
+        "Não foi possível verificar o sorteio de raça rara (falha de conexão). Tente confirmar novamente.",
+      );
+      return "erro";
     }
-    return false;
   };
 
   const currentClassDescription =
@@ -304,10 +322,22 @@ export default function ClassSelection() {
       return;
     }
 
-    if (await rollSpecialClasses()) return;
-    if (await rollRareRace()) return;
+    // Desabilita o botão durante os dois sorteios também — antes só
+    // finalizarCriacaoDoPersonagem controlava isLoading, então um
+    // duplo-clique em "Confirmar" durante a chamada de rede do sorteio
+    // (antes de qualquer roll travar) disparava o sorteio duas vezes.
+    setIsLoading(true);
+    try {
+      const resultadoClasse = await rollSpecialClasses();
+      if (resultadoClasse === "revelado" || resultadoClasse === "erro") return;
 
-    await finalizarCriacaoDoPersonagem(null);
+      const resultadoRaca = await rollRareRace();
+      if (resultadoRaca === "revelado" || resultadoRaca === "erro") return;
+
+      await finalizarCriacaoDoPersonagem(null);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleEscolherRacaRara = (opcao: OpcaoRacaRara) => {

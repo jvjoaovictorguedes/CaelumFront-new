@@ -46,7 +46,13 @@ export default function GuildChatTab({
         .then((resp) => {
           const ticket = resp.data?.data?.ticket;
           if (!ticket) return;
-          socket.emit("identificar", { ticket });
+          // "guild:identificar", não "identificar" — esse socket é
+          // independente do socket do PvP ao vivo, e os dois módulos do
+          // backend compartilham o mesmo `io` (ver comentário em
+          // guildSocket.js). Usar o mesmo nome de evento fazia esse
+          // socket também "logar" no PvP ao vivo e derrubar a conexão
+          // de PvP de verdade do jogador só por abrir o chat da guilda.
+          socket.emit("guild:identificar", { ticket });
           socket.emit("guild:join-room", {}, (resposta: { erro?: string }) => {
             if (resposta?.erro) console.error("Erro ao entrar na sala de chat:", resposta.erro);
           });
