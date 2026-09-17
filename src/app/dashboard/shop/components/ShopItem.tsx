@@ -50,8 +50,16 @@ export default function ShopItem({
 }: ShopItemProps) {
   const [coins, setCoins] = useState(initialCoins);
   const [quantity, setQuantity] = useState(0);
+  const [buyAmount, setBuyAmount] = useState(1);
   const [isBuying, setIsBuying] = useState(false);
   const [message, setMessage] = useState("");
+
+  const custoTotal = item.valor_compra * buyAmount;
+
+  function ajustarQuantidadeDesejada(valor: number) {
+    if (!Number.isFinite(valor)) return;
+    setBuyAmount(Math.max(1, Math.min(999, Math.floor(valor))));
+  }
 
   async function buyItem() {
     if (isBuying) return;
@@ -61,7 +69,12 @@ export default function ShopItem({
       return;
     }
 
-    if (coins < item.valor_compra) {
+    if (buyAmount < 1) {
+      setMessage("Escolha uma quantidade válida.");
+      return;
+    }
+
+    if (coins < custoTotal) {
       setMessage("Você não tem moedas suficientes.");
       return;
     }
@@ -75,22 +88,24 @@ export default function ShopItem({
         {
           id_personagem: characterId,
           id_item: item.id,
-          quantidade: 1,
+          quantidade: buyAmount,
         },
       );
 
       const purchased =
-        response.data?.data?.quantidadeComprada ?? 1;
+        response.data?.data?.quantidadeComprada ?? buyAmount;
 
       const updatedCoins =
         response.data?.data?.character?.dinheiro ??
-        coins - item.valor_compra;
+        coins - custoTotal;
 
       setCoins(updatedCoins);
       setQuantity((current) => current + purchased);
 
       setMessage(
-        `${item.nome} comprada e adicionada ao inventário.`,
+        purchased > 1
+          ? `${purchased}x ${item.nome} compradas e adicionadas ao inventário.`
+          : `${item.nome} comprada e adicionada ao inventário.`,
       );
     } catch (error: unknown) {
       console.error("Erro ao comprar item:", error);
@@ -138,12 +153,16 @@ export default function ShopItem({
         </p>
       </div>
 
-      {/* PREÇO + BOTÃO */}
-      <div className="mt-5 flex items-center justify-between gap-3 border-t border-white/15 pt-4">
+      {/* PREÇO + QUANTIDADE + BOTÃO */}
+      <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-white/15 pt-4">
         <div>
           <p className="text-xl font-bold text-[#F3B43F]">
-            {item.valor_compra}{" "}
-            {item.valor_compra === 1 ? "moeda" : "moedas"}
+            {custoTotal} {custoTotal === 1 ? "moeda" : "moedas"}
+            {buyAmount > 1 && (
+              <span className="ml-1 text-sm font-normal text-white/60">
+                ({item.valor_compra} cada)
+              </span>
+            )}
           </p>
 
           {quantity > 0 && (
@@ -153,17 +172,27 @@ export default function ShopItem({
           )}
         </div>
 
-        <button
-          type="button"
-          onClick={buyItem}
-          disabled={
-            isBuying ||
-            coins < item.valor_compra
-          }
-          className="rounded-lg bg-[#F3B43F] px-4 py-2 font-bold text-[#292018] transition hover:bg-[#ffd477] disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {isBuying ? "Comprando..." : "Comprar"}
-        </button>
+        <div className="flex items-center gap-2">
+          <input
+            type="number"
+            min={1}
+            max={999}
+            value={buyAmount}
+            disabled={isBuying}
+            onChange={(e) => ajustarQuantidadeDesejada(Number(e.target.value))}
+            className="w-16 rounded-lg border border-white/20 bg-[#3a2f24] px-2 py-2 text-center text-white focus:outline-none focus:ring-2 focus:ring-[#F3B43F] disabled:opacity-50"
+            aria-label={`Quantidade de ${item.nome} para comprar`}
+          />
+
+          <button
+            type="button"
+            onClick={buyItem}
+            disabled={isBuying || coins < custoTotal}
+            className="rounded-lg bg-[#F3B43F] px-4 py-2 font-bold text-[#292018] transition hover:bg-[#ffd477] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {isBuying ? "Comprando..." : "Comprar"}
+          </button>
+        </div>
       </div>
 
       {/* MOEDAS */}

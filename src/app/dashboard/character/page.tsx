@@ -4,6 +4,15 @@ import CharacterAttributes from "./components/CharacterAttributes";
 import EquipmentPanel from "./components/EquipmentPanel";
 import GenderToggleButton from "./components/GenderToggleButton";
 
+function formatarTempoRegen(ms: number) {
+  if (ms <= 0) return null;
+  const totalMinutos = Math.ceil(ms / 60000);
+  const horas = Math.floor(totalMinutos / 60);
+  const minutos = totalMinutos % 60;
+  if (horas <= 0) return `${minutos}min`;
+  return `${horas}h ${minutos}min`;
+}
+
 const ATRIBUTOS = [
   { label: "Força", campo: "forca" },
   { label: "Vitalidade", campo: "vitalidade" },
@@ -43,6 +52,7 @@ export default async function CharacterPage() {
     100,
     (experienciaAtual / experienciaNivel) * 100,
   );
+  const tempoRegenTexto = formatarTempoRegen(character.regen_vida_restante_ms ?? 0);
   const imagemRaca = getRaceImage(
     character.Race?.nome,
     character.genero === "Feminino" ? "feminino" : "Masculino",
@@ -74,6 +84,9 @@ export default async function CharacterPage() {
             </span>
             <GenderToggleButton characterId={character.id} generoAtual={character.genero} />
             <span>· {character.Class?.nome ?? "Classe desconhecida"}</span>
+            {character.natureza_magica && (
+              <span>· Natureza: {character.natureza_magica}</span>
+            )}
           </p>
           <div className="mt-3 max-w-xl">
             <div className="mb-1 flex justify-between text-sm font-bold">
@@ -112,6 +125,11 @@ export default async function CharacterPage() {
                 }}
               />
             </div>
+            {tempoRegenTexto && (
+              <p className="mt-1 text-right text-xs text-white/60">
+                Recupera tudo em {tempoRegenTexto}
+              </p>
+            )}
           </div>
 
           <div>
