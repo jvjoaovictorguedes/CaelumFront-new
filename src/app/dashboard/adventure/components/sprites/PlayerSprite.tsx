@@ -1,14 +1,9 @@
 import AnimatedSpriteSheet from "./AnimatedSpriteSheet";
-import type { EstadoSprite } from "./spriteSheets";
 
-interface PlayerSpriteProps {
-  className?: string;
-  animState?: string;
-  stroke?: string;
-  flip?: boolean;
-  poseOverride?: EstadoSprite;
-  fireTint?: boolean;
-}
+import type {
+  BattleSpriteProps,
+} from "./spriteSheets";
+
 export default function PlayerSprite({
   className = "",
   animState = "idle",
@@ -16,7 +11,7 @@ export default function PlayerSprite({
   flip = false,
   poseOverride,
   fireTint = false,
-}: PlayerSpriteProps) {
+}: BattleSpriteProps) {
   return (
     <AnimatedSpriteSheet
       pasta="Knight_1"

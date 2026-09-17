@@ -1,14 +1,9 @@
 import AnimatedSpriteSheet from "./AnimatedSpriteSheet";
-import type { EstadoSprite } from "./spriteSheets";
 
-interface MageSpriteProps {
-  className?: string;
-  animState?: string;
-  stroke?: string;
-  flip?: boolean;
-  poseOverride?: EstadoSprite;
-  fireTint?: boolean;
-}
+import type {
+  BattleSpriteProps,
+} from "./spriteSheets";
+
 export default function MageSprite({
   className = "",
   animState = "idle",
@@ -16,7 +11,7 @@ export default function MageSprite({
   flip = false,
   poseOverride,
   fireTint = false,
-}: MageSpriteProps) {
+}: BattleSpriteProps) {
   return (
     <AnimatedSpriteSheet
       pasta="Wanderer Magican"

@@ -1,14 +1,42 @@
+import type {
+  ComponentType,
+} from "react";
+
 import EnemySprite from "./EnemySprite";
 import MinotauroSprite from "./MinotauroSprite";
 
-// Mesmo critério de spriteForClass.tsx, só que pelo nome do inimigo em
-// vez da classe: a maioria ainda cai no SVG genérico, mas dá pra ir
-// plugando ilustrações de verdade por tipo de monstro (como o
-// Minotauro) sem mexer no resto do combate.
-export function spriteForEnemy(nomeInimigo?: string) {
-  const nome = (nomeInimigo ?? "").toLowerCase();
-  if (nome.includes("minotauro") || nome.includes("minotaur")) {
-    return MinotauroSprite;
+import type {
+  BattleSpriteProps,
+} from "./spriteSheets";
+
+export type EnemySpriteComponent =
+  ComponentType<BattleSpriteProps>;
+
+export function spriteFolderForEnemy(
+  nomeInimigo?: string,
+): string | null {
+  const nome =
+    (
+      nomeInimigo ??
+      ""
+    ).toLowerCase();
+
+  if (
+    nome.includes("minotauro") ||
+    nome.includes("minotaur")
+  ) {
+    return "Minotaur_1";
   }
-  return EnemySprite;
+
+  return null;
+}
+
+export function spriteForEnemy(
+  nomeInimigo?: string,
+): EnemySpriteComponent {
+  return spriteFolderForEnemy(
+    nomeInimigo,
+  ) === "Minotaur_1"
+    ? MinotauroSprite
+    : EnemySprite;
 }

@@ -1,14 +1,22 @@
 import axiosInstance from "@/utils/axiosIntance";
-import { getCurrentCharacter } from "@/utils/character-session";
+
+import {
+  getCurrentCharacter,
+} from "@/utils/character-session";
+
 import CombatArena from "./components/CombatArena";
 
 export default async function AdventurePage() {
-  const character = await getCurrentCharacter();
+  const character =
+    await getCurrentCharacter();
 
   if (!character) {
     return (
-      <div className="flex flex-col items-center justify-center h-full">
-        <h1 className="font-imFeel text-4xl mb-4">Aventura</h1>
+      <div className="flex h-full flex-col items-center justify-center">
+        <h1 className="mb-4 font-imFeel text-4xl">
+          Aventura
+        </h1>
+
         <p className="text-lg text-gray-700">
           Crie um personagem antes de partir para o combate.
         </p>
@@ -16,10 +24,15 @@ export default async function AdventurePage() {
     );
   }
 
-  if (character.vida_atual <= 0) {
+  if (
+    character.vida_atual <= 0
+  ) {
     return (
-      <div className="flex flex-col items-center justify-center h-full">
-        <h1 className="font-imFeel text-4xl mb-4">Aventura</h1>
+      <div className="flex h-full flex-col items-center justify-center">
+        <h1 className="mb-4 font-imFeel text-4xl">
+          Aventura
+        </h1>
+
         <p className="text-lg text-gray-700">
           Seu personagem está derrotado e precisa se recuperar antes de
           enfrentar outro inimigo.
@@ -31,6 +44,7 @@ export default async function AdventurePage() {
   interface HabilidadeApi {
     id: number;
     is_active: boolean;
+
     Power: {
       id: number;
       nome: string;
@@ -51,12 +65,15 @@ export default async function AdventurePage() {
   interface InimigoApi {
     nome: string;
     nivel: number;
+
     vida_atual: number;
     vida_maxima: number;
+
     forca: number;
     vitalidade: number;
     agilidade: number;
     velocidade: number;
+
     dano_base: number;
   }
 
@@ -66,34 +83,68 @@ export default async function AdventurePage() {
     };
   }
 
-  let habilidades: HabilidadeApi[] = [];
+  let habilidades:
+    HabilidadeApi[] = [];
+
   try {
-    const response = await axiosInstance.get<HabilidadesResponse>(
-      "/character-abilities",
-      { params: { characterId: character.id } },
-    );
-    habilidades = (response.data?.data?.characterAbilities ?? []).filter(
-      (habilidade: HabilidadeApi) =>
-        habilidade.is_active && habilidade.Power?.tipo_poder === "Ativo",
-    );
+    const response =
+      await axiosInstance.get<HabilidadesResponse>(
+        "/character-abilities",
+        {
+          params: {
+            characterId:
+              character.id,
+          },
+        },
+      );
+
+    habilidades =
+      (
+        response.data?.data
+          ?.characterAbilities ??
+        []
+      ).filter(
+        (habilidade) =>
+          habilidade.is_active &&
+          habilidade.Power
+            ?.tipo_poder ===
+            "Ativo",
+      );
   } catch (error) {
-    console.error("Erro ao carregar habilidades:", error);
+    console.error(
+      "Erro ao carregar habilidades:",
+      error,
+    );
   }
 
-  let inimigoInicial = null;
+  let inimigoInicial:
+    | InimigoApi
+    | null = null;
+
   try {
-    const response = await axiosInstance.get<InimigoResponse>(
-      `/combat/enemy/${character.id}`,
-    );
-    inimigoInicial = response.data?.data?.enemy ?? null;
+    const response =
+      await axiosInstance.get<InimigoResponse>(
+        `/combat/enemy/${character.id}`,
+      );
+
+    inimigoInicial =
+      response.data?.data
+        ?.enemy ??
+      null;
   } catch (error) {
-    console.error("Erro ao gerar inimigo:", error);
+    console.error(
+      "Erro ao gerar inimigo:",
+      error,
+    );
   }
 
   if (!inimigoInicial) {
     return (
-      <div className="flex flex-col items-center justify-center h-full">
-        <h1 className="font-imFeel text-4xl mb-4">Aventura</h1>
+      <div className="flex h-full flex-col items-center justify-center">
+        <h1 className="mb-4 font-imFeel text-4xl">
+          Aventura
+        </h1>
+
         <p className="text-lg text-gray-700">
           Não foi possível encontrar um inimigo agora. Tente novamente em
           instantes.
@@ -104,11 +155,6 @@ export default async function AdventurePage() {
 
   return (
     <CombatArena
-      // Força o componente a remontar (resetando resultado/vida/estado
-      // interno) sempre que essa página é renderizada de novo no
-      // servidor — sem isso, router.refresh() não tinha efeito nenhum
-      // na tela: o CombatArena reaproveitava o estado antigo mesmo
-      // recebendo um inimigo/personagem novos via props.
       key={`${inimigoInicial.nome}-${character.vida_atual}-${Date.now()}`}
       character={character}
       abilities={habilidades}

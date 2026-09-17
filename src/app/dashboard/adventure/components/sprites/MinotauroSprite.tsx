@@ -1,13 +1,8 @@
 import AnimatedSpriteSheet from "./AnimatedSpriteSheet";
-import type { EstadoSprite } from "./spriteSheets";
 
-interface MinotauroSpriteProps {
-  className?: string;
-  animState?: string;
-  stroke?: string;
-  flip?: boolean;
-  poseOverride?: EstadoSprite;
-}
+import type {
+  BattleSpriteProps,
+} from "./spriteSheets";
 
 export default function MinotauroSprite({
   className = "",
@@ -15,7 +10,8 @@ export default function MinotauroSprite({
   stroke = "#8b0000",
   flip = true,
   poseOverride,
-}: MinotauroSpriteProps) {
+  fireTint = false,
+}: BattleSpriteProps) {
   return (
     <AnimatedSpriteSheet
       pasta="Minotaur_1"
@@ -24,6 +20,7 @@ export default function MinotauroSprite({
       stroke={stroke}
       flip={flip}
       poseOverride={poseOverride}
+      fireTint={fireTint}
     />
   );
 }
