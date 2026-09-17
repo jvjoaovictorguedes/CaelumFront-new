@@ -160,17 +160,6 @@ body {
   }
 }
 
-@keyframes battle-defeat {
-  0% {
-    transform: rotate(0deg) translateY(0);
-    opacity: 1;
-  }
-  100% {
-    transform: rotate(80deg) translateY(18px);
-    opacity: 0.35;
-  }
-}
-
 .battle-sprite {
   animation: battle-idle-bob 2.2s ease-in-out infinite;
 }
@@ -199,8 +188,13 @@ body {
   animation: battle-victory 0.6s ease-in-out infinite;
 }
 
+/* Sem rotação/fade no quadrado ao morrer — a moldura fica parada
+   (só cancela o balanço idle) e quem "morre de verdade" é o sprite lá
+   dentro: AnimatedSpriteSheet já toca o frame "dead" próprio de cada
+   personagem/inimigo (ver estadoSpriteDe em spriteSheets.ts), então
+   girar/desvanecer a moldura por cima só distorcia essa animação. */
 .battle-sprite.anim-derrota {
-  animation: battle-defeat 0.8s ease-out forwards;
+  animation: none;
 }
 
 /* Folhas de sprite 2D (Knight_1, Fire Wizard, Lightning Mage, Wanderer
