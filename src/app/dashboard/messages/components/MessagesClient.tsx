@@ -40,13 +40,76 @@ export default function MessagesClient({
   const [textoMensagem, setTextoMensagem] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState("");
+
+  // Estado para controlar se o usuário já liberou o som (autoplay do navegador)
+  const [somLiberado, setSomLiberado] = useState(false);
+
   const fimDaListaRef = useRef<HTMLDivElement>(null);
+  const inputMensagemRef = useRef<HTMLInputElement>(null);
+
+  // Guarda os IDs das mensagens que já foram exibidas.
+  const idsMensagensRef = useRef<Set<number>>(new Set());
+
+  // Controla o áudio da notificação.
+  const audioMensagemRef = useRef<HTMLAudioElement | null>(null);
+
+  // Evita tocar som no primeiro carregamento da conversa.
+  const conversaInicializadaRef = useRef(false);
+
+  /**
+   * Cria o áudio uma única vez.
+   */
+  useEffect(() => {
+    audioMensagemRef.current = new Audio("/sounds/message.mp3");
+    audioMensagemRef.current.volume = 0.5;
+    audioMensagemRef.current.preload = "auto";
+
+    return () => {
+      audioMensagemRef.current?.pause();
+      audioMensagemRef.current = null;
+    };
+  }, []);
+
+  /**
+   * Função para o usuário clicar e destravar o áudio no navegador.
+   */
+  const ativarSom = () => {
+    const audio = audioMensagemRef.current;
+    if (audio) {
+      audio
+        .play()
+        .then(() => {
+          audio.pause();
+          audio.currentTime = 0;
+          setSomLiberado(true);
+        })
+        .catch((error) => {
+          console.warn("Não foi possível liberar o som:", error);
+        });
+    }
+  };
+
+  /**
+   * Toca o som da nova mensagem.
+   */
+  const tocarSomMensagem = useCallback(() => {
+    const audio = audioMensagemRef.current;
+
+    if (!audio) return;
+
+    audio.currentTime = 0;
+
+    audio.play().catch((error) => {
+      console.warn("Bloqueado pelo navegador ou erro ao tocar som:", error);
+    });
+  }, []);
 
   const carregarInbox = useCallback(async () => {
     try {
       const resposta = await axiosInstance.get<{
         data?: { conversas?: Conversa[] };
       }>(`/messages/inbox/${currentUserId}`);
+
       setConversas(resposta.data?.data?.conversas ?? []);
     } catch (error) {
       console.error("Erro ao carregar caixa de entrada:", error);
@@ -58,6 +121,7 @@ export default function MessagesClient({
       const resposta = await axiosInstance.get<{
         data?: { users?: UsuarioBasico[] };
       }>("/users");
+
       setUsuarios(
         (resposta.data?.data?.users ?? []).filter(
           (usuario) => usuario.id !== currentUserId,
@@ -73,84 +137,187 @@ export default function MessagesClient({
       try {
         const resposta = await axiosInstance.get<{
           data?: { mensagens?: Mensagem[] };
-        }>(`/messages/conversation/${currentUserId}/${outroUsuarioId}`);
-        setMensagens(resposta.data?.data?.mensagens ?? []);
+        }>(
+          `/messages/conversation/${currentUserId}/${outroUsuarioId}`,
+        );
+
+        const novasMensagens =
+          resposta.data?.data?.mensagens ?? [];
+
+        /*
+         * No primeiro carregamento não tocamos som.
+         * O usuário só deve ouvir som quando uma mensagem
+         * realmente chegar depois que a conversa já foi carregada.
+         */
+        if (!conversaInicializadaRef.current) {
+          idsMensagensRef.current = new Set(
+            novasMensagens.map((mensagem) => mensagem.id),
+          );
+
+          conversaInicializadaRef.current = true;
+        } else {
+          const mensagemNovaRecebida = novasMensagens.some(
+            (mensagem) =>
+              !idsMensagensRef.current.has(mensagem.id) &&
+              mensagem.id_remetente !== currentUserId,
+          );
+
+          if (mensagemNovaRecebida) {
+            tocarSomMensagem();
+          }
+
+          idsMensagensRef.current = new Set(
+            novasMensagens.map((mensagem) => mensagem.id),
+          );
+        }
+
+        setMensagens(novasMensagens);
       } catch (error) {
         console.error("Erro ao carregar conversa:", error);
       }
     },
-    [currentUserId],
+    [currentUserId, tocarSomMensagem],
   );
 
   useEffect(() => {
     carregarInbox();
     carregarUsuarios();
-    const intervalo = setInterval(carregarInbox, INTERVALO_POLL_INBOX_MS);
+
+    const intervalo = setInterval(
+      carregarInbox,
+      INTERVALO_POLL_INBOX_MS,
+    );
+
     return () => clearInterval(intervalo);
   }, [carregarInbox, carregarUsuarios]);
 
   useEffect(() => {
-    if (conversaAtualId === null) return;
+    if (conversaAtualId === null) {
+      conversaInicializadaRef.current = false;
+      idsMensagensRef.current = new Set();
+      setMensagens([]);
+      return;
+    }
+
+    // Toda vez que troca de conversa, começamos uma nova referência.
+    conversaInicializadaRef.current = false;
+    idsMensagensRef.current = new Set();
+
     carregarConversa(conversaAtualId);
+
     const intervalo = setInterval(
       () => carregarConversa(conversaAtualId),
       INTERVALO_POLL_CONVERSA_MS,
     );
+
     return () => clearInterval(intervalo);
   }, [conversaAtualId, carregarConversa]);
 
   useEffect(() => {
-    fimDaListaRef.current?.scrollIntoView({ behavior: "smooth" });
+    fimDaListaRef.current?.scrollIntoView({
+      behavior: "smooth",
+    });
   }, [mensagens]);
 
   async function enviarMensagem(event: React.FormEvent) {
     event.preventDefault();
-    if (!conversaAtualId || !textoMensagem.trim() || enviando) return;
+
+    if (!conversaAtualId || !textoMensagem.trim() || enviando) {
+      return;
+    }
 
     setEnviando(true);
     setErro("");
+
     try {
       await axiosInstance.post("/messages", {
         id_remetente: currentUserId,
         id_destinatario: conversaAtualId,
         conteudo: textoMensagem.trim(),
       });
+
       setTextoMensagem("");
-      await Promise.all([carregarConversa(conversaAtualId), carregarInbox()]);
+
+      await Promise.all([
+        carregarConversa(conversaAtualId),
+        carregarInbox(),
+      ]);
+
+      requestAnimationFrame(() => {
+        inputMensagemRef.current?.focus();
+      });
     } catch (error: unknown) {
       const mensagem =
-        (error as { response?: { data?: { message?: string } } })?.response
-          ?.data?.message ?? "Não foi possível enviar a mensagem.";
+        (error as {
+          response?: {
+            data?: {
+              message?: string;
+            };
+          };
+        })?.response?.data?.message ??
+        "Não foi possível enviar a mensagem.";
+
       setErro(mensagem);
+
+      requestAnimationFrame(() => {
+        inputMensagemRef.current?.focus();
+      });
     } finally {
       setEnviando(false);
     }
   }
 
-  const idsComConversa = new Set(conversas.map((c) => c.usuario.id));
+  const idsComConversa = new Set(
+    conversas.map((conversa) => conversa.usuario.id),
+  );
+
   const usuariosFiltrados = busca.trim()
     ? usuarios.filter(
         (usuario) =>
           !idsComConversa.has(usuario.id) &&
-          usuario.username.toLowerCase().includes(busca.trim().toLowerCase()),
+          usuario.username
+            .toLowerCase()
+            .includes(busca.trim().toLowerCase()),
       )
     : [];
 
   const usuarioSelecionado =
-    conversas.find((c) => c.usuario.id === conversaAtualId)?.usuario ??
-    usuarios.find((u) => u.id === conversaAtualId);
+    conversas.find(
+      (conversa) => conversa.usuario.id === conversaAtualId,
+    )?.usuario ??
+    usuarios.find(
+      (usuario) => usuario.id === conversaAtualId,
+    );
 
   return (
     <div className="mx-auto flex h-[calc(100vh-6rem)] w-full max-w-5xl flex-col gap-4 p-2 sm:p-4">
+      {/* Banner para liberar o som se o navegador estiver bloqueando */}
+      {!somLiberado && (
+        <div className="flex items-center justify-between rounded-xl border-2 border-[#F3B43F] bg-[#F3B43F] px-4 py-2 text-black shadow-md">
+          <span className="text-xs font-bold sm:text-sm">
+            🔊 Ative as notificações sonoras para receber avisos de novas mensagens.
+          </span>
+          <button
+            onClick={ativarSom}
+            className="rounded-lg bg-black px-3 py-1 text-xs font-bold text-[#F3B43F] transition hover:bg-neutral-900"
+          >
+            Ativar Som
+          </button>
+        </div>
+      )}
+
       <div className="rounded-2xl border-2 border-[#F3B43F] bg-[#292018]/90 p-4 text-white shadow-xl">
         <p className="text-sm uppercase tracking-widest text-[#F3B43F]">
           Correspondência
         </p>
-        <h1 className="font-imFeel text-3xl sm:text-4xl">Mensagens</h1>
+
+        <h1 className="font-imFeel text-3xl sm:text-4xl">
+          Mensagens
+        </h1>
       </div>
 
       <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 md:grid-cols-[280px_1fr]">
-        {/* Lista de conversas — some no mobile quando uma conversa está aberta */}
+        {/* Lista de conversas */}
         <div
           className={`flex min-h-0 flex-col rounded-2xl border-2 border-[#F3B43F]/60 bg-[#292018]/90 p-3 text-white shadow-lg ${
             conversaAtualId !== null ? "hidden md:flex" : "flex"
@@ -170,6 +337,7 @@ export default function MessagesClient({
                 <p className="mb-1 text-[10px] uppercase tracking-wide text-white/40">
                   Resultados
                 </p>
+
                 {usuariosFiltrados.length === 0 ? (
                   <p className="px-2 py-1 text-xs text-white/50">
                     Nenhum jogador encontrado.
@@ -211,10 +379,12 @@ export default function MessagesClient({
                   <p className="truncate text-sm font-bold text-[#F3B43F]">
                     {conversa.usuario.username}
                   </p>
+
                   <p className="truncate text-xs text-white/60">
                     {conversa.ultimaMensagem}
                   </p>
                 </div>
+
                 {conversa.naoLidas > 0 && (
                   <span className="ml-2 shrink-0 rounded-full bg-[#F3B43F] px-2 py-0.5 text-[10px] font-bold text-black">
                     {conversa.naoLidas}
@@ -245,6 +415,7 @@ export default function MessagesClient({
                 >
                   ← Voltar
                 </button>
+
                 <p className="font-imFeel text-xl text-[#F3B43F]">
                   {usuarioSelecionado?.username ?? "Jogador"}
                 </p>
@@ -252,11 +423,15 @@ export default function MessagesClient({
 
               <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3">
                 {mensagens.map((mensagem) => {
-                  const souEu = mensagem.id_remetente === currentUserId;
+                  const souEu =
+                    mensagem.id_remetente === currentUserId;
+
                   return (
                     <div
                       key={mensagem.id}
-                      className={`flex ${souEu ? "justify-end" : "justify-start"}`}
+                      className={`flex ${
+                        souEu ? "justify-end" : "justify-start"
+                      }`}
                     >
                       <div
                         className={`max-w-[75%] rounded-xl px-3 py-2 text-sm ${
@@ -268,12 +443,17 @@ export default function MessagesClient({
                         <p className="whitespace-pre-wrap break-words">
                           {mensagem.conteudo}
                         </p>
+
                         <p
                           className={`mt-1 text-[10px] ${
-                            souEu ? "text-black/60" : "text-white/40"
+                            souEu
+                              ? "text-black/60"
+                              : "text-white/40"
                           }`}
                         >
-                          {new Date(mensagem.createdAt).toLocaleString("pt-BR", {
+                          {new Date(
+                            mensagem.createdAt,
+                          ).toLocaleString("pt-BR", {
                             day: "2-digit",
                             month: "2-digit",
                             hour: "2-digit",
@@ -284,11 +464,14 @@ export default function MessagesClient({
                     </div>
                   );
                 })}
+
                 <div ref={fimDaListaRef} />
               </div>
 
               {erro && (
-                <p className="px-3 text-xs text-red-400">{erro}</p>
+                <p className="px-3 text-xs text-red-400">
+                  {erro}
+                </p>
               )}
 
               <form
@@ -296,6 +479,7 @@ export default function MessagesClient({
                 className="flex items-center gap-2 border-t border-white/10 p-3"
               >
                 <input
+                  ref={inputMensagemRef}
                   type="text"
                   value={textoMensagem}
                   onChange={(e) => setTextoMensagem(e.target.value)}
@@ -304,12 +488,13 @@ export default function MessagesClient({
                   disabled={enviando}
                   className="flex-1 rounded-lg bg-[#DFC492] px-3 py-2 text-sm text-black focus:outline-none focus:ring-2 focus:ring-[#F3B43F] disabled:opacity-60"
                 />
+
                 <button
                   type="submit"
                   disabled={enviando || !textoMensagem.trim()}
                   className="rounded-lg bg-[#BC8418] px-4 py-2 text-sm font-bold text-black transition hover:bg-[#a5710f] disabled:opacity-50"
                 >
-                  Enviar
+                  {enviando ? "Enviando..." : "Enviar"}
                 </button>
               </form>
             </>
