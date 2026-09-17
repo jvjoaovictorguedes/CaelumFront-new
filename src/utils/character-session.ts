@@ -55,16 +55,15 @@ interface CurrentCharacterResponse {
 }
 
 export async function getCurrentCharacter() {
-  const cookieStore = await cookies();
-  const characterId = cookieStore.get("characterId")?.value;
-
-  if (!characterId) {
-    return null;
-  }
-
+  // Usa /characters/me: o backend identifica o personagem pelo JWT (via
+  // authMiddleware + carregarPersonagemAtual), não por um ID que este
+  // cookie carrega — o cookie characterId não é mais a fonte de
+  // identidade, só um indicador de UI de que a conta já tem personagem
+  // (ver getCurrentCharacterId/notCharacter). Se o token não existir/
+  // expirou, o backend responde 401 e caímos no catch abaixo.
   try {
     const response = await axiosInstance.get<CurrentCharacterResponse>(
-      `/characters/${characterId}`,
+      "/characters/me",
     );
     return response.data?.data?.character ?? null;
   } catch (error) {

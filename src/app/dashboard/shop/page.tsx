@@ -11,6 +11,7 @@ interface Item {
   imagem?: string;
   categoria?: string;
   raridade?: string;
+  disponivel_loja?: boolean;
 }
 
 interface ItemsResponse {
@@ -48,12 +49,13 @@ export default async function ShopPage() {
   const moedas = character?.dinheiro ?? 15;
 
   const itensDaLoja = itens.filter((item) => {
-    // Não comercializável
-    if (item.valor_venda <= 0) {
+    // O backend é a autoridade sobre o que está à venda
+    // (Items.disponivel_loja) — raridade/valor_venda aqui são só pra
+    // exibição, não decidem mais disponibilidade.
+    if (!item.disponivel_loja) {
       return false;
     }
 
-    // Bloqueia itens raros
     if (
       !MOSTRAR_ITENS_RAROS &&
       item.raridade?.toLowerCase() === "raro"

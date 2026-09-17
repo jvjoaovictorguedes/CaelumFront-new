@@ -23,6 +23,11 @@ export interface TempCharacterData {
   rank?: string;
   reset?: number;
   natureza_magica?: string;
+  // Ticket emitido por POST /races/sortear-raro quando o servidor sorteia
+  // e libera uma raça rara — createCharacter no backend exige isso pra
+  // aceitar um id_raca marcado como raro. Sem sortear de verdade (e
+  // ganhar), esse campo fica vazio e a raça rara não pode ser escolhida.
+  ticket_raca_rara?: string;
 }
 
 const TEMP_CHARACTER_KEY = "tempCharacterData";

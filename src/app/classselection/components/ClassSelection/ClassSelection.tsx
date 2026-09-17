@@ -14,6 +14,15 @@ interface ClassData {
   nome: string;
   descricao: string;
   imagem_url: string;
+  raro: boolean;
+}
+
+interface SorteioClasseRaraResponse {
+  data?: {
+    raro: boolean;
+    classe?: ClassData;
+    ticket?: string;
+  };
 }
 
 export default function ClassSelection() {
@@ -25,6 +34,7 @@ export default function ClassSelection() {
   const [loadingClasses, setLoadingClasses] = useState(true);
   const [hasRolledSpecial, setHasRolledSpecial] = useState(false);
   const [visibleClasses, setVisibleClasses] = useState<ClassData[]>([]);
+  const [rareClassTicket, setRareClassTicket] = useState<string | null>(null);
   const [tempCharacterData, setTempCharacterData] =
     useState<TempCharacterData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -54,12 +64,10 @@ export default function ClassSelection() {
           | undefined;
         const classes = responseData?.classes;
         if (classes) {
-          const commonClasses = classes.filter(
-            (classItem) =>
-              !["primordial", "celestial"].some((rareName) =>
-                classItem.nome.toLowerCase().includes(rareName),
-              ),
-          );
+          // O servidor marca a raridade (Class.raro) — raras nunca
+          // aparecem na lista normal, só se o sorteio no servidor
+          // (POST /classes/sortear-raro) liberar uma.
+          const commonClasses = classes.filter((classItem) => !classItem.raro);
 
           setRawClassesObject(classes);
           if (commonClasses.length >= 2) {
@@ -91,26 +99,29 @@ export default function ClassSelection() {
     fetchClasses();
   }, [router]);
 
-  //roll 100%
-  const rollSpecialClasses = () => {
+  // O sorteio (e a decisão de quem ganhou) é sempre do servidor — o
+  // cliente só pede o resultado e mostra o que veio. Sem isso, um
+  // cliente podia pular o sorteio e mandar direto o id de uma classe
+  // rara em POST /characters.
+  const rollSpecialClasses = async () => {
     if (hasRolledSpecial) return false;
+    setHasRolledSpecial(true);
 
-    const roll = Math.random() * 100;
-
-    if (roll <= 0.01) {
-      const specialClasses = rawClassesObject.filter((classItem) =>
-        ["primordial", "celestial"].some((rareName) =>
-          classItem.nome.toLowerCase().includes(rareName),
-        ),
+    try {
+      const sorteio = await axiosInstance.post<SorteioClasseRaraResponse>(
+        "/classes/sortear-raro",
       );
-      if (specialClasses.length > 0) {
-        setHasRolledSpecial(true);
-        setVisibleClasses([...classesData, ...specialClasses]);
+      const resultado = sorteio.data?.data;
+      if (resultado?.raro && resultado.classe) {
+        setVisibleClasses([...classesData, resultado.classe]);
+        setRareClassTicket(resultado.ticket ?? null);
         setErrorMessage(
           "Uma classe lendaria apareceu. Escolha-a ou mantenha sua classe atual e confirme novamente.",
         );
         return true;
       }
+    } catch (error) {
+      console.error("Erro ao sortear classe rara:", error);
     }
     return false;
   };
@@ -145,8 +156,10 @@ export default function ClassSelection() {
       setErrorMessage("Dados de personagem incompletos. Reinicie a criação.");
       return;
     }
-    if (rollSpecialClasses()) return;
+    if (await rollSpecialClasses()) return;
     setIsLoading(true);
+
+    const classeEscolhida = rawClassesObject.find((cls) => cls.id === selectedClasses);
 
     const finalCharacterData = {
       nome: tempCharacterData.nome,
@@ -167,6 +180,10 @@ export default function ClassSelection() {
       velocidade: tempCharacterData.velocidade,
       dinheiro: tempCharacterData.dinheiro,
       id_usuario: tempCharacterData.id_usuario,
+      // Só relevante se a classe escolhida for a rara sorteada — o
+      // backend ignora este campo pra qualquer classe comum.
+      ticket_raca_rara: tempCharacterData.ticket_raca_rara,
+      ticket_classe_rara: classeEscolhida?.raro ? (rareClassTicket ?? undefined) : undefined,
     };
 
     console.log("Dados do personagem final:", finalCharacterData);

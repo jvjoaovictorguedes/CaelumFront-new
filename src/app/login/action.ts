@@ -115,5 +115,12 @@ export async function logout() {
   const cookieStore = await cookies();
   cookieStore.delete(TOKEN_KEY);
   cookieStore.delete("user");
+  // Sem isso, characterId/notCharacter sobreviviam ao logout: a próxima
+  // conta a logar neste mesmo navegador podia herdar, por um instante,
+  // o characterId da sessão anterior (até login() sobrescrever de
+  // novo), e um "notCharacter" desatualizado confundia o fluxo de
+  // criação de personagem.
+  cookieStore.delete("characterId");
+  cookieStore.delete("notCharacter");
   return { success: true };
 }

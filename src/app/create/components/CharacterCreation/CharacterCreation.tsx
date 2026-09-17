@@ -22,6 +22,15 @@ interface RaceData {
   bonus_agilidade: number;
   bonus_inteligencia: number;
   bonus_velocidade: number;
+  raro: boolean;
+}
+
+interface SorteioRacaRaraResponse {
+  data?: {
+    raro: boolean;
+    raca?: Record<string, unknown>;
+    ticket?: string;
+  };
 }
 
 interface UserCookie {
@@ -52,6 +61,7 @@ function normalizeRace(rawRace: Record<string, unknown>): RaceData {
     bonus_velocidade: Number(
       rawRace.bonus_velocidade ?? rawRace.velocidade ?? 0,
     ),
+    raro: Boolean(rawRace.raro),
   };
 }
 
@@ -66,8 +76,8 @@ export default function CharacterCreation() {
   const [rawRacesObject, setrawRacesObject] = useState<RaceData[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [cookiesUser, setCookiesUser] = useState<UserCookie | null>(null);
-  const [rareRace, setRareRace] = useState<RaceData | null>(null);
   const [rareRaceRevealed, setRareRaceRevealed] = useState(false);
+  const [rareRaceTicket, setRareRaceTicket] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchRaces = async () => {
@@ -92,22 +102,16 @@ export default function CharacterCreation() {
           const normalizedRaces = races.map((race: unknown) =>
             normalizeRace(race as Record<string, unknown>),
           );
-          const rareRaces = normalizedRaces.filter((race: RaceData) =>
-            race.nome_masculino.toLowerCase().includes("celestial"),
-          );
-          const commonRaces = normalizedRaces.filter(
-            (race: RaceData) =>
-              !rareRaces.some((rareRace: RaceData) => rareRace.id === race.id),
-          );
+          // O servidor marca a raridade (Race.raro) — não dá mais pra
+          // decidir isso pelo nome no front. Raças raras nunca aparecem
+          // na lista normal: só entram se o sorteio no servidor
+          // (POST /races/sortear-raro) liberar uma, no handleConfirm.
+          const commonRaces = normalizedRaces.filter((race) => !race.raro);
           const availableRaces =
             commonRaces.length > 0 ? commonRaces : normalizedRaces;
 
           setrawRacesObject(availableRaces);
           setSelectedRace(availableRaces[0].id);
-
-          if (rareRaces.length > 0) {
-            setRareRace(rareRaces[0]);
-          }
         } else {
           console.error(
             "A API /races não retornou raças em um formato reconhecido:",
@@ -185,16 +189,30 @@ export default function CharacterCreation() {
 
     if (!rareRaceRevealed) {
       setRareRaceRevealed(true);
-      if (rareRace && Math.random() * 100 <= 0.9) {
-        setrawRacesObject((currentRaces) =>
-          currentRaces.some((race) => race.id === rareRace.id)
-            ? currentRaces
-            : [...currentRaces, rareRace],
+      // O sorteio (e a decisão de quem ganhou) é sempre do servidor —
+      // o cliente só pede o resultado e mostra o que veio. Sem isso, um
+      // cliente podia pular o sorteio e mandar direto o id de uma raça
+      // rara em POST /characters.
+      try {
+        const sorteio = await axiosInstance.post<SorteioRacaRaraResponse>(
+          "/races/sortear-raro",
         );
-        setErrorMessage(
-          "Uma raça Celestial apareceu. Você pode escolhê-la ou manter sua raça atual e confirmar novamente.",
-        );
-        return;
+        const resultado = sorteio.data?.data;
+        if (resultado?.raro && resultado.raca) {
+          const racaRara = normalizeRace(resultado.raca);
+          setrawRacesObject((currentRaces) =>
+            currentRaces.some((race) => race.id === racaRara.id)
+              ? currentRaces
+              : [...currentRaces, racaRara],
+          );
+          setRareRaceTicket(resultado.ticket ?? null);
+          setErrorMessage(
+            "Uma raça Celestial apareceu. Você pode escolhê-la ou manter sua raça atual e confirmar novamente.",
+          );
+          return;
+        }
+      } catch (error) {
+        console.error("Erro ao sortear raça rara:", error);
       }
     }
 
@@ -230,6 +248,9 @@ export default function CharacterCreation() {
       inteligencia: currentRaceTempory.bonus_inteligencia,
       velocidade: currentRaceTempory.bonus_velocidade,
       id_usuario: cookiesUser.id,
+      // Só relevante se a raça escolhida for a rara sorteada — o backend
+      // ignora este campo pra qualquer raça comum.
+      ticket_raca_rara: currentRaceTempory.raro ? (rareRaceTicket ?? undefined) : undefined,
     });
 
     setIsLoading(false);

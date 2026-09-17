@@ -2,26 +2,21 @@ import { NextRequest, NextResponse } from "next/server";
 import { TOKEN_KEY } from "./constants/index";
 
 async function userHasCharacter(request: NextRequest, token: string) {
-  const userCookie = request.cookies.get("user")?.value;
   const fallback =
     request.cookies.get("notCharacter")?.value === "false" ||
     Boolean(request.cookies.get("characterId")?.value);
 
-  if (!userCookie) return fallback;
-
   try {
-    const user = JSON.parse(userCookie) as { id?: string };
-    if (!user.id) return fallback;
-
+    // /characters/me identifica o personagem só pelo JWT — não depende
+    // de um id de usuário lido de um cookie legível/editável no
+    // navegador (o "user" cookie antigo), que nunca deveria decidir de
+    // quem é o personagem.
     const apiUrl =
       process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api";
-    const response = await fetch(
-      `${apiUrl.replace(/\/$/, "")}/characters/by-user/${user.id}`,
-      {
-        headers: { Authorization: `Bearer ${token}` },
-        cache: "no-store",
-      },
-    );
+    const response = await fetch(`${apiUrl.replace(/\/$/, "")}/characters/me`, {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: "no-store",
+    });
 
     if (response.status === 404) return false;
     if (!response.ok) return fallback;

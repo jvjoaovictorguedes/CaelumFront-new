@@ -77,7 +77,7 @@ export default function PvpClient({
     try {
       const resposta = await axiosInstance.post<{ data?: ResultadoDuelo }>(
         "/pvp/challenge",
-        { id_desafiante: character.id, id_desafiado: idOponente },
+        { id_desafiado: idOponente },
       );
       const data = resposta.data?.data;
       if (data) {

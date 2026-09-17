@@ -20,6 +20,12 @@ interface CreateCharacterData {
   velocidade?: number;
   dinheiro?: number;
   id_usuario?: string;
+  // Tickets emitidos pelo sorteio de raridade no servidor
+  // (POST /races|classes/sortear-raro) — createCharacter no backend só
+  // aceita um id_raca/id_classe marcado como raro se o ticket
+  // correspondente vier junto e for válido.
+  ticket_raca_rara?: string;
+  ticket_classe_rara?: string;
 }
 
 interface CreatedCharacter {
