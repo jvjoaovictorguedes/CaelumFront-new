@@ -8,16 +8,17 @@ interface MinotauroSpriteProps {
   flip?: boolean;
   poseOverride?: EstadoSprite;
 }
+
 export default function MinotauroSprite({
   className = "",
   animState = "idle",
-  stroke = "#F3B43F",
+  stroke = "#8b0000",
   flip = true,
   poseOverride,
 }: MinotauroSpriteProps) {
   return (
     <AnimatedSpriteSheet
-      pasta="Minotaur_1"
+      pasta="Minotaur"
       className={className}
       animState={animState}
       stroke={stroke}
