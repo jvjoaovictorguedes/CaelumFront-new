@@ -2,21 +2,30 @@
 
 import { useState, type ReactNode } from "react";
 
-type AbaId = "equipamentos" | "habilidades" | "atributos";
+type AbaId = "equipamentos" | "habilidades" | "evolucoes" | "atributos";
+
+// A aba de Evoluções já está pronta e funcional por baixo (API, compra,
+// árvore de pré-requisitos) — só some da navegação até o conteúdo real
+// de cada evolução (nome/custo/bônus/imagem) ficar definido. Pra revelar
+// depois, é só trocar pra true; nenhum outro código muda.
+const EVOLUCOES_VISIVEIS = false;
 
 const ABAS: { id: AbaId; label: string }[] = [
   { id: "equipamentos", label: "Equipamentos" },
   { id: "habilidades", label: "Habilidades" },
+  ...(EVOLUCOES_VISIVEIS ? ([{ id: "evolucoes", label: "Evoluções" }] as const) : []),
   { id: "atributos", label: "Atributos" },
 ];
 
 export default function CharacterTabs({
   equipamentos,
   habilidades,
+  evolucoes,
   atributos,
 }: {
   equipamentos: ReactNode;
   habilidades: ReactNode;
+  evolucoes?: ReactNode;
   atributos: ReactNode;
 }) {
   const [abaAtiva, setAbaAtiva] = useState<AbaId>("equipamentos");
@@ -24,6 +33,7 @@ export default function CharacterTabs({
   const conteudoPorAba: Record<AbaId, ReactNode> = {
     equipamentos,
     habilidades,
+    evolucoes,
     atributos,
   };
 

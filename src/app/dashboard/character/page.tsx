@@ -4,6 +4,7 @@ import AbilitiesPanel from "./components/AbilitiesPanel";
 import CharacterAttributes from "./components/CharacterAttributes";
 import CharacterTabs from "./components/CharacterTabs";
 import EquipmentPanel from "./components/EquipmentPanel";
+import EvolutionsPanel from "./components/EvolutionsPanel";
 import GenderToggleButton from "./components/GenderToggleButton";
 
 function formatarTempoRegen(ms: number) {
@@ -159,6 +160,7 @@ export default async function CharacterPage() {
           <EquipmentPanel characterId={character.id} classe={character.Class?.nome} />
         }
         habilidades={<AbilitiesPanel characterId={character.id} />}
+        evolucoes={<EvolutionsPanel characterId={character.id} />}
         atributos={
           <div className="flex flex-col gap-4">
             <CharacterAttributes character={character} bonus={bonus} />
