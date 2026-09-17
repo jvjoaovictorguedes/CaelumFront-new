@@ -7,7 +7,7 @@ import {
   getTempCharacterData,
   type TempCharacterData,
 } from "@/app/create/temp-character-data-action";
-import { getClassImage } from "@/utils/media-url";
+import { getClassImage, getRaceImage } from "@/utils/media-url";
 
 interface ClassData {
   id: string;
@@ -25,6 +25,51 @@ interface SorteioClasseRaraResponse {
   };
 }
 
+// Opção de raça rara devolvida por POST /races/sortear-raro quando o
+// jogador ganha o sorteio (0.9%) — o servidor manda TODAS as raças
+// marcadas como raras (hoje Celestial e Primordial), cada uma com seu
+// próprio ticket, pra escolher livremente qual delas quer.
+interface RaceOption {
+  id: string | number;
+  nome_masculino: string;
+  nome_feminino: string;
+  descricao_masculina: string;
+  descricao_feminina: string;
+  imagem_masculina_url?: string;
+  imagem_feminina_url?: string;
+  bonus_forca: number;
+  bonus_vitalidade: number;
+  bonus_agilidade: number;
+  bonus_inteligencia: number;
+  bonus_velocidade: number;
+}
+
+interface OpcaoRacaRara {
+  raca: RaceOption;
+  ticket: string;
+}
+
+interface SorteioRacaRaraResponse {
+  data?: {
+    raro: boolean;
+    opcoes?: OpcaoRacaRara[];
+  };
+}
+
+// Frase de efeito por raça rara, pra vender o momento de sorte grande —
+// texto casado com o nome (funciona pra qualquer raça rara futura cujo
+// nome não bata com nenhum dos dois, cai no genérico).
+function fraseDeEfeitoRaca(nome: string) {
+  const normalizado = nome.toLowerCase();
+  if (normalizado.includes("celestial")) {
+    return "Um anjo desceu dos céus para tocar o seu destino. Nascido da luz divina, você caminha agora entre mortais e deuses.";
+  }
+  if (normalizado.includes("primordial")) {
+    return "As forças mais antigas da criação despertaram no seu sangue. Você é o eco vivo do início de tudo.";
+  }
+  return "Um poder raríssimo escolheu você.";
+}
+
 export default function ClassSelection() {
   const router = useRouter();
   const [errorMessage, setErrorMessage] = useState("");
@@ -39,12 +84,19 @@ export default function ClassSelection() {
     useState<TempCharacterData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
+  // Sorteio de raça rara: só roda depois que nome/gênero/raça comum/
+  // classe já foram todos escolhidos, no confirmar final desta tela —
+  // não uma escolha visível na grade normal de raças.
+  const [hasRolledRareRace, setHasRolledRareRace] = useState(false);
+  const [rareRaceOptions, setRareRaceOptions] = useState<OpcaoRacaRara[] | null>(
+    null,
+  );
+
   useEffect(() => {
     const fetchClasses = async () => {
       try {
         const dataFromCookie = await getTempCharacterData();
         setTempCharacterData(dataFromCookie);
-        console.log(dataFromCookie);
         if (
           !dataFromCookie ||
           !dataFromCookie.nome ||
@@ -126,28 +178,42 @@ export default function ClassSelection() {
     return false;
   };
 
+  // Mesma ideia da classe rara, mas pra raça: o servidor sorteia
+  // (POST /races/sortear-raro) e, se ganhar, devolve TODAS as raças
+  // raras disponíveis (Celestial e Primordial) pra escolher — em vez de
+  // uma tela normal de seleção, mostramos a revelação dramática em
+  // renderReveloRacaRara() e o jogador finaliza a criação escolhendo ali.
+  const rollRareRace = async () => {
+    if (hasRolledRareRace) return false;
+    setHasRolledRareRace(true);
+
+    try {
+      const sorteio = await axiosInstance.post<SorteioRacaRaraResponse>(
+        "/races/sortear-raro",
+      );
+      const resultado = sorteio.data?.data;
+      if (resultado?.raro && resultado.opcoes && resultado.opcoes.length > 0) {
+        setRareRaceOptions(resultado.opcoes);
+        return true;
+      }
+    } catch (error) {
+      console.error("Erro ao sortear raça rara:", error);
+    }
+    return false;
+  };
+
   const currentClassDescription =
     rawClassesObject.find((cls) => cls.id === selectedClasses)?.descricao ||
     "Selecione uma classe para ver a descrição.";
 
-  const handleCreateFinalCharacter = async (event: React.FormEvent) => {
-    event.preventDefault();
-    setErrorMessage("");
-    if (!selectedClasses) {
-      setErrorMessage("Por favor, selecione uma classe.");
-      return;
-    }
-
-    if (loadingClasses) {
-      return (
-        <div
-          className="flex items-center justify-center min-h-screen bg-cover bg-center"
-          style={{ backgroundImage: "url('/images/homeMedieval.png')" }}
-        >
-          <div className="text-white text-3xl">Carregando classes...</div>
-        </div>
-      );
-    }
+  // Passo final de verdade: monta o payload e cria o personagem. Chamado
+  // tanto pelo fluxo normal (sem raça rara) quanto pela escolha na tela
+  // de revelação — nesse segundo caso, `racaRaraEscolhida` sobrescreve a
+  // raça comum (e os atributos/vida/mana iniciais, recalculados com os
+  // bônus da raça rara) que tinha sido salva na etapa anterior.
+  const finalizarCriacaoDoPersonagem = async (
+    racaRaraEscolhida: OpcaoRacaRara | null,
+  ) => {
     if (
       !tempCharacterData?.nome ||
       !tempCharacterData.genero ||
@@ -156,10 +222,38 @@ export default function ClassSelection() {
       setErrorMessage("Dados de personagem incompletos. Reinicie a criação.");
       return;
     }
-    if (await rollSpecialClasses()) return;
+
+    const classeEscolhida = rawClassesObject.find(
+      (cls) => cls.id === selectedClasses,
+    );
+
     setIsLoading(true);
 
-    const classeEscolhida = rawClassesObject.find((cls) => cls.id === selectedClasses);
+    // Mesma fórmula usada no restante do jogo (combate, criação normal):
+    // vidaMaxima = 30 + vitalidade*6, manaMaxima = 20 + inteligencia*5.
+    const dadosDaRaca = racaRaraEscolhida
+      ? {
+          id_raca: String(racaRaraEscolhida.raca.id),
+          forca: racaRaraEscolhida.raca.bonus_forca,
+          vitalidade: racaRaraEscolhida.raca.bonus_vitalidade,
+          agilidade: racaRaraEscolhida.raca.bonus_agilidade,
+          inteligencia: racaRaraEscolhida.raca.bonus_inteligencia,
+          velocidade: racaRaraEscolhida.raca.bonus_velocidade,
+          vida_atual: 30 + racaRaraEscolhida.raca.bonus_vitalidade * 6,
+          mana_atual: 20 + racaRaraEscolhida.raca.bonus_inteligencia * 5,
+          ticket_raca_rara: racaRaraEscolhida.ticket,
+        }
+      : {
+          id_raca: tempCharacterData.id_raca,
+          forca: tempCharacterData.forca,
+          vitalidade: tempCharacterData.vitalidade,
+          agilidade: tempCharacterData.agilidade,
+          inteligencia: tempCharacterData.inteligencia,
+          velocidade: tempCharacterData.velocidade,
+          vida_atual: tempCharacterData.vida_atual,
+          mana_atual: tempCharacterData.mana_atual,
+          ticket_raca_rara: undefined,
+        };
 
     const finalCharacterData = {
       nome: tempCharacterData.nome,
@@ -167,26 +261,18 @@ export default function ClassSelection() {
         tempCharacterData.genero.toLowerCase() === "feminino"
           ? "Feminino"
           : "Masculino",
-      id_raca: tempCharacterData.id_raca,
       id_classe: selectedClasses,
       nivel: tempCharacterData.nivel,
       experiencia: tempCharacterData.experiencia,
-      vida_atual: tempCharacterData.vida_atual,
-      mana_atual: tempCharacterData.mana_atual,
-      forca: tempCharacterData.forca,
-      vitalidade: tempCharacterData.vitalidade,
-      agilidade: tempCharacterData.agilidade,
-      inteligencia: tempCharacterData.inteligencia,
-      velocidade: tempCharacterData.velocidade,
       dinheiro: tempCharacterData.dinheiro,
       id_usuario: tempCharacterData.id_usuario,
       // Só relevante se a classe escolhida for a rara sorteada — o
       // backend ignora este campo pra qualquer classe comum.
-      ticket_raca_rara: tempCharacterData.ticket_raca_rara,
-      ticket_classe_rara: classeEscolhida?.raro ? (rareClassTicket ?? undefined) : undefined,
+      ticket_classe_rara: classeEscolhida?.raro
+        ? (rareClassTicket ?? undefined)
+        : undefined,
+      ...dadosDaRaca,
     };
-
-    console.log("Dados do personagem final:", finalCharacterData);
 
     const result = await createCharacter(finalCharacterData);
 
@@ -200,6 +286,32 @@ export default function ClassSelection() {
         result.message || "Erro desconhecido ao criar personagem.",
       );
     }
+  };
+
+  const handleCreateFinalCharacter = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setErrorMessage("");
+    if (!selectedClasses) {
+      setErrorMessage("Por favor, selecione uma classe.");
+      return;
+    }
+    if (
+      !tempCharacterData?.nome ||
+      !tempCharacterData.genero ||
+      !tempCharacterData.id_raca
+    ) {
+      setErrorMessage("Dados de personagem incompletos. Reinicie a criação.");
+      return;
+    }
+
+    if (await rollSpecialClasses()) return;
+    if (await rollRareRace()) return;
+
+    await finalizarCriacaoDoPersonagem(null);
+  };
+
+  const handleEscolherRacaRara = (opcao: OpcaoRacaRara) => {
+    finalizarCriacaoDoPersonagem(opcao);
   };
 
   if (errorMessage && rawClassesObject.length === 0) {
@@ -224,6 +336,87 @@ export default function ClassSelection() {
       >
         <div className="text-white text-3xl">
           Nenhuma classe encontrada ou erro de carregamento.
+        </div>
+      </div>
+    );
+  }
+
+  // O jogador ganhou o sorteio de raça rara: em vez do formulário normal,
+  // mostra a revelação — ele escolhe entre as raras disponíveis e isso já
+  // finaliza a criação do personagem.
+  if (rareRaceOptions) {
+    const genero =
+      tempCharacterData?.genero?.toLowerCase() === "feminino"
+        ? "feminino"
+        : "Masculino";
+
+    return (
+      <div
+        className="flex items-center justify-center min-h-screen bg-cover bg-center"
+        style={{ backgroundImage: "url('/images/homeMedieval.png')" }}
+      >
+        <div className="w-full max-w-[720px] rounded-lg border-4 border-[#F3B43F] bg-[#292018] p-4 font-imFeel text-white shadow-xl sm:p-8">
+          <h2 className="mb-2 text-center text-3xl text-[#F3B43F] sm:text-4xl">
+            Você deu sorte!
+          </h2>
+          <p className="mb-6 text-center text-base text-white/80 sm:text-lg">
+            Uma força além do comum se manifestou no seu destino. Escolha
+            entre os seres raros que se abriram diante de você — essa escolha
+            substitui a raça comum que você tinha selecionado antes.
+          </p>
+
+          <div className="mb-6 flex flex-wrap justify-center gap-4 sm:gap-8">
+            {rareRaceOptions.map((opcao) => {
+              const nome =
+                genero === "Masculino"
+                  ? opcao.raca.nome_masculino
+                  : opcao.raca.nome_feminino;
+              const imagem =
+                genero === "Masculino"
+                  ? opcao.raca.imagem_masculina_url
+                  : opcao.raca.imagem_feminina_url;
+
+              return (
+                <button
+                  key={opcao.raca.id}
+                  type="button"
+                  onClick={() => handleEscolherRacaRara(opcao)}
+                  disabled={isLoading}
+                  className="group flex w-full max-w-[300px] flex-col items-center rounded-lg border-4 border-transparent bg-[#3a2f24] p-4 transition-all duration-200 hover:border-[#F3B43F] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <div
+                    className="mx-auto mb-3 flex h-28 w-28 items-center justify-center overflow-hidden rounded-full bg-gray-700 shadow-lg sm:h-36 sm:w-36"
+                    style={{
+                      backgroundImage: `url(${getRaceImage(
+                        nome,
+                        genero === "Masculino" ? "Masculino" : "feminino",
+                        imagem,
+                      )})`,
+                      backgroundSize: "cover",
+                      backgroundPosition: "center",
+                    }}
+                  ></div>
+                  <p className="text-center text-xl text-[#F3B43F] sm:text-2xl">
+                    {nome}
+                  </p>
+                  <p className="mt-2 text-center text-sm italic leading-relaxed text-white/90 sm:text-base">
+                    {fraseDeEfeitoRaca(nome)}
+                  </p>
+                </button>
+              );
+            })}
+          </div>
+
+          {isLoading && (
+            <p className="text-center text-lg text-[#F3B43F]">
+              Selando seu destino...
+            </p>
+          )}
+          {errorMessage && (
+            <p className="text-red-500 text-center mb-1 text-lg">
+              {errorMessage}
+            </p>
+          )}
         </div>
       </div>
     );

@@ -25,14 +25,6 @@ interface RaceData {
   raro: boolean;
 }
 
-interface SorteioRacaRaraResponse {
-  data?: {
-    raro: boolean;
-    raca?: Record<string, unknown>;
-    ticket?: string;
-  };
-}
-
 interface UserCookie {
   id: string;
 }
@@ -76,8 +68,6 @@ export default function CharacterCreation() {
   const [rawRacesObject, setrawRacesObject] = useState<RaceData[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [cookiesUser, setCookiesUser] = useState<UserCookie | null>(null);
-  const [rareRaceRevealed, setRareRaceRevealed] = useState(false);
-  const [rareRaceTicket, setRareRaceTicket] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchRaces = async () => {
@@ -187,34 +177,12 @@ export default function CharacterCreation() {
       return;
     }
 
-    if (!rareRaceRevealed) {
-      setRareRaceRevealed(true);
-      // O sorteio (e a decisão de quem ganhou) é sempre do servidor —
-      // o cliente só pede o resultado e mostra o que veio. Sem isso, um
-      // cliente podia pular o sorteio e mandar direto o id de uma raça
-      // rara em POST /characters.
-      try {
-        const sorteio = await axiosInstance.post<SorteioRacaRaraResponse>(
-          "/races/sortear-raro",
-        );
-        const resultado = sorteio.data?.data;
-        if (resultado?.raro && resultado.raca) {
-          const racaRara = normalizeRace(resultado.raca);
-          setrawRacesObject((currentRaces) =>
-            currentRaces.some((race) => race.id === racaRara.id)
-              ? currentRaces
-              : [...currentRaces, racaRara],
-          );
-          setRareRaceTicket(resultado.ticket ?? null);
-          setErrorMessage(
-            "Uma raça Celestial apareceu. Você pode escolhê-la ou manter sua raça atual e confirmar novamente.",
-          );
-          return;
-        }
-      } catch (error) {
-        console.error("Erro ao sortear raça rara:", error);
-      }
-    }
+    // O sorteio de raça rara (Celestial/Primordial) não acontece mais
+    // aqui — essa etapa só guarda a raça comum escolhida. A "sorte" só é
+    // testada no confirmar final da etapa de classe (ver
+    // ClassSelection.tsx), depois que nome/gênero/raça/classe normais já
+    // foram todos escolhidos, e — se o jogador ganhar — ele pode trocar
+    // essa raça comum por Celestial ou Primordial ali mesmo.
 
     // natureza_magica não é mais escolhida/sorteada aqui: o backend sorteia
     // sozinho na criação (characterController.createCharacter), sempre —
@@ -248,9 +216,6 @@ export default function CharacterCreation() {
       inteligencia: currentRaceTempory.bonus_inteligencia,
       velocidade: currentRaceTempory.bonus_velocidade,
       id_usuario: cookiesUser.id,
-      // Só relevante se a raça escolhida for a rara sorteada — o backend
-      // ignora este campo pra qualquer raça comum.
-      ticket_raca_rara: currentRaceTempory.raro ? (rareRaceTicket ?? undefined) : undefined,
     });
 
     setIsLoading(false);
