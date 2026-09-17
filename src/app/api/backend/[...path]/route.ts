@@ -36,10 +36,26 @@ async function encaminhar(request: NextRequest, path: string[]) {
     });
 
     const texto = await respostaBackend.text();
-    return new NextResponse(texto, {
+    const resposta = new NextResponse(texto, {
       status: respostaBackend.status,
       headers: { "content-type": respostaBackend.headers.get("content-type") || "application/json" },
     });
+
+    // 401 do backend = token ausente/inválido/expirado (authMiddleware
+    // agora usa esse código só pra isso — 403 continua sendo "autenticado
+    // mas sem permissão pra essa ação específica", que não deve derrubar
+    // a sessão). Sem limpar os cookies aqui, o usuário ficava "preso":
+    // o cookie do token continuava presente (só o JWT dentro dele tinha
+    // expirado), o middleware achava que ele ainda estava logado, e toda
+    // chamada seguinte voltava a falhar do mesmo jeito — daí os erros
+    // sem nenhum aviso de sessão perdida.
+    if (respostaBackend.status === 401) {
+      for (const nome of [TOKEN_KEY, "user", "characterId", "notCharacter"]) {
+        resposta.cookies.set(nome, "", { path: "/", maxAge: 0 });
+      }
+    }
+
+    return resposta;
   } catch (error) {
     console.error("Erro ao repassar requisição pro backend:", error);
     return NextResponse.json(

@@ -4,6 +4,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import axiosInstance from "@/utils/axiosIntance";
 import { getClassPortrait } from "@/utils/media-url";
+import { logout } from "@/app/login/action";
 
 interface NavMenuItem {
   name: string;
@@ -24,6 +25,18 @@ export default function NavMenu({
   const pathname = usePathname();
   const [menuAberto, setMenuAberto] = useState(false);
   const [mensagensNaoLidas, setMensagensNaoLidas] = useState(0);
+  const [saindo, setSaindo] = useState(false);
+
+  const handleLogout = async () => {
+    if (saindo) return;
+    setSaindo(true);
+    setMenuAberto(false);
+    await logout();
+    // Redirect "duro" (não router.push) pra garantir que o middleware
+    // reavalie a rota do zero com os cookies já limpos — um push do
+    // client-side router poderia reaproveitar estado antigo em cache.
+    window.location.href = "/login";
+  };
 
   useEffect(() => {
     if (!currentUserId) return;
@@ -129,7 +142,7 @@ export default function NavMenu({
         />
       )}
       <nav
-        className={`dashboard-nav fixed inset-y-0 left-0 z-40 overflow-y-auto bg-[#BC8418] px-3 py-4 shadow-2xl transition-transform duration-200 lg:translate-x-0 ${
+        className={`dashboard-nav fixed inset-y-0 left-0 z-40 flex flex-col overflow-y-auto bg-[#BC8418] px-3 py-4 shadow-2xl transition-transform duration-200 lg:translate-x-0 ${
           menuAberto ? "translate-x-0" : "-translate-x-full"
         }`}
       >
@@ -186,6 +199,16 @@ export default function NavMenu({
               );
             })}
           </ul>
+        </div>
+        <div className="mt-auto flex w-full items-center justify-center border-t border-black/50 pt-4">
+          <button
+            type="button"
+            onClick={handleLogout}
+            disabled={saindo}
+            className="flex w-full items-center justify-center gap-2 rounded-lg border-2 border-black/40 bg-[rgba(0,0,0,0.15)] p-2 font-imFeel text-lg font-bold text-black transition-colors duration-200 hover:bg-[rgba(0,0,0,0.3)] disabled:opacity-60"
+          >
+            {saindo ? "SAINDO..." : "SAIR"}
+          </button>
         </div>
       </nav>
     </>

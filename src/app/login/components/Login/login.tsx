@@ -1,16 +1,27 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import React, { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import React, { useEffect, useState } from "react";
 import { login } from "../../action";
 
 export default function Login() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
+
+  // O middleware manda pra cá com ?expired=1 quando detecta que o token
+  // do jogador não é mais aceito pelo backend (expirou ou foi
+  // invalidado) — sem isso, a sessão simplesmente caía sem nenhum aviso
+  // e a próxima ação dentro do jogo só dava erro sem explicação.
+  useEffect(() => {
+    if (searchParams.get("expired") === "1") {
+      setErrorMessage("Sua sessão expirou. Faça login novamente.");
+    }
+  }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -130,6 +141,15 @@ export default function Login() {
             </span>
             Lembrar-me a senha
           </label>
+        </div>
+        <div className="flex items-center justify-center mt-3">
+          <button
+            type="button"
+            onClick={() => router.push("/forgot-password")}
+            className="font-imFeel text-lg text-[#F3B43F] underline hover:text-white"
+          >
+            Esqueci minha senha
+          </button>
         </div>
       </form>
     </div>
