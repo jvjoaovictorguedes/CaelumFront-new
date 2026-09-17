@@ -12,15 +12,31 @@ export default function GlobalNotificationManager({
 }: {
   currentUserId: number;
 }) {
+  const SOM_LIBERADO_KEY = "somLiberado";
+
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const ultimaQuantidadeNaoLidasRef = useRef<number | null>(null);
+  // Começa em false (igual ao servidor renderiza, que não tem acesso a
+  // localStorage) pra não dar mismatch de hidratação — o valor real é
+  // lido logo abaixo, no useEffect, assim que roda no navegador.
   const [somLiberado, setSomLiberado] = useState(false);
 
-  // Inicializa o áudio globalmente
+  // Inicializa o áudio globalmente e lembra se esse navegador já tinha
+  // liberado o som antes — sem isso, o aviso reaparecia toda vez que a
+  // página recarregava/era reaberta, mesmo já tendo sido liberado.
   useEffect(() => {
     audioRef.current = new Audio("/sounds/message.mp3");
     audioRef.current.volume = 0.5;
     audioRef.current.preload = "auto";
+
+    try {
+      if (localStorage.getItem(SOM_LIBERADO_KEY) === "true") {
+        setSomLiberado(true);
+      }
+    } catch {
+      // localStorage bloqueado (aba anônima, etc.) — sem problema, só
+      // volta a perguntar nessa visita.
+    }
 
     return () => {
       audioRef.current?.pause();
@@ -38,6 +54,12 @@ export default function GlobalNotificationManager({
           audio.pause();
           audio.currentTime = 0;
           setSomLiberado(true);
+          try {
+            localStorage.setItem(SOM_LIBERADO_KEY, "true");
+          } catch {
+            // localStorage bloqueado (aba anônima, etc.) — sem problema,
+            // só volta a perguntar na próxima visita.
+          }
         })
         .catch((error) => {
           console.warn("Não foi possível liberar o som:", error);
