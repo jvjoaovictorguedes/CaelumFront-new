@@ -18,7 +18,7 @@ export default function MinotauroSprite({
 }: MinotauroSpriteProps) {
   return (
     <AnimatedSpriteSheet
-      pasta="Minotaur"
+      pasta="Minotaur_1"
       className={className}
       animState={animState}
       stroke={stroke}
