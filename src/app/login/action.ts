@@ -36,15 +36,15 @@ export async function login(data: CookiesData) {
       },
     );
 
-    const character = await axiosInstance.get<CharacterLookupResponse>(
-      `/characters/by-user/${response.data.data.user.id}`,
-      {
-        validateStatus: (status) => status <= 404,
-      },
-    );
-
     const { token, data: userData } = response.data;
 
+    // O cookie do token precisa ser setado ANTES da busca do personagem
+    // logo abaixo: /characters/by-user agora exige authMiddleware (fecha
+    // aqui um buraco que existia antes), e o axiosInstance do lado do
+    // servidor só anexa o Bearer lendo esse mesmo cookie via
+    // cookies().get(). Com a ordem invertida (como estava antes), a
+    // busca saía sem token, o backend respondia 401, e o login parecia
+    // ter dado erro genérico mesmo tendo funcionado.
     const cookieStore = await cookies();
     cookieStore.set("user", JSON.stringify(userData.user), {
       maxAge: 60 * 60 * 24 * 7,
@@ -56,6 +56,13 @@ export async function login(data: CookiesData) {
       maxAge: 60 * 60 * 24 * 7,
       path: "/",
     });
+
+    const character = await axiosInstance.get<CharacterLookupResponse>(
+      `/characters/by-user/${userData.user.id}`,
+      {
+        validateStatus: (status) => status <= 404,
+      },
+    );
     const characterId = character.data?.data?.character?.id;
 
     if (character.status === 200 && characterId !== undefined) {
