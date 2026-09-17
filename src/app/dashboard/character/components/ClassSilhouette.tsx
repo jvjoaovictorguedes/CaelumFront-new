@@ -23,24 +23,24 @@ return ehMago ? (
 
 function GuerreiroSilhueta({ stroke }: { stroke: string }) {
   return (
-      <img src="guerreiro-personagem-itens.webp" alt="Silhueta do Guerreiro" className="h-full w-full" />
+      <img src="/guerreiro-personagem-itens.webp" alt="Silhueta do Guerreiro" className="h-full w-full" />
   );
 }
 
 function MagoSilhueta({ stroke }: { stroke: string }) {
   return (
-    <img src="mago-personagem-itens.webp" alt="Silhueta do Mago" className="h-full w-full" />
+    <img src="/mago-personagem-itens.webp" alt="Silhueta do Mago" className="h-full w-full" />
   );
 }
 
 function CelestialSilhueta({ stroke }: { stroke: string }) {
   return (
-    <img src="celestial-personagem-itens.webp" alt="Silhueta do Celestial" className="h-full w-full" />
+    <img src="/celestial-personagem-itens.webp" alt="Silhueta do Celestial" className="h-full w-full" />
   );
 }
 
 function PrimordialSilhueta({ stroke }: { stroke: string }) {
   return (
-    <img src="primordial-personagem-itens.webp" alt="Silhueta do Primordial" className="h-full w-full" />
+    <img src="/primordial-personagem-itens.webp" alt="Silhueta do Primordial" className="h-full w-full" />
   );
 }
