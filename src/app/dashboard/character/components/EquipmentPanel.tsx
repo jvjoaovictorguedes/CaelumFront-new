@@ -98,7 +98,7 @@ export default function EquipmentPanel({
   const [inventario, setInventario] = useState<InventarioEntry[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [mensagem, setMensagem] = useState("");
-  const [slotSobre, setSlotSobre] = useState<Slot | null>(null);
+  const [itemSelecionado, setItemSelecionado] = useState<number | null>(null);
   const [processando, setProcessando] = useState(false);
   const { refreshCharacter } = useCharacter();
 
@@ -154,11 +154,14 @@ export default function EquipmentPanel({
       // atualiza o personagem compartilhado junto com o painel local, pra
       // a barra de vida/mana (em outro componente) refletir na hora.
       await Promise.all([carregarTudo(), refreshCharacter()]);
+      setItemSelecionado(null);
     } catch (error: unknown) {
       const msg =
         (error as { response?: { data?: { message?: string } } })?.response
           ?.data?.message ?? "Não foi possível equipar esse item.";
       setMensagem(msg);
+      // Mantém selecionado em caso de erro (ex.: slot errado) — deixa o
+      // jogador tentar outro slot sem precisar escolher o item de novo.
     } finally {
       setProcessando(false);
     }
@@ -182,12 +185,20 @@ export default function EquipmentPanel({
     }
   }
 
-  function handleDrop(slot: Slot, event: React.DragEvent) {
-    event.preventDefault();
-    setSlotSobre(null);
-    const idItem = Number(event.dataTransfer.getData("text/id-item"));
-    if (!idItem || processando) return;
-    equipar(slot, idItem);
+  // Clique em vez de arrastar-e-soltar: alguns navegadores (relatado no
+  // Edge) travavam a aba inteira ao SEGURAR o item pra iniciar um drag
+  // nativo — o clique simples nunca travava, só o gesto de arrastar em
+  // si. Clicar num item do inventário "seleciona" ele (fica destacado);
+  // clicar num slot depois equipa. Clicar de novo no mesmo item, ou num
+  // item diferente, troca a seleção.
+  function clicarSlot(slot: Slot) {
+    if (processando || itemSelecionado === null) return;
+    equipar(slot, itemSelecionado);
+  }
+
+  function clicarItemInventario(idItem: number) {
+    if (processando) return;
+    setItemSelecionado((atual) => (atual === idItem ? null : idItem));
   }
 
   // Quantas cópias de cada item já estão presas em algum slot — pra tirar
@@ -228,22 +239,19 @@ export default function EquipmentPanel({
       >
         {SLOTS.map(({ slot, label, top, left }) => {
           const itemNoSlot = equipamentos[slot];
-          const emFoco = slotSobre === slot;
+          const aguardandoEscolha = itemSelecionado !== null;
           return (
             <div
               key={slot}
-              onDragOver={(e) => {
-                e.preventDefault();
-                setSlotSobre(slot);
-              }}
-              onDragLeave={() => setSlotSobre((atual) => (atual === slot ? null : atual))}
-              onDrop={(e) => handleDrop(slot, e)}
+              onClick={() => clicarSlot(slot)}
               style={{ top, left }}
-              className="group absolute h-16 w-16 -translate-x-1/2 -translate-y-1/2"
+              className={`group absolute h-16 w-16 -translate-x-1/2 -translate-y-1/2 ${
+                aguardandoEscolha ? "cursor-pointer" : ""
+              }`}
             >
               <div
                 className={`relative h-full w-full overflow-hidden rounded-lg border-2 transition-colors ${
-                  emFoco
+                  aguardandoEscolha
                     ? "border-[#F3B43F] bg-[#3a2f24]"
                     : itemNoSlot
                       ? "border-[#F3B43F]/70 bg-[#1c150f]"
@@ -267,7 +275,10 @@ export default function EquipmentPanel({
                       </span>
                       <button
                         type="button"
-                        onClick={() => desequipar(slot)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          desequipar(slot);
+                        }}
                         disabled={processando}
                         className="pointer-events-auto text-[9px] text-white/60 underline hover:text-white disabled:opacity-50"
                       >
@@ -284,12 +295,17 @@ export default function EquipmentPanel({
         })}
       </div>
 
+      {itemSelecionado !== null && !mensagem && (
+        <p className="mb-3 text-sm text-[#F3B43F]">
+          Item selecionado — clique num slot acima pra equipar (ou clique nele de novo pra cancelar).
+        </p>
+      )}
       {mensagem && (
         <p className="mb-3 text-sm text-red-400">{mensagem}</p>
       )}
 
       <p className="mb-2 text-sm uppercase tracking-widest text-[#F3B43F]">
-        Seu inventário (arraste pra um slot acima)
+        Seu inventário (clique num item e depois num slot acima pra equipar)
       </p>
       {itensEquipaveis.length === 0 ? (
         <p className="text-sm text-white/60">
@@ -297,34 +313,43 @@ export default function EquipmentPanel({
         </p>
       ) : (
         <div className="flex flex-wrap gap-3">
-          {itensEquipaveis.map((entrada) => (
-            <div
-              key={entrada.id_personagem_inventario}
-              draggable
-              onDragStart={(e) =>
-                e.dataTransfer.setData(
-                  "text/id-item",
-                  String(entrada.Item.id),
-                )
-              }
-              className="group relative h-16 w-16 cursor-grab select-none rounded-lg border-2 border-[#F3B43F]/60 bg-[#3a2f24] active:cursor-grabbing"
-            >
-              <ItemThumb item={entrada.Item} className="h-full w-full p-2" />
-              <span className="pointer-events-none absolute -bottom-1 -right-1 rounded bg-black/80 px-1 text-[9px] font-bold text-white">
-                x{entrada.disponivel}
-              </span>
+          {itensEquipaveis.map((entrada) => {
+            const selecionado = itemSelecionado === entrada.Item.id;
+            return (
+              <div
+                key={entrada.id_personagem_inventario}
+                role="button"
+                tabIndex={0}
+                onClick={() => clicarItemInventario(entrada.Item.id)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    clicarItemInventario(entrada.Item.id);
+                  }
+                }}
+                className={`group relative h-16 w-16 cursor-pointer select-none rounded-lg border-2 bg-[#3a2f24] transition-colors ${
+                  selecionado
+                    ? "border-[#F3B43F] ring-2 ring-[#F3B43F]/70"
+                    : "border-[#F3B43F]/60 hover:border-[#F3B43F]"
+                }`}
+              >
+                <ItemThumb item={entrada.Item} className="h-full w-full p-2" />
+                <span className="pointer-events-none absolute -bottom-1 -right-1 rounded bg-black/80 px-1 text-[9px] font-bold text-white">
+                  x{entrada.disponivel}
+                </span>
 
-              {/* Nome/tipo só aparecem no hover, igual aos slots. */}
-              <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-0.5 rounded-lg bg-black/85 p-1 text-center opacity-0 transition-opacity group-hover:opacity-100">
-                <span className="text-[10px] font-bold leading-tight text-white">
-                  {entrada.Item.nome}
-                </span>
-                <span className="text-[9px] text-white/50">
-                  {entrada.Item.tipo_item}
-                </span>
+                {/* Nome/tipo só aparecem no hover, igual aos slots. */}
+                <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-0.5 rounded-lg bg-black/85 p-1 text-center opacity-0 transition-opacity group-hover:opacity-100">
+                  <span className="text-[10px] font-bold leading-tight text-white">
+                    {entrada.Item.nome}
+                  </span>
+                  <span className="text-[9px] text-white/50">
+                    {entrada.Item.tipo_item}
+                  </span>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
