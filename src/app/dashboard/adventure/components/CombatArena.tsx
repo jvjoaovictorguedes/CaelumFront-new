@@ -117,6 +117,12 @@ interface RespostaCombate {
       experiencia: number;
       dinheiro: number;
     };
+
+    drop?: {
+      tipo: "item" | "ouro";
+      item?: { id: number; nome: string; raridade: string };
+      dinheiro?: number;
+    } | null;
   };
 }
 
@@ -252,6 +258,12 @@ export default function CombatArena({
   ] = useState<{
     experiencia: number;
     dinheiro: number;
+  } | null>(null);
+
+  const [drop, setDrop] = useState<{
+    tipo: "item" | "ouro";
+    item?: { id: number; nome: string; raridade: string };
+    dinheiro?: number;
   } | null>(null);
 
   const [
@@ -773,6 +785,7 @@ export default function CombatArena({
             data.rewards,
           );
         }
+        setDrop(data.drop ?? null);
       }
     } catch (
       error: unknown
@@ -1132,6 +1145,14 @@ export default function CombatArena({
                 recompensa.dinheiro
               }{" "}
               moedas
+            </p>
+          )}
+
+          {drop && (
+            <p className="mb-3 font-bold text-[#F3B43F]">
+              {drop.tipo === "item" && drop.item
+                ? `Você encontrou: ${drop.item.nome}!`
+                : `+${drop.dinheiro} moedas extras encontradas!`}
             </p>
           )}
 
