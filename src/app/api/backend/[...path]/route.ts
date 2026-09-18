@@ -55,6 +55,30 @@ async function encaminhar(request: NextRequest, path: string[]) {
       }
     }
 
+    // POST /users/refresh reemite o JWT com o relógio zerado (ver
+    // SessionKeepAlive.tsx) — só o backend responde com o token novo no
+    // corpo, então é aqui (onde dá pra escrever cookie httpOnly) que o
+    // cookie de sessão precisa ser atualizado. Sem isso, o refresh
+    // "funcionava" (o backend emitia um token novo) mas o navegador
+    // continuava mandando o token VELHO em toda chamada seguinte —
+    // renovar não adiantava nada.
+    if (path.join("/") === "users/refresh" && respostaBackend.status === 200) {
+      try {
+        const corpo = JSON.parse(texto) as { token?: string; rememberMe?: boolean };
+        if (corpo.token) {
+          const maxAge = corpo.rememberMe ? 60 * 60 * 24 * 7 : undefined;
+          resposta.cookies.set(TOKEN_KEY, corpo.token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            maxAge,
+            path: "/",
+          });
+        }
+      } catch (error) {
+        console.error("Erro ao processar renovação de sessão:", error);
+      }
+    }
+
     return resposta;
   } catch (error) {
     console.error("Erro ao repassar requisição pro backend:", error);

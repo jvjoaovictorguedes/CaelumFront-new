@@ -4,6 +4,7 @@ import { getUserCookie } from "@/app/create/temp-character-data-action";
 import { getCurrentCharacter, getCurrentCharacterId } from "@/utils/character-session";
 import { PvpSocketProvider } from "@/contexts/PvpSocketContext";
 import { CharacterProvider } from "@/contexts/CharacterContext";
+import SessionKeepAlive from "@/components/SessionKeepAlive/SessionKeepAlive";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -18,6 +19,7 @@ export default async function DashboardLayout({
 
   return (
     <CharacterProvider initialCharacter={character}>
+      <SessionKeepAlive />
       <PvpSocketProvider characterId={characterId ? Number(characterId) : undefined}>
         <div className="homeDash min-h-[100dvh] w-full overflow-x-hidden bg-cover bg-center bg-fixed">
           <NavMenu
