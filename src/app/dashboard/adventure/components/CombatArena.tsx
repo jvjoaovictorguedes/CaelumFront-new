@@ -88,6 +88,15 @@ interface CombatArenaProps {
   character: CharacterState;
   abilities: Ability[];
   initialEnemy: EnemyState;
+  // Reaproveitado pelo Portal de Ranque (ver PortalArena.tsx) — o motor
+  // de combate (turnos, animações, sprites) é o mesmo, só muda pra onde
+  // a ação é mandada e o que acontece quando o combate termina.
+  actionEndpoint?: string;
+  onVitoria?: () => void;
+  onDerrota?: () => void;
+  labelBotaoVitoria?: string;
+  tituloZona?: string;
+  tituloArena?: string;
 }
 
 interface FloatingText {
@@ -123,6 +132,11 @@ interface RespostaCombate {
       item?: { id: number; nome: string; raridade: string };
       dinheiro?: number;
     } | null;
+
+    // Só o Portal de Ranque preenche estes três.
+    rank_promovido?: string | null;
+    pontos_portal_atual?: number;
+    pontos_necessarios?: number;
   };
 }
 
@@ -159,6 +173,12 @@ export default function CombatArena({
   character,
   abilities,
   initialEnemy,
+  actionEndpoint = "/combat/action",
+  onVitoria,
+  onDerrota,
+  labelBotaoVitoria = "Buscar outro inimigo",
+  tituloZona = "Zona de combate",
+  tituloArena = "Aventura",
 }: CombatArenaProps) {
   const router =
     useRouter();
@@ -264,6 +284,12 @@ export default function CombatArena({
     tipo: "item" | "ouro";
     item?: { id: number; nome: string; raridade: string };
     dinheiro?: number;
+  } | null>(null);
+
+  const [infoPortal, setInfoPortal] = useState<{
+    rankPromovido: string | null;
+    pontosAtual: number;
+    pontosNecessarios: number;
   } | null>(null);
 
   const [
@@ -680,7 +706,7 @@ export default function CombatArena({
     try {
       const response =
         await axiosInstance.post<RespostaCombate>(
-          "/combat/action",
+          actionEndpoint,
           {
             characterId:
               character.id,
@@ -786,6 +812,14 @@ export default function CombatArena({
           );
         }
         setDrop(data.drop ?? null);
+
+        if (typeof data.pontos_necessarios === "number") {
+          setInfoPortal({
+            rankPromovido: data.rank_promovido ?? null,
+            pontosAtual: data.pontos_portal_atual ?? 0,
+            pontosNecessarios: data.pontos_necessarios,
+          });
+        }
       }
     } catch (
       error: unknown
@@ -864,12 +898,12 @@ export default function CombatArena({
 
       <div className="rounded-2xl border-2 border-[#F3B43F] bg-[#292018]/90 p-5 text-white shadow-xl">
         <p className="text-sm uppercase tracking-widest text-[#F3B43F]">
-          Zona de combate
+          {tituloZona}
         </p>
 
         <div className="flex flex-wrap items-end justify-between gap-3">
           <h1 className="font-imFeel text-4xl sm:text-5xl">
-            Aventura
+            {tituloArena}
           </h1>
 
           <p className="text-sm text-white/70">
@@ -1156,21 +1190,28 @@ export default function CombatArena({
             </p>
           )}
 
+          {infoPortal && (
+            <p className="mb-3 font-bold text-[#F3B43F]">
+              {infoPortal.rankPromovido
+                ? `Você foi promovido para o ranque ${infoPortal.rankPromovido}!`
+                : `Pontos do portal: ${infoPortal.pontosAtual}/${infoPortal.pontosNecessarios}`}
+            </p>
+          )}
+
           <button
-            onClick={() =>
-              resultado ===
-              "vitoria"
-                ? router.refresh()
-                : router.push(
-                    "/dashboard",
-                  )
-            }
+            onClick={() => {
+              if (resultado === "vitoria") {
+                if (onVitoria) onVitoria();
+                else router.refresh();
+              } else if (onDerrota) {
+                onDerrota();
+              } else {
+                router.push("/dashboard");
+              }
+            }}
             className="rounded-lg bg-[#BC8418] px-4 py-2 font-bold text-black hover:bg-[#a5710f]"
           >
-            {resultado ===
-            "vitoria"
-              ? "Buscar outro inimigo"
-              : "Voltar"}
+            {resultado === "vitoria" ? labelBotaoVitoria : "Voltar"}
           </button>
         </div>
       )}
