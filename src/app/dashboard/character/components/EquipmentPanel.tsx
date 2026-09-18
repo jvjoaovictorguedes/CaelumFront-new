@@ -41,12 +41,108 @@ const SLOTS: { slot: Slot; label: string; top: string; left: string; pequeno?: b
 // Consumível, Material, QuestItem e Moeda nunca foram equipáveis.
 const TIPOS_EQUIPAVEIS = ["Armadura", "Capacete", "Escudo", "Arma", "Acessorio1", "Acessorio2"];
 
+type Atributo = "Forca" | "Vitalidade" | "Inteligencia" | "Agilidade" | "Velocidade";
+
+const NOME_ATRIBUTO: Record<Atributo, string> = {
+  Forca: "Força",
+  Vitalidade: "Vitalidade",
+  Inteligencia: "Inteligência",
+  Agilidade: "Agilidade",
+  Velocidade: "Velocidade",
+};
+
+// Mesma escala de cor por raridade que a Loja já usa (ShopItem) — repetida
+// aqui pra dar a mesma pista visual no boneco de papel e no inventário.
+const BORDA_RARIDADE: Record<string, string> = {
+  comum: "border-[#9CA3AF]/80",
+  incomum: "border-[#4ADE80]/80",
+  raro: "border-[#60A5FA]/80",
+  epico: "border-[#C084FC]/80",
+  lendario: "border-[#FB923C]/80",
+  mitico: "border-[#F87171]/80",
+};
+
+function bordaPorRaridade(raridade?: string) {
+  return BORDA_RARIDADE[(raridade ?? "comum").toLowerCase()] ?? BORDA_RARIDADE.comum;
+}
+
+interface WeaponPropertiesInfo {
+  dano_min: number;
+  dano_max: number;
+  tipo_dano: "Fisico" | "Magico";
+  bonus_atributo: Atributo;
+  valor_bonus_atributo: number;
+}
+
+interface ArmorPropertiesInfo {
+  defesa: number;
+  bonus_forca: number;
+  bonus_vitalidade: number;
+  bonus_inteligencia: number;
+  bonus_agilidade: number;
+  bonus_velocidade: number;
+}
+
 interface ItemInfo {
   id: number;
   nome: string;
   tipo_item: string;
   raridade: string;
   imagem_url?: string | null;
+  armorProperties?: ArmorPropertiesInfo | null;
+  weaponProperties?: WeaponPropertiesInfo | null;
+}
+
+// Mesma lista compacta de atributos que a Loja já mostra (ShopItem) —
+// repetida aqui em vez de importada porque os tipos de item vêm de
+// endpoints/formatos ligeiramente diferentes (equipamento vs loja).
+function ListaDeAtributos({ item }: { item: ItemInfo }) {
+  if (item.weaponProperties) {
+    const arma = item.weaponProperties;
+    return (
+      <ul className="space-y-0.5">
+        <li>
+          <span className="font-bold text-[#F3B43F]">Dano:</span> {arma.dano_min}–{arma.dano_max}{" "}
+          ({arma.tipo_dano === "Fisico" ? "Físico" : "Mágico"})
+        </li>
+        {arma.valor_bonus_atributo > 0 && (
+          <li>
+            <span className="font-bold text-[#F3B43F]">+{arma.valor_bonus_atributo}</span>{" "}
+            {NOME_ATRIBUTO[arma.bonus_atributo]}
+          </li>
+        )}
+      </ul>
+    );
+  }
+
+  if (item.armorProperties) {
+    const armor = item.armorProperties;
+    const bonus: [Atributo, number][] = [
+      ["Forca", armor.bonus_forca],
+      ["Vitalidade", armor.bonus_vitalidade],
+      ["Inteligencia", armor.bonus_inteligencia],
+      ["Agilidade", armor.bonus_agilidade],
+      ["Velocidade", armor.bonus_velocidade],
+    ];
+    return (
+      <ul className="space-y-0.5">
+        {armor.defesa > 0 && (
+          <li>
+            <span className="font-bold text-[#F3B43F]">Defesa:</span> {armor.defesa}
+          </li>
+        )}
+        {bonus
+          .filter(([, valor]) => valor > 0)
+          .map(([atributo, valor]) => (
+            <li key={atributo}>
+              <span className="font-bold text-[#F3B43F]">+{valor}</span> {NOME_ATRIBUTO[atributo]}
+            </li>
+          ))}
+      </ul>
+    );
+  }
+
+  return null;
 }
 
 // Enquanto o item não tem `imagem_url` própria (a maioria, por ora — só a
@@ -238,18 +334,23 @@ export default function EquipmentPanel({
       </p>
 
       <div
-        className="relative mx-auto mb-5 aspect-square w-full max-w-sm overflow-hidden rounded-2xl border border-white/10 bg-[#3a2f24] bg-contain bg-center bg-no-repeat"
+        className="relative mx-auto mb-5 aspect-square w-full max-w-sm rounded-2xl border border-white/10 bg-[#3a2f24] bg-contain bg-center bg-no-repeat"
         style={{ backgroundImage: `url(${getClassBackground(classe)})` }}
       >
         {SLOTS.map(({ slot, label, top, left, pequeno }) => {
           const itemNoSlot = equipamentos[slot];
           const aguardandoEscolha = itemSelecionado !== null;
+          // Tooltip flutua pra cima quando o slot fica na metade de baixo do
+          // boneco (senão nasceria fora da tela pra cima), e pra baixo nos
+          // slots de cima — sem isso um tooltip de várias linhas (nome +
+          // atributos) num slot perto da borda ficava cortado.
+          const tooltipEmCima = parseFloat(top) >= 50;
           return (
             <div
               key={slot}
               onClick={() => clicarSlot(slot)}
               style={{ top, left }}
-              className={`group absolute -translate-x-1/2 -translate-y-1/2 ${
+              className={`group absolute z-10 -translate-x-1/2 -translate-y-1/2 hover:z-20 ${
                 pequeno ? "h-12 w-12" : "h-16 w-16"
               } ${aguardandoEscolha ? "cursor-pointer" : ""}`}
             >
@@ -258,41 +359,50 @@ export default function EquipmentPanel({
                   aguardandoEscolha
                     ? "border-[#F3B43F] bg-[#3a2f24]"
                     : itemNoSlot
-                      ? "border-[#F3B43F]/70 bg-[#1c150f]"
+                      ? `${bordaPorRaridade(itemNoSlot.raridade)} bg-[#1c150f]`
                       : "border-dashed border-white/40 bg-black/60"
                 }`}
               >
                 {itemNoSlot && (
                   <ItemThumb item={itemNoSlot} className="h-full w-full p-2" />
                 )}
+              </div>
 
-                {/* Nome/label só aparecem no hover — o resto do tempo é só a
-                    imagem (ou o box vazio), pra manter o boneco de papel limpo. */}
-                <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-0.5 bg-black/85 p-1 text-center opacity-0 transition-opacity group-hover:opacity-100">
-                  <span className="text-[9px] uppercase tracking-wide text-white/60">
-                    {label}
-                  </span>
-                  {itemNoSlot ? (
-                    <>
-                      <span className="text-[10px] font-bold leading-tight text-[#F3B43F]">
-                        {itemNoSlot.nome}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          desequipar(slot);
-                        }}
-                        disabled={processando}
-                        className="pointer-events-auto text-[9px] text-white/60 underline hover:text-white disabled:opacity-50"
-                      >
-                        desequipar
-                      </button>
-                    </>
-                  ) : (
-                    <span className="text-[9px] text-white/40">Vazio</span>
-                  )}
-                </div>
+              {/* Nome/atributos só aparecem no hover — o resto do tempo é só
+                  a imagem (ou o box vazio), pra manter o boneco de papel
+                  limpo. Flutua por cima de tudo em vez de caber dentro do
+                  slot (que é pequeno demais pra várias linhas). */}
+              <div
+                className={`pointer-events-none absolute left-1/2 w-36 -translate-x-1/2 rounded-md bg-black/90 p-2 text-center opacity-0 shadow-lg transition-opacity group-hover:opacity-100 ${
+                  tooltipEmCima ? "bottom-full mb-2" : "top-full mt-2"
+                }`}
+              >
+                <span className="block text-[9px] uppercase tracking-wide text-white/60">
+                  {label}
+                </span>
+                {itemNoSlot ? (
+                  <>
+                    <span className="block text-[10px] font-bold leading-tight text-[#F3B43F]">
+                      {itemNoSlot.nome}
+                    </span>
+                    <div className="mt-1 text-[9px] leading-tight text-white/90">
+                      <ListaDeAtributos item={itemNoSlot} />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        desequipar(slot);
+                      }}
+                      disabled={processando}
+                      className="pointer-events-auto mt-1 text-[9px] text-white/60 underline hover:text-white disabled:opacity-50"
+                    >
+                      desequipar
+                    </button>
+                  </>
+                ) : (
+                  <span className="block text-[9px] text-white/40">Vazio</span>
+                )}
               </div>
             </div>
           );
@@ -331,10 +441,10 @@ export default function EquipmentPanel({
                     clicarItemInventario(entrada.Item.id);
                   }
                 }}
-                className={`group relative h-16 w-16 cursor-pointer select-none rounded-lg border-2 bg-[#3a2f24] transition-colors ${
+                className={`group relative z-10 h-16 w-16 cursor-pointer select-none rounded-lg border-2 bg-[#3a2f24] transition-colors hover:z-20 ${
                   selecionado
                     ? "border-[#F3B43F] ring-2 ring-[#F3B43F]/70"
-                    : "border-[#F3B43F]/60 hover:border-[#F3B43F]"
+                    : `${bordaPorRaridade(entrada.Item.raridade)} hover:border-[#F3B43F]`
                 }`}
               >
                 <ItemThumb item={entrada.Item} className="h-full w-full p-2" />
@@ -342,14 +452,18 @@ export default function EquipmentPanel({
                   x{entrada.disponivel}
                 </span>
 
-                {/* Nome/tipo só aparecem no hover, igual aos slots. */}
-                <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-0.5 rounded-lg bg-black/85 p-1 text-center opacity-0 transition-opacity group-hover:opacity-100">
-                  <span className="text-[10px] font-bold leading-tight text-white">
+                {/* Nome/atributos só aparecem no hover, flutuando acima do
+                    item em vez de caber dentro da caixinha 16x16. */}
+                <div className="pointer-events-none absolute bottom-full left-1/2 mb-2 w-36 -translate-x-1/2 rounded-md bg-black/90 p-2 text-center opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+                  <span className="block text-[10px] font-bold leading-tight text-white">
                     {entrada.Item.nome}
                   </span>
-                  <span className="text-[9px] text-white/50">
+                  <span className="block text-[9px] text-white/50">
                     {entrada.Item.tipo_item}
                   </span>
+                  <div className="mt-1 text-[9px] leading-tight text-white/90">
+                    <ListaDeAtributos item={entrada.Item} />
+                  </div>
                 </div>
               </div>
             );

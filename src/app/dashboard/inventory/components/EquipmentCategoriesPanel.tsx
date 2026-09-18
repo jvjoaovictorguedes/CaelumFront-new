@@ -14,13 +14,108 @@ type Slot =
   | "Acessorio1"
   | "Acessorio2";
 
+type Atributo = "Forca" | "Vitalidade" | "Inteligencia" | "Agilidade" | "Velocidade";
+
+const NOME_ATRIBUTO: Record<Atributo, string> = {
+  Forca: "Força",
+  Vitalidade: "Vitalidade",
+  Inteligencia: "Inteligência",
+  Agilidade: "Agilidade",
+  Velocidade: "Velocidade",
+};
+
+// Mesma escala de cor por raridade que a Loja e o boneco de papel já usam.
+const BORDA_RARIDADE: Record<string, string> = {
+  comum: "border-[#9CA3AF]/80",
+  incomum: "border-[#4ADE80]/80",
+  raro: "border-[#60A5FA]/80",
+  epico: "border-[#C084FC]/80",
+  lendario: "border-[#FB923C]/80",
+  mitico: "border-[#F87171]/80",
+};
+
+function bordaPorRaridade(raridade?: string) {
+  return BORDA_RARIDADE[(raridade ?? "comum").toLowerCase()] ?? BORDA_RARIDADE.comum;
+}
+
+interface WeaponPropertiesInfo {
+  dano_min: number;
+  dano_max: number;
+  tipo_dano: "Fisico" | "Magico";
+  bonus_atributo: Atributo;
+  valor_bonus_atributo: number;
+}
+
+interface ArmorPropertiesInfo {
+  slot_equipamento: string;
+  defesa: number;
+  bonus_forca: number;
+  bonus_vitalidade: number;
+  bonus_inteligencia: number;
+  bonus_agilidade: number;
+  bonus_velocidade: number;
+}
+
 interface ItemInfo {
   id: number;
   nome: string;
   tipo_item: string;
   raridade: string;
   imagem_url?: string | null;
-  armorProperties?: { slot_equipamento: string } | null;
+  armorProperties?: ArmorPropertiesInfo | null;
+  weaponProperties?: WeaponPropertiesInfo | null;
+}
+
+// Mesma lista compacta de atributos que a Loja e o boneco de papel (Meu
+// Personagem > Equipamentos) já mostram — duplicada aqui porque cada tela
+// lê de um formato de item ligeiramente diferente.
+function ListaDeAtributos({ item }: { item: ItemInfo }) {
+  if (item.weaponProperties) {
+    const arma = item.weaponProperties;
+    return (
+      <ul className="space-y-0.5">
+        <li>
+          <span className="font-bold text-[#F3B43F]">Dano:</span> {arma.dano_min}–{arma.dano_max}{" "}
+          ({arma.tipo_dano === "Fisico" ? "Físico" : "Mágico"})
+        </li>
+        {arma.valor_bonus_atributo > 0 && (
+          <li>
+            <span className="font-bold text-[#F3B43F]">+{arma.valor_bonus_atributo}</span>{" "}
+            {NOME_ATRIBUTO[arma.bonus_atributo]}
+          </li>
+        )}
+      </ul>
+    );
+  }
+
+  if (item.armorProperties) {
+    const armor = item.armorProperties;
+    const bonus: [Atributo, number][] = [
+      ["Forca", armor.bonus_forca],
+      ["Vitalidade", armor.bonus_vitalidade],
+      ["Inteligencia", armor.bonus_inteligencia],
+      ["Agilidade", armor.bonus_agilidade],
+      ["Velocidade", armor.bonus_velocidade],
+    ];
+    return (
+      <ul className="space-y-0.5">
+        {armor.defesa > 0 && (
+          <li>
+            <span className="font-bold text-[#F3B43F]">Defesa:</span> {armor.defesa}
+          </li>
+        )}
+        {bonus
+          .filter(([, valor]) => valor > 0)
+          .map(([atributo, valor]) => (
+            <li key={atributo}>
+              <span className="font-bold text-[#F3B43F]">+{valor}</span> {NOME_ATRIBUTO[atributo]}
+            </li>
+          ))}
+      </ul>
+    );
+  }
+
+  return null;
 }
 
 interface InventarioEntry {
@@ -233,21 +328,33 @@ export default function EquipmentCategoriesPanel({ characterId }: { characterId:
                             : { slot, idItem: entrada.Item.id },
                         )
                       }
-                      title={entrada.Item.nome}
-                      className={`relative h-16 w-16 overflow-hidden rounded-lg border-2 bg-[#3a2f24] transition ${
+                      className={`group relative z-10 h-16 w-16 overflow-visible rounded-lg border-2 bg-[#3a2f24] transition hover:z-20 ${
                         jaEquipadoAqui
                           ? "border-green-500/70"
                           : marcado
                             ? "border-[#F3B43F] ring-2 ring-[#F3B43F]/70"
-                            : "border-[#F3B43F]/60 hover:border-[#F3B43F]"
+                            : `${bordaPorRaridade(entrada.Item.raridade)} hover:border-[#F3B43F]`
                       }`}
                     >
-                      <ItemThumb item={entrada.Item} />
+                      <div className="h-full w-full overflow-hidden rounded-lg">
+                        <ItemThumb item={entrada.Item} />
+                      </div>
                       {entrada.disponivel > 1 && (
                         <span className="pointer-events-none absolute -bottom-1 -right-1 rounded bg-black/80 px-1 text-[9px] font-bold text-white">
                           x{entrada.disponivel}
                         </span>
                       )}
+
+                      {/* Nome/atributos só aparecem no hover, flutuando
+                          acima do item. */}
+                      <div className="pointer-events-none absolute bottom-full left-1/2 mb-2 w-36 -translate-x-1/2 rounded-md bg-black/90 p-2 text-center opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+                        <span className="block text-[10px] font-bold leading-tight text-white">
+                          {entrada.Item.nome}
+                        </span>
+                        <div className="mt-1 text-[9px] leading-tight text-white/90">
+                          <ListaDeAtributos item={entrada.Item} />
+                        </div>
+                      </div>
                     </button>
                   );
                 })}
