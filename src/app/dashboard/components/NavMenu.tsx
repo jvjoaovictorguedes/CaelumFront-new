@@ -7,6 +7,7 @@ import { getAvatarUrl, getClassPortrait } from "@/utils/media-url";
 import { logout } from "@/app/login/action";
 import CaelumBrand from "@/components/CaelumBrand/CaelumBrand";
 import OnlinePlayersBadge from "./OnlinePlayersBadge";
+import SidebarHealthBar from "./SidebarHealthBar";
 
 interface NavMenuItem {
   name: string;
@@ -162,6 +163,7 @@ export default function NavMenu({
               backgroundPosition: "center",
             }}
           ></div>
+          <SidebarHealthBar />
           <OnlinePlayersBadge />
         </div>
         <div className="flex w-full items-center justify-center py-6">
