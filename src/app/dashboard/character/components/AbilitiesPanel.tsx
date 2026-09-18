@@ -30,6 +30,8 @@ interface PoderApi {
   nivel_maximo_habilidade: number;
   marco_atual: string | null;
   proxima_evolucao: CustoEvolucao | null;
+  custo_ouro: number | null;
+  pode_comprar: boolean;
 }
 
 interface RecursosEvolucao {
@@ -126,10 +128,14 @@ function DetalheDoPoder({
   poder,
   evoluindo,
   onEvoluir,
+  comprando,
+  onComprar,
 }: {
   poder: PoderApi;
   evoluindo: boolean;
   onEvoluir: () => void;
+  comprando: boolean;
+  onComprar: () => void;
 }) {
   const detalhes: string[] = [];
   if (poder.custo_mana > 0) detalhes.push(`${poder.custo_mana} de mana`);
@@ -162,9 +168,30 @@ function DetalheDoPoder({
             Requer nível {poder.nivel_necessario}
           </span>
         )}
+        {bloqueado && poder.custo_ouro && (
+          <span className="rounded bg-[#F3B43F]/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#F3B43F]">
+            Precisa comprar: {poder.custo_ouro} ouro
+          </span>
+        )}
       </div>
       <p className="mt-2 text-sm text-white/80">{poder.descricao}</p>
       <p className="mt-1 text-xs text-white/60">{detalhes.join(" · ")}</p>
+
+      {bloqueado && poder.pode_comprar && (
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <span className="text-[11px] text-white/50">
+            Você já tem o nível necessário — falta comprar essa habilidade pra poder ativá-la.
+          </span>
+          <button
+            type="button"
+            onClick={onComprar}
+            disabled={comprando}
+            className="rounded-lg bg-[#F3B43F] px-2 py-1 text-[11px] font-bold text-black transition hover:bg-[#e0a52f] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {comprando ? "Comprando..." : `Comprar por ${poder.custo_ouro} ouro`}
+          </button>
+        </div>
+      )}
 
       {!bloqueado && poder.proxima_evolucao && (
         <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -195,6 +222,7 @@ export default function AbilitiesPanel({ characterId }: { characterId: number })
   const [carregando, setCarregando] = useState(true);
   const [mensagem, setMensagem] = useState("");
   const [evoluindoId, setEvoluindoId] = useState<number | null>(null);
+  const [comprandoId, setComprandoId] = useState<number | null>(null);
   const [selecionado, setSelecionado] = useState<PoderApi | null>(null);
 
   const carregar = useCallback(async () => {
@@ -230,6 +258,23 @@ export default function AbilitiesPanel({ characterId }: { characterId: number })
       setMensagem(msg);
     } finally {
       setEvoluindoId(null);
+    }
+  }
+
+  async function comprar(poder: PoderApi) {
+    if (comprandoId) return;
+    setComprandoId(poder.id_power);
+    setMensagem("");
+    try {
+      await axiosInstance.post(`/characters/${characterId}/powers/${poder.id_power}/purchase`);
+      await carregar();
+    } catch (error: unknown) {
+      const msg =
+        (error as { response?: { data?: { message?: string } } })?.response
+          ?.data?.message ?? "Não foi possível comprar essa habilidade.";
+      setMensagem(msg);
+    } finally {
+      setComprandoId(null);
     }
   }
 
@@ -321,6 +366,8 @@ export default function AbilitiesPanel({ characterId }: { characterId: number })
           poder={selecionadoAtual}
           evoluindo={evoluindoId === selecionadoAtual.id_character_ability}
           onEvoluir={() => evoluir(selecionadoAtual)}
+          comprando={comprandoId === selecionadoAtual.id_power}
+          onComprar={() => comprar(selecionadoAtual)}
         />
       )}
     </div>

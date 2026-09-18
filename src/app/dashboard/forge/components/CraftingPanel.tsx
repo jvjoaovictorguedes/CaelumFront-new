@@ -27,6 +27,7 @@ interface Blueprint {
   id: number;
   nome: string;
   categoria_equipamento: string;
+  tipo_arma?: string | null;
   nivel_forja_minimo: number;
   imagem_url?: string | null;
   variantes: VarianteBlueprint[];
@@ -74,6 +75,19 @@ function agruparPorCategoria(blueprints: Blueprint[]) {
     const ib = ORDEM_CATEGORIA.indexOf(b[0]);
     return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
   });
+}
+
+// Subseção só faz sentido pra Arma (Espada, Cajado, etc. — vem do
+// tipo_arma do item resultado, ver forgeCraftingService.js) — Armadura e
+// Acessório não têm variação de "tipo" pra agrupar por baixo.
+function agruparPorTipoArma(blueprints: Blueprint[]) {
+  const grupos = new Map<string, Blueprint[]>();
+  for (const blueprint of blueprints) {
+    const chave = blueprint.tipo_arma ?? "Outra";
+    if (!grupos.has(chave)) grupos.set(chave, []);
+    grupos.get(chave)!.push(blueprint);
+  }
+  return [...grupos.entries()].sort((a, b) => a[0].localeCompare(b[0]));
 }
 
 function formatarTempo(segundos: number) {
@@ -242,99 +256,110 @@ export default function CraftingPanel({ onProgressoMudou }: { nivelForja: number
                 <span className="ml-auto text-xs text-white/50">{blueprintsDaCategoria.length} receita(s)</span>
               </button>
 
-              {!fechada &&
-                blueprintsDaCategoria.map((blueprint) => {
-          const qualidadeAtual = qualidadeSelecionada[blueprint.id] ?? blueprint.variantes[0]?.qualidade;
-          const variante = blueprint.variantes.find((v) => v.qualidade === qualidadeAtual) ?? blueprint.variantes[0];
-          if (!variante) return null;
-          const src = resolveMediaUrl(blueprint.imagem_url);
-
-          return (
-            <div
-              key={blueprint.id}
-              className="rounded-2xl border-2 border-[#F3B43F] bg-[#292018]/90 p-5 text-white shadow-xl"
-            >
-              <div className="mb-3 flex items-center gap-3">
-                <div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg border-2 border-[#F3B43F]/60 bg-[#3a2f24]">
-                  {src ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={src} alt={blueprint.nome} className="h-full w-full object-contain p-1.5" />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center text-lg font-bold text-[#F3B43F]/80">
-                      {blueprint.nome.charAt(0)}
+              {!fechada && categoria === "Arma"
+                ? agruparPorTipoArma(blueprintsDaCategoria).map(([tipoArma, blueprintsDoTipo]) => (
+                    <div key={tipoArma} className="flex flex-col gap-3">
+                      <p className="pl-1 text-xs font-bold uppercase tracking-widest text-white/50">
+                        {tipoArma}
+                      </p>
+                      {blueprintsDoTipo.map((blueprint) => renderBlueprintCard(blueprint))}
                     </div>
-                  )}
-                </div>
-                <div>
-                  <p className="font-imFeel text-xl uppercase">{blueprint.nome}</p>
-                  <p className="text-xs text-white/50">Nível mínimo de Forja: {blueprint.nivel_forja_minimo}</p>
-                </div>
-              </div>
-
-              <div className="mb-3 flex flex-wrap gap-2">
-                {blueprint.variantes.map((v) => (
-                  <button
-                    key={v.qualidade}
-                    type="button"
-                    onClick={() => setQualidadeSelecionada((atual) => ({ ...atual, [blueprint.id]: v.qualidade }))}
-                    className={`rounded-md border-2 px-3 py-1 text-xs font-bold uppercase transition ${
-                      v.qualidade === qualidadeAtual
-                        ? `${bordaPorQualidade(v.qualidade)} bg-black/40 text-white`
-                        : "border-white/10 bg-black/20 text-white/50 hover:border-white/30"
-                    }`}
-                  >
-                    {v.qualidade_exibicao}
-                  </button>
-                ))}
-              </div>
-
-              <p className="mb-2 text-xs uppercase tracking-widest text-[#F3B43F]">
-                Qualidade dos materiais: {variante.qualidade_exibicao}
-              </p>
-
-              <ul className="mb-3 flex flex-col gap-1">
-                {variante.ingredientes.map((ingrediente) => {
-                  const suficiente = ingrediente.quantidade_disponivel >= ingrediente.quantidade_necessaria;
-                  return (
-                    <li key={ingrediente.id_item} className="flex items-center gap-2 text-xs">
-                      <span className="truncate text-white/80">
-                        {ingrediente.quantidade_necessaria}x {ingrediente.nome_item}
-                      </span>
-                      <span className={`ml-auto font-bold ${suficiente ? "text-green-400" : "text-red-400"}`}>
-                        {ingrediente.quantidade_disponivel}/{ingrediente.quantidade_necessaria}
-                      </span>
-                    </li>
-                  );
-                })}
-              </ul>
-
-              <p className="mb-1 text-xs uppercase tracking-widest text-[#F3B43F]">Suas chances</p>
-              <div className="mb-3 flex flex-wrap gap-3 text-xs">
-                {Object.entries(variante.chances_percentual).map(([qualidadeResultado, pct]) => (
-                  <span key={qualidadeResultado} className={bordaPorQualidade(qualidadeResultado).replace("border-", "text-")}>
-                    {qualidadeResultado}: {pct.toFixed(2)}%
-                  </span>
-                ))}
-              </div>
-
-              <div className="flex items-center justify-between">
-                <p className="text-xs text-white/50">Tempo: {formatarTempo(variante.tempo_segundos)}</p>
-                <button
-                  type="button"
-                  onClick={() => forjar(blueprint, variante)}
-                  disabled={!variante.pode_fabricar || forjando === blueprint.id || Boolean(fila)}
-                  className="rounded-lg bg-[#F3B43F] px-5 py-1.5 text-sm font-bold text-black transition hover:bg-[#e0a52f] disabled:cursor-not-allowed disabled:bg-black/40 disabled:text-white/50"
-                >
-                  {fila ? "Posto ocupado" : forjando === blueprint.id ? "Iniciando..." : "Forjar"}
-                </button>
-              </div>
-            </div>
-                  );
-                })}
+                  ))
+                : !fechada &&
+                  blueprintsDaCategoria.map((blueprint) => renderBlueprintCard(blueprint))}
             </div>
           );
         })
       )}
     </div>
   );
+
+  function renderBlueprintCard(blueprint: Blueprint) {
+    const qualidadeAtual = qualidadeSelecionada[blueprint.id] ?? blueprint.variantes[0]?.qualidade;
+    const variante = blueprint.variantes.find((v) => v.qualidade === qualidadeAtual) ?? blueprint.variantes[0];
+    if (!variante) return null;
+    const src = resolveMediaUrl(blueprint.imagem_url);
+
+    return (
+      <div
+        key={blueprint.id}
+        className="rounded-2xl border-2 border-[#F3B43F] bg-[#292018]/90 p-5 text-white shadow-xl"
+      >
+        <div className="mb-3 flex items-center gap-3">
+          <div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg border-2 border-[#F3B43F]/60 bg-[#3a2f24]">
+            {src ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={src} alt={blueprint.nome} className="h-full w-full object-contain p-1.5" />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center text-lg font-bold text-[#F3B43F]/80">
+                {blueprint.nome.charAt(0)}
+              </div>
+            )}
+          </div>
+          <div>
+            <p className="font-imFeel text-xl uppercase">{blueprint.nome}</p>
+            <p className="text-xs text-white/50">Nível mínimo de Forja: {blueprint.nivel_forja_minimo}</p>
+          </div>
+        </div>
+
+        <div className="mb-3 flex flex-wrap gap-2">
+          {blueprint.variantes.map((v) => (
+            <button
+              key={v.qualidade}
+              type="button"
+              onClick={() => setQualidadeSelecionada((atual) => ({ ...atual, [blueprint.id]: v.qualidade }))}
+              className={`rounded-md border-2 px-3 py-1 text-xs font-bold uppercase transition ${
+                v.qualidade === qualidadeAtual
+                  ? `${bordaPorQualidade(v.qualidade)} bg-black/40 text-white`
+                  : "border-white/10 bg-black/20 text-white/50 hover:border-white/30"
+              }`}
+            >
+              {v.qualidade_exibicao}
+            </button>
+          ))}
+        </div>
+
+        <p className="mb-2 text-xs uppercase tracking-widest text-[#F3B43F]">
+          Qualidade dos materiais: {variante.qualidade_exibicao}
+        </p>
+
+        <ul className="mb-3 flex flex-col gap-1">
+          {variante.ingredientes.map((ingrediente) => {
+            const suficiente = ingrediente.quantidade_disponivel >= ingrediente.quantidade_necessaria;
+            return (
+              <li key={ingrediente.id_item} className="flex items-center gap-2 text-xs">
+                <span className="truncate text-white/80">
+                  {ingrediente.quantidade_necessaria}x {ingrediente.nome_item}
+                </span>
+                <span className={`ml-auto font-bold ${suficiente ? "text-green-400" : "text-red-400"}`}>
+                  {ingrediente.quantidade_disponivel}/{ingrediente.quantidade_necessaria}
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+
+        <p className="mb-1 text-xs uppercase tracking-widest text-[#F3B43F]">Suas chances</p>
+        <div className="mb-3 flex flex-wrap gap-3 text-xs">
+          {Object.entries(variante.chances_percentual).map(([qualidadeResultado, pct]) => (
+            <span key={qualidadeResultado} className={bordaPorQualidade(qualidadeResultado).replace("border-", "text-")}>
+              {qualidadeResultado}: {pct.toFixed(2)}%
+            </span>
+          ))}
+        </div>
+
+        <div className="flex items-center justify-between">
+          <p className="text-xs text-white/50">Tempo: {formatarTempo(variante.tempo_segundos)}</p>
+          <button
+            type="button"
+            onClick={() => forjar(blueprint, variante)}
+            disabled={!variante.pode_fabricar || forjando === blueprint.id || Boolean(fila)}
+            className="rounded-lg bg-[#F3B43F] px-5 py-1.5 text-sm font-bold text-black transition hover:bg-[#e0a52f] disabled:cursor-not-allowed disabled:bg-black/40 disabled:text-white/50"
+          >
+            {fila ? "Posto ocupado" : forjando === blueprint.id ? "Iniciando..." : "Forjar"}
+          </button>
+        </div>
+      </div>
+    );
+  }
 }
