@@ -12,7 +12,7 @@ type AbaId =
 
 const ABAS: { id: AbaId; label: string; icone?: string }[] = [
   { id: "equipamentos", label: "Equipamentos", icone: "/icons/ui/espada.png" },
-  { id: "habilidades", label: "Habilidades" },
+  { id: "habilidades", label: "Habilidades", icone: "/icons/ui/chama.png" },
   { id: "status", label: "Status", icone: "/icons/ui/coracao.png" },
   { id: "classe", label: "Classe", icone: "/icons/ui/mago.png" },
   { id: "combate", label: "Combate", icone: "/icons/ui/espadas-cruzadas.png" },

@@ -95,7 +95,7 @@ export default function NavMenu({
     },
     { name: "Loja", iconUrl: "/icons/loja.png", path: "/dashboard/shop" },
     { name: "Mercado", iconUrl: "/icons/loja.png", path: "/dashboard/market" },
-    { name: "Forja", iconUrl: "/icons/ui/chama.png", path: "/dashboard/forge" },
+    { name: "Forja", iconUrl: "/icons/loja.png", path: "/dashboard/forge" },
     {
       name: "Guildas",
       iconUrl: "/icons/guildas.png",
