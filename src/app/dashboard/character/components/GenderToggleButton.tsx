@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import axiosInstance from "@/utils/axiosIntance";
+import { useCharacter } from "@/contexts/CharacterContext";
 
 export default function GenderToggleButton({
   characterId,
@@ -12,6 +13,7 @@ export default function GenderToggleButton({
   generoAtual: string;
 }) {
   const router = useRouter();
+  const { refreshCharacter } = useCharacter();
   const [carregando, setCarregando] = useState(false);
 
   async function alternarGenero() {
@@ -22,6 +24,11 @@ export default function GenderToggleButton({
       await axiosInstance.patch(`/characters/${characterId}`, {
         genero: novoGenero,
       });
+      // router.refresh() só recarrega a parte renderizada no servidor
+      // (ex.: imagemPadrao do avatar) — sem refreshCharacter() o
+      // CharacterContext (usado pelo texto "Sexo" aqui do lado) ficava
+      // com o valor antigo até a próxima navegação.
+      await refreshCharacter();
       router.refresh();
     } catch (error) {
       console.error("Erro ao mudar de sexo:", error);
