@@ -242,12 +242,12 @@ export default function EquipmentPanel({
               className="group absolute h-16 w-16 -translate-x-1/2 -translate-y-1/2"
             >
               <div
-                className={`relative h-full w-full overflow-hidden rounded-lg border-2 backdrop-blur-sm transition-colors ${
+                className={`relative h-full w-full overflow-hidden rounded-lg border-2 transition-colors ${
                   emFoco
-                    ? "border-[#F3B43F] bg-[#3a2f24]/90"
+                    ? "border-[#F3B43F] bg-[#3a2f24]"
                     : itemNoSlot
-                      ? "border-[#F3B43F]/70 bg-[#1c150f]/80"
-                      : "border-dashed border-white/40 bg-black/40"
+                      ? "border-[#F3B43F]/70 bg-[#1c150f]"
+                      : "border-dashed border-white/40 bg-black/60"
                 }`}
               >
                 {itemNoSlot && (
