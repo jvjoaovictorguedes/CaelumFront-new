@@ -7,6 +7,7 @@ import ClassEvolutionCard from "./components/ClassEvolutionCard";
 import EquipmentPanel from "./components/EquipmentPanel";
 import EvolutionsPanel from "./components/EvolutionsPanel";
 import GenderToggleButton from "./components/GenderToggleButton";
+import OnlinePlayersBadge from "./components/OnlinePlayersBadge";
 import VidaManaCard from "./components/VidaManaCard";
 
 export default async function CharacterPage() {
@@ -42,12 +43,15 @@ export default async function CharacterPage() {
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 p-2 sm:p-4">
       <div className="flex flex-col gap-4 rounded-2xl border-2 border-[#F3B43F] bg-[#292018]/90 p-5 text-white shadow-xl sm:flex-row sm:items-center">
-        <div
-          className="h-32 w-32 shrink-0 self-center rounded-full border-4 border-[#F3B43F] bg-[#3a2f24] bg-cover bg-center sm:self-auto"
-          style={{
-            backgroundImage: imagemRaca ? `url(${imagemRaca})` : undefined,
-          }}
-        />
+        <div className="flex shrink-0 flex-col items-center gap-2 self-center sm:self-auto">
+          <div
+            className="h-32 w-32 rounded-full border-4 border-[#F3B43F] bg-[#3a2f24] bg-cover bg-center"
+            style={{
+              backgroundImage: imagemRaca ? `url(${imagemRaca})` : undefined,
+            }}
+          />
+          <OnlinePlayersBadge />
+        </div>
         <div className="min-w-0">
           <p className="text-sm uppercase tracking-widest text-[#F3B43F]">
             Herói de Caelum
