@@ -4,6 +4,7 @@ import type {
 
 import EnemySprite from "./EnemySprite";
 import MinotauroSprite from "./MinotauroSprite";
+import WolfSprite from "./WolfSprite";
 
 import type {
   BattleSpriteProps,
@@ -26,6 +27,11 @@ export function spriteFolderForEnemy(
     nome.includes("minotaur")
   ) {
     return "Minotaur_1";
+  } if (
+    nome.includes("lobo") ||
+    nome.includes("wolf")
+  ) {
+    return "Black_Werewolf"
   }
 
   return null;
@@ -34,9 +40,11 @@ export function spriteFolderForEnemy(
 export function spriteForEnemy(
   nomeInimigo?: string,
 ): EnemySpriteComponent {
-  return spriteFolderForEnemy(
-    nomeInimigo,
-  ) === "Minotaur_1"
-    ? MinotauroSprite
-    : EnemySprite;
+  if (spriteFolderForEnemy(nomeInimigo) === "Minotaur_1") {
+    return MinotauroSprite;
+  }
+  if (nomeInimigo === "Black_Werewolf") {
+    return WolfSprite;
+  }
+  return EnemySprite;
 }
