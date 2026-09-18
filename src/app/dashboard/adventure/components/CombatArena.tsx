@@ -856,6 +856,22 @@ export default function CombatArena({
           ?.message ??
         "Erro ao processar o combate.";
 
+      // O servidor não reconhece mais este combate (ex.: a tela ficou
+      // com um inimigo desatualizado por algum motivo) — sem uma saída
+      // daqui, os botões de ação continuavam vivos na tela, mas todo
+      // clique só empilhava esse mesmo erro no log pra sempre, sem
+      // nenhum jeito de continuar jogando a não ser recarregar a página
+      // manualmente. Busca uma luta nova sozinho em vez de deixar o
+      // jogador preso.
+      if (mensagem.includes("Nenhum combate ativo")) {
+        setLog((atual) => [
+          ...atual,
+          "Esse combate não é mais válido — buscando um novo desafio...",
+        ]);
+        router.refresh();
+        return;
+      }
+
       setLog(
         (atual) => [
           ...atual,
