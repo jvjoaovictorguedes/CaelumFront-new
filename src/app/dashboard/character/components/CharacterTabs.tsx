@@ -59,7 +59,7 @@ export default function CharacterTabs({
                 : "text-white/70 hover:bg-white/10 hover:text-white"
             }`}
           >
-            {icone && <img src={icone} alt="" className="h-4 w-4 shrink-0" />}
+            {icone && <img src={icone} alt="" className="h-6 w-6 shrink-0" />}
             {label}
           </button>
         ))}
