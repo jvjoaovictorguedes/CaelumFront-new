@@ -31,7 +31,9 @@ export default async function CharacterPage() {
     (experienciaAtual / experienciaNivel) * 100,
   );
   const imagemRaca = getRaceImage(
-    character.Race?.nome,
+    character.genero === "Feminino"
+      ? character.Race?.nome_feminino
+      : character.Race?.nome_masculino,
     character.genero === "Feminino" ? "feminino" : "Masculino",
     character.Race?.imagem_masculina_url,
   );
