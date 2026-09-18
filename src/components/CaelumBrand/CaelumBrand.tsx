@@ -39,9 +39,16 @@ export function CaelumEmblema({ tamanho = "md" }: { tamanho?: keyof typeof TAMAN
 // repetidos (menu, favicon): é ilustração detalhada, encolhida vira
 // borrão — pra esses lugares usa CaelumEmblema (só o escudo) + texto
 // HTML de verdade.
+// Mobile-first: tela de celular na vertical tem pouca altura sobrando
+// depois do teclado/barra do navegador — um brasão de 160px (h-40) OU
+// mesmo o "sm" de 96px (h-24) fixos de antes ficavam grandes demais e
+// SOBREPUNHAM o título do card abaixo (estava posicionado absolute por
+// cima de tudo). Agora ele entra no fluxo normal (empilhado, não mais
+// sobreposto — ver login/register/forgot-password/reset-password
+// page.tsx) e cresce só a partir de telas maiores.
 const TAMANHOS_BRASAO = {
-  md: "h-40 sm:h-56",
-  sm: "h-24 sm:h-32",
+  md: "h-20 sm:h-32 md:h-40 lg:h-56",
+  sm: "h-14 sm:h-20 md:h-24 lg:h-32",
 } as const;
 
 export function CaelumBrasao({

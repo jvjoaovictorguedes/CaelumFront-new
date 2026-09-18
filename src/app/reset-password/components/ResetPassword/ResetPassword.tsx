@@ -49,7 +49,7 @@ export default function ResetPassword() {
 
   if (!token) {
     return (
-      <div className="absolute inset-0 m-auto h-fit min-h-[300px] w-[calc(100%-2rem)] max-w-[443px] rounded-lg border-4 border-[#F3B43F] bg-[#292018] p-5 shadow-md sm:p-8">
+      <div className="h-fit min-h-[300px] w-[calc(100%-2rem)] max-w-[443px] rounded-lg border-4 border-[#F3B43F] bg-[#292018] p-5 shadow-md sm:p-8">
         <h1 className="mb-6 text-center font-imFeel text-3xl font-bold text-white sm:text-4xl">
           Link inválido
         </h1>
@@ -71,7 +71,7 @@ export default function ResetPassword() {
   }
 
   return (
-    <div className="absolute inset-0 m-auto h-fit min-h-[460px] w-[calc(100%-2rem)] max-w-[443px] rounded-lg border-4 border-[#F3B43F] bg-[#292018] p-5 shadow-md sm:p-8">
+    <div className="h-fit min-h-[460px] w-[calc(100%-2rem)] max-w-[443px] rounded-lg border-4 border-[#F3B43F] bg-[#292018] p-5 shadow-md sm:p-8">
       <h1 className="mb-6 text-center font-imFeel text-4xl font-bold text-transparent sm:text-5xl bg-gradient-to-b from-[#F3B43F] to-[#8D6825] bg-clip-text">
         NOVA SENHA
       </h1>

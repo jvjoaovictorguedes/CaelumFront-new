@@ -4,11 +4,8 @@ import React from "react";
 
 export default function LoginPage() {
   return (
-    <div className="homeMe relative w-full h-screen flex items-center bg-cover justify-center">
-      <CaelumBrasao
-        tamanho="sm"
-        className="absolute left-1/2 top-0 z-10 -translate-x-1/2"
-      />
+    <div className="homeMe relative flex min-h-screen w-full flex-col items-center justify-center gap-2 overflow-y-auto bg-cover px-4 py-6">
+      <CaelumBrasao tamanho="sm" className="shrink-0" />
       <Register />
     </div>
   );
