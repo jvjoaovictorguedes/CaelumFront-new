@@ -39,10 +39,17 @@ export function spriteFolderForEnemy(
 export function spriteForEnemy(
   nomeInimigo?: string,
 ): EnemySpriteComponent {
-  if (spriteFolderForEnemy(nomeInimigo) === "Minotaur_1") {
+  // Compara contra a PASTA resolvida por spriteFolderForEnemy (que já
+  // sabe achar "lobo"/"wolf" dentro do nome do inimigo), não contra o
+  // nome do inimigo em si — nenhum inimigo se chama literalmente
+  // "Black_Werewolf" (ex.: "Lobo das Sombras"), então comparar
+  // `nomeInimigo === "Black_Werewolf"` nunca era verdadeiro e o lobo
+  // nunca aparecia, caindo sempre no EnemySprite genérico.
+  const pasta = spriteFolderForEnemy(nomeInimigo);
+  if (pasta === "Minotaur_1") {
     return MinotauroSprite;
   }
-  if (nomeInimigo === "Black_Werewolf") {
+  if (pasta === "Black_Werewolf") {
     return WolfSprite;
   }
   return EnemySprite;
