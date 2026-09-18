@@ -3,6 +3,7 @@ import { getRaceImage } from "@/utils/media-url";
 import AbilitiesPanel from "./components/AbilitiesPanel";
 import CharacterAttributes from "./components/CharacterAttributes";
 import CharacterTabs from "./components/CharacterTabs";
+import ClassEvolutionCard from "./components/ClassEvolutionCard";
 import EquipmentPanel from "./components/EquipmentPanel";
 import EvolutionsPanel from "./components/EvolutionsPanel";
 import GenderToggleButton from "./components/GenderToggleButton";
@@ -94,6 +95,7 @@ export default async function CharacterPage() {
         evolucoes={<EvolutionsPanel characterId={character.id} />}
         atributos={
           <div className="flex flex-col gap-4">
+            <ClassEvolutionCard characterId={character.id} />
             <CharacterAttributes character={character} bonus={bonus} />
 
             <div className="grid w-full grid-cols-2 gap-3 text-center sm:grid-cols-4">
