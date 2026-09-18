@@ -21,9 +21,11 @@ export default async function ForgePage() {
         <p className="text-sm uppercase tracking-widest text-[#F3B43F]">Evolução de equipamento</p>
         <h1 className="font-imFeel text-4xl sm:text-5xl">Forja de Caelum</h1>
         <p className="mt-2 text-white/70">
-          Funda vários itens da mesma raridade (misturados, não precisa ser cópias do
-          mesmo item) em 1 item aleatório da raridade seguinte — dá um destino de
-          verdade pro loot comum que só ia servir pra vender.
+          Escolha o item que quer forjar e reúna os materiais da receita — o
+          resultado nunca é sorteado, é sempre o item escolhido. Raridades
+          maiores pedem mais materiais e um tempo de forja mais longo (um
+          lendário pode levar horas), mas só existe 1 forja em andamento por
+          vez.
         </p>
       </div>
 
