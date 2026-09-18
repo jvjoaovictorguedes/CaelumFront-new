@@ -4,11 +4,9 @@ import { useState, type ReactNode } from "react";
 
 type AbaId = "equipamentos" | "habilidades" | "evolucoes" | "atributos";
 
-// A aba de Evoluções já está pronta e funcional por baixo (API, compra,
-// árvore de pré-requisitos) — só some da navegação até o conteúdo real
-// de cada evolução (nome/custo/bônus/imagem) ficar definido. Pra revelar
-// depois, é só trocar pra true; nenhum outro código muda.
-const EVOLUCOES_VISIVEIS = false;
+// Primeiro conteúdo real da árvore de Evolução (naturezas Ar e Escuridão)
+// já está no ar — ver 20260926030000-evolucoes-ar-escuridao.js no back.
+const EVOLUCOES_VISIVEIS = true;
 
 const ABAS: { id: AbaId; label: string }[] = [
   { id: "equipamentos", label: "Equipamentos" },
