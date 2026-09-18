@@ -78,6 +78,13 @@ export default function ClassSelection() {
   const [selectedClasses, setSelectedClasses] = useState("");
   const [loadingClasses, setLoadingClasses] = useState(true);
   const [hasRolledSpecial, setHasRolledSpecial] = useState(false);
+  // Separado de hasRolledSpecial de propósito: aquele vira true assim que
+  // o SORTEIO acontece (ganhando ou não), só pra travar "não sorteia de
+  // novo". A mensagem de bênção só pode aparecer se o sorteio realmente
+  // TIVER sido ganho — usar hasRolledSpecial pra isso mostrava a mensagem
+  // pra qualquer jogador que confirmasse a classe normal, mesmo sem ter
+  // tirado a sorte de 0.9%.
+  const [ganhouClasseRara, setGanhouClasseRara] = useState(false);
   const [visibleClasses, setVisibleClasses] = useState<ClassData[]>([]);
   const [rareClassTicket, setRareClassTicket] = useState<string | null>(null);
   const [tempCharacterData, setTempCharacterData] =
@@ -177,6 +184,7 @@ export default function ClassSelection() {
       if (resultado?.raro && resultado.classe) {
         setVisibleClasses([...classesData, resultado.classe]);
         setRareClassTicket(resultado.ticket ?? null);
+        setGanhouClasseRara(true);
         setErrorMessage(
           "Uma classe lendaria apareceu. Escolha-a ou mantenha sua classe atual e confirme novamente.",
         );
@@ -461,7 +469,7 @@ export default function ClassSelection() {
         <h2 className="mb-6 text-center text-3xl text-[#F3B43F] sm:text-4xl">
           Escolha sua Classe
         </h2>
-        {hasRolledSpecial && (
+        {ganhouClasseRara && (
           <div className="bg-[#DFC492] border-2 border-[#F3B43F] p-4 rounded-md mb-6 h-10 flex items-center justify-center text-center">
             <h4 className="text-1xl text-center text-[#292018]">
               Ao reencarnar você sente um toque sutil, e os Deuses o

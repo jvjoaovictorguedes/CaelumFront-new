@@ -47,7 +47,6 @@ export default function StatusPanel({
     character.vida_maxima ?? 30 + character.vitalidade * 6,
     character.vida_atual,
   );
-  const manaMaxima = character.mana_maxima ?? 20 + character.inteligencia * 5;
   const tempoRegenTexto = formatarTempoRegen(character.regen_vida_restante_ms ?? 0);
 
   return (
@@ -95,7 +94,7 @@ export default function StatusPanel({
       <CharacterAttributes character={character} bonus={bonus} />
 
       <div className="rounded-2xl border border-black/10 bg-[#3a2f24] p-5 shadow-lg">
-        <div className="mb-2">
+        <div>
           <div className="mb-1 flex justify-between text-sm font-bold">
             <span>Vida</span>
             <span>
@@ -113,20 +112,6 @@ export default function StatusPanel({
               Recupera tudo em {tempoRegenTexto}
             </p>
           )}
-        </div>
-        <div>
-          <div className="mb-1 flex justify-between text-sm font-bold">
-            <span>Mana</span>
-            <span>
-              {character.mana_atual} / {manaMaxima}
-            </span>
-          </div>
-          <div className="h-4 w-full overflow-hidden rounded-full bg-black/20">
-            <div
-              className="h-full bg-blue-600 transition-all duration-300"
-              style={{ width: `${Math.min(100, (character.mana_atual / manaMaxima) * 100)}%` }}
-            />
-          </div>
         </div>
       </div>
 
