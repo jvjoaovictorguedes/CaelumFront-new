@@ -15,27 +15,31 @@ type Slot =
   | "Acessorio1"
   | "Acessorio2";
 
-// Só 5 slots ativos por enquanto (cabeça, dorso, arma principal, arma
-// secundária, pés) — Mãos e os dois Acessórios ficam de fora da UI até
-// terem arte própria, mas o tipo Slot e o objeto `equipamentos` continuam
-// cobrindo os 8 pra não quebrar nada que o back já valida.
+// 7 slots ativos (Mãos fica de fora — não existe peça de armadura pra
+// esse slot no catálogo ainda). Acessório 1/2 (cinto/medalhão) ficam
+// FORA da silhueta do personagem de propósito: não fazem parte do
+// "boneco de papel" em si (não tem arte de cinto/colar desenhada no
+// personagem), então entram como ícones flutuando nas laterais em vez
+// de sobrepor o corpo, um de cada lado pra não empilhar em cima da
+// arma/escudo que já ocupam os cantos na altura do meio.
 //
 // Posição de cada slot em cima do fundo "boneco de papel" (ver
 // public/CharacterBackground/*-personagem-itens.webp): braços abertos e
 // apontando um pouco pra baixo, então a arma fica mais pro canto que no
 // meio da lateral.
-const SLOTS: { slot: Slot; label: string; top: string; left: string }[] = [
+const SLOTS: { slot: Slot; label: string; top: string; left: string; pequeno?: boolean }[] = [
   { slot: "Cabeca", label: "Cabeça", top: "8%", left: "50%" },
   { slot: "Torso", label: "Torso", top: "32%", left: "50%" },
   { slot: "ArmaPrincipal", label: "Arma Principal", top: "48%", left: "12%" },
   { slot: "ArmaSecundaria", label: "Arma Secundária", top: "48%", left: "88%" },
   { slot: "Pes", label: "Pés", top: "92%", left: "50%" },
+  { slot: "Acessorio1", label: "Acessório 1 (Cinto)", top: "74%", left: "10%", pequeno: true },
+  { slot: "Acessorio2", label: "Acessório 2 (Medalhão)", top: "16%", left: "90%", pequeno: true },
 ];
 
-// Tipos de item que fazem sentido arrastar pra um slot ativo. Acessorio1/2
-// ficam de fora enquanto o slot correspondente não existir na UI —
+// Tipos de item que fazem sentido clicar pra equipar num slot ativo —
 // Consumível, Material, QuestItem e Moeda nunca foram equipáveis.
-const TIPOS_EQUIPAVEIS = ["Armadura", "Capacete", "Escudo", "Arma"];
+const TIPOS_EQUIPAVEIS = ["Armadura", "Capacete", "Escudo", "Arma", "Acessorio1", "Acessorio2"];
 
 interface ItemInfo {
   id: number;
@@ -237,7 +241,7 @@ export default function EquipmentPanel({
         className="relative mx-auto mb-5 aspect-square w-full max-w-sm overflow-hidden rounded-2xl border border-white/10 bg-[#3a2f24] bg-contain bg-center bg-no-repeat"
         style={{ backgroundImage: `url(${getClassBackground(classe)})` }}
       >
-        {SLOTS.map(({ slot, label, top, left }) => {
+        {SLOTS.map(({ slot, label, top, left, pequeno }) => {
           const itemNoSlot = equipamentos[slot];
           const aguardandoEscolha = itemSelecionado !== null;
           return (
@@ -245,9 +249,9 @@ export default function EquipmentPanel({
               key={slot}
               onClick={() => clicarSlot(slot)}
               style={{ top, left }}
-              className={`group absolute h-16 w-16 -translate-x-1/2 -translate-y-1/2 ${
-                aguardandoEscolha ? "cursor-pointer" : ""
-              }`}
+              className={`group absolute -translate-x-1/2 -translate-y-1/2 ${
+                pequeno ? "h-12 w-12" : "h-16 w-16"
+              } ${aguardandoEscolha ? "cursor-pointer" : ""}`}
             >
               <div
                 className={`relative h-full w-full overflow-hidden rounded-lg border-2 transition-colors ${
