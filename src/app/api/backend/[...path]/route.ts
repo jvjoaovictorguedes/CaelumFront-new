@@ -55,14 +55,17 @@ async function encaminhar(request: NextRequest, path: string[]) {
       }
     }
 
-    // POST /users/refresh reemite o JWT com o relógio zerado (ver
-    // SessionKeepAlive.tsx) — só o backend responde com o token novo no
-    // corpo, então é aqui (onde dá pra escrever cookie httpOnly) que o
-    // cookie de sessão precisa ser atualizado. Sem isso, o refresh
-    // "funcionava" (o backend emitia um token novo) mas o navegador
-    // continuava mandando o token VELHO em toda chamada seguinte —
-    // renovar não adiantava nada.
-    if (path.join("/") === "users/refresh" && respostaBackend.status === 200) {
+    // POST /users/refresh e /users/change-password reemitem o JWT com o
+    // relógio zerado (ver SessionKeepAlive.tsx e a aba Informações) — só
+    // o backend responde com o token novo no corpo, então é aqui (onde
+    // dá pra escrever cookie httpOnly) que o cookie de sessão precisa
+    // ser atualizado. Sem isso, os dois "funcionavam" (o backend emitia
+    // um token novo) mas o navegador continuava mandando o token VELHO
+    // em toda chamada seguinte — no caso de change-password, o token
+    // velho já nem seria mais aceito (senha trocada invalida o que foi
+    // emitido antes), derrubando a sessão bem no meio da troca.
+    const rotasQueReemitemToken = ["users/refresh", "users/change-password"];
+    if (rotasQueReemitemToken.includes(path.join("/")) && respostaBackend.status === 200) {
       try {
         const corpo = JSON.parse(texto) as { token?: string; rememberMe?: boolean };
         if (corpo.token) {

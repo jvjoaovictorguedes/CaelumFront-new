@@ -3,9 +3,10 @@
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import axiosInstance from "@/utils/axiosIntance";
-import { getClassPortrait } from "@/utils/media-url";
+import { getAvatarUrl, getClassPortrait } from "@/utils/media-url";
 import { logout } from "@/app/login/action";
 import CaelumBrand from "@/components/CaelumBrand/CaelumBrand";
+import OnlinePlayersBadge from "./OnlinePlayersBadge";
 
 interface NavMenuItem {
   name: string;
@@ -18,9 +19,11 @@ const INTERVALO_POLL_NOTIFICACOES_MS = 15000;
 export default function NavMenu({
   currentUserId,
   classe,
+  avatarKey,
 }: {
   currentUserId?: number;
   classe?: string;
+  avatarKey?: string | null;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -154,11 +157,12 @@ export default function NavMenu({
           <div
             className="h-40 w-40 cursor-pointer rounded-full border-4 border-[#F3B43F] bg-[#292018]"
             style={{
-              backgroundImage: `url('${getClassPortrait(classe)}')`,
+              backgroundImage: `url('${getAvatarUrl(avatarKey) ?? getClassPortrait(classe)}')`,
               backgroundSize: "cover",
               backgroundPosition: "center",
             }}
           ></div>
+          <OnlinePlayersBadge />
         </div>
         <div className="flex w-full items-center justify-center py-6">
           <ul className="flex w-full flex-col items-center gap-2">

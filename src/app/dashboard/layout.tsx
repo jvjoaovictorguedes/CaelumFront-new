@@ -25,6 +25,7 @@ export default async function DashboardLayout({
           <NavMenu
             currentUserId={user?.id ? Number(user.id) : undefined}
             classe={character?.Class?.nome}
+            avatarKey={character?.avatar_key}
           />
           <main className="dashboard-main min-h-[100dvh] overflow-y-auto px-4 pb-8 pt-20 sm:px-6 lg:px-8 lg:pt-8">
             {children}

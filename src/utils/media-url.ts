@@ -56,6 +56,34 @@ export function getRaceImage(
   return localImage ?? resolveMediaUrl(imageUrl);
 }
 
+// Avatar de perfil escolhido pelo jogador (ver AVATARES_VALIDOS em
+// characterController.js, no backend — as duas listas de chaves
+// precisam ficar em sincronia). Todo mundo reaproveita arte que já
+// existia no jogo (ilustrações de raça/classe + algumas extras que já
+// estavam em public/images sem uso nenhum), então não precisa de
+// upload nem de uma URL arbitrária vinda do personagem.
+export const AVATAR_CATALOGO: { chave: string; rotulo: string; src: string }[] = [
+  { chave: "guerreiro", rotulo: "Guerreiro", src: "/images/guerreiro-lutador.jpg" },
+  { chave: "mago", rotulo: "Mago", src: "/images/mago-lutador.jpg" },
+  { chave: "humano", rotulo: "Humano", src: "/images/human.webp" },
+  { chave: "humana", rotulo: "Humana", src: "/images/female-human.webp" },
+  { chave: "elfo", rotulo: "Elfo", src: "/images/elf.webp" },
+  { chave: "elfa", rotulo: "Elfa", src: "/images/female-elf.webp" },
+  { chave: "anao", rotulo: "Anão", src: "/images/dwarf.png" },
+  { chave: "ana", rotulo: "Anã", src: "/images/female-dwarf.webp" },
+  { chave: "orc", rotulo: "Orc", src: "/images/orc.png" },
+  { chave: "orca", rotulo: "Orca", src: "/images/female-orc.webp" },
+  { chave: "celestial", rotulo: "Celestial", src: "/images/celestial.webp" },
+  { chave: "minotauro", rotulo: "Minotauro", src: "/images/minotauro.jpg" },
+  { chave: "dragao", rotulo: "Dragão", src: "/images/dragon.webp" },
+  { chave: "guardiao_celeste", rotulo: "Guardião Celeste", src: "/images/heavenly.webp" },
+];
+
+export function getAvatarUrl(avatarKey?: string | null) {
+  if (!avatarKey) return undefined;
+  return AVATAR_CATALOGO.find((avatar) => avatar.chave === avatarKey)?.src;
+}
+
 // Ilustração de corpo inteiro (guerreiro/mago) usada no avatar do menu
 // lateral — mesmo critério de normalização usado em getClassImage/
 // spriteForClass, só que apontando pras artes de personagem completas em

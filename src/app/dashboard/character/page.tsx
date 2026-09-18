@@ -1,14 +1,14 @@
+import { getUserCookie } from "@/app/create/temp-character-data-action";
 import { getCurrentCharacter } from "@/utils/character-session";
 import { getRaceImage } from "@/utils/media-url";
 import AbilitiesPanel from "./components/AbilitiesPanel";
-import CharacterAttributes from "./components/CharacterAttributes";
+import ChangePasswordForm from "./components/ChangePasswordForm";
 import CharacterTabs from "./components/CharacterTabs";
 import ClassEvolutionCard from "./components/ClassEvolutionCard";
+import CombatPlaceholder from "./components/CombatPlaceholder";
 import EquipmentPanel from "./components/EquipmentPanel";
 import EvolutionsPanel from "./components/EvolutionsPanel";
-import GenderToggleButton from "./components/GenderToggleButton";
-import OnlinePlayersBadge from "./components/OnlinePlayersBadge";
-import VidaManaCard from "./components/VidaManaCard";
+import StatusPanel from "./components/StatusPanel";
 
 export default async function CharacterPage() {
   const character = await getCurrentCharacter();
@@ -25,13 +25,7 @@ export default async function CharacterPage() {
     );
   }
 
-  const bonus = character.bonus_atributos;
-  const experienciaAtual = character.experiencia ?? 0;
-  const experienciaNivel = Math.max(100, character.nivel * 100);
-  const experienciaPercentual = Math.min(
-    100,
-    (experienciaAtual / experienciaNivel) * 100,
-  );
+  const user = await getUserCookie();
   const imagemRaca = getRaceImage(
     character.genero === "Feminino"
       ? character.Race?.nome_feminino
@@ -41,80 +35,27 @@ export default async function CharacterPage() {
   );
 
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 p-2 sm:p-4">
-      <div className="flex flex-col gap-4 rounded-2xl border-2 border-[#F3B43F] bg-[#292018]/90 p-5 text-white shadow-xl sm:flex-row sm:items-center">
-        <div className="flex shrink-0 flex-col items-center gap-2 self-center sm:self-auto">
-          <div
-            className="h-32 w-32 rounded-full border-4 border-[#F3B43F] bg-[#3a2f24] bg-cover bg-center"
-            style={{
-              backgroundImage: imagemRaca ? `url(${imagemRaca})` : undefined,
-            }}
-          />
-          <OnlinePlayersBadge />
-        </div>
-        <div className="min-w-0">
-          <p className="text-sm uppercase tracking-widest text-[#F3B43F]">
-            Herói de Caelum
-          </p>
-          <h1 className="truncate font-imFeel text-4xl sm:text-5xl">
-            {character.nome}
-          </h1>
-          <p className="flex flex-wrap items-center gap-x-1 text-base text-white/70 sm:text-lg">
-            <span>
-              Nível {character.nivel} ·{" "}
-              {character.genero === "Feminino"
-                ? character.Race?.nome_feminino
-                : character.Race?.nome_masculino}
-            </span>
-            <GenderToggleButton characterId={character.id} generoAtual={character.genero} />
-            <span>· {character.Class?.nome ?? "Classe desconhecida"}</span>
-            {character.natureza_magica && (
-              <span>· Natureza: {character.natureza_magica}</span>
-            )}
-          </p>
-          <div className="mt-3 max-w-xl">
-            <div className="mb-1 flex justify-between text-sm font-bold">
-              <span>Experiência</span>
-              <span>
-                {experienciaAtual} / {experienciaNivel}
-              </span>
-            </div>
-            <div className="h-3 overflow-hidden rounded-full bg-black/50">
-              <div
-                className="h-full bg-[#F3B43F]"
-                style={{ width: `${experienciaPercentual}%` }}
-              />
-            </div>
-          </div>
-
-          <div className="mt-3 flex flex-wrap items-center gap-2 text-xs font-bold sm:text-sm">
-            <span className="rounded-full border border-[#F3B43F]/40 bg-black/20 px-3 py-1 text-[#F3B43F]">
-              {character.dinheiro} moedas
-            </span>
-            <span className="rounded-full border border-[#F3B43F]/40 bg-black/20 px-3 py-1 text-[#F3B43F]">
-              Rank {character.rank}
-            </span>
-            <span className="rounded-full border border-[#F3B43F]/40 bg-black/20 px-3 py-1 text-[#F3B43F]">
-              {character.guilda ? character.guilda.sigla : "Sem guilda"}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      <VidaManaCard characterInicial={character} />
-
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 p-2 sm:p-4">
       <CharacterTabs
         equipamentos={
           <EquipmentPanel characterId={character.id} classe={character.Class?.nome} />
         }
         habilidades={<AbilitiesPanel characterId={character.id} />}
-        evolucoes={<EvolutionsPanel characterId={character.id} />}
-        atributos={
+        status={
+          <StatusPanel
+            character={character}
+            bonus={character.bonus_atributos}
+            imagemPadrao={imagemRaca}
+          />
+        }
+        classe={
           <div className="flex flex-col gap-4">
             <ClassEvolutionCard characterId={character.id} />
-            <CharacterAttributes character={character} bonus={bonus} />
+            <EvolutionsPanel characterId={character.id} />
           </div>
         }
+        combate={<CombatPlaceholder />}
+        informacoes={<ChangePasswordForm email={user?.email} />}
       />
     </div>
   );

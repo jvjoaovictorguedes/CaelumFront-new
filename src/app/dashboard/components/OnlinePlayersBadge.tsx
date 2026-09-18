@@ -13,8 +13,8 @@ export default function OnlinePlayersBadge() {
   const total = onlineIds.size + 1;
 
   return (
-    <div className="flex items-center justify-center gap-1.5 text-xs text-white/60 sm:justify-start">
-      <span className="h-2 w-2 rounded-full bg-green-400" />
+    <div className="flex items-center justify-center gap-1.5 text-xs font-bold text-black/70">
+      <span className="h-2 w-2 rounded-full bg-green-600" />
       {total} {total === 1 ? "jogador online" : "jogadores online"}
     </div>
   );
