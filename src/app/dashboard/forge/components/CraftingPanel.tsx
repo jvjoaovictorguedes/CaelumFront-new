@@ -54,6 +54,28 @@ function bordaPorQualidade(qualidade: string) {
   return BORDA_RARIDADE[qualidade.toLowerCase()] ?? BORDA_RARIDADE.comum;
 }
 
+const ORDEM_CATEGORIA = ["Arma", "Armadura", "Acessorio1", "Acessorio2"];
+const LABEL_CATEGORIA: Record<string, string> = {
+  Arma: "Armas",
+  Armadura: "Armaduras",
+  Acessorio1: "Acessórios",
+  Acessorio2: "Acessórios",
+};
+
+function agruparPorCategoria(blueprints: Blueprint[]) {
+  const grupos = new Map<string, Blueprint[]>();
+  for (const blueprint of blueprints) {
+    const chave = blueprint.categoria_equipamento;
+    if (!grupos.has(chave)) grupos.set(chave, []);
+    grupos.get(chave)!.push(blueprint);
+  }
+  return [...grupos.entries()].sort((a, b) => {
+    const ia = ORDEM_CATEGORIA.indexOf(a[0]);
+    const ib = ORDEM_CATEGORIA.indexOf(b[0]);
+    return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
+  });
+}
+
 function formatarTempo(segundos: number) {
   if (segundos < 60) return `${segundos}s`;
   const minutos = Math.floor(segundos / 60);
@@ -72,6 +94,7 @@ export default function CraftingPanel({ onProgressoMudou }: { nivelForja: number
   const [forjando, setForjando] = useState<number | null>(null);
   const [coletando, setColetando] = useState(false);
   const [mensagem, setMensagem] = useState("");
+  const [secoesFechadas, setSecoesFechadas] = useState<Record<string, boolean>>({});
   const intervaloRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const carregar = useCallback(async () => {
@@ -203,7 +226,24 @@ export default function CraftingPanel({ onProgressoMudou }: { nivelForja: number
           <p className="text-sm text-white/60">Nenhum blueprint disponível ainda.</p>
         </div>
       ) : (
-        blueprints.map((blueprint) => {
+        agruparPorCategoria(blueprints).map(([categoria, blueprintsDaCategoria]) => {
+          const fechada = secoesFechadas[categoria] ?? false;
+          return (
+            <div key={categoria} className="flex flex-col gap-3">
+              <button
+                type="button"
+                onClick={() => setSecoesFechadas((atual) => ({ ...atual, [categoria]: !fechada }))}
+                className="flex items-center gap-2 rounded-xl border-2 border-[#F3B43F]/60 bg-[#292018]/90 px-4 py-2 text-left text-white shadow-xl transition hover:border-[#F3B43F]"
+              >
+                <span className={`text-xs transition-transform ${fechada ? "-rotate-90" : ""}`}>▼</span>
+                <span className="font-imFeel text-lg uppercase tracking-wide text-[#F3B43F]">
+                  {LABEL_CATEGORIA[categoria] ?? categoria}
+                </span>
+                <span className="ml-auto text-xs text-white/50">{blueprintsDaCategoria.length} receita(s)</span>
+              </button>
+
+              {!fechada &&
+                blueprintsDaCategoria.map((blueprint) => {
           const qualidadeAtual = qualidadeSelecionada[blueprint.id] ?? blueprint.variantes[0]?.qualidade;
           const variante = blueprint.variantes.find((v) => v.qualidade === qualidadeAtual) ?? blueprint.variantes[0];
           if (!variante) return null;
@@ -288,6 +328,9 @@ export default function CraftingPanel({ onProgressoMudou }: { nivelForja: number
                   {fila ? "Posto ocupado" : forjando === blueprint.id ? "Iniciando..." : "Forjar"}
                 </button>
               </div>
+            </div>
+                  );
+                })}
             </div>
           );
         })
