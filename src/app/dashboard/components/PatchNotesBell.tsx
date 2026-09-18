@@ -113,11 +113,11 @@ export default function PatchNotesBell() {
           onClick={() => setAberto(false)}
         >
           <div
-            className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-2xl border-2 border-[#F3B43F] bg-[#292018] p-5 text-white shadow-2xl"
+            className="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-2xl border-2 border-[#F3B43F] bg-[#292018] p-6 text-white shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="font-imFeel text-2xl">Novidades</h2>
+              <h2 className="font-imFeel text-3xl">Novidades</h2>
               <button
                 type="button"
                 onClick={() => setAberto(false)}
@@ -130,11 +130,11 @@ export default function PatchNotesBell() {
             {notas.length === 0 ? (
               <p className="text-sm text-white/60">Nenhuma novidade registrada ainda.</p>
             ) : (
-              <div className="flex flex-col gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 {notas.map((nota) => (
                   <div
                     key={nota.id}
-                    className="rounded-xl border border-[#F3B43F]/30 bg-[#3a2f24] p-3"
+                    className="rounded-xl border border-[#F3B43F]/30 bg-[#3a2f24] p-4"
                   >
                     <div className="mb-1 flex flex-wrap items-center gap-2">
                       <span className="rounded-full bg-[#F3B43F] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-black">
