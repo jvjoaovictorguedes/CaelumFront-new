@@ -19,8 +19,15 @@ export default function Register() {
   const MIN_USERNAME_LENGTH = 3;
   const MAX_USERNAME_LENGTH = 20;
   const MIN_PASSWORD_LENGTH = 8;
-  const PASSWORD_REGEX =
-    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+])[A-Za-z\d!@#$%^&*()_+]{8,}$/;
+  // Precisa bater EXATAMENTE com a regra do backend (userController.js:
+  // SENHA_REGEX/SENHA_MIN_CARACTERES) — só letra + número, sem exigir
+  // maiúscula nem caractere especial. Antes essa regra aqui era mais
+  // rígida que a de verdade do servidor, então uma senha totalmente
+  // válida (ex.: "senha123") era barrada aqui na tela sem nem chegar a
+  // tentar o registro — e a mensagem de erro escondia qualquer outro
+  // problema real (como usuário/e-mail já cadastrado), que só o
+  // servidor consegue checar.
+  const PASSWORD_REGEX = /^(?=.*[A-Za-z])(?=.*\d).+$/;
   const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
   const isValidEmail = (email: string) => EMAIL_REGEX.test(email);
@@ -63,9 +70,7 @@ export default function Register() {
       return;
     }
     if (!PASSWORD_REGEX.test(password)) {
-      setErrorMessage(
-        "A senha deve conter pelo menos uma letra maiúscula, uma minúscula, um número e um caractere especial.",
-      );
+      setErrorMessage("A senha deve conter letras e números.");
       return;
     }
     if (password !== confirmPassword) {
