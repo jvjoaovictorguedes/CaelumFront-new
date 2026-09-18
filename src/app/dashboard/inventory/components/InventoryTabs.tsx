@@ -41,7 +41,7 @@ export default function InventoryTabs({
                 : "text-white/70 hover:bg-white/10 hover:text-white"
             }`}
           >
-            <img src={icone} alt="" className="h-4 w-4 shrink-0" />
+            <img src={icone} alt="" className="h-6 w-6 shrink-0" />
             {label}
           </button>
         ))}
