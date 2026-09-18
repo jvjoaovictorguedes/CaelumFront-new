@@ -7,6 +7,7 @@ import { getAvatarUrl, getClassPortrait } from "@/utils/media-url";
 import { logout } from "@/app/login/action";
 import CaelumBrand from "@/components/CaelumBrand/CaelumBrand";
 import OnlinePlayersBadge from "./OnlinePlayersBadge";
+import PatchNotesBell from "./PatchNotesBell";
 import SidebarHealthBar from "./SidebarHealthBar";
 
 interface NavMenuItem {
@@ -154,7 +155,10 @@ export default function NavMenu({
         }`}
       >
         <div className="flex w-full flex-col items-center justify-center gap-3 border-b border-black/50 pb-4">
-          <CaelumBrand tamanho="sm" variante="escuro" />
+          <div className="flex w-full items-center justify-center gap-2">
+            <CaelumBrand tamanho="sm" variante="escuro" />
+            <PatchNotesBell />
+          </div>
           <div
             className="h-40 w-40 cursor-pointer rounded-full border-4 border-[#F3B43F] bg-[#292018]"
             style={{
