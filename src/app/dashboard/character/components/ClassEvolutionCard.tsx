@@ -4,24 +4,56 @@ import { useCallback, useEffect, useState } from "react";
 import axiosInstance from "@/utils/axiosIntance";
 import { useCharacter } from "@/contexts/CharacterContext";
 
+interface CaminhoEvolucao {
+  id: number;
+  nome: string;
+  descricao: string;
+  nivel_necessario: number;
+  nome_item_requisito: string | null;
+  quantidade_item_requisito: number;
+  quantidade_no_inventario: number;
+  bonus_forca: number;
+  bonus_vitalidade: number;
+  bonus_agilidade: number;
+  bonus_inteligencia: number;
+  bonus_velocidade: number;
+  escolhido: boolean;
+  pode_evoluir: boolean;
+  nivel_ok: boolean;
+  item_ok: boolean;
+}
+
 interface StatusEvolucaoClasse {
   disponivel: boolean;
   ja_evoluida?: boolean;
-  nome_evoluido?: string;
-  nivel_minimo?: number;
+  caminho_escolhido?: string | null;
   nivel_atual?: number;
-  nome_item_requisito?: string;
-  quantidade_no_inventario?: number;
+  caminhos?: CaminhoEvolucao[];
 }
 
-// Evolução de CLASSE — diferente da árvore de Evolution logo abaixo
-// (aquela é por natureza mágica, comprada com ouro). Esta é única,
-// definitiva, e exige nível alto + uma Relíquia de Ascensão específica
-// da classe (ver classEvolutionService.js no backend).
+const LABEL_ATRIBUTO: Record<string, string> = {
+  bonus_forca: "Força",
+  bonus_vitalidade: "Vitalidade",
+  bonus_agilidade: "Agilidade",
+  bonus_inteligencia: "Inteligência",
+  bonus_velocidade: "Velocidade",
+};
+
+function bonusResumo(caminho: CaminhoEvolucao) {
+  return (Object.keys(LABEL_ATRIBUTO) as (keyof typeof LABEL_ATRIBUTO)[])
+    .map((chave) => ({ label: LABEL_ATRIBUTO[chave], valor: caminho[chave as keyof CaminhoEvolucao] as number }))
+    .filter((b) => b.valor > 0);
+}
+
+// Evolução de CLASSE — árvore de caminhos exclusivos (o personagem
+// escolhe UM em definitivo). Diferente da árvore de Evolution logo
+// abaixo (aquela é por natureza mágica, comprada com ouro, cumulativa
+// em vários nós) — esta é nível alto + 1 Relíquia de Ascensão
+// específica do caminho, um "capstone" de fim de progressão.
 export default function ClassEvolutionCard({ characterId }: { characterId: number }) {
   const [status, setStatus] = useState<StatusEvolucaoClasse | null>(null);
   const [carregando, setCarregando] = useState(true);
-  const [processando, setProcessando] = useState(false);
+  const [processandoId, setProcessandoId] = useState<number | null>(null);
   const [mensagem, setMensagem] = useState("");
   const { refreshCharacter } = useCharacter();
 
@@ -42,13 +74,14 @@ export default function ClassEvolutionCard({ characterId }: { characterId: numbe
     carregar();
   }, [carregar]);
 
-  async function evoluir() {
-    if (processando) return;
-    setProcessando(true);
+  async function evoluir(caminho: CaminhoEvolucao) {
+    if (processandoId) return;
+    setProcessandoId(caminho.id);
     setMensagem("");
     try {
       const resp = await axiosInstance.post<{ message?: string }>(
         `/characters/${characterId}/class-evolution`,
+        { id_caminho: caminho.id },
       );
       setMensagem(resp.data?.message ?? "Evolução concluída!");
       await Promise.all([carregar(), refreshCharacter()]);
@@ -58,15 +91,13 @@ export default function ClassEvolutionCard({ characterId }: { characterId: numbe
         "Não foi possível evoluir de classe.";
       setMensagem(msg);
     } finally {
-      setProcessando(false);
+      setProcessandoId(null);
     }
   }
 
   if (carregando || !status?.disponivel) return null;
 
-  const nivelOk = (status.nivel_atual ?? 0) >= (status.nivel_minimo ?? 0);
-  const itemOk = (status.quantidade_no_inventario ?? 0) >= 1;
-  const podeEvoluir = !status.ja_evoluida && nivelOk && itemOk;
+  const caminhos = status.caminhos ?? [];
 
   return (
     <div className="mb-5 rounded-xl border-2 border-purple-400/60 bg-gradient-to-b from-purple-950/40 to-[#3a2f24] p-4">
@@ -75,41 +106,80 @@ export default function ClassEvolutionCard({ characterId }: { characterId: numbe
       </p>
 
       {status.ja_evoluida ? (
-        <p className="text-sm text-white/80">
-          Seu personagem já evoluiu para{" "}
-          <span className="font-bold text-purple-300">{status.nome_evoluido}</span>. Um bônus
-          permanente de combate já está ativo.
+        <p className="mb-4 text-sm text-white/80">
+          Seu personagem já evoluiu pra{" "}
+          <span className="font-bold text-purple-300">{status.caminho_escolhido}</span>. Um bônus
+          permanente de atributos já está ativo — não dá pra trocar de caminho depois.
         </p>
       ) : (
-        <>
-          <p className="mb-2 text-sm text-white/80">
-            Alcance o nível <span className="font-bold">{status.nivel_minimo}</span> e obtenha{" "}
-            <span className="font-bold text-purple-300">1x {status.nome_item_requisito}</span> pra
-            evoluir em definitivo pra{" "}
-            <span className="font-bold text-purple-300">{status.nome_evoluido}</span> — um bônus
-            permanente de combate.
-          </p>
-          <div className="mb-3 flex flex-wrap gap-3 text-xs">
-            <span className={nivelOk ? "text-green-400" : "text-white/50"}>
-              {nivelOk ? "✓" : "✗"} Nível {status.nivel_minimo} (atual: {status.nivel_atual})
-            </span>
-            <span className={itemOk ? "text-green-400" : "text-white/50"}>
-              {itemOk ? "✓" : "✗"} {status.nome_item_requisito} ({status.quantidade_no_inventario ?? 0}
-              /1)
-            </span>
-          </div>
-          <button
-            type="button"
-            onClick={evoluir}
-            disabled={!podeEvoluir || processando}
-            className="rounded-lg bg-purple-500/80 px-4 py-1.5 text-sm font-bold text-white transition hover:bg-purple-500 disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            {processando ? "Evoluindo..." : "Evoluir de Classe"}
-          </button>
-        </>
+        <p className="mb-4 text-sm text-white/80">
+          Ao alcançar nível alto o suficiente, escolha UM caminho em definitivo — cada um dá um
+          perfil de atributo diferente. Depois de escolher, não dá pra trocar.
+        </p>
       )}
 
-      {mensagem && <p className="mt-2 text-xs text-purple-200">{mensagem}</p>}
+      <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-start sm:justify-center">
+        {caminhos.map((caminho) => {
+          const bloqueadoPorEscolhaAlheia = Boolean(status.ja_evoluida) && !caminho.escolhido;
+          return (
+            <div
+              key={caminho.id}
+              className={`flex flex-1 flex-col gap-2 rounded-xl border-2 p-3 text-center transition ${
+                caminho.escolhido
+                  ? "border-purple-400 bg-purple-950/50"
+                  : bloqueadoPorEscolhaAlheia
+                    ? "border-white/10 bg-black/20 opacity-50"
+                    : "border-[#F3B43F]/50 bg-black/20"
+              }`}
+            >
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border-2 border-[#F3B43F]/60 bg-[#292018] text-lg font-bold text-[#F3B43F]">
+                {caminho.nome.charAt(0)}
+              </div>
+              <p className="font-imFeel text-base uppercase text-white">{caminho.nome}</p>
+              <p className="text-[11px] text-white/60">{caminho.descricao}</p>
+
+              <div className="flex flex-wrap justify-center gap-1.5 text-[10px]">
+                {bonusResumo(caminho).map((b) => (
+                  <span
+                    key={b.label}
+                    className="rounded bg-[#F3B43F]/15 px-1.5 py-0.5 font-bold text-[#F3B43F]"
+                  >
+                    +{b.valor} {b.label}
+                  </span>
+                ))}
+              </div>
+
+              {caminho.escolhido ? (
+                <p className="mt-1 text-[11px] font-bold uppercase text-purple-300">Caminho escolhido</p>
+              ) : (
+                <>
+                  <div className="mt-1 rounded-lg border border-white/10 bg-black/30 p-2 text-left text-[10px]">
+                    <p className="mb-1 font-bold uppercase tracking-wide text-white/50">Requisitos</p>
+                    <p className={caminho.nivel_ok ? "text-green-400" : "text-white/60"}>
+                      {caminho.nivel_ok ? "✓" : "✗"} Nível {caminho.nivel_necessario} (atual:{" "}
+                      {status.nivel_atual})
+                    </p>
+                    <p className={caminho.item_ok ? "text-green-400" : "text-white/60"}>
+                      {caminho.item_ok ? "✓" : "✗"} {caminho.nome_item_requisito} (
+                      {caminho.quantidade_no_inventario}/{caminho.quantidade_item_requisito})
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => evoluir(caminho)}
+                    disabled={!caminho.pode_evoluir || processandoId !== null || bloqueadoPorEscolhaAlheia}
+                    className="mt-1 rounded-lg bg-purple-500/80 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-purple-500 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    {processandoId === caminho.id ? "Evoluindo..." : "Confirmar Evolução"}
+                  </button>
+                </>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {mensagem && <p className="mt-3 text-xs text-purple-200">{mensagem}</p>}
     </div>
   );
 }
