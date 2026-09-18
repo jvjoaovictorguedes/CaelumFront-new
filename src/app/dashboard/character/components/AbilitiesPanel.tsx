@@ -4,6 +4,11 @@ import { useCallback, useEffect, useState } from "react";
 import axiosInstance from "@/utils/axiosIntance";
 import { resolveMediaUrl } from "@/utils/media-url";
 
+interface CustoEvolucao {
+  ouro: number;
+  fragmentos: number;
+}
+
 interface PoderApi {
   id_power: number;
   nome: string;
@@ -21,6 +26,16 @@ interface PoderApi {
   aprendido: boolean;
   ativo: boolean;
   id_character_ability: number | null;
+  nivel_habilidade: number | null;
+  nivel_maximo_habilidade: number;
+  marco_atual: string | null;
+  proxima_evolucao: CustoEvolucao | null;
+}
+
+interface RecursosEvolucao {
+  ouro: number;
+  fragmentos: number;
+  nome_fragmento: string;
 }
 
 // Enquanto o poder não tem `imagem_url` própria, mostra a inicial do nome
@@ -62,16 +77,19 @@ function DetalheDoPoder({ poder }: { poder: PoderApi }) {
 
 export default function AbilitiesPanel({ characterId }: { characterId: number }) {
   const [poderes, setPoderes] = useState<PoderApi[]>([]);
+  const [recursos, setRecursos] = useState<RecursosEvolucao | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [mensagem, setMensagem] = useState("");
   const [processandoId, setProcessandoId] = useState<number | null>(null);
+  const [evoluindoId, setEvoluindoId] = useState<number | null>(null);
 
   const carregar = useCallback(async () => {
     try {
-      const resp = await axiosInstance.get<{ data?: { poderes?: PoderApi[] } }>(
-        `/characters/${characterId}/powers`,
-      );
+      const resp = await axiosInstance.get<{
+        data?: { poderes?: PoderApi[]; recursos_evolucao?: RecursosEvolucao };
+      }>(`/characters/${characterId}/powers`);
       setPoderes(resp.data?.data?.poderes ?? []);
+      setRecursos(resp.data?.data?.recursos_evolucao ?? null);
     } catch (error) {
       console.error("Erro ao carregar habilidades:", error);
       setMensagem("Não foi possível carregar suas habilidades.");
@@ -104,6 +122,23 @@ export default function AbilitiesPanel({ characterId }: { characterId: number })
     }
   }
 
+  async function evoluir(poder: PoderApi) {
+    if (!poder.id_character_ability || evoluindoId) return;
+    setEvoluindoId(poder.id_character_ability);
+    setMensagem("");
+    try {
+      await axiosInstance.post(`/character-abilities/${poder.id_character_ability}/evolve`);
+      await carregar();
+    } catch (error: unknown) {
+      const msg =
+        (error as { response?: { data?: { message?: string } } })?.response
+          ?.data?.message ?? "Não foi possível evoluir essa habilidade.";
+      setMensagem(msg);
+    } finally {
+      setEvoluindoId(null);
+    }
+  }
+
   if (carregando) {
     return (
       <div className="rounded-2xl border-2 border-[#F3B43F] bg-[#292018]/90 p-5 text-white shadow-xl">
@@ -121,8 +156,17 @@ export default function AbilitiesPanel({ characterId }: { characterId: number })
       </p>
       <p className="mb-4 text-xs text-white/50">
         Ative até as habilidades que seu nível já libera pra usá-las em combate —
-        as bloqueadas aparecem só pra visualização até você subir de nível.
+        as bloqueadas aparecem só pra visualização até você subir de nível. Cada
+        habilidade aprendida evolui de nível 1 a 10 por conta própria, gastando
+        ouro e {recursos?.nome_fragmento ?? "Fragmento de Grimório"}.
       </p>
+
+      {recursos && (
+        <p className="mb-4 text-xs text-[#F3B43F]/80">
+          Você tem <span className="font-bold">{recursos.ouro}</span> de ouro e{" "}
+          <span className="font-bold">{recursos.fragmentos}</span>x {recursos.nome_fragmento}.
+        </p>
+      )}
 
       {mensagem && <p className="mb-3 text-sm text-red-400">{mensagem}</p>}
 
@@ -157,6 +201,16 @@ export default function AbilitiesPanel({ characterId }: { characterId: number })
                         <span className="rounded bg-black/40 px-2 py-0.5 text-[10px] uppercase tracking-wide text-white/60">
                           {poder.tipo_poder}
                         </span>
+                        {!bloqueado && poder.nivel_habilidade && (
+                          <span className="rounded bg-[#F3B43F]/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#F3B43F]">
+                            Nível {poder.nivel_habilidade}/{poder.nivel_maximo_habilidade}
+                          </span>
+                        )}
+                        {!bloqueado && poder.marco_atual && (
+                          <span className="rounded bg-purple-500/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-purple-300">
+                            {poder.marco_atual}
+                          </span>
+                        )}
                         {bloqueado && (
                           <span className="rounded bg-black/40 px-2 py-0.5 text-[10px] uppercase tracking-wide text-red-300">
                             Requer nível {poder.nivel_necessario}
@@ -165,6 +219,27 @@ export default function AbilitiesPanel({ characterId }: { characterId: number })
                       </div>
                       <p className="mt-1 text-sm text-white/80">{poder.descricao}</p>
                       <DetalheDoPoder poder={poder} />
+                      {!bloqueado && poder.proxima_evolucao && (
+                        <div className="mt-2 flex flex-wrap items-center gap-2">
+                          <span className="text-[11px] text-white/50">
+                            Evoluir pro nível {(poder.nivel_habilidade ?? 1) + 1}: {poder.proxima_evolucao.ouro}{" "}
+                            ouro + {poder.proxima_evolucao.fragmentos}x fragmento
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => evoluir(poder)}
+                            disabled={evoluindoId === poder.id_character_ability}
+                            className="rounded-lg bg-purple-500/80 px-2 py-1 text-[11px] font-bold text-white transition hover:bg-purple-500 disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            Evoluir
+                          </button>
+                        </div>
+                      )}
+                      {!bloqueado && !poder.proxima_evolucao && poder.nivel_habilidade && (
+                        <p className="mt-2 text-[11px] font-bold text-purple-300">
+                          Nível máximo alcançado.
+                        </p>
+                      )}
                     </div>
 
                     <div className="shrink-0">
