@@ -9,6 +9,8 @@ interface IngredienteBlueprint {
   quantidade_necessaria: number;
   quantidade_disponivel: number;
   nome_recurso?: string;
+  nome_item: string;
+  imagem_url?: string | null;
   tipo_insumo: "Barra" | "RecursoExpedicao";
 }
 
@@ -256,8 +258,7 @@ export default function CraftingPanel({ onProgressoMudou }: { nivelForja: number
                   return (
                     <li key={ingrediente.id_item} className="flex items-center gap-2 text-xs">
                       <span className="truncate text-white/80">
-                        {ingrediente.quantidade_necessaria}x {ingrediente.tipo_insumo === "Barra" ? "Barra de " : ""}
-                        {ingrediente.nome_recurso}
+                        {ingrediente.quantidade_necessaria}x {ingrediente.nome_item}
                       </span>
                       <span className={`ml-auto font-bold ${suficiente ? "text-green-400" : "text-red-400"}`}>
                         {ingrediente.quantidade_disponivel}/{ingrediente.quantidade_necessaria}

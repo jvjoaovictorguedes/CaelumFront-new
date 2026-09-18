@@ -16,6 +16,17 @@ interface Profissao {
   disponivel_em_ms: number;
 }
 
+interface RecursoRegiao {
+  id_recurso: number;
+  nome: string;
+  peso_percentual: number;
+}
+
+interface QualidadeChance {
+  qualidade: string;
+  chance_percentual: number;
+}
+
 interface Regiao {
   id: number;
   nome: string;
@@ -24,6 +35,9 @@ interface Regiao {
   descricao: string | null;
   imagem_url: string | null;
   desbloqueada: boolean;
+  recursos: RecursoRegiao[];
+  qualidades: QualidadeChance[];
+  chance_nada_percentual: number;
 }
 
 interface ItemGanho {
@@ -340,6 +354,35 @@ export default function ExpeditionClient() {
                     </div>
 
                     {regiao.descricao && <p className="text-xs text-white/60">{regiao.descricao}</p>}
+
+                    <div className="rounded-lg border border-white/10 bg-black/20 p-2">
+                      <p className="mb-1 text-[10px] font-bold uppercase tracking-widest text-[#F3B43F]/80">
+                        O que essa região dropa
+                      </p>
+                      <div className="flex flex-col gap-0.5">
+                        {regiao.recursos.map((recurso) => (
+                          <p key={recurso.id_recurso} className="flex justify-between text-[11px] text-white/70">
+                            <span className="truncate">{recurso.nome}</span>
+                            <span className="shrink-0 text-white/50">{recurso.peso_percentual}% do achado</span>
+                          </p>
+                        ))}
+                      </div>
+                      <div className="mt-1.5 flex flex-col gap-0.5 border-t border-white/10 pt-1.5">
+                        {regiao.qualidades.map((q) => (
+                          <p
+                            key={q.qualidade}
+                            className={`flex justify-between text-[11px] ${textoPorRaridade(q.qualidade)}`}
+                          >
+                            <span>{q.qualidade}</span>
+                            <span>{q.chance_percentual}%</span>
+                          </p>
+                        ))}
+                        <p className="flex justify-between text-[11px] text-white/40">
+                          <span>Nada</span>
+                          <span>{regiao.chance_nada_percentual}%</span>
+                        </p>
+                      </div>
+                    </div>
 
                     <button
                       type="button"
