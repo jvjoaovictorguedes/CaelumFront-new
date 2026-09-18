@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getCurrentCharacter } from "@/utils/character-session";
+import { CaelumEmblema } from "@/components/CaelumBrand/CaelumBrand";
 
 export default async function DashboardHomePage() {
   const character = await getCurrentCharacter();
@@ -7,12 +8,17 @@ export default async function DashboardHomePage() {
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 p-2 sm:p-4">
       <section className="rounded-2xl border-2 border-[#F3B43F] bg-[#292018]/90 p-6 text-white shadow-xl">
-        <p className="text-sm uppercase tracking-widest text-[#F3B43F]">
-          Refúgio do aventureiro
-        </p>
-        <h1 className="font-imFeel text-4xl sm:text-6xl">
-          Bem-vindo{character?.nome ? `, ${character.nome}` : " a Caelum"}
-        </h1>
+        <div className="flex items-center gap-4">
+          <CaelumEmblema tamanho="md" />
+          <div>
+            <p className="text-sm uppercase tracking-widest text-[#F3B43F]">
+              Refúgio do aventureiro
+            </p>
+            <h1 className="font-imFeel text-4xl sm:text-6xl">
+              Bem-vindo{character?.nome ? `, ${character.nome}` : " a Caelum"}
+            </h1>
+          </div>
+        </div>
         <p className="mt-3 max-w-2xl text-white/70">
           Prepare seu herói, confira seus recursos e escolha o próximo desafio.
         </p>

@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import axiosInstance from "@/utils/axiosIntance";
 import { getClassPortrait } from "@/utils/media-url";
 import { logout } from "@/app/login/action";
+import CaelumBrand from "@/components/CaelumBrand/CaelumBrand";
 
 interface NavMenuItem {
   name: string;
@@ -147,7 +148,8 @@ export default function NavMenu({
           menuAberto ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        <div className="flex w-full flex-col items-center justify-center border-b border-black/50 pb-4">
+        <div className="flex w-full flex-col items-center justify-center gap-3 border-b border-black/50 pb-4">
+          <CaelumBrand tamanho="sm" variante="escuro" />
           <div
             className="h-40 w-40 cursor-pointer rounded-full border-4 border-[#F3B43F] bg-[#292018]"
             style={{
