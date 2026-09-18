@@ -208,12 +208,12 @@ export default function GuildDashboard({
         {mensagem && <p className="mt-3 text-sm text-red-400">{mensagem}</p>}
       </div>
 
-      <div className="flex flex-wrap gap-2 rounded-2xl border border-white/10 bg-[#292018]/60 p-2">
+      <div className="flex gap-2 overflow-x-auto rounded-2xl border border-white/10 bg-[#292018]/60 p-2">
         {ABAS.map(({ chave, label }) => (
           <button
             key={chave}
             onClick={() => setAba(chave)}
-            className={`rounded-lg px-4 py-2 text-sm font-bold transition-colors ${
+            className={`shrink-0 whitespace-nowrap rounded-lg px-3 py-2 text-xs font-bold transition-colors sm:px-4 sm:text-sm ${
               aba === chave
                 ? "bg-[#BC8418] text-black"
                 : "text-white/70 hover:bg-white/10 hover:text-white"

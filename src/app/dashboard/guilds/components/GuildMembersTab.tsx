@@ -130,7 +130,7 @@ export default function GuildMembersTab({
               placeholder="ID do personagem"
               type="number"
               required
-              className="flex-1 rounded-lg border border-white/20 bg-black/30 px-3 py-2 text-white placeholder-white/40 outline-none focus:border-[#F3B43F]"
+              className="min-w-0 flex-1 rounded-lg border border-white/20 bg-black/30 px-3 py-2 text-white placeholder-white/40 outline-none focus:border-[#F3B43F]"
             />
             <button
               type="submit"

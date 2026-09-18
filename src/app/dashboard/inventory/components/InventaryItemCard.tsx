@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import axiosInstance from "@/utils/axiosIntance";
+import { useCharacter } from "@/contexts/CharacterContext";
 
 interface InventoryEntry {
   id_personagem_inventario: number;
@@ -48,6 +49,7 @@ export default function InventoryItemCard({
   const [quantidade, setQuantidade] = useState(entrada.quantidade);
   const [isUsing, setIsUsing] = useState(false);
   const [message, setMessage] = useState("");
+  const { atualizarCharacter } = useCharacter();
 
   const isConsumivel = entrada.Item?.tipo_item === "Consumivel";
 
@@ -70,6 +72,11 @@ export default function InventoryItemCard({
         response.data?.data?.quantidadeRestante ?? Math.max(0, quantidade - 1);
       setQuantidade(restante);
       setMessage("Item usado com sucesso!");
+
+      // A resposta já traz vida_atual/mana_atual novos — atualiza o
+      // personagem compartilhado na hora, sem esperar um refresh de página.
+      const characterAtualizado = response.data?.data?.character;
+      if (characterAtualizado) atualizarCharacter(characterAtualizado);
     } catch (error: unknown) {
       console.error("Erro ao usar item:", error);
       const apiMessage = (error as UseItemError).response?.data?.message;

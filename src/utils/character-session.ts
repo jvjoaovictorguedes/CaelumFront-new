@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import axiosInstance from "./axiosIntance";
 
-interface CurrentCharacter {
+export interface CurrentCharacter {
   id: number;
   nome: string;
   genero: string;

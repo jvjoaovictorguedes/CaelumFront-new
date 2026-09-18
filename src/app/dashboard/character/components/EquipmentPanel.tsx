@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import axiosInstance from "@/utils/axiosIntance";
 import { getClassBackground, resolveMediaUrl } from "@/utils/media-url";
+import { useCharacter } from "@/contexts/CharacterContext";
 
 type Slot =
   | "Cabeca"
@@ -99,6 +100,7 @@ export default function EquipmentPanel({
   const [mensagem, setMensagem] = useState("");
   const [slotSobre, setSlotSobre] = useState<Slot | null>(null);
   const [processando, setProcessando] = useState(false);
+  const { refreshCharacter } = useCharacter();
 
   const carregarTudo = useCallback(async () => {
     try {
@@ -148,7 +150,10 @@ export default function EquipmentPanel({
         slot,
         id_item: idItem,
       });
-      await carregarTudo();
+      // Equipar/desequipar muda vida_maxima, mana_maxima e bonus_atributos —
+      // atualiza o personagem compartilhado junto com o painel local, pra
+      // a barra de vida/mana (em outro componente) refletir na hora.
+      await Promise.all([carregarTudo(), refreshCharacter()]);
     } catch (error: unknown) {
       const msg =
         (error as { response?: { data?: { message?: string } } })?.response
@@ -166,7 +171,7 @@ export default function EquipmentPanel({
       await axiosInstance.delete("/character-equipment/unequip", {
         data: { id_personagem: characterId, slot },
       });
-      await carregarTudo();
+      await Promise.all([carregarTudo(), refreshCharacter()]);
     } catch (error: unknown) {
       const msg =
         (error as { response?: { data?: { message?: string } } })?.response

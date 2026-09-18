@@ -3,6 +3,7 @@
 import { useState } from "react";
 import axios from "axios";
 import axiosInstance from "@/utils/axiosIntance";
+import { useCharacter } from "@/contexts/CharacterContext";
 
 const ATRIBUTOS = [
   { label: "Força", campo: "forca" },
@@ -48,6 +49,11 @@ export default function CharacterAttributes({
   character,
   bonus,
 }: CharacterAttributesProps) {
+  const { character: characterContexto, refreshCharacter } = useCharacter();
+  // Bônus de equipamento pode mudar sem essa tela saber (equipar/desequipar
+  // acontece na aba ao lado) — lê do contexto compartilhado quando
+  // disponível pra não mostrar um (+X) desatualizado.
+  const bonusAtual = characterContexto?.bonus_atributos ?? bonus;
   const [atributos, setAtributos] = useState({
     forca: character.forca,
     vitalidade: character.vitalidade,
@@ -90,6 +96,10 @@ export default function CharacterAttributes({
       });
 
       setPontos(personagemAtualizado.pontos_distribuir ?? 0);
+      // Vitalidade/inteligência alteram vida_maxima/mana_maxima calculados
+      // no backend — busca o personagem de novo pra refletir isso em toda
+      // a tela na hora, sem precisar trocar de aba.
+      refreshCharacter();
     } catch (error: unknown) {
       console.error("Erro ao distribuir ponto:", error);
 
@@ -130,6 +140,7 @@ export default function CharacterAttributes({
       });
 
       setPontos(personagemAtualizado.pontos_distribuir ?? 0);
+      refreshCharacter();
     } catch (error: unknown) {
       console.error("Erro ao distribuir pontos aleatoriamente:", error);
 
@@ -155,9 +166,9 @@ export default function CharacterAttributes({
             <span className="font-imFeel text-xl mr-2">{label}</span>
 
             <span className="font-bold text-xl">{atributos[campo]}</span>
-            {bonus && bonus[campo] > 0 && (
+            {bonusAtual && bonusAtual[campo] > 0 && (
               <span className="ml-1 text-sm font-bold text-green-600">
-                (+{bonus[campo]})
+                (+{bonusAtual[campo]})
               </span>
             )}
           </div>
