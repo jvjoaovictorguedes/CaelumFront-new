@@ -21,6 +21,7 @@ export interface CurrentCharacter {
   rank?: string;
   reset?: number;
   avatar_key?: string | null;
+  slots_consumiveis_combate?: (number | null)[];
   natureza_magica?: string;
   regen_vida_restante_ms?: number;
   bonus_atributos?: {

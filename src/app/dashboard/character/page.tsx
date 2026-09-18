@@ -5,7 +5,7 @@ import AbilitiesPanel from "./components/AbilitiesPanel";
 import ChangePasswordForm from "./components/ChangePasswordForm";
 import CharacterTabs from "./components/CharacterTabs";
 import ClassEvolutionCard from "./components/ClassEvolutionCard";
-import CombatPlaceholder from "./components/CombatPlaceholder";
+import CombatLoadoutPanel from "./components/CombatLoadoutPanel";
 import EquipmentPanel from "./components/EquipmentPanel";
 import EvolutionsPanel from "./components/EvolutionsPanel";
 import StatusPanel from "./components/StatusPanel";
@@ -54,7 +54,7 @@ export default async function CharacterPage() {
             <EvolutionsPanel characterId={character.id} />
           </div>
         }
-        combate={<CombatPlaceholder />}
+        combate={<CombatLoadoutPanel characterId={character.id} />}
         informacoes={<ChangePasswordForm email={user?.email} />}
       />
     </div>
