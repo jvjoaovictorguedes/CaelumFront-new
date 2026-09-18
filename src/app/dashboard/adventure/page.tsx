@@ -53,6 +53,7 @@ export default async function AdventurePage() {
       custo_mana: number;
       dano_base: number;
       cura_base: number;
+      imagem_url?: string | null;
     };
   }
 

@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import axiosInstance from "@/utils/axiosIntance";
 import { useCharacter } from "@/contexts/CharacterContext";
+import CombatActionBar, { type ConsumivelAcao } from "@/components/combat/CombatActionBar";
 
 import {
   spriteFolderForClass,
@@ -42,6 +43,7 @@ interface Power {
   custo_mana: number;
   dano_base: number;
   cura_base: number;
+  imagem_url?: string | null;
 }
 
 interface Ability {
@@ -65,8 +67,23 @@ interface CharacterState {
   experiencia?: number;
   pontos_distribuir?: number;
 
+  slots_consumiveis_combate?: (number | null)[] | null;
+
   Class?: {
     nome?: string;
+  };
+}
+
+interface ItemInventarioApi {
+  id_item: number;
+  quantidade: number;
+  Item: {
+    nome: string;
+    imagem_url?: string | null;
+    consumableProperties?: {
+      efeito_vida?: number;
+      efeito_mana?: number;
+    } | null;
   };
 }
 
@@ -302,6 +319,59 @@ export default function CombatArena({
     pontosAtual: number;
     pontosNecessarios: number;
   } | null>(null);
+
+  const [consumiveis, setConsumiveis] = useState<ConsumivelAcao[]>([]);
+
+  // Consumíveis "equipados" no loadout de combate (definidos fora daqui,
+  // em CombatLoadoutPanel) — busca uma vez ao entrar na tela, cruzando
+  // os slots do personagem com a quantidade real no inventário. Igual
+  // reaproveitado pelo Portal de Ranque (RankGatePanel.tsx), já que os
+  // dois usam este mesmo componente.
+  useEffect(() => {
+    let cancelado = false;
+
+    async function carregarConsumiveis() {
+      const idsUnicos = Array.from(
+        new Set(
+          (character.slots_consumiveis_combate ?? []).filter(
+            (id): id is number => typeof id === "number",
+          ),
+        ),
+      );
+      if (idsUnicos.length === 0) {
+        if (!cancelado) setConsumiveis([]);
+        return;
+      }
+
+      try {
+        const resp = await axiosInstance.get<{ data?: { inventory?: ItemInventarioApi[] } }>(
+          "/character-inventory",
+          { params: { characterId: character.id } },
+        );
+        const inventario = resp.data?.data?.inventory ?? [];
+        const lista: ConsumivelAcao[] = idsUnicos.map((idItem) => {
+          const entrada = inventario.find((item) => item.id_item === idItem);
+          return {
+            id_item: idItem,
+            nome: entrada?.Item.nome ?? "Item",
+            imagem_url: entrada?.Item.imagem_url,
+            quantidade: entrada?.quantidade ?? 0,
+            efeito_vida: entrada?.Item.consumableProperties?.efeito_vida,
+            efeito_mana: entrada?.Item.consumableProperties?.efeito_mana,
+          };
+        });
+        if (!cancelado) setConsumiveis(lista);
+      } catch (error) {
+        console.error("Erro ao carregar consumíveis de combate:", error);
+      }
+    }
+
+    carregarConsumiveis();
+    return () => {
+      cancelado = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [character.id]);
 
   const [
     animJogador,
@@ -662,6 +732,10 @@ export default function CombatArena({
       | {
           type: "power";
           powerId: number;
+        }
+      | {
+          type: "item";
+          itemId: number;
         },
   ) {
     if (
@@ -686,9 +760,14 @@ export default function CombatArena({
           )?.Power
         : null;
 
+    const itemUsado =
+      action.type === "item"
+        ? consumiveis.find((consumivel) => consumivel.id_item === action.itemId)
+        : null;
+
     const usouCura =
       Boolean(
-        poderUsado &&
+        (poderUsado &&
           (
             poderUsado.cura_base >
               0 ||
@@ -697,7 +776,8 @@ export default function CombatArena({
               .includes(
                 "cura",
               )
-          ),
+          )) ||
+        (itemUsado && itemUsado.efeito_vida),
       );
 
     const usouPoder =
@@ -800,6 +880,19 @@ export default function CombatArena({
         experiencia: data.character.experiencia,
         pontos_distribuir: data.character.pontos_distribuir,
       });
+
+      // A requisição só chega até aqui se o servidor de fato aceitou e
+      // consumiu o item (ver combatController.js) — decremento otimista
+      // em vez de recarregar o inventário inteiro de novo.
+      if (action.type === "item") {
+        setConsumiveis((atual) =>
+          atual.map((consumivel) =>
+            consumivel.id_item === action.itemId
+              ? { ...consumivel, quantidade: Math.max(0, consumivel.quantidade - 1) }
+              : consumivel,
+          ),
+        );
+      }
 
       await tocarAnimacaoDoTurno({
         inimigoLevouDano,
@@ -1124,73 +1217,22 @@ export default function CombatArena({
       </div>
 
       {!resultado && (
-        <div className="flex flex-wrap justify-center gap-3">
-          <button
-            onClick={() =>
-              executarAcao({
-                type:
-                  "attack",
-              })
-            }
-            disabled={
-              carregando
-            }
-            className="rounded-lg border-2 border-[#F3B43F] bg-[#BC8418] px-4 py-2 font-bold text-black shadow-md transition hover:bg-[#a5710f] disabled:opacity-50"
-          >
-            Ataque básico
-          </button>
-
-          {abilities.map(
-            (
-              habilidade,
-            ) => (
-              <button
-                key={
-                  habilidade.id
-                }
-                onClick={() =>
-                  executarAcao(
-                    {
-                      type:
-                        "power",
-
-                      powerId:
-                        habilidade
-                          .Power
-                          .id,
-                    },
-                  )
-                }
-                disabled={
-                  carregando ||
-                  manaAtual <
-                    habilidade
-                      .Power
-                      .custo_mana
-                }
-                title={
-                  habilidade
-                    .Power
-                    .descricao
-                }
-                className="rounded-lg border-2 border-[#F3B43F]/60 bg-[#3a2f24] px-4 py-2 font-bold text-white shadow-md transition hover:bg-[#2a2018] disabled:opacity-50"
-              >
-                {
-                  habilidade
-                    .Power
-                    .nome
-                }{" "}
-                (
-                {
-                  habilidade
-                    .Power
-                    .custo_mana
-                }{" "}
-                mana)
-              </button>
-            ),
-          )}
-        </div>
+        <CombatActionBar
+          podeAgir={!resultado}
+          ocupado={carregando}
+          manaAtual={manaAtual}
+          onAtaqueBasico={() => executarAcao({ type: "attack" })}
+          poderes={abilities.map((habilidade) => ({
+            id: habilidade.Power.id,
+            nome: habilidade.Power.nome,
+            imagem_url: habilidade.Power.imagem_url,
+            custo_mana: habilidade.Power.custo_mana,
+            descricao: habilidade.Power.descricao,
+          }))}
+          onUsarPoder={(powerId) => executarAcao({ type: "power", powerId })}
+          consumiveis={consumiveis}
+          onUsarConsumivel={(itemId) => executarAcao({ type: "item", itemId })}
+        />
       )}
 
       {resultado && (

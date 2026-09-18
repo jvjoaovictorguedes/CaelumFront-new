@@ -23,9 +23,19 @@ export interface LutadorDuelo {
 export interface PoderDuelo {
   id: number;
   nome: string;
+  imagem_url?: string | null;
   custo_mana: number;
   dano_base: number;
   cura_base: number;
+}
+
+export interface ConsumivelDuelo {
+  id_item: number;
+  nome: string;
+  imagem_url?: string | null;
+  quantidade: number;
+  efeito_vida?: number;
+  efeito_mana?: number;
 }
 
 export interface DueloIniciadoPayload {
@@ -43,6 +53,8 @@ export interface DueloIniciadoPayload {
   manaB: number;
   poderesA: PoderDuelo[];
   poderesB: PoderDuelo[];
+  consumiveisA: ConsumivelDuelo[];
+  consumiveisB: ConsumivelDuelo[];
   turnoDe: "A" | "B";
   prazoSegundos: number;
 }
@@ -53,6 +65,7 @@ export interface TurnoResultadoPayload {
   nomeAcao: string;
   dano: number;
   cura: number;
+  manaCurada?: number;
   esquivou: boolean;
   vidaA: number;
   vidaB: number;
@@ -90,7 +103,7 @@ interface PvpSocketContextValue {
   resultadoFinal: DueloFimPayload | null;
   desafiar: (idDesafiado: number) => void;
   responderDesafio: (aceitar: boolean) => void;
-  agir: (tipo: "attack" | "power", idPoder?: number) => void;
+  agir: (tipo: "attack" | "power" | "item", id?: number) => void;
   limparDuelo: () => void;
   limparErro: () => void;
 }
@@ -227,8 +240,12 @@ export function PvpSocketProvider({
     if (!aceitar) setDesafioRecebido(null);
   }, []);
 
-  const agir = useCallback((tipo: "attack" | "power", idPoder?: number) => {
-    socketRef.current?.emit("pvp:acao", { tipo, idPoder });
+  const agir = useCallback((tipo: "attack" | "power" | "item", id?: number) => {
+    socketRef.current?.emit("pvp:acao", {
+      tipo,
+      idPoder: tipo === "power" ? id : undefined,
+      idItem: tipo === "item" ? id : undefined,
+    });
   }, []);
 
   const limparDuelo = useCallback(() => {

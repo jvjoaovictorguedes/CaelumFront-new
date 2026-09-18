@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { usePvpSocket } from "@/contexts/PvpSocketContext";
+import { usePvpSocket, type ConsumivelDuelo } from "@/contexts/PvpSocketContext";
 import { spriteForClass } from "../../adventure/components/sprites/spriteForClass";
+import CombatActionBar from "@/components/combat/CombatActionBar";
 
 function esperar(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -22,6 +23,7 @@ export default function LiveDuelArena({ meuCharacterId }: { meuCharacterId: numb
   const [segundosVisuais, setSegundosVisuais] = useState(5);
   const [log, setLog] = useState<string[]>([]);
   const [enviando, setEnviando] = useState(false);
+  const [consumiveis, setConsumiveis] = useState<ConsumivelDuelo[]>([]);
 
   const processadosRef = useRef(0);
   const processandoRef = useRef(false);
@@ -37,6 +39,7 @@ export default function LiveDuelArena({ meuCharacterId }: { meuCharacterId: numb
     setPrazo(duelo.prazoSegundos);
     setLog([`Duelo começou na ${duelo.arena}! Vez de ${duelo.turnoDe === "A" ? duelo.a.nome : duelo.b.nome}.`]);
     setEnviando(false);
+    setConsumiveis(duelo.a.id === meuCharacterId ? duelo.consumiveisA : duelo.consumiveisB);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [duelo?.duelId]);
 
@@ -80,8 +83,12 @@ export default function LiveDuelArena({ meuCharacterId }: { meuCharacterId: numb
           linha = `${nomeDefensor} esquivou de ${turno.nomeAcao} de ${nomeAtacante}!`;
         } else if (turno.dano > 0) {
           linha = `${nomeAtacante} usou ${turno.nomeAcao} e causou ${turno.dano} de dano em ${nomeDefensor}.`;
+        } else if (turno.cura > 0 && (turno.manaCurada ?? 0) > 0) {
+          linha = `${nomeAtacante} usou ${turno.nomeAcao} e recuperou ${turno.cura} de vida e ${turno.manaCurada} de mana.`;
         } else if (turno.cura > 0) {
           linha = `${nomeAtacante} usou ${turno.nomeAcao} e recuperou ${turno.cura} de vida.`;
+        } else if ((turno.manaCurada ?? 0) > 0) {
+          linha = `${nomeAtacante} usou ${turno.nomeAcao} e recuperou ${turno.manaCurada} de mana.`;
         } else {
           linha = `${nomeAtacante} usou ${turno.nomeAcao}.`;
         }
@@ -123,10 +130,24 @@ export default function LiveDuelArena({ meuCharacterId }: { meuCharacterId: numb
   const SpriteA = spriteForClass(duelo.a.classe);
   const SpriteB = spriteForClass(duelo.b.classe);
 
-  function agirEDesabilitar(tipo: "attack" | "power", idPoder?: number) {
+  function agirEDesabilitar(tipo: "attack" | "power" | "item", id?: number) {
     if (!minhaVez || enviando) return;
     setEnviando(true);
-    agir(tipo, idPoder);
+    agir(tipo, id);
+    // Otimista: o servidor não devolve um "ack" separado pra ação de
+    // item (só o broadcast de turno, igual pra qualquer ação) — decrementa
+    // aqui na hora do clique, já que a única forma de esse envio falhar é
+    // um "pvp:erro" (item sem estoque, o que o botão já bloqueia por
+    // `disabled` de qualquer forma).
+    if (tipo === "item" && id !== undefined) {
+      setConsumiveis((atual) =>
+        atual.map((consumivel) =>
+          consumivel.id_item === id
+            ? { ...consumivel, quantidade: Math.max(0, consumivel.quantidade - 1) }
+            : consumivel,
+        ),
+      );
+    }
   }
 
   return (
@@ -175,34 +196,31 @@ export default function LiveDuelArena({ meuCharacterId }: { meuCharacterId: numb
       {erro && <p className="text-sm text-red-400">{erro}</p>}
 
       {!resultadoFinal && (
-        <div className="rounded-2xl border-2 border-[#F3B43F]/60 bg-[#292018]/90 p-4 text-white shadow-lg">
+        <>
           {minhaVez ? (
-            <div className="flex flex-wrap gap-2">
-              <button
-                onClick={() => agirEDesabilitar("attack")}
-                disabled={enviando}
-                className="rounded-lg border-2 border-[#F3B43F] bg-[#BC8418] px-4 py-2 font-bold text-black transition hover:bg-[#a5710f] disabled:opacity-50"
-              >
-                Ataque básico
-              </button>
-              {meusPoderes.map((poder) => (
-                <button
-                  key={poder.id}
-                  onClick={() => agirEDesabilitar("power", poder.id)}
-                  disabled={enviando || poder.custo_mana > minhaMana}
-                  className="rounded-lg border-2 border-[#F3B43F]/60 bg-[#3a2f24] px-4 py-2 font-bold text-[#F3B43F] transition hover:bg-[#4a3c2e] disabled:opacity-40"
-                  title={`Custa ${poder.custo_mana} de mana`}
-                >
-                  {poder.nome} <span className="text-xs text-white/60">({poder.custo_mana} mana)</span>
-                </button>
-              ))}
-            </div>
+            <CombatActionBar
+              podeAgir={minhaVez}
+              ocupado={enviando}
+              manaAtual={minhaMana}
+              onAtaqueBasico={() => agirEDesabilitar("attack")}
+              poderes={meusPoderes.map((poder) => ({
+                id: poder.id,
+                nome: poder.nome,
+                imagem_url: poder.imagem_url,
+                custo_mana: poder.custo_mana,
+              }))}
+              onUsarPoder={(id) => agirEDesabilitar("power", id)}
+              consumiveis={consumiveis}
+              onUsarConsumivel={(idItem) => agirEDesabilitar("item", idItem)}
+            />
           ) : (
-            <p className="text-center text-sm text-white/60">
-              Aguardando {oponente.nome} agir...
-            </p>
+            <div className="rounded-2xl border-2 border-[#F3B43F]/60 bg-[#292018]/90 p-4 text-white shadow-lg">
+              <p className="text-center text-sm text-white/60">
+                Aguardando {oponente.nome} agir...
+              </p>
+            </div>
           )}
-        </div>
+        </>
       )}
 
       {resultadoFinal && (

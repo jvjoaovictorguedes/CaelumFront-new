@@ -67,6 +67,7 @@ interface CharacterApi {
   mana_maxima?: number;
   experiencia?: number;
   pontos_distribuir?: number;
+  slots_consumiveis_combate?: (number | null)[] | null;
   Class?: { nome?: string };
 }
 
@@ -81,6 +82,7 @@ interface AbilityApi {
     custo_mana: number;
     dano_base: number;
     cura_base: number;
+    imagem_url?: string | null;
   };
 }
 
