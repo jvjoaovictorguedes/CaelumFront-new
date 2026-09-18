@@ -18,14 +18,14 @@ export default async function ForgePage() {
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 p-2 sm:p-4">
       <div className="rounded-2xl border-2 border-[#F3B43F] bg-[#292018]/90 p-5 text-white shadow-xl">
-        <p className="text-sm uppercase tracking-widest text-[#F3B43F]">Evolução de equipamento</p>
+        <p className="text-sm uppercase tracking-widest text-[#F3B43F]">Profissão de Forja</p>
         <h1 className="font-imFeel text-4xl sm:text-5xl">Forja de Caelum</h1>
         <p className="mt-2 text-white/70">
-          Escolha o item que quer forjar e reúna os materiais da receita — o
-          resultado nunca é sorteado, é sempre o item escolhido. Raridades
-          maiores pedem mais materiais e um tempo de forja mais longo (um
-          lendário pode levar horas), mas só existe 1 forja em andamento por
-          vez.
+          Funda fragmentos da Expedição em barras, fabrique equipamentos a
+          partir delas (a qualidade dos materiais define o piso — sua sorte e
+          seu nível de Forja decidem se sai melhor ainda) e refine o que já
+          tem de +1 até +10. Fundição é instantânea; Fabricação e Refinamento
+          dividem o mesmo posto de trabalho da Forja.
         </p>
       </div>
 
