@@ -33,8 +33,8 @@ const SLOTS: { slot: Slot; label: string; top: string; left: string; pequeno?: b
   { slot: "ArmaPrincipal", label: "Arma Principal", top: "48%", left: "12%" },
   { slot: "ArmaSecundaria", label: "Arma Secundária", top: "48%", left: "88%" },
   { slot: "Pes", label: "Pés", top: "92%", left: "50%" },
-  { slot: "Acessorio1", label: "Acessório 1 (Cinto)", top: "74%", left: "10%", pequeno: true },
-  { slot: "Acessorio2", label: "Acessório 2 (Medalhão)", top: "16%", left: "90%", pequeno: true },
+  { slot: "Acessorio1", label: "Anel", top: "74%", left: "10%", pequeno: true },
+  { slot: "Acessorio2", label: "Colar", top: "16%", left: "90%", pequeno: true },
 ];
 
 // Tipos de item que fazem sentido clicar pra equipar num slot ativo —

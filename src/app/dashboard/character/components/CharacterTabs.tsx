@@ -10,13 +10,13 @@ type AbaId =
   | "combate"
   | "informacoes";
 
-const ABAS: { id: AbaId; label: string }[] = [
-  { id: "equipamentos", label: "Equipamentos" },
+const ABAS: { id: AbaId; label: string; icone?: string }[] = [
+  { id: "equipamentos", label: "Equipamentos", icone: "/icons/ui/espada.png" },
   { id: "habilidades", label: "Habilidades" },
-  { id: "status", label: "Status" },
-  { id: "classe", label: "Classe" },
-  { id: "combate", label: "Combate" },
-  { id: "informacoes", label: "Informações" },
+  { id: "status", label: "Status", icone: "/icons/ui/coracao.png" },
+  { id: "classe", label: "Classe", icone: "/icons/ui/mago.png" },
+  { id: "combate", label: "Combate", icone: "/icons/ui/espadas-cruzadas.png" },
+  { id: "informacoes", label: "Informações", icone: "/icons/ui/engrenagem.png" },
 ];
 
 export default function CharacterTabs({
@@ -48,17 +48,18 @@ export default function CharacterTabs({
   return (
     <div className="flex flex-col gap-4">
       <div className="grid grid-cols-2 gap-2 rounded-2xl border border-black/10 bg-[#3a2f24] p-2 shadow-lg sm:grid-cols-3">
-        {ABAS.map(({ id, label }) => (
+        {ABAS.map(({ id, label, icone }) => (
           <button
             key={id}
             type="button"
             onClick={() => setAbaAtiva(id)}
-            className={`whitespace-nowrap rounded-xl px-2 py-2 text-xs font-bold uppercase tracking-wide transition sm:px-3 sm:text-sm ${
+            className={`flex items-center justify-center gap-1.5 whitespace-nowrap rounded-xl px-2 py-2 text-xs font-bold uppercase tracking-wide transition sm:px-3 sm:text-sm ${
               abaAtiva === id
                 ? "bg-[#F3B43F] text-black shadow"
                 : "text-white/70 hover:bg-white/10 hover:text-white"
             }`}
           >
+            {icone && <img src={icone} alt="" className="h-4 w-4 shrink-0" />}
             {label}
           </button>
         ))}

@@ -58,8 +58,8 @@ const SECOES: {
   },
   { slot: "ArmaPrincipal", titulo: "Mão (arma)", filtro: (item) => item.tipo_item === "Arma" },
   { slot: "ArmaSecundaria", titulo: "Mão (Escudo)", filtro: (item) => item.tipo_item === "Escudo" },
-  { slot: "Acessorio1", titulo: "Acessório 1", filtro: (item) => item.tipo_item === "Acessorio1" },
-  { slot: "Acessorio2", titulo: "Acessório 2", filtro: (item) => item.tipo_item === "Acessorio2" },
+  { slot: "Acessorio1", titulo: "Anel", filtro: (item) => item.tipo_item === "Acessorio1" },
+  { slot: "Acessorio2", titulo: "Colar", filtro: (item) => item.tipo_item === "Acessorio2" },
 ];
 
 function ItemThumb({ item }: { item: ItemInfo }) {

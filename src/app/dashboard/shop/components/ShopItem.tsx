@@ -115,7 +115,7 @@ const ICONE_POR_TIPO: Record<ShopItemData["tipo_item"], string> = {
   Consumivel: "🧪",
   Material: "⛏️",
   Acessorio1: "💍",
-  Acessorio2: "💍",
+  Acessorio2: "📿",
   QuestItem: "📜",
   Currencia: "🪙",
 };
