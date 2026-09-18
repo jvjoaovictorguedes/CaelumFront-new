@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 import axiosInstance from "@/utils/axiosIntance";
+import { useCharacter } from "@/contexts/CharacterContext";
 
 import {
   spriteFolderForClass,
@@ -182,6 +183,16 @@ export default function CombatArena({
 }: CombatArenaProps) {
   const router =
     useRouter();
+
+  // Sem propagar pro contexto compartilhado, o resto do app (NavMenu,
+  // "Meu Personagem", etc.) continuava mostrando a vida/mana de ANTES da
+  // luta começar — cada turno já vinha certo aqui dentro (estado local),
+  // mas só entrava no contexto se algo ativado por outra tela (equipar,
+  // usar item) chamasse refreshCharacter. Resultado: sair da Aventura no
+  // meio de um combate mostrava vida errada em qualquer outro lugar até
+  // dar F5.
+  const { atualizarCharacter } =
+    useCharacter();
 
   const vidaMaxima =
     character.vida_maxima ??
@@ -781,6 +792,14 @@ export default function CombatArena({
         data.character
           .pontos_distribuir,
       );
+
+      atualizarCharacter({
+        vida_atual: data.character.vida_atual,
+        mana_atual: data.character.mana_atual,
+        nivel: data.character.nivel,
+        experiencia: data.character.experiencia,
+        pontos_distribuir: data.character.pontos_distribuir,
+      });
 
       await tocarAnimacaoDoTurno({
         inimigoLevouDano,
