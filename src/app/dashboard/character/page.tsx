@@ -86,6 +86,18 @@ export default async function CharacterPage() {
               />
             </div>
           </div>
+
+          <div className="mt-3 flex flex-wrap items-center gap-2 text-xs font-bold sm:text-sm">
+            <span className="rounded-full border border-[#F3B43F]/40 bg-black/20 px-3 py-1 text-[#F3B43F]">
+              {character.dinheiro} moedas
+            </span>
+            <span className="rounded-full border border-[#F3B43F]/40 bg-black/20 px-3 py-1 text-[#F3B43F]">
+              Rank {character.rank}
+            </span>
+            <span className="rounded-full border border-[#F3B43F]/40 bg-black/20 px-3 py-1 text-[#F3B43F]">
+              {character.guilda ? character.guilda.sigla : "Sem guilda"}
+            </span>
+          </div>
         </div>
       </div>
 
@@ -101,27 +113,6 @@ export default async function CharacterPage() {
           <div className="flex flex-col gap-4">
             <ClassEvolutionCard characterId={character.id} />
             <CharacterAttributes character={character} bonus={bonus} />
-
-            <div className="grid w-full grid-cols-2 gap-3 text-center sm:grid-cols-4">
-              <div className="bg-white/40 rounded-lg p-2">
-                <p className="text-sm text-black/80">Experiência</p>
-                <p className="font-bold">{character.experiencia}</p>
-              </div>
-              <div className="bg-white/40 rounded-lg p-2">
-                <p className="text-sm text-black/80">Moedas</p>
-                <p className="font-bold">{character.dinheiro}</p>
-              </div>
-              <div className="bg-white/40 rounded-lg p-2">
-                <p className="text-sm text-black/80">Rank</p>
-                <p className="font-bold">{character.rank}</p>
-              </div>
-              <div className="bg-white/40 rounded-lg p-2">
-                <p className="text-sm text-black/80">Guilda</p>
-                <p className="font-bold">
-                  {character.guilda ? character.guilda.sigla : "Nenhuma"}
-                </p>
-              </div>
-            </div>
           </div>
         }
       />
