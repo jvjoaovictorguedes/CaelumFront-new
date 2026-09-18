@@ -28,8 +28,7 @@ export function spriteFolderForEnemy(
   ) {
     return "Minotaur_1";
   } if (
-    nome.includes("lobo") ||
-    nome.includes("wolf")
+    nome.includes("Lobo das Sombra")
   ) {
     return "Black_Werewolf"
   }
