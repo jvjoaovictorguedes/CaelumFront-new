@@ -319,7 +319,7 @@ export default function ShopItem({
           <img
             src={imagemResolvida}
             alt={item.nome}
-            className="h-full w-full object-cover opacity-90"
+            className="h-full w-full object-contain p-4 opacity-90"
           />
         ) : (
           <span className="text-6xl" aria-hidden="true">
