@@ -1,6 +1,5 @@
 import React from "react";
 import NavMenu from "./components/NavMenu";
-import { getUserCookie } from "@/app/create/temp-character-data-action";
 import { getCurrentCharacter, getCurrentCharacterId } from "@/utils/character-session";
 import { PvpSocketProvider } from "@/contexts/PvpSocketContext";
 import { CharacterProvider } from "@/contexts/CharacterContext";
@@ -13,7 +12,6 @@ interface DashboardLayoutProps {
 export default async function DashboardLayout({
   children,
 }: DashboardLayoutProps) {
-  const user = await getUserCookie();
   const characterId = await getCurrentCharacterId();
   const character = await getCurrentCharacter();
 
@@ -23,7 +21,6 @@ export default async function DashboardLayout({
       <PvpSocketProvider characterId={characterId ? Number(characterId) : undefined}>
         <div className="homeDash min-h-[100dvh] w-full overflow-x-hidden bg-cover bg-center bg-fixed">
           <NavMenu
-            currentUserId={user?.id ? Number(user.id) : undefined}
             classe={character?.Class?.nome}
             avatarKey={character?.avatar_key}
           />
