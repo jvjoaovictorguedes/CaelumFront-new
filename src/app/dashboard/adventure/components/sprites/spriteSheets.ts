@@ -25,6 +25,11 @@ export type SpriteSet = Record<EstadoSprite, SpriteFrame>;
 
 export interface SpriteCharacterConfig extends SpriteVisualConfig {
   animations: SpriteSet;
+  // false pra arte pintada/de alta resolução (ex.: "Mago Aventureiro",
+  // recortada de uma folha custom do jogador) — usa upscale suavizado
+  // em vez de "imageRendering: pixelated". Default true (mantém o
+  // visual blocado original dos packs de pixel art como Knight_1).
+  pixelArt?: boolean;
 }
 
 export interface BattleSpriteProps {
@@ -283,11 +288,17 @@ export const SPRITE_CONFIGS: Record<string, SpriteCharacterConfig> = {
   },
 
   "Mago Aventureiro": {
-    scale: 1.6,
+    // Arte pintada em alta resolução (recorte já vem justo, sem a
+    // sobra de fundo que os packs de pixel art costumam ter) — nada do
+    // scale 1.6 usado nos outros personagens, senão estoura pra fora
+    // da caixa. pixelArt:false troca o upscale "chapado" (nearest-
+    // neighbor) por suavizado, senão a ampliação vira bloco visível.
+    scale: 1.0,
     originX: "50%",
     originY: "88%",
     offsetX: 0,
     offsetY: 0,
+    pixelArt: false,
 
     animations: {
       idle: {

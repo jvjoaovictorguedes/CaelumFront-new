@@ -58,6 +58,9 @@ export default function AnimatedSpriteSheet({
     config.scale ??
     1;
 
+  const pixelArt =
+    config.pixelArt !== false;
+
   const originX =
     frame.originX ??
     config.originX ??
@@ -153,7 +156,9 @@ export default function AnimatedSpriteSheet({
                 "0% 0%",
 
               imageRendering:
-                "pixelated",
+                pixelArt
+                  ? "pixelated"
+                  : "auto",
 
               transform:
                 transformParts,

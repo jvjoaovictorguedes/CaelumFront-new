@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import axiosInstance from "@/utils/axiosIntance";
 import PvpArena, { type ResultadoDuelo } from "./PvpArena";
 import LiveDuelArena from "./LiveDuelArena";
@@ -56,6 +56,17 @@ export default function PvpClient({
   } = usePvpSocket();
 
   const duelosProcessadosRef = useRef<Set<number>>(new Set());
+
+  // Online primeiro, depois por nível (maior pro menor) — recalculado
+  // sempre que onlineIds muda (socket), não só na carga inicial.
+  const oponentesOrdenados = useMemo(() => {
+    return [...oponentesIniciais].sort((a, b) => {
+      const aOnline = onlineIds.has(a.id);
+      const bOnline = onlineIds.has(b.id);
+      if (aOnline !== bOnline) return aOnline ? -1 : 1;
+      return b.nivel - a.nivel;
+    });
+  }, [oponentesIniciais, onlineIds]);
 
   useEffect(() => {
     if (!resultadoFinal || duelosProcessadosRef.current.has(resultadoFinal.duelId)) return;
@@ -147,13 +158,13 @@ export default function PvpClient({
         <p className="mb-3 text-sm uppercase tracking-widest text-[#F3B43F]">
           Desafiar um jogador
         </p>
-        {oponentesIniciais.length === 0 ? (
+        {oponentesOrdenados.length === 0 ? (
           <p className="text-sm text-white/60">
             Nenhum outro jogador com personagem ainda. Volte mais tarde.
           </p>
         ) : (
-          <div className="grid gap-3 sm:grid-cols-2">
-            {oponentesIniciais.map((oponente) => {
+          <div className="grid max-h-[28rem] gap-3 overflow-y-auto pr-1 sm:grid-cols-2">
+            {oponentesOrdenados.map((oponente) => {
               const nomeRaca =
                 oponente.genero === "Feminino"
                   ? oponente.Race?.nome_feminino

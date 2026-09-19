@@ -5,16 +5,10 @@ import {
 } from "@/utils/character-session";
 
 import CombatArena from "./components/CombatArena";
-import HuntTargetSelector from "./components/HuntTargetSelector";
 import ZoneSelector, { type ZonaApi } from "./components/ZoneSelector";
 import HuntingSessionHeader, { type SessaoApi } from "./components/HuntingSessionHeader";
 
-export default async function AdventurePage({
-  searchParams,
-}: {
-  searchParams: Promise<{ alvo?: string }>;
-}) {
-  const { alvo } = await searchParams;
+export default async function AdventurePage() {
   const character =
     await getCurrentCharacter();
 
@@ -94,7 +88,7 @@ export default async function AdventurePage({
 
   interface SessaoResponse {
     data?: {
-      sessao?: (SessaoApi & { area: (SessaoApi["area"] & { monstros?: { nome: string; tipo_aparicao: "Comum" | "Raro" }[] }) | null }) | null;
+      sessao?: SessaoApi | null;
     };
   }
 
@@ -174,7 +168,6 @@ export default async function AdventurePage({
     const response =
       await axiosInstance.get<InimigoResponse>(
         `/combat/enemy/${character.id}`,
-        alvo ? { params: { alvo } } : undefined,
       );
 
     inimigoInicial =
@@ -187,8 +180,6 @@ export default async function AdventurePage({
       error,
     );
   }
-
-  const monstrosDaZona = sessao.area?.monstros ?? [];
 
   if (!inimigoInicial) {
     return (
@@ -207,7 +198,6 @@ export default async function AdventurePage({
   return (
     <div className="flex h-full flex-col gap-2">
       <HuntingSessionHeader sessao={sessao} />
-      <HuntTargetSelector monstros={monstrosDaZona} alvoAtual={alvo ?? null} />
       <CombatArena
         key={`${inimigoInicial.nome}-${character.vida_atual}-${Date.now()}`}
         character={character}
