@@ -17,9 +17,13 @@ export interface GuildResumo {
   // Só vem preenchido quando quem pediu já é membro da guilda (o back
   // omite pra jogador de fora, ver seção 13 do documento de design).
   tesouro?: number;
-  // Mesma escada de rank do personagem (F...S++) — sobe derrotando o
-  // Portal de Guilda coletivamente (ver GuildGatePortalTab.tsx).
+  // Escada própria da guilda F..S — sobe só por Missões de Rank
+  // concluídas pelos membros (ver GuildMissionsTab.tsx), nunca mais
+  // pelo Boss (ver GuildBossTab.tsx).
   rank?: string;
+  missoes_rank_concluidas_no_rank_atual?: number;
+  experiencia_total_ganha?: number;
+  bosses_derrotados_total?: number;
 }
 
 export type Cargo = "Fundador" | "Oficial" | "Veterano" | "Membro" | "Recruta";
@@ -88,7 +92,8 @@ export const PERMISSOES = [
   "editar_identidade",
   "editar_cargos",
   "autorizar_gastos",
-  "iniciar_portal",
+  "liberar_boss",
+  "comprar_beneficios",
 ] as const;
 
 export type Permissao = (typeof PERMISSOES)[number];

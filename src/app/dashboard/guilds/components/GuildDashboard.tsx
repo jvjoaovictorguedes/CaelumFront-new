@@ -9,16 +9,20 @@ import GuildChatTab from "./GuildChatTab";
 import GuildTreasuryTab from "./GuildTreasuryTab";
 import GuildContributionTab from "./GuildContributionTab";
 import GuildLogsTab from "./GuildLogsTab";
-import GuildGatePortalTab from "./GuildGatePortalTab";
+import GuildBossTab from "./GuildBossTab";
+import GuildMissionsTab from "./GuildMissionsTab";
+import GuildBenefitsTab from "./GuildBenefitsTab";
 
-type Aba = "membros" | "chat" | "tesouro" | "contribuicao" | "portal" | "logs";
+type Aba = "membros" | "missoes" | "beneficios" | "boss" | "tesouro" | "contribuicao" | "chat" | "logs";
 
 const ABAS: { chave: Aba; label: string }[] = [
   { chave: "membros", label: "Membros" },
-  { chave: "chat", label: "Chat" },
+  { chave: "missoes", label: "Missões" },
+  { chave: "beneficios", label: "Benefícios" },
+  { chave: "boss", label: "Boss" },
   { chave: "tesouro", label: "Tesouro" },
   { chave: "contribuicao", label: "Contribuição" },
-  { chave: "portal", label: "Portal" },
+  { chave: "chat", label: "Chat" },
   { chave: "logs", label: "Logs" },
 ];
 
@@ -166,12 +170,17 @@ export default function GuildDashboard({
 
         <div className="mt-4">
           <div className="mb-1 flex justify-between text-xs text-white/60">
-            <span>Experiência</span>
+            <span>Nível {guild.nivel} · Experiência</span>
             <span>{guild.experiencia} XP</span>
           </div>
           <div className="h-2 w-full overflow-hidden rounded-full bg-black/40">
             <div className="h-full bg-[#F3B43F]" style={{ width: `${percentualXp}%` }} />
           </div>
+        </div>
+
+        <div className="mt-2 flex items-center justify-between text-xs text-white/60">
+          <span>Ranque {guild.rank ?? "F"} · Missões de Rank concluídas</span>
+          <span>{guild.missoes_rank_concluidas_no_rank_atual ?? 0}</span>
         </div>
 
         <div className="mt-3 flex flex-wrap gap-4 text-xs text-white/60">
@@ -234,6 +243,9 @@ export default function GuildDashboard({
           onMudou={recarregarGuild}
         />
       )}
+      {aba === "missoes" && <GuildMissionsTab idGuild={guild.id} />}
+      {aba === "beneficios" && <GuildBenefitsTab idGuild={guild.id} pode={pode} />}
+      {aba === "boss" && <GuildBossTab idGuild={guild.id} pode={pode} />}
       {aba === "chat" && (
         <GuildChatTab characterId={characterId} characterNome={characterNome} idGuild={guild.id} />
       )}
@@ -241,7 +253,6 @@ export default function GuildDashboard({
         <GuildTreasuryTab guild={guild} characterId={characterId} pode={pode} onMudou={recarregarGuild} />
       )}
       {aba === "contribuicao" && <GuildContributionTab idGuild={guild.id} />}
-      {aba === "portal" && <GuildGatePortalTab idGuild={guild.id} pode={pode} />}
       {aba === "logs" && <GuildLogsTab idGuild={guild.id} />}
     </div>
   );

@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 
 import axiosInstance from "@/utils/axiosIntance";
 
-type TipoRanking = "level" | "gold" | "guild" | "pvp" | "forge";
+type TipoRanking = "level" | "gold" | "guild" | "pvp" | "forge" | "boss";
 
 const ABAS: { tipo: TipoRanking; label: string }[] = [
   { tipo: "level", label: "Nível" },
@@ -13,6 +13,7 @@ const ABAS: { tipo: TipoRanking; label: string }[] = [
   { tipo: "guild", label: "Guildas" },
   { tipo: "pvp", label: "PvP" },
   { tipo: "forge", label: "Forja" },
+  { tipo: "boss", label: "Boss da Guilda" },
 ];
 
 interface ItemRanking {
@@ -30,6 +31,8 @@ interface ItemRanking {
   derrotas?: number;
   saldo?: number;
   combates?: number;
+  rank?: string;
+  bosses_derrotados_total?: number;
 }
 
 interface MinhaPosicaoNivelGoldForja {
@@ -88,6 +91,8 @@ function valorPrincipal(tipo: TipoRanking, item: ItemRanking): string {
       return `Forja Nível ${item.forja_nivel} · ${(item.forja_xp ?? 0).toLocaleString("pt-BR")} XP`;
     case "pvp":
       return `Pontuação: ${item.pontuacao}`;
+    case "boss":
+      return `${item.bosses_derrotados_total ?? 0} Boss(es) derrotado(s) · Ranque ${item.rank}`;
     default:
       return "";
   }
@@ -265,7 +270,7 @@ function MinhaPosicaoBox({
     );
   }
 
-  if (tipo === "guild") {
+  if (tipo === "guild" || tipo === "boss") {
     const posicaoGuilda = minhaPosicao as MinhaPosicaoGuilda;
     return (
       <div className="rounded-xl border border-[#F3B43F]/40 bg-black/30 p-3 text-white">
