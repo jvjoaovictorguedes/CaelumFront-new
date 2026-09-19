@@ -2,31 +2,30 @@
 
 import { useRouter } from "next/navigation";
 
-// Mesma lista de NOMES_INIMIGOS do backend (combatController.js) — não
-// tem endpoint que devolva isso, é um catálogo fixo dos dois lados.
-// Deixa o jogador "caçar" um monstro específico (pedido: farmar 150
-// Minotauros pro Berserker sem depender só do sorteio aleatório) — só
-// muda o PRÓXIMO encontro a ser gerado, nunca o que já está em
-// andamento (gerarInimigoParaPersonagem sempre devolve o encontro atual
-// se um já existir).
-const MONSTROS = [
-  "Lobo das Sombras",
-  "Bandido Errante",
-  "Golem de Pedra",
-  "Espectro Sussurrante",
-  "Orc Guerreiro",
-  "Aranha Venenosa",
-  "Cultista Renegado",
-  "Draconídeo Jovem",
-  "Minotauro",
-];
+// Lista de monstros vem da ZONA ATUAL (§27 da spec do Modo Aventura —
+// o servidor manda o suficiente pro frontend montar isso sem inventar a
+// própria regra), não mais uma lista fixa igual dos dois lados: antes
+// da Aventura ser zona-gated não existia catálogo nenhum, então isso
+// era hardcoded aqui E em combatController.js.
+interface MonstroDaZona {
+  nome: string;
+  tipo_aparicao: "Comum" | "Raro";
+}
 
-export default function HuntTargetSelector({ alvoAtual }: { alvoAtual: string | null }) {
+export default function HuntTargetSelector({
+  monstros,
+  alvoAtual,
+}: {
+  monstros: MonstroDaZona[];
+  alvoAtual: string | null;
+}) {
   const router = useRouter();
 
   function selecionar(nome: string | null) {
     router.push(nome ? `/dashboard/adventure?alvo=${encodeURIComponent(nome)}` : "/dashboard/adventure");
   }
+
+  if (monstros.length === 0) return null;
 
   return (
     <div className="flex flex-wrap items-center gap-1.5 rounded-xl border border-[#F3B43F]/30 bg-[#292018]/80 px-3 py-2 text-xs">
@@ -42,7 +41,7 @@ export default function HuntTargetSelector({ alvoAtual }: { alvoAtual: string | 
       >
         Aleatório
       </button>
-      {MONSTROS.map((nome) => (
+      {monstros.map(({ nome, tipo_aparicao }) => (
         <button
           key={nome}
           type="button"
@@ -51,9 +50,10 @@ export default function HuntTargetSelector({ alvoAtual }: { alvoAtual: string | 
             alvoAtual === nome
               ? "bg-[#F3B43F] text-black"
               : "bg-black/30 text-white/60 hover:text-white"
-          }`}
+          } ${tipo_aparicao === "Raro" ? "ring-1 ring-[#F3B43F]/70" : ""}`}
         >
           {nome}
+          {tipo_aparicao === "Raro" ? " ★" : ""}
         </button>
       ))}
     </div>

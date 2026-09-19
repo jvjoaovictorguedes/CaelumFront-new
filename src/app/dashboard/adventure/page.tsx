@@ -6,6 +6,8 @@ import {
 
 import CombatArena from "./components/CombatArena";
 import HuntTargetSelector from "./components/HuntTargetSelector";
+import ZoneSelector, { type ZonaApi } from "./components/ZoneSelector";
+import HuntingSessionHeader, { type SessaoApi } from "./components/HuntingSessionHeader";
 
 export default async function AdventurePage({
   searchParams,
@@ -90,6 +92,46 @@ export default async function AdventurePage({
     };
   }
 
+  interface SessaoResponse {
+    data?: {
+      sessao?: (SessaoApi & { area: (SessaoApi["area"] & { monstros?: { nome: string; tipo_aparicao: "Comum" | "Raro" }[] }) | null }) | null;
+    };
+  }
+
+  interface ZonasResponse {
+    data?: {
+      zonas?: ZonaApi[];
+    };
+  }
+
+  // Modo Aventura v1: combate PvE agora exige uma Área de Caça ativa
+  // (validado no servidor, ver combatController.gerarInimigoParaPersonagem)
+  // — sem sessão, mostra a tela de seleção de zona em vez de tentar
+  // gerar um inimigo direto.
+  let sessao: NonNullable<SessaoResponse["data"]>["sessao"] = null;
+  try {
+    const response = await axiosInstance.get<SessaoResponse>("/adventure/session");
+    sessao = response.data?.data?.sessao ?? null;
+  } catch (error) {
+    console.error("Erro ao obter sessão de caça:", error);
+  }
+
+  if (!sessao) {
+    let zonas: ZonaApi[] = [];
+    try {
+      const response = await axiosInstance.get<ZonasResponse>("/adventure/zones");
+      zonas = response.data?.data?.zonas ?? [];
+    } catch (error) {
+      console.error("Erro ao listar áreas de caça:", error);
+    }
+
+    return (
+      <div className="flex h-full flex-col gap-4">
+        <ZoneSelector zonas={zonas} />
+      </div>
+    );
+  }
+
   let habilidades:
     HabilidadeApi[] = [];
 
@@ -146,24 +188,26 @@ export default async function AdventurePage({
     );
   }
 
+  const monstrosDaZona = sessao.area?.monstros ?? [];
+
   if (!inimigoInicial) {
     return (
-      <div className="flex h-full flex-col items-center justify-center">
-        <h1 className="mb-4 font-imFeel text-4xl">
-          Aventura
-        </h1>
-
-        <p className="text-lg text-gray-700">
-          Não foi possível encontrar um inimigo agora. Tente novamente em
-          instantes.
-        </p>
+      <div className="flex h-full flex-col gap-2">
+        <HuntingSessionHeader sessao={sessao} />
+        <div className="flex flex-1 flex-col items-center justify-center gap-2">
+          <p className="text-lg text-gray-700">
+            Não foi possível encontrar uma criatura agora. Tente novamente em
+            instantes.
+          </p>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="flex h-full flex-col gap-2">
-      <HuntTargetSelector alvoAtual={alvo ?? null} />
+      <HuntingSessionHeader sessao={sessao} />
+      <HuntTargetSelector monstros={monstrosDaZona} alvoAtual={alvo ?? null} />
       <CombatArena
         key={`${inimigoInicial.nome}-${character.vida_atual}-${Date.now()}`}
         character={character}
