@@ -16,6 +16,8 @@ interface CaminhoEvolucao {
   quantidade_monstro_necessaria: number | null;
   quantidade_monstro_atual: number;
   monstro_ok: boolean;
+  custo_ouro: number;
+  ouro_ok: boolean;
   bonus_forca: number;
   bonus_vitalidade: number;
   bonus_agilidade: number;
@@ -32,6 +34,7 @@ interface StatusEvolucaoClasse {
   ja_evoluida?: boolean;
   caminho_escolhido?: string | null;
   nivel_atual?: number;
+  dinheiro_atual?: number;
   caminhos?: CaminhoEvolucao[];
 }
 
@@ -172,6 +175,12 @@ export default function ClassEvolutionCard({ characterId }: { characterId: numbe
                         {caminho.monstro_ok ? "✓" : "✗"} Derrotar {caminho.quantidade_monstro_necessaria}x{" "}
                         {caminho.nome_monstro_alvo} ({caminho.quantidade_monstro_atual}/
                         {caminho.quantidade_monstro_necessaria})
+                      </p>
+                    )}
+                    {caminho.custo_ouro > 0 && (
+                      <p className={caminho.ouro_ok ? "text-green-400" : "text-white/60"}>
+                        {caminho.ouro_ok ? "✓" : "✗"} {caminho.custo_ouro} de ouro (você tem{" "}
+                        {status.dinheiro_atual ?? 0})
                       </p>
                     )}
                   </div>
