@@ -282,6 +282,53 @@ export const SPRITE_CONFIGS: Record<string, SpriteCharacterConfig> = {
     },
   },
 
+  "Mago Aventureiro": {
+    scale: 1.6,
+    originX: "50%",
+    originY: "88%",
+    offsetX: 0,
+    offsetY: 0,
+
+    animations: {
+      idle: {
+        file: "Idle.png",
+        frames: 4,
+        fps: 6,
+      },
+
+      attack: {
+        file: "Attack_1.png",
+        frames: 5,
+        fps: 9,
+      },
+
+      poder: {
+        file: "Magic_arrow.png",
+        frames: 4,
+        fps: 8,
+      },
+
+      hurt: {
+        file: "Hurt.png",
+        frames: 3,
+        fps: 7,
+      },
+
+      dead: {
+        file: "Dead.png",
+        frames: 5,
+        fps: 6,
+        loop: false,
+      },
+
+      victory: {
+        file: "Victory.png",
+        frames: 1,
+        fps: 1,
+      },
+    },
+  },
+
   Minotaur_1: {
     scale: 1.45,
     originX: "50%",

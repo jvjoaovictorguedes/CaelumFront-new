@@ -14,7 +14,7 @@ export default function MageSprite({
 }: BattleSpriteProps) {
   return (
     <AnimatedSpriteSheet
-      pasta="Wanderer Magican"
+      pasta="Mago Aventureiro"
       className={className}
       animState={animState}
       stroke={stroke}
