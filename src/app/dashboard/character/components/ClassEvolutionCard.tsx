@@ -12,6 +12,10 @@ interface CaminhoEvolucao {
   nome_item_requisito: string | null;
   quantidade_item_requisito: number;
   quantidade_no_inventario: number;
+  nome_monstro_alvo: string | null;
+  quantidade_monstro_necessaria: number | null;
+  quantidade_monstro_atual: number;
+  monstro_ok: boolean;
   bonus_forca: number;
   bonus_vitalidade: number;
   bonus_agilidade: number;
@@ -163,6 +167,13 @@ export default function ClassEvolutionCard({ characterId }: { characterId: numbe
                       {caminho.item_ok ? "✓" : "✗"} {caminho.nome_item_requisito} (
                       {caminho.quantidade_no_inventario}/{caminho.quantidade_item_requisito})
                     </p>
+                    {caminho.nome_monstro_alvo && (
+                      <p className={caminho.monstro_ok ? "text-green-400" : "text-white/60"}>
+                        {caminho.monstro_ok ? "✓" : "✗"} Derrotar {caminho.quantidade_monstro_necessaria}x{" "}
+                        {caminho.nome_monstro_alvo} ({caminho.quantidade_monstro_atual}/
+                        {caminho.quantidade_monstro_necessaria})
+                      </p>
+                    )}
                   </div>
                   <button
                     type="button"

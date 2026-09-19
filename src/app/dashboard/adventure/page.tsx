@@ -5,8 +5,14 @@ import {
 } from "@/utils/character-session";
 
 import CombatArena from "./components/CombatArena";
+import HuntTargetSelector from "./components/HuntTargetSelector";
 
-export default async function AdventurePage() {
+export default async function AdventurePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ alvo?: string }>;
+}) {
+  const { alvo } = await searchParams;
   const character =
     await getCurrentCharacter();
 
@@ -126,6 +132,7 @@ export default async function AdventurePage() {
     const response =
       await axiosInstance.get<InimigoResponse>(
         `/combat/enemy/${character.id}`,
+        alvo ? { params: { alvo } } : undefined,
       );
 
     inimigoInicial =
@@ -155,11 +162,14 @@ export default async function AdventurePage() {
   }
 
   return (
-    <CombatArena
-      key={`${inimigoInicial.nome}-${character.vida_atual}-${Date.now()}`}
-      character={character}
-      abilities={habilidades}
-      initialEnemy={inimigoInicial}
-    />
+    <div className="flex h-full flex-col gap-2">
+      <HuntTargetSelector alvoAtual={alvo ?? null} />
+      <CombatArena
+        key={`${inimigoInicial.nome}-${character.vida_atual}-${Date.now()}`}
+        character={character}
+        abilities={habilidades}
+        initialEnemy={inimigoInicial}
+      />
+    </div>
   );
 }
