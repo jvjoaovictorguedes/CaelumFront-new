@@ -34,6 +34,7 @@ interface MissaoDeRankApi {
   nome: string;
   descricao: string;
   tipo_objetivo: string;
+  descricao_objetivo: string;
   quantidade_objetivo: number;
   qualidade_minima: string | null;
   id_item_alvo: number | null;
@@ -344,7 +345,7 @@ export default function AdventureGuildPanel() {
                       <p className="font-bold">{oferta.missao.nome}</p>
                       <p className="mt-1 text-xs text-white/70">{oferta.missao.descricao}</p>
                       <p className="mt-1 text-[11px] text-white/50">
-                        Objetivo: {oferta.missao.quantidade_objetivo}x ({oferta.missao.tipo_objetivo})
+                        Objetivo: {oferta.missao.descricao_objetivo}
                       </p>
                       <p className="text-[11px] text-white/50">{descreverRecompensas(oferta.missao.recompensas)}</p>
                       <button
