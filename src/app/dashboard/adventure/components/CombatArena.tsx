@@ -150,11 +150,6 @@ interface RespostaCombate {
       item?: { id: number; nome: string; raridade: string };
       dinheiro?: number;
     } | null;
-
-    // Só o Portal de Ranque preenche estes três.
-    rank_promovido?: string | null;
-    pontos_portal_atual?: number;
-    pontos_necessarios?: number;
   };
 }
 
@@ -314,19 +309,11 @@ export default function CombatArena({
     dinheiro?: number;
   } | null>(null);
 
-  const [infoPortal, setInfoPortal] = useState<{
-    rankPromovido: string | null;
-    pontosAtual: number;
-    pontosNecessarios: number;
-  } | null>(null);
-
   const [consumiveis, setConsumiveis] = useState<ConsumivelAcao[]>([]);
 
   // Consumíveis "equipados" no loadout de combate (definidos fora daqui,
   // em CombatLoadoutPanel) — busca uma vez ao entrar na tela, cruzando
-  // os slots do personagem com a quantidade real no inventário. Igual
-  // reaproveitado pelo Portal de Ranque (RankGatePanel.tsx), já que os
-  // dois usam este mesmo componente.
+  // os slots do personagem com a quantidade real no inventário.
   useEffect(() => {
     let cancelado = false;
 
@@ -924,14 +911,6 @@ export default function CombatArena({
           );
         }
         setDrop(data.drop ?? null);
-
-        if (typeof data.pontos_necessarios === "number") {
-          setInfoPortal({
-            rankPromovido: data.rank_promovido ?? null,
-            pontosAtual: data.pontos_portal_atual ?? 0,
-            pontosNecessarios: data.pontos_necessarios,
-          });
-        }
       }
     } catch (
       error: unknown
@@ -1264,14 +1243,6 @@ export default function CombatArena({
               {drop.tipo === "item" && drop.item
                 ? `Você encontrou: ${drop.item.nome}!`
                 : `+${drop.dinheiro} moedas extras encontradas!`}
-            </p>
-          )}
-
-          {infoPortal && (
-            <p className="mb-3 font-bold text-[#F3B43F]">
-              {infoPortal.rankPromovido
-                ? `Você foi promovido para o ranque ${infoPortal.rankPromovido}!`
-                : `Pontos do portal: ${infoPortal.pontosAtual}/${infoPortal.pontosNecessarios}`}
             </p>
           )}
 
