@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { usePvpSocket, type ConsumivelDuelo } from "@/contexts/PvpSocketContext";
+import { usePvpSocket, type ConsumivelDuelo, type RankedRatingUpdatePayload } from "@/contexts/PvpSocketContext";
 import { spriteForClass } from "../../adventure/components/sprites/spriteForClass";
 import CombatActionBar from "@/components/combat/CombatActionBar";
 
@@ -10,7 +10,16 @@ function esperar(ms: number) {
 }
 
 export default function LiveDuelArena({ meuCharacterId }: { meuCharacterId: number }) {
-  const { duelo, turnos, resultadoFinal, agir, limparDuelo, erro } = usePvpSocket();
+  const {
+    duelo,
+    turnos,
+    resultadoFinal,
+    agir,
+    limparDuelo,
+    erro,
+    ratingUpdate,
+    oponenteDesconectadoRanked,
+  } = usePvpSocket();
 
   const [vidaA, setVidaA] = useState(0);
   const [vidaB, setVidaB] = useState(0);
@@ -195,6 +204,13 @@ export default function LiveDuelArena({ meuCharacterId }: { meuCharacterId: numb
 
       {erro && <p className="text-sm text-red-400">{erro}</p>}
 
+      {duelo.ranked && oponenteDesconectadoRanked && !resultadoFinal && (
+        <p className="text-center text-sm text-yellow-400">
+          Seu oponente desconectou. Aguardando reconexão ({oponenteDesconectadoRanked.prazoSegundos}s) antes de
+          declarar vitória por abandono...
+        </p>
+      )}
+
       {!resultadoFinal && (
         <>
           {minhaVez ? (
@@ -226,7 +242,11 @@ export default function LiveDuelArena({ meuCharacterId }: { meuCharacterId: numb
       {resultadoFinal && (
         <div className="rounded-2xl border-2 border-[#F3B43F] bg-[#292018]/90 p-5 text-center text-white shadow-xl">
           <p className="font-imFeel text-3xl mb-2">
-            {resultadoFinal.vencedorChave === minhaChave ? "Vitória!" : "Derrota..."}
+            {resultadoFinal.motivo === "FalhaServidor"
+              ? "Partida encerrada"
+              : resultadoFinal.vencedorChave === minhaChave
+                ? "Vitória!"
+                : "Derrota..."}
           </p>
           {resultadoFinal.motivo === "desistencia" && (
             <p className="mb-2 text-sm text-white/60">
@@ -235,10 +255,25 @@ export default function LiveDuelArena({ meuCharacterId }: { meuCharacterId: numb
                 : "Você saiu do duelo."}
             </p>
           )}
-          {resultadoFinal.vencedorChave === minhaChave && (
+          {resultadoFinal.motivo === "Abandono" && (
+            <p className="mb-2 text-sm text-white/60">
+              {resultadoFinal.vencedorChave === minhaChave
+                ? "Seu oponente não reconectou a tempo — vitória por abandono."
+                : "Você não reconectou a tempo — derrota por abandono."}
+            </p>
+          )}
+          {resultadoFinal.motivo === "FalhaServidor" && (
+            <p className="mb-2 text-sm text-white/60">
+              Uma falha interna encerrou a partida. Seu rating não foi alterado.
+            </p>
+          )}
+          {resultadoFinal.recompensa && resultadoFinal.vencedorChave === minhaChave && (
             <p className="mb-3">
               +{resultadoFinal.recompensa.experiencia} de experiência · +{resultadoFinal.recompensa.dinheiro} moedas
             </p>
+          )}
+          {duelo.ranked && ratingUpdate && (
+            <RatingDelta ratingUpdate={ratingUpdate} minhaChave={minhaChave} />
           )}
           <button
             onClick={limparDuelo}
@@ -249,6 +284,27 @@ export default function LiveDuelArena({ meuCharacterId }: { meuCharacterId: numb
         </div>
       )}
     </div>
+  );
+}
+
+function RatingDelta({
+  ratingUpdate,
+  minhaChave,
+}: {
+  ratingUpdate: RankedRatingUpdatePayload;
+  minhaChave: "A" | "B";
+}) {
+  const meu = minhaChave === "A" ? ratingUpdate.jogadorA : ratingUpdate.jogadorB;
+  const delta = meu.ratingDepois - meu.ratingAntes;
+  return (
+    <p className="mb-3 text-sm">
+      Rating: {meu.ratingAntes} →{" "}
+      <span className={delta >= 0 ? "text-green-400" : "text-red-400"}>
+        {meu.ratingDepois} ({delta >= 0 ? "+" : ""}
+        {delta})
+      </span>{" "}
+      · Liga: {meu.liga}
+    </p>
   );
 }
 
