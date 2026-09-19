@@ -204,7 +204,8 @@ export default function RankedPanel({ meuCharacterId }: { meuCharacterId: number
                 Ninguém se classificou ainda (mínimo de partidas não atingido).
               </p>
             ) : (
-              <table className="w-full text-left text-sm">
+              <div className="overflow-x-auto">
+              <table className="w-full min-w-[420px] text-left text-sm">
                 <thead>
                   <tr className="text-white/50">
                     <th className="pb-2">#</th>
@@ -221,10 +222,10 @@ export default function RankedPanel({ meuCharacterId }: { meuCharacterId: number
                       className={linha.id === meuCharacterId ? "font-bold text-[#F3B43F]" : ""}
                     >
                       <td className="py-1">{linha.posicao}</td>
-                      <td className="py-1">
+                      <td className="max-w-[10rem] truncate py-1">
                         {linha.nome}{" "}
                         <span
-                          className={`ml-1 inline-block h-2 w-2 rounded-full align-middle ${
+                          className={`ml-1 inline-block h-2 w-2 shrink-0 rounded-full align-middle ${
                             linha.online ? "bg-green-400" : "bg-white/20"
                           }`}
                         />
@@ -238,6 +239,7 @@ export default function RankedPanel({ meuCharacterId }: { meuCharacterId: number
                   ))}
                 </tbody>
               </table>
+              </div>
             )}
           </div>
         )}

@@ -319,12 +319,12 @@ function AbaComprar({ characterId }: { characterId: number }) {
 
   return (
     <div className="rounded-2xl border-2 border-[#F3B43F] bg-[#292018]/90 p-5 text-white shadow-xl">
-      <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+      <div className="mb-4 grid grid-cols-1 gap-2 sm:grid-cols-3 lg:grid-cols-5">
         <input
           value={filtroNome}
           onChange={(e) => setFiltroNome(e.target.value)}
           placeholder="Buscar por nome..."
-          className="col-span-2 min-w-0 rounded-lg border border-white/20 bg-black/30 px-3 py-2 text-white placeholder-white/40 outline-none focus:border-[#F3B43F] sm:col-span-1"
+          className="min-w-0 rounded-lg border border-white/20 bg-black/30 px-3 py-2 text-white placeholder-white/40 outline-none focus:border-[#F3B43F] sm:col-span-3 lg:col-span-1"
         />
         <input
           type="number"

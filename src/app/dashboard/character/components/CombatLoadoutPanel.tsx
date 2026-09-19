@@ -248,7 +248,7 @@ export default function CombatLoadoutPanel({ characterId }: { characterId: numbe
             Habilidades em Combate
           </p>
         </div>
-        <div className="grid grid-cols-5 gap-3">
+        <div className="grid grid-cols-3 gap-3 sm:grid-cols-5">
           {Array.from({ length: MAX_SLOTS }).map((_, i) => {
             const poder = ativasAtivas[i];
             return (
@@ -272,7 +272,7 @@ export default function CombatLoadoutPanel({ characterId }: { characterId: numbe
             Consumíveis em Combate
           </p>
         </div>
-        <div className="grid grid-cols-5 gap-3">
+        <div className="grid grid-cols-3 gap-3 sm:grid-cols-5">
           {slotsConsumiveis.map((idItem, i) => {
             const entrada = inventario.find((it) => it.id_item === idItem);
             return (

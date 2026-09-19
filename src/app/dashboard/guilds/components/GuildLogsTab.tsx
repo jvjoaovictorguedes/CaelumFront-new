@@ -47,13 +47,13 @@ export default function GuildLogsTab({ idGuild }: { idGuild: number }) {
           {logs.map((log) => (
             <div
               key={log.id}
-              className="flex items-center justify-between rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm"
+              className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm"
             >
-              <span>
+              <span className="min-w-0 flex-1">
                 {LABEL_TIPO[log.tipo] ?? log.tipo}
                 {log.detalhes ? ` — ${log.detalhes}` : ""}
               </span>
-              <span className="text-xs text-white/40">
+              <span className="shrink-0 text-xs text-white/40">
                 {new Date(log.createdAt).toLocaleString("pt-BR")}
               </span>
             </div>

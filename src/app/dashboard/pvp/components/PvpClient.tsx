@@ -206,22 +206,22 @@ export default function PvpClient({
                       key={oponente.id}
                       className="flex items-center justify-between rounded-xl border border-white/10 bg-[#3a2f24] px-4 py-3"
                     >
-                      <div>
-                        <p className="font-bold text-[#F3B43F]">
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-bold text-[#F3B43F]">
                           {oponente.nome}{" "}
                           <span
-                            className={`ml-1 inline-block h-2 w-2 rounded-full align-middle ${
+                            className={`ml-1 inline-block h-2 w-2 shrink-0 rounded-full align-middle ${
                               estaOnline ? "bg-green-400" : "bg-white/20"
                             }`}
                             title={estaOnline ? "Online" : "Offline"}
                           />
                         </p>
-                        <p className="text-xs text-white/60">
+                        <p className="truncate text-xs text-white/60">
                           Nv. {oponente.nivel} · {nomeRaca ?? "?"} ·{" "}
                           {oponente.Class?.nome ?? "?"}
                         </p>
                       </div>
-                      <div className="flex flex-col gap-1.5 sm:flex-row">
+                      <div className="flex shrink-0 flex-col gap-1.5 sm:flex-row">
                         {estaOnline && (
                           <button
                             onClick={() => desafiarAoVivo(oponente.id)}

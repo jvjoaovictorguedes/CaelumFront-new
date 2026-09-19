@@ -90,6 +90,9 @@ export function MessagesSocketProvider({
   const [usuariosDigitando, setUsuariosDigitando] = useState<Set<number>>(new Set());
   const [reconectadoEm, setReconectadoEm] = useState(0);
   const [somLiberado, setSomLiberado] = useState(false);
+  // Só pra essa sessão (não persiste) — fechar sem ativar não deve
+  // esconder o aviso pra sempre, só parar de atrapalhar agora.
+  const [bannerSomDispensado, setBannerSomDispensado] = useState(false);
 
   const totalNaoLidas = inbox.reduce((soma, conversa) => soma + conversa.naoLidas, 0);
 
@@ -301,14 +304,21 @@ export function MessagesSocketProvider({
       }}
     >
       {children}
-      {!somLiberado && currentUserId && (
-        <div className="fixed bottom-4 right-4 z-50 flex items-center gap-3 rounded-xl border-2 border-[#F3B43F] bg-[#292018] p-3 text-white shadow-2xl">
-          <span className="text-xs">🔊 Clique para habilitar o som de novas mensagens no jogo.</span>
+      {!somLiberado && !bannerSomDispensado && currentUserId && (
+        <div className="fixed bottom-3 right-3 left-3 z-50 flex max-w-full flex-wrap items-center gap-2 rounded-xl border-2 border-[#F3B43F] bg-[#292018] p-2.5 text-white shadow-2xl sm:left-auto sm:max-w-sm sm:flex-nowrap">
+          <span className="min-w-0 flex-1 text-xs">🔊 Clique pra habilitar o som de novas mensagens.</span>
           <button
             onClick={ativarSom}
-            className="rounded-lg bg-[#F3B43F] px-3 py-1 text-xs font-bold text-black transition hover:bg-[#dfa234]"
+            className="shrink-0 rounded-lg bg-[#F3B43F] px-3 py-1 text-xs font-bold text-black transition hover:bg-[#dfa234]"
           >
             Ativar Som
+          </button>
+          <button
+            onClick={() => setBannerSomDispensado(true)}
+            aria-label="Fechar aviso"
+            className="shrink-0 rounded-lg px-1.5 py-1 text-xs text-white/50 transition hover:text-white"
+          >
+            ✕
           </button>
         </div>
       )}
