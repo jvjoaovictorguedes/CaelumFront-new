@@ -22,7 +22,7 @@ export default async function InventoryPage() {
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 p-2 sm:p-4">
       <InventoryTabs
-        equipamentos={<EquipmentCategoriesPanel characterId={characterIdNumber} />}
+        equipamentos={<EquipmentCategoriesPanel />}
         materiais={<MaterialsGrid characterId={characterIdNumber} />}
         consumiveis={<ConsumablesGrid characterId={characterIdNumber} />}
       />

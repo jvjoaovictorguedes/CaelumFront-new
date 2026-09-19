@@ -18,12 +18,39 @@ interface ListingApi {
   status: "Ativo" | "Vendido" | "Cancelado";
   item: ItemApi;
   vendedor?: { id: number; nome: string };
+  // Inventário v2 — só preenchido quando o anúncio é de equipamento.
+  instancia?: { id: number; refinamento: number } | null;
 }
 
 interface InventarioEntry {
   id_personagem_inventario: number;
   quantidade: number;
   Item: ItemApi;
+}
+
+// Inventário v2 — equipamento não empilha mais, cada instância tem seu
+// próprio refinamento e é anunciada individualmente (nunca por
+// "quantidade").
+interface InstanciaApi {
+  id: number;
+  id_item: number;
+  nome: string;
+  tipo_item: string;
+  raridade: string;
+  refinamento: number;
+}
+
+// Item "vendável" unificado — vem de um stack (Material/Consumível/...)
+// ou de uma instância de equipamento solta no inventário.
+interface ItemVendavel {
+  chave: string;
+  id_item: number;
+  id_instancia?: number;
+  nome: string;
+  raridade: string;
+  tipo_item: string;
+  quantidadeMaxima: number;
+  refinamento?: number;
 }
 
 const CORES_RARIDADE: Record<string, string> = {
@@ -63,7 +90,7 @@ export default function MarketClient({ characterId }: { characterId: number }) {
       </div>
 
       {aba === "comprar" && <AbaComprar characterId={characterId} />}
-      {aba === "vender" && <AbaVender characterId={characterId} />}
+      {aba === "vender" && <AbaVender />}
       {aba === "meus-anuncios" && <AbaMeusAnuncios />}
     </div>
   );
@@ -136,12 +163,16 @@ function AbaComprar({ characterId }: { characterId: number }) {
             const souVendedor = listing.vendedor?.id === characterId;
             return (
               <div key={listing.id} className="rounded-xl border border-white/10 bg-[#3a2f24] p-3">
-                <p className="font-bold">{listing.item.nome}</p>
+                <p className="font-bold">
+                  {listing.item.nome}
+                  {listing.instancia ? ` +${listing.instancia.refinamento}` : ""}
+                </p>
                 <p className={`text-xs font-bold ${CORES_RARIDADE[listing.item.raridade] ?? "text-white/70"}`}>
                   {listing.item.raridade} · {listing.item.tipo_item}
                 </p>
                 <p className="mt-2 text-sm text-white/70">
-                  Vendedor: {listing.vendedor?.nome ?? "?"} · Qtd: {listing.quantidade}
+                  Vendedor: {listing.vendedor?.nome ?? "?"} ·{" "}
+                  {listing.instancia ? "1 unidade" : `Qtd: ${listing.quantidade}`}
                 </p>
                 <p className="mt-1 text-lg font-bold text-[#F3B43F]">
                   {listing.preco_unitario * listing.quantidade} moedas
@@ -165,10 +196,10 @@ function AbaComprar({ characterId }: { characterId: number }) {
 
 const TIPOS_NAO_VENDAVEIS = ["QuestItem", "Currencia"];
 
-function AbaVender({ characterId }: { characterId: number }) {
-  const [inventario, setInventario] = useState<InventarioEntry[]>([]);
+function AbaVender() {
+  const [itens, setItens] = useState<ItemVendavel[]>([]);
   const [carregando, setCarregando] = useState(true);
-  const [itemSelecionado, setItemSelecionado] = useState<number | null>(null);
+  const [chaveSelecionada, setChaveSelecionada] = useState<string | null>(null);
   const [quantidade, setQuantidade] = useState(1);
   const [preco, setPreco] = useState(10);
   const [enviando, setEnviando] = useState(false);
@@ -176,37 +207,61 @@ function AbaVender({ characterId }: { characterId: number }) {
 
   const carregar = useCallback(async () => {
     try {
-      const resp = await axiosInstance.get<{ data?: { inventory?: InventarioEntry[] } }>(
-        "/character-inventory",
-        { params: { characterId } },
-      );
-      const entradas = (resp.data?.data?.inventory ?? []).filter(
-        (e) => !TIPOS_NAO_VENDAVEIS.includes(e.Item?.tipo_item),
-      );
-      setInventario(entradas);
+      // Inventário v2 — stacks (Material/Consumível/...) e instâncias de
+      // equipamento (cada uma com seu refinamento, anunciada uma a uma)
+      // vêm juntos aqui.
+      const resp = await axiosInstance.get<{
+        data?: { stacks?: InventarioEntry[]; equipmentInstances?: InstanciaApi[] };
+      }>("/inventory/v2");
+
+      const stacks: ItemVendavel[] = (resp.data?.data?.stacks ?? [])
+        .filter((e) => !TIPOS_NAO_VENDAVEIS.includes(e.Item?.tipo_item))
+        .map((e) => ({
+          chave: `stack-${e.id_personagem_inventario}`,
+          id_item: e.Item.id,
+          nome: e.Item.nome,
+          raridade: e.Item.raridade,
+          tipo_item: e.Item.tipo_item,
+          quantidadeMaxima: e.quantidade,
+        }));
+
+      const instancias: ItemVendavel[] = (resp.data?.data?.equipmentInstances ?? []).map((i) => ({
+        chave: `instancia-${i.id}`,
+        id_item: i.id_item,
+        id_instancia: i.id,
+        nome: i.nome,
+        raridade: i.raridade,
+        tipo_item: i.tipo_item,
+        quantidadeMaxima: 1,
+        refinamento: i.refinamento,
+      }));
+
+      setItens([...stacks, ...instancias]);
     } catch (error) {
       console.error("Erro ao carregar inventário:", error);
     } finally {
       setCarregando(false);
     }
-  }, [characterId]);
+  }, []);
 
   useEffect(() => {
     carregar();
   }, [carregar]);
 
   async function anunciar() {
-    if (!itemSelecionado || enviando) return;
+    const item = itens.find((i) => i.chave === chaveSelecionada);
+    if (!item || enviando) return;
     setEnviando(true);
     setMensagem("");
     try {
       await axiosInstance.post("/market/listings", {
-        id_item: itemSelecionado,
-        quantidade,
+        id_item: item.id_item,
+        id_instancia: item.id_instancia,
+        quantidade: item.id_instancia ? 1 : quantidade,
         preco_unitario: preco,
       });
       setMensagem("Anúncio criado!");
-      setItemSelecionado(null);
+      setChaveSelecionada(null);
       setQuantidade(1);
       setPreco(10);
       await carregar();
@@ -220,7 +275,7 @@ function AbaVender({ characterId }: { characterId: number }) {
     }
   }
 
-  const entradaSelecionada = inventario.find((e) => e.Item.id === itemSelecionado);
+  const itemSelecionado = itens.find((i) => i.chave === chaveSelecionada);
 
   return (
     <div className="rounded-2xl border-2 border-[#F3B43F] bg-[#292018]/90 p-5 text-white shadow-xl">
@@ -228,49 +283,54 @@ function AbaVender({ characterId }: { characterId: number }) {
 
       {carregando ? (
         <p className="text-sm text-white/60">Carregando inventário...</p>
-      ) : inventario.length === 0 ? (
+      ) : itens.length === 0 ? (
         <p className="text-sm text-white/60">Você não tem itens vendáveis no inventário.</p>
       ) : (
         <>
           <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-3">
-            {inventario.map((entrada) => (
+            {itens.map((item) => (
               <button
-                key={entrada.id_personagem_inventario}
+                key={item.chave}
                 onClick={() => {
-                  setItemSelecionado(entrada.Item.id);
+                  setChaveSelecionada(item.chave);
                   setQuantidade(1);
                 }}
                 className={`rounded-lg border-2 p-2 text-left text-xs transition ${
-                  itemSelecionado === entrada.Item.id
+                  chaveSelecionada === item.chave
                     ? "border-[#F3B43F] bg-[#3a2f24]"
                     : "border-white/10 bg-black/20 hover:border-white/30"
                 }`}
               >
-                <p className="font-bold">{entrada.Item.nome}</p>
+                <p className="font-bold">
+                  {item.nome}
+                  {item.refinamento ? ` +${item.refinamento}` : ""}
+                </p>
                 <p className="text-white/50">
-                  {entrada.Item.raridade} · x{entrada.quantidade}
+                  {item.raridade} · {item.id_instancia ? "1 unidade" : `x${item.quantidadeMaxima}`}
                 </p>
               </button>
             ))}
           </div>
 
-          {entradaSelecionada && (
+          {itemSelecionado && (
             <div className="flex flex-col gap-3 rounded-xl border border-white/10 bg-black/20 p-3 sm:flex-row sm:items-end">
-              <div className="flex-1">
-                <label className="mb-1 block text-xs text-white/60">
-                  Quantidade (máx. {entradaSelecionada.quantidade})
-                </label>
-                <input
-                  type="number"
-                  min={1}
-                  max={entradaSelecionada.quantidade}
-                  value={quantidade}
-                  onChange={(e) =>
-                    setQuantidade(Math.max(1, Math.min(entradaSelecionada.quantidade, Number(e.target.value))))
-                  }
-                  className="w-full rounded-lg border border-white/20 bg-black/30 px-3 py-2 text-white outline-none focus:border-[#F3B43F]"
-                />
-              </div>
+              {!itemSelecionado.id_instancia && (
+                <div className="flex-1">
+                  <label className="mb-1 block text-xs text-white/60">
+                    Quantidade (máx. {itemSelecionado.quantidadeMaxima})
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={itemSelecionado.quantidadeMaxima}
+                    value={quantidade}
+                    onChange={(e) =>
+                      setQuantidade(Math.max(1, Math.min(itemSelecionado.quantidadeMaxima, Number(e.target.value))))
+                    }
+                    className="w-full rounded-lg border border-white/20 bg-black/30 px-3 py-2 text-white outline-none focus:border-[#F3B43F]"
+                  />
+                </div>
+              )}
               <div className="flex-1">
                 <label className="mb-1 block text-xs text-white/60">Preço por unidade (moedas)</label>
                 <input
@@ -287,7 +347,9 @@ function AbaVender({ characterId }: { characterId: number }) {
                 disabled={enviando}
                 className="rounded-lg bg-[#BC8418] px-4 py-2 font-bold text-black transition hover:bg-[#a5710f] disabled:opacity-50"
               >
-                {enviando ? "Anunciando..." : `Anunciar por ${preco * quantidade}`}
+                {enviando
+                  ? "Anunciando..."
+                  : `Anunciar por ${preco * (itemSelecionado.id_instancia ? 1 : quantidade)}`}
               </button>
             </div>
           )}
@@ -362,9 +424,15 @@ function AbaMeusAnuncios() {
             >
               <div>
                 <p className="font-bold">
-                  {listing.item.nome} <span className="text-white/50">x{listing.quantidade}</span>
+                  {listing.item.nome}
+                  {listing.instancia ? (
+                    <span className="text-[#F3B43F]"> +{listing.instancia.refinamento}</span>
+                  ) : (
+                    <span className="text-white/50"> x{listing.quantidade}</span>
+                  )}
                 </p>
                 <p className="text-xs text-white/60">
+                  {listing.instancia ? "1 unidade" : `Qtd: ${listing.quantidade}`} ·{" "}
                   {listing.preco_unitario * listing.quantidade} moedas ·{" "}
                   <span className={CORES_STATUS[listing.status]}>{listing.status}</span>
                 </p>

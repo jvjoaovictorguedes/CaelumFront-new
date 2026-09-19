@@ -38,7 +38,7 @@ export default async function CharacterPage() {
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 p-2 sm:p-4">
       <CharacterTabs
         equipamentos={
-          <EquipmentPanel characterId={character.id} classe={character.Class?.nome} />
+          <EquipmentPanel classe={character.Class?.nome} />
         }
         habilidades={<AbilitiesPanel characterId={character.id} />}
         status={

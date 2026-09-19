@@ -37,10 +37,6 @@ const SLOTS: { slot: Slot; label: string; top: string; left: string; pequeno?: b
   { slot: "Acessorio2", label: "Colar", top: "16%", left: "90%", pequeno: true },
 ];
 
-// Tipos de item que fazem sentido clicar pra equipar num slot ativo —
-// Consumível, Material, QuestItem e Moeda nunca foram equipáveis.
-const TIPOS_EQUIPAVEIS = ["Armadura", "Capacete", "Escudo", "Arma", "Acessorio1", "Acessorio2"];
-
 type Atributo = "Forca" | "Vitalidade" | "Inteligencia" | "Agilidade" | "Velocidade";
 
 const NOME_ATRIBUTO: Record<Atributo, string> = {
@@ -66,7 +62,7 @@ function bordaPorRaridade(raridade?: string) {
   return BORDA_RARIDADE[(raridade ?? "comum").toLowerCase()] ?? BORDA_RARIDADE.comum;
 }
 
-interface WeaponPropertiesInfo {
+interface PropriedadesArma {
   dano_min: number;
   dano_max: number;
   tipo_dano: "Fisico" | "Magico";
@@ -74,7 +70,7 @@ interface WeaponPropertiesInfo {
   valor_bonus_atributo: number;
 }
 
-interface ArmorPropertiesInfo {
+interface PropriedadesArmadura {
   defesa: number;
   bonus_forca: number;
   bonus_vitalidade: number;
@@ -83,52 +79,54 @@ interface ArmorPropertiesInfo {
   bonus_velocidade: number;
 }
 
-interface ItemInfo {
-  id: number;
-  nome: string;
-  tipo_item: string;
-  raridade: string;
-  imagem_url?: string | null;
-  armorProperties?: ArmorPropertiesInfo | null;
-  weaponProperties?: WeaponPropertiesInfo | null;
+type Propriedades = PropriedadesArma | PropriedadesArmadura | null;
+
+function ehArma(p: Propriedades): p is PropriedadesArma {
+  return !!p && "dano_min" in p;
 }
 
 // Mesma lista compacta de atributos que a Loja já mostra (ShopItem) —
-// repetida aqui em vez de importada porque os tipos de item vêm de
-// endpoints/formatos ligeiramente diferentes (equipamento vs loja).
-function ListaDeAtributos({ item }: { item: ItemInfo }) {
-  if (item.weaponProperties) {
-    const arma = item.weaponProperties;
+// já mostra o valor EFETIVO (pós-refinamento) e, se diferente da base,
+// a base riscada/entre parênteses.
+function ListaDeAtributos({ base, efetivo }: { base: Propriedades; efetivo: Propriedades }) {
+  if (ehArma(efetivo) && ehArma(base)) {
     return (
       <ul className="space-y-0.5">
         <li>
-          <span className="font-bold text-[#F3B43F]">Dano:</span> {arma.dano_min}–{arma.dano_max}{" "}
-          ({arma.tipo_dano === "Fisico" ? "Físico" : "Mágico"})
+          <span className="font-bold text-[#F3B43F]">Dano:</span>{" "}
+          {efetivo.dano_min !== base.dano_min || efetivo.dano_max !== base.dano_max ? (
+            <>
+              <span className="text-white/40 line-through">{base.dano_min}–{base.dano_max}</span>{" "}
+              {efetivo.dano_min}–{efetivo.dano_max}
+            </>
+          ) : (
+            `${efetivo.dano_min}–${efetivo.dano_max}`
+          )}{" "}
+          ({efetivo.tipo_dano === "Fisico" ? "Físico" : "Mágico"})
         </li>
-        {arma.valor_bonus_atributo > 0 && (
+        {efetivo.valor_bonus_atributo > 0 && (
           <li>
-            <span className="font-bold text-[#F3B43F]">+{arma.valor_bonus_atributo}</span>{" "}
-            {NOME_ATRIBUTO[arma.bonus_atributo]}
+            <span className="font-bold text-[#F3B43F]">+{efetivo.valor_bonus_atributo}</span>{" "}
+            {NOME_ATRIBUTO[efetivo.bonus_atributo]}
           </li>
         )}
       </ul>
     );
   }
 
-  if (item.armorProperties) {
-    const armor = item.armorProperties;
+  if (efetivo && !ehArma(efetivo) && base && !ehArma(base)) {
     const bonus: [Atributo, number][] = [
-      ["Forca", armor.bonus_forca],
-      ["Vitalidade", armor.bonus_vitalidade],
-      ["Inteligencia", armor.bonus_inteligencia],
-      ["Agilidade", armor.bonus_agilidade],
-      ["Velocidade", armor.bonus_velocidade],
+      ["Forca", efetivo.bonus_forca],
+      ["Vitalidade", efetivo.bonus_vitalidade],
+      ["Inteligencia", efetivo.bonus_inteligencia],
+      ["Agilidade", efetivo.bonus_agilidade],
+      ["Velocidade", efetivo.bonus_velocidade],
     ];
     return (
       <ul className="space-y-0.5">
-        {armor.defesa > 0 && (
+        {efetivo.defesa > 0 && (
           <li>
-            <span className="font-bold text-[#F3B43F]">Defesa:</span> {armor.defesa}
+            <span className="font-bold text-[#F3B43F]">Defesa:</span> {efetivo.defesa}
           </li>
         )}
         {bonus
@@ -148,7 +146,7 @@ function ListaDeAtributos({ item }: { item: ItemInfo }) {
 // Enquanto o item não tem `imagem_url` própria (a maioria, por ora — só a
 // Espada de Ferro tem), mostra a inicial do nome num badge em vez de um
 // ícone genérico/quebrado.
-function ItemThumb({ item, className = "" }: { item: ItemInfo; className?: string }) {
+function ItemThumb({ item, className = "" }: { item: { imagem_url: string | null; nome: string }; className?: string }) {
   const src = resolveMediaUrl(item.imagem_url);
   if (src) {
     // eslint-disable-next-line @next/next/no-img-element
@@ -163,28 +161,36 @@ function ItemThumb({ item, className = "" }: { item: ItemInfo; className?: strin
   );
 }
 
-interface EquipamentoApi {
-  id_personagem: number;
-  slot: Slot;
+// Instância de equipamento (Inventário v2) — solta no inventário, ainda
+// não equipada nem anunciada.
+interface InstanciaApi {
+  id: number;
   id_item: number;
-  item: ItemInfo;
+  nome: string;
+  tipo_item: string;
+  raridade: string;
+  imagem_url: string | null;
+  refinamento: number;
+  propriedades_base: Propriedades;
+  propriedades_efetivas: Propriedades;
 }
 
-interface InventarioEntry {
-  id_personagem_inventario: number;
-  quantidade: number;
-  Item: ItemInfo;
+interface EquipadoApi {
+  slot: Slot;
+  id_instancia: number | null;
+  id_item: number;
+  nome: string;
+  tipo_item: string;
+  raridade: string;
+  imagem_url: string | null;
+  refinamento: number;
+  propriedades_base: Propriedades;
+  propriedades_efetivas: Propriedades;
 }
 
-export default function EquipmentPanel({
-  characterId,
-  classe,
-}: {
-  characterId: number;
-  classe?: string;
-}) {
+export default function EquipmentPanel({ classe }: { classe?: string }) {
   const [equipamentos, setEquipamentos] = useState<
-    Record<Slot, ItemInfo | null>
+    Record<Slot, EquipadoApi | null>
   >({
     Cabeca: null,
     Torso: null,
@@ -195,7 +201,7 @@ export default function EquipmentPanel({
     Acessorio1: null,
     Acessorio2: null,
   });
-  const [inventario, setInventario] = useState<InventarioEntry[]>([]);
+  const [instancias, setInstancias] = useState<InstanciaApi[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [mensagem, setMensagem] = useState("");
   const [itemSelecionado, setItemSelecionado] = useState<number | null>(null);
@@ -204,17 +210,11 @@ export default function EquipmentPanel({
 
   const carregarTudo = useCallback(async () => {
     try {
-      const [respEquip, respInv] = await Promise.all([
-        axiosInstance.get<{ data?: { equipamentos?: EquipamentoApi[] } }>(
-          `/character-equipment/${characterId}`,
-        ),
-        axiosInstance.get<{ data?: { inventory?: InventarioEntry[] } }>(
-          "/character-inventory",
-          { params: { characterId } },
-        ),
-      ]);
+      const resp = await axiosInstance.get<{
+        data?: { equipmentInstances?: InstanciaApi[]; equipped?: EquipadoApi[] };
+      }>("/inventory/v2");
 
-      const mapaEquipado: Record<Slot, ItemInfo | null> = {
+      const mapaEquipado: Record<Slot, EquipadoApi | null> = {
         Cabeca: null,
         Torso: null,
         Maos: null,
@@ -224,32 +224,28 @@ export default function EquipmentPanel({
         Acessorio1: null,
         Acessorio2: null,
       };
-      for (const linha of respEquip.data?.data?.equipamentos ?? []) {
-        mapaEquipado[linha.slot] = linha.item;
+      for (const linha of resp.data?.data?.equipped ?? []) {
+        mapaEquipado[linha.slot] = linha;
       }
       setEquipamentos(mapaEquipado);
-      setInventario(respInv.data?.data?.inventory ?? []);
+      setInstancias(resp.data?.data?.equipmentInstances ?? []);
     } catch (error) {
       console.error("Erro ao carregar equipamento/inventário:", error);
       setMensagem("Não foi possível carregar seu equipamento.");
     } finally {
       setCarregando(false);
     }
-  }, [characterId]);
+  }, []);
 
   useEffect(() => {
     carregarTudo();
   }, [carregarTudo]);
 
-  async function equipar(slot: Slot, idItem: number) {
+  async function equipar(idInstancia: number) {
     setProcessando(true);
     setMensagem("");
     try {
-      await axiosInstance.post("/character-equipment/equip", {
-        id_personagem: characterId,
-        slot,
-        id_item: idItem,
-      });
+      await axiosInstance.post(`/equipment/instances/${idInstancia}/equip`);
       // Equipar/desequipar muda vida_maxima, mana_maxima e bonus_atributos —
       // atualiza o personagem compartilhado junto com o painel local, pra
       // a barra de vida/mana (em outro componente) refletir na hora.
@@ -271,9 +267,7 @@ export default function EquipmentPanel({
     setProcessando(true);
     setMensagem("");
     try {
-      await axiosInstance.delete("/character-equipment/unequip", {
-        data: { id_personagem: characterId, slot },
-      });
+      await axiosInstance.post(`/equipment/slots/${slot}/unequip`);
       await Promise.all([carregarTudo(), refreshCharacter()]);
     } catch (error: unknown) {
       const msg =
@@ -291,33 +285,19 @@ export default function EquipmentPanel({
   // si. Clicar num item do inventário "seleciona" ele (fica destacado);
   // clicar num slot depois equipa. Clicar de novo no mesmo item, ou num
   // item diferente, troca a seleção.
-  function clicarSlot(slot: Slot) {
+  // O slot clicado é só um gatilho visual — o slot de destino de
+  // verdade é sempre resolvido no backend a partir do próprio item
+  // (equipmentInstanceService.resolverSlot, Inventário v2), nunca do
+  // que foi clicado aqui.
+  function clicarSlot() {
     if (processando || itemSelecionado === null) return;
-    equipar(slot, itemSelecionado);
+    equipar(itemSelecionado);
   }
 
-  function clicarItemInventario(idItem: number) {
+  function clicarItemInventario(idInstancia: number) {
     if (processando) return;
-    setItemSelecionado((atual) => (atual === idItem ? null : idItem));
+    setItemSelecionado((atual) => (atual === idInstancia ? null : idInstancia));
   }
-
-  // Quantas cópias de cada item já estão presas em algum slot — pra tirar
-  // da lista de arrastar exatamente a quantidade já em uso. Sem isso dava
-  // pra arrastar a mesma espada de novo pra outro slot mesmo já estando
-  // equipada (o back agora bloqueia, mas a lista continuava mostrando o
-  // item como "livre" do mesmo jeito).
-  const equipadoPorItem = new Map<number, number>();
-  for (const item of Object.values(equipamentos)) {
-    if (item) equipadoPorItem.set(item.id, (equipadoPorItem.get(item.id) ?? 0) + 1);
-  }
-
-  const itensEquipaveis = inventario
-    .filter((entrada) => TIPOS_EQUIPAVEIS.includes(entrada.Item?.tipo_item))
-    .map((entrada) => ({
-      ...entrada,
-      disponivel: entrada.quantidade - (equipadoPorItem.get(entrada.Item.id) ?? 0),
-    }))
-    .filter((entrada) => entrada.disponivel > 0);
 
   if (carregando) {
     return (
@@ -348,7 +328,7 @@ export default function EquipmentPanel({
           return (
             <div
               key={slot}
-              onClick={() => clicarSlot(slot)}
+              onClick={() => clicarSlot()}
               style={{ top, left }}
               className={`group absolute z-10 -translate-x-1/2 -translate-y-1/2 hover:z-20 ${
                 pequeno ? "h-12 w-12" : "h-16 w-16"
@@ -365,6 +345,11 @@ export default function EquipmentPanel({
               >
                 {itemNoSlot && (
                   <ItemThumb item={itemNoSlot} className="h-full w-full p-2" />
+                )}
+                {itemNoSlot && itemNoSlot.refinamento > 0 && (
+                  <span className="pointer-events-none absolute -bottom-1 -right-1 rounded bg-black/80 px-1 text-[9px] font-bold text-[#F3B43F]">
+                    +{itemNoSlot.refinamento}
+                  </span>
                 )}
               </div>
 
@@ -384,9 +369,10 @@ export default function EquipmentPanel({
                   <>
                     <span className="block text-[10px] font-bold leading-tight text-[#F3B43F]">
                       {itemNoSlot.nome}
+                      {itemNoSlot.refinamento > 0 && ` +${itemNoSlot.refinamento}`}
                     </span>
                     <div className="mt-1 text-[9px] leading-tight text-white/90">
-                      <ListaDeAtributos item={itemNoSlot} />
+                      <ListaDeAtributos base={itemNoSlot.propriedades_base} efetivo={itemNoSlot.propriedades_efetivas} />
                     </div>
                     <button
                       type="button"
@@ -421,48 +407,51 @@ export default function EquipmentPanel({
       <p className="mb-2 text-sm uppercase tracking-widest text-[#F3B43F]">
         Seu inventário (clique num item e depois num slot acima pra equipar)
       </p>
-      {itensEquipaveis.length === 0 ? (
+      {instancias.length === 0 ? (
         <p className="text-sm text-white/60">
           Você não tem nenhum item equipável disponível no inventário.
         </p>
       ) : (
         <div className="flex flex-wrap gap-3">
-          {itensEquipaveis.map((entrada) => {
-            const selecionado = itemSelecionado === entrada.Item.id;
+          {instancias.map((instancia) => {
+            const selecionado = itemSelecionado === instancia.id;
             return (
               <div
-                key={entrada.id_personagem_inventario}
+                key={instancia.id}
                 role="button"
                 tabIndex={0}
-                onClick={() => clicarItemInventario(entrada.Item.id)}
+                onClick={() => clicarItemInventario(instancia.id)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ") {
                     e.preventDefault();
-                    clicarItemInventario(entrada.Item.id);
+                    clicarItemInventario(instancia.id);
                   }
                 }}
                 className={`group relative z-10 h-16 w-16 cursor-pointer select-none rounded-lg border-2 bg-[#3a2f24] transition-colors hover:z-20 ${
                   selecionado
                     ? "border-[#F3B43F] ring-2 ring-[#F3B43F]/70"
-                    : `${bordaPorRaridade(entrada.Item.raridade)} hover:border-[#F3B43F]`
+                    : `${bordaPorRaridade(instancia.raridade)} hover:border-[#F3B43F]`
                 }`}
               >
-                <ItemThumb item={entrada.Item} className="h-full w-full p-2" />
-                <span className="pointer-events-none absolute -bottom-1 -right-1 rounded bg-black/80 px-1 text-[9px] font-bold text-white">
-                  x{entrada.disponivel}
-                </span>
+                <ItemThumb item={instancia} className="h-full w-full p-2" />
+                {instancia.refinamento > 0 && (
+                  <span className="pointer-events-none absolute -bottom-1 -right-1 rounded bg-black/80 px-1 text-[9px] font-bold text-[#F3B43F]">
+                    +{instancia.refinamento}
+                  </span>
+                )}
 
                 {/* Nome/atributos só aparecem no hover, flutuando acima do
                     item em vez de caber dentro da caixinha 16x16. */}
                 <div className="pointer-events-none absolute bottom-full left-1/2 mb-2 w-36 -translate-x-1/2 rounded-md bg-black/90 p-2 text-center opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
                   <span className="block text-[10px] font-bold leading-tight text-white">
-                    {entrada.Item.nome}
+                    {instancia.nome}
+                    {instancia.refinamento > 0 && ` +${instancia.refinamento}`}
                   </span>
                   <span className="block text-[9px] text-white/50">
-                    {entrada.Item.tipo_item}
+                    {instancia.tipo_item}
                   </span>
                   <div className="mt-1 text-[9px] leading-tight text-white/90">
-                    <ListaDeAtributos item={entrada.Item} />
+                    <ListaDeAtributos base={instancia.propriedades_base} efetivo={instancia.propriedades_efetivas} />
                   </div>
                 </div>
               </div>
