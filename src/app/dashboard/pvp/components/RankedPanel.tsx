@@ -42,7 +42,7 @@ interface LinhaLeaderboard {
 }
 
 function mensagemErro(error: unknown, padrao: string) {
-  return (error as { response?: { data?: { erro?: string } } })?.response?.data?.erro ?? padrao;
+  return (error as { response?: { data?: { message?: string } } })?.response?.data?.message ?? padrao;
 }
 
 export default function RankedPanel({ meuCharacterId }: { meuCharacterId: number }) {
