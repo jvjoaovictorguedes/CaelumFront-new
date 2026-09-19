@@ -64,7 +64,7 @@ export function getRaceImage(
 // upload nem de uma URL arbitrária vinda do personagem.
 export const AVATAR_CATALOGO: { chave: string; rotulo: string; src: string }[] = [
   { chave: "guerreiro", rotulo: "Guerreiro", src: "/images/guerreiro-lutador.jpg" },
-  { chave: "mago", rotulo: "Mago", src: "/images/mago-lutador.jpg" },
+  { chave: "mago", rotulo: "Mago", src: "/images/sprites/mago-sprite-teste.png" },
   { chave: "humano", rotulo: "Humano", src: "/images/human.webp" },
   { chave: "humana", rotulo: "Humana", src: "/images/female-human.webp" },
   { chave: "elfo", rotulo: "Elfo", src: "/images/elf.webp" },
@@ -91,7 +91,10 @@ export function getAvatarUrl(avatarKey?: string | null) {
 export function getClassPortrait(name: string | undefined) {
   const normalizedName = name ? normalize(name) : "";
   if (normalizedName.includes("mago") || normalizedName.includes("mage")) {
-    return "/images/mago-lutador.jpg";
+    // Sprite de teste (pedido do jogador) no lugar da ilustração
+    // pintada de sempre — public/images/mago-lutador.jpg continua no
+    // disco pra reverter fácil se o teste não agradar.
+    return "/images/sprites/mago-sprite-teste.png";
   }
   return "/images/guerreiro-lutador.jpg";
 }
