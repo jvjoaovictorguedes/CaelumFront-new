@@ -105,7 +105,7 @@ export default function NavMenu({
     },
     { name: "Mapa", iconUrl: "/icons/mapa.png", path: "/dashboard/map" },
     {
-      name: "Missões",
+      name: "Guilda dos Aventureiros",
       iconUrl: "/icons/missoes.png",
       path: "/dashboard/quests",
     },
