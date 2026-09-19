@@ -125,6 +125,13 @@ export default function NavMenu({
       iconUrl: "/icons/aventura.png",
       path: "/dashboard/adventure",
     },
+    {
+      // Sem ícone próprio ainda — reaproveita o da Aventura como
+      // placeholder até ter arte dedicada.
+      name: "Bestiário",
+      iconUrl: "/icons/aventura.png",
+      path: "/dashboard/bestiary",
+    },
   ];
   const handleNavigation = (path: string) => {
     setMenuAberto(false);
