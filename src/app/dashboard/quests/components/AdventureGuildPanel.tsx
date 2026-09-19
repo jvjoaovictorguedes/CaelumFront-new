@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import axiosInstance from "@/utils/axiosIntance";
 import { useCharacter } from "@/contexts/CharacterContext";
 
-type Aba = "Diaria" | "Semanal" | "Mensal" | "Rank";
+type Aba = "Diaria" | "Semanal" | "Mensal" | "Rank" | "Marco";
 
 interface MissaoLivreApi {
   id: number;
@@ -108,6 +108,14 @@ const ROTULO_ABA: Record<Aba, string> = {
   Semanal: "Semanais",
   Mensal: "Mensais",
   Rank: "Missões de Rank",
+  Marco: "Marcos",
+};
+
+const ROTA_POR_ABA: Record<Exclude<Aba, "Rank">, string> = {
+  Diaria: "daily",
+  Semanal: "weekly",
+  Mensal: "monthly",
+  Marco: "milestones",
 };
 
 // Nenhum endpoint da Guilda dos Aventureiros recebe characterId do
@@ -139,8 +147,9 @@ export default function AdventureGuildPanel() {
       const resp = await axiosInstance.get<{ data?: QuadroDeRankApi }>("/adventure-guild/rank");
       setQuadro(resp.data?.data ?? null);
     } else {
-      const rota = abaAtual === "Diaria" ? "daily" : abaAtual === "Semanal" ? "weekly" : "monthly";
-      const resp = await axiosInstance.get<{ data?: { missoes?: MissaoLivreApi[] } }>(`/adventure-guild/${rota}`);
+      const resp = await axiosInstance.get<{ data?: { missoes?: MissaoLivreApi[] } }>(
+        `/adventure-guild/${ROTA_POR_ABA[abaAtual]}`,
+      );
       setMissoesLivres(resp.data?.data?.missoes ?? []);
     }
   }, []);
