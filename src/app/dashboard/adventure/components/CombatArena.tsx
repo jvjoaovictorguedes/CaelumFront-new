@@ -59,6 +59,8 @@ const FUNDO_POR_MONSTRO: Record<string, string> = {
   "Bandido Errante": "/images/backgrounds/acampamento-bandido.jpg",
   "Golem de Pedra": "/images/backgrounds/templo-ancestral-golem.jpg",
   Minotauro: "/images/backgrounds/covil-minotauro.jpg",
+  "Aranha Venenosa": "/images/backgrounds/ninho-aranhas.jpg",
+  "Cultista Renegado": "/images/backgrounds/altar-cultos.jpg",
 };
 
 interface Power {
