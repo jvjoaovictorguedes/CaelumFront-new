@@ -38,12 +38,27 @@ const INTERVALO_ENTRE_FASES_MS = 50;
 // curto que a duração de golpe/reação pra não deixar o turno arrastado.
 const DURACAO_CAMINHADA_MS = 420;
 
-// Mapa nome-da-zona -> imagem de fundo local. Zonas sem entrada aqui (e
-// sem imagem_url vinda do servidor, hoje sempre null — ver AdventureZone)
-// caem no gradiente padrão. "Bosque de Sussurros" é a única testada por
-// enquanto, com a imagem de referência enviada pelo usuário.
+// Mapa nome-da-zona -> imagem de fundo local, usado como fallback
+// quando o monstro sorteado não tem fundo próprio (ver FUNDO_POR_MONSTRO
+// abaixo) e a zona não tem imagem_url vinda do servidor (hoje sempre
+// null — ver AdventureZone). Zonas sem entrada aqui caem no gradiente
+// padrão.
 const FUNDO_POR_ZONA: Record<string, string> = {
   "Bosque de Sussurros": "/images/backgrounds/selva-teste.jpg",
+  "Terras Devastadas": "/images/backgrounds/terras-devastadas.jpg",
+};
+
+// Mapa nome-do-monstro -> imagem de fundo local — tem prioridade sobre
+// o fundo da zona (FUNDO_POR_ZONA), já que o mesmo monstro sempre
+// aparece no mesmo tipo de cenário (o Minotauro sempre num covil, por
+// exemplo), independente de qual zona especificamente ele estiver
+// vinculado. Nem todo monstro tem entrada aqui ainda — os que não têm
+// caem no fundo da zona.
+const FUNDO_POR_MONSTRO: Record<string, string> = {
+  "Espectro Sussurrante": "/images/backgrounds/cripta-espectral.jpg",
+  "Bandido Errante": "/images/backgrounds/acampamento-bandido.jpg",
+  "Golem de Pedra": "/images/backgrounds/templo-ancestral-golem.jpg",
+  Minotauro: "/images/backgrounds/covil-minotauro.jpg",
 };
 
 interface Power {
@@ -453,9 +468,11 @@ export default function CombatArena({
       enemy.nome,
     );
 
-  // Prioriza imagem_url vinda do servidor (hoje sempre null — ver
-  // AdventureZone.js) e cai pro mapa local de teste por nome da zona.
+  // Prioridade: fundo específico do monstro atual > imagem_url vinda do
+  // servidor (hoje sempre null — ver AdventureZone.js) > fundo padrão da
+  // zona > gradiente padrão (null).
   const fundoZona =
+    FUNDO_POR_MONSTRO[enemy.nome] ||
     zona?.imagem_url ||
     (zona?.nome ? FUNDO_POR_ZONA[zona.nome] : undefined) ||
     null;
