@@ -22,11 +22,20 @@ interface Pergaminho {
   quantidade: number;
 }
 
+interface MaterialPrevia {
+  id_item: number;
+  quantidade: number;
+  papel: string;
+  nome: string;
+  imagem_url: string | null;
+  quantidade_disponivel: number;
+}
+
 interface Previa {
   alvo: number;
   chance_percentual: number;
   ouro_custo: number;
-  materiais: { id_item: number; quantidade: number; papel: string }[];
+  materiais: MaterialPrevia[];
   pergaminho_aplicado: string | null;
 }
 
@@ -287,59 +296,96 @@ export default function RefinementPanel({ onProgressoMudou }: { nivelForja: numb
         )}
       </div>
 
-      {instanciaSelecionada && erroPrevia && (
-        <div className="rounded-2xl border-2 border-red-500/60 bg-[#292018]/90 p-5 text-sm text-red-300 shadow-xl">
-          {erroPrevia}
-        </div>
-      )}
-
-      {instanciaSelecionada && previa && (
-        <div className="rounded-2xl border-2 border-[#F3B43F] bg-[#292018]/90 p-5 text-white shadow-xl">
-          <p className="font-imFeel text-xl">
-            {instanciaSelecionada.nome} +{instanciaSelecionada.refinamento}
-          </p>
-
-          {previa.alvo > 10 ? (
-            <p className="mt-2 text-sm text-white/60">Esse equipamento já está no refinamento máximo.</p>
-          ) : (
-            <>
-              <p className="mt-2 text-sm text-white/70">Alvo: +{previa.alvo}</p>
-              <p className="text-sm text-white/70">Chance final: {previa.chance_percentual.toFixed(1)}%</p>
-              <p className="text-sm text-white/70">Ouro necessário: {previa.ouro_custo}</p>
-
-              {pergaminhos.length > 0 && (
-                <div className="mt-2">
-                  <label className="text-xs uppercase tracking-widest text-[#F3B43F]">Pergaminho (opcional)</label>
-                  <select
-                    value={pergaminhoEscolhido ?? ""}
-                    onChange={(e) => setPergaminhoEscolhido(e.target.value ? Number(e.target.value) : null)}
-                    className="mt-1 block w-full rounded border border-white/20 bg-black/30 px-2 py-1.5 text-sm text-white"
-                  >
-                    <option value="">Nenhum</option>
-                    {pergaminhos.map((p) => (
-                      <option key={p.id_item} value={p.id_item}>
-                        {p.nome} (você tem {p.quantidade})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              <p className="mt-2 text-xs text-white/50">
-                Em caso de falha: o equipamento permanece +{instanciaSelecionada.refinamento}, mas materiais, ouro e
-                pergaminho (se usado) são consumidos mesmo assim.
+      {instanciaSelecionada && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4"
+          onClick={() => setSelecionada(null)}
+        >
+          <div
+            className="max-h-[85vh] w-full max-w-md overflow-y-auto rounded-2xl border-2 border-[#F3B43F] bg-[#292018] p-5 text-white shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-3 flex items-start justify-between gap-3">
+              <p className="font-imFeel text-xl">
+                {instanciaSelecionada.nome} +{instanciaSelecionada.refinamento}
               </p>
-
               <button
                 type="button"
-                onClick={refinar}
-                disabled={refinando || Boolean(fila)}
-                className="mt-3 rounded-lg bg-[#F3B43F] px-5 py-1.5 text-sm font-bold text-black transition hover:bg-[#e0a52f] disabled:cursor-not-allowed disabled:bg-black/40 disabled:text-white/50"
+                onClick={() => setSelecionada(null)}
+                className="shrink-0 rounded-full px-2 text-white/50 hover:text-white"
+                aria-label="Fechar"
               >
-                {fila ? "Posto ocupado" : refinando ? "Iniciando..." : "Refinar"}
+                ✕
               </button>
-            </>
-          )}
+            </div>
+
+            {erroPrevia && <p className="text-sm text-red-300">{erroPrevia}</p>}
+
+            {!erroPrevia && !previa && <p className="text-sm text-white/60">Calculando...</p>}
+
+            {previa && previa.alvo > 10 && (
+              <p className="text-sm text-white/60">Esse equipamento já está no refinamento máximo.</p>
+            )}
+
+            {previa && previa.alvo <= 10 && (
+              <>
+                <p className="text-sm text-white/70">Alvo: +{previa.alvo}</p>
+                <p className="text-sm text-white/70">Chance final: {previa.chance_percentual.toFixed(1)}%</p>
+                <p className="text-sm text-white/70">Ouro necessário: {previa.ouro_custo}</p>
+
+                <p className="mb-1 mt-3 text-xs uppercase tracking-widest text-[#F3B43F]">Materiais necessários</p>
+                {previa.materiais.length === 0 ? (
+                  <p className="text-xs text-white/50">Nenhum material além do ouro.</p>
+                ) : (
+                  <ul className="flex flex-col gap-1">
+                    {previa.materiais.map((material) => {
+                      const suficiente = material.quantidade_disponivel >= material.quantidade;
+                      return (
+                        <li key={material.id_item} className="flex items-center gap-2 text-xs">
+                          <span className="truncate text-white/80">{material.nome}</span>
+                          <span className={`ml-auto font-bold ${suficiente ? "text-green-400" : "text-red-400"}`}>
+                            {material.quantidade_disponivel}/{material.quantidade}
+                          </span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+
+                {pergaminhos.length > 0 && (
+                  <div className="mt-3">
+                    <label className="text-xs uppercase tracking-widest text-[#F3B43F]">Pergaminho (opcional)</label>
+                    <select
+                      value={pergaminhoEscolhido ?? ""}
+                      onChange={(e) => setPergaminhoEscolhido(e.target.value ? Number(e.target.value) : null)}
+                      className="mt-1 block w-full rounded border border-white/20 bg-black/30 px-2 py-1.5 text-sm text-white"
+                    >
+                      <option value="">Nenhum</option>
+                      {pergaminhos.map((p) => (
+                        <option key={p.id_item} value={p.id_item}>
+                          {p.nome} (você tem {p.quantidade})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                <p className="mt-2 text-xs text-white/50">
+                  Em caso de falha: o equipamento permanece +{instanciaSelecionada.refinamento}, mas materiais, ouro e
+                  pergaminho (se usado) são consumidos mesmo assim.
+                </p>
+
+                <button
+                  type="button"
+                  onClick={refinar}
+                  disabled={refinando || Boolean(fila)}
+                  className="mt-3 w-full rounded-lg bg-[#F3B43F] px-5 py-1.5 text-sm font-bold text-black transition hover:bg-[#e0a52f] disabled:cursor-not-allowed disabled:bg-black/40 disabled:text-white/50"
+                >
+                  {fila ? "Posto ocupado" : refinando ? "Iniciando..." : "Refinar"}
+                </button>
+              </>
+            )}
+          </div>
         </div>
       )}
     </div>
