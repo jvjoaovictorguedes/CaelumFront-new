@@ -45,11 +45,8 @@ export default function NavMenu({
 
   const navItems: NavMenuItem[] = [
     {
-      // Sem ícone próprio ainda — reaproveita o do Mapa como
-      // placeholder até ter arte dedicada (mesmo critério já usado
-      // pro Bestiário logo abaixo).
       name: "Guia do Aventureiro",
-      iconUrl: "/icons/mapa.png",
+      iconUrl: "/icons/guia-aventureiro.png",
       path: "/dashboard/guide",
     },
     {
@@ -94,10 +91,8 @@ export default function NavMenu({
       path: "/dashboard/adventure",
     },
     {
-      // Sem ícone próprio ainda — reaproveita o da Aventura como
-      // placeholder até ter arte dedicada.
       name: "Bestiário",
-      iconUrl: "/icons/aventura.png",
+      iconUrl: "/icons/bestiario.png",
       path: "/dashboard/bestiary",
     },
   ];
