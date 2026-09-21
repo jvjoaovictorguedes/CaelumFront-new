@@ -3,6 +3,7 @@ import type {
 } from "react";
 
 import EnemySprite from "./EnemySprite";
+import DraconideoSprite from "./DraconideoSprite";
 import MinotauroSprite from "./MinotauroSprite";
 import WolfSprite from "./WolfSprite";
 import SpiderSprite from "./SpiderSprite";
@@ -33,6 +34,11 @@ export function spriteFolderForEnemy(
     nome.includes("minotaur")
   ) {
     return "Minotaur_1";
+  } if (
+    nome.includes("dracon") ||
+    nome.includes("dragon")
+  ) {
+    return "Draconideo_1";
   } if (
     nome.includes("lobo") ||
     nome.includes("wolf")
@@ -84,6 +90,9 @@ export function spriteForEnemy(
   const pasta = spriteFolderForEnemy(nomeInimigo);
   if (pasta === "Minotaur_1") {
     return MinotauroSprite;
+  }
+  if (pasta === "Draconideo_1") {
+    return DraconideoSprite;
   }
   if (pasta === "Black_Werewolf") {
     return WolfSprite;
