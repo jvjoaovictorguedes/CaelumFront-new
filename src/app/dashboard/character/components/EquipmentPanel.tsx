@@ -8,16 +8,16 @@ import { useCharacter } from "@/contexts/CharacterContext";
 type Slot =
   | "Cabeca"
   | "Torso"
-  | "Maos"
   | "Pes"
   | "ArmaPrincipal"
   | "ArmaSecundaria"
   | "Acessorio1"
   | "Acessorio2";
 
-// 7 slots ativos (Mãos fica de fora — não existe peça de armadura pra
-// esse slot no catálogo ainda). Acessório 1/2 (cinto/medalhão) ficam
-// FORA da silhueta do personagem de propósito: não fazem parte do
+// 7 slots ativos ("Mãos" descontinuado de vez — uma mão segura a
+// arma, a outra o escudo, não sobra uma terceira mão pra uma peça de
+// armadura separada). Acessório 1/2 (cinto/medalhão) ficam FORA da
+// silhueta do personagem de propósito: não fazem parte do
 // "boneco de papel" em si (não tem arte de cinto/colar desenhada no
 // personagem), então entram como ícones flutuando nas laterais em vez
 // de sobrepor o corpo, um de cada lado pra não empilhar em cima da
@@ -194,7 +194,6 @@ export default function EquipmentPanel({ classe }: { classe?: string }) {
   >({
     Cabeca: null,
     Torso: null,
-    Maos: null,
     Pes: null,
     ArmaPrincipal: null,
     ArmaSecundaria: null,
@@ -217,7 +216,6 @@ export default function EquipmentPanel({ classe }: { classe?: string }) {
       const mapaEquipado: Record<Slot, EquipadoApi | null> = {
         Cabeca: null,
         Torso: null,
-        Maos: null,
         Pes: null,
         ArmaPrincipal: null,
         ArmaSecundaria: null,
