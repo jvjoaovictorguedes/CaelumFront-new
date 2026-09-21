@@ -340,6 +340,23 @@ export default function CombatArena({
   // perdida (cada turno já persiste no personagem, ver combatController),
   // mas XP/moedas só são concedidos quando a luta termina de verdade.
   const [mostrarConfirmarSaida, setMostrarConfirmarSaida] = useState(false);
+  const [saindoDaAventura, setSaindoDaAventura] = useState(false);
+
+  async function confirmarSaida() {
+    if (saindoDaAventura) return;
+    setSaindoDaAventura(true);
+    try {
+      // Sem isso a sessão de caça continuava ativa no servidor — ao
+      // voltar pra Aventura o jogador caía direto de novo neste mesmo
+      // combate em vez de ir pra seleção de área (bug reportado: "buga
+      // e me deixa travado no bosque que eu escolhi").
+      await axiosInstance.post("/adventure/leave");
+    } catch (error) {
+      console.error("Erro ao sair da área de caça:", error);
+    } finally {
+      router.push("/dashboard/adventure");
+    }
+  }
 
   const [floatingTextsPlayer, setFloatingTextsPlayer] = useState<
     FloatingText[]
@@ -758,8 +775,7 @@ export default function CombatArena({
   }
 
   return (
-    <div className="fixed inset-0 z-[70] overflow-y-auto bg-[#1a1410]">
-      <div className="mx-auto flex w-full max-w-5xl flex-col gap-5 p-2 sm:p-4">
+    <div className="fixed inset-0 z-[70] overflow-hidden bg-[#1a1410]">
       <style jsx>{`
         @keyframes floatUp {
           0% {
@@ -804,176 +820,146 @@ export default function CombatArena({
         }
       `}</style>
 
-      <div className="relative rounded-2xl border-2 border-[#F3B43F] bg-[#292018]/90 p-5 pt-12 text-white shadow-xl">
-        {!resultado && (
+      {/* O fundo cobre a tela inteira — a arena não é mais um box
+          centralizado, ela É a tela toda, do jeito que um RPG de turnos
+          moderno faz (cada aliado, quando existir mais de um jogador,
+          vai ocupar seu próprio ponto nessa mesma área cheia). */}
+      <div
+        className={`absolute inset-0 bg-cover bg-center ${
+          fundoZona ? "" : "bg-gradient-to-b from-[#3a2f24] to-[#1f1813]"
+        }`}
+        style={fundoZona ? { backgroundImage: `url(${fundoZona})` } : undefined}
+      />
+      <div className="absolute inset-0 bg-black/30" />
+
+      {/* Barra superior flutuando sobre o fundo — some com XP e o botão
+          de sair, mas não interrompe a leitura da tela como campo de
+          batalha único. */}
+      <div className="absolute inset-x-0 top-0 z-20 flex items-start justify-between gap-3 p-3 sm:p-4">
+        {!resultado ? (
           <button
             type="button"
             onClick={() => setMostrarConfirmarSaida(true)}
-            className="absolute left-4 top-4 rounded-full border-2 border-[#F3B43F]/60 bg-black/40 px-3 py-1 font-imFeel text-sm text-[#F3B43F] transition hover:bg-black/60"
+            className="rounded-full border-2 border-[#F3B43F]/60 bg-black/50 px-3 py-1 font-imFeel text-sm text-[#F3B43F] shadow transition hover:bg-black/70"
           >
             ← Retornar
           </button>
+        ) : (
+          <span />
         )}
+
+        <div className="flex flex-col items-center text-center text-white drop-shadow-lg">
+          <p className="text-[10px] uppercase tracking-widest text-[#F3B43F] sm:text-xs">
+            {tituloZona}
+          </p>
+          <h1 className="font-imFeel text-2xl leading-tight sm:text-3xl">
+            {tituloArena}
+          </h1>
+          <div className="mt-1 h-1.5 w-36 overflow-hidden rounded-full bg-black/50 sm:w-52">
+            <div
+              className="h-full bg-[#F3B43F]"
+              style={{
+                width: `${Math.min(100, (experienciaAtual / experienciaNivel) * 100)}%`,
+              }}
+            />
+          </div>
+          <p className="mt-0.5 text-[10px] text-white/70">
+            XP: {experienciaAtual} / {experienciaNivel}
+          </p>
+        </div>
 
         <button
           type="button"
           onClick={() => setMostrarLog(true)}
           aria-label="Ver registro de combate"
           title="Registro de combate"
-          className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full border-2 border-[#F3B43F]/60 bg-black/40 font-imFeel text-base text-[#F3B43F] transition hover:bg-black/60"
+          className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border-2 border-[#F3B43F]/60 bg-black/50 font-imFeel text-base text-[#F3B43F] shadow transition hover:bg-black/70"
         >
           i
         </button>
-
-        <p className="text-sm uppercase tracking-widest text-[#F3B43F]">
-          {tituloZona}
-        </p>
-
-        <div className="flex flex-wrap items-end justify-between gap-3 pr-10">
-          <h1 className="font-imFeel text-4xl sm:text-5xl">{tituloArena}</h1>
-
-          <p className="text-sm text-white/70">
-            XP: {experienciaAtual}
-            {" / "}
-            {experienciaNivel}
-          </p>
-        </div>
-
-        <div className="mt-2 h-2 overflow-hidden rounded-full bg-black/50">
-          <div
-            className="h-full bg-[#F3B43F]"
-            style={{
-              width: `${Math.min(
-                100,
-                (experienciaAtual / experienciaNivel) * 100,
-              )}%`,
-            }}
-          />
-        </div>
       </div>
 
-      <div className="relative flex items-center justify-between gap-4 overflow-visible rounded-2xl border-2 border-[#F3B43F]/60 p-6 shadow-xl">
+      {/* Campo de batalha: cada combatente fica no seu ponto na tela
+          inteira. Hoje só jogador x inimigo, mas essa mesma faixa é
+          onde cada aliado vai aparecer (em cima/do lado) quando o modo
+          em grupo existir — nenhum combatente depende de um box menor
+          pra caber. */}
+      <div className="absolute inset-0 z-10 flex items-center justify-between px-[8%] sm:px-[14%]">
         <div
-          className={`absolute inset-0 rounded-2xl bg-cover bg-center ${
-            fundoZona ? "" : "bg-gradient-to-b from-[#3a2f24] to-[#1f1813]"
+          className={`relative flex flex-col items-center transition-transform duration-[420ms] ease-in-out ${
+            avancoJogador ? "translate-x-[30vw]" : "translate-x-0"
+          } ${isShieldActive ? "shield-active border border-cyan-400/50" : ""}`}
+        >
+          <div className="pointer-events-none absolute -top-20 left-1/2 z-20 flex -translate-x-1/2 flex-col items-center">
+            {floatingTextsPlayer.map((ft) => (
+              <span
+                key={ft.id}
+                className="animate-float-up absolute whitespace-nowrap text-lg font-bold sm:text-2xl"
+                style={{ color: ft.color }}
+              >
+                {ft.text}
+              </span>
+            ))}
+          </div>
+
+          <BarraSobreCabeca
+            nome={`${character.nome} (Nv. ${nivelAtual})`}
+            vidaAtual={vidaAtual}
+            vidaMaxima={vidaMaxima}
+            manaAtual={manaAtual}
+            manaMaxima={manaMaxima}
+          />
+
+          <PlayerSprite
+            className={`battle-sprite h-32 w-32 sm:h-48 sm:w-48 ${
+              animJogador !== "idle" ? animJogador : ""
+            }`}
+            animState={animJogador}
+            poseOverride={poseJogador.pose}
+            fireTint={poseJogador.fogo}
+          />
+        </div>
+
+        <div
+          className={`relative flex flex-col items-center transition-transform duration-[420ms] ease-in-out ${
+            avancoInimigo ? "-translate-x-[30vw]" : "translate-x-0"
           }`}
-          style={
-            fundoZona ? { backgroundImage: `url(${fundoZona})` } : undefined
-          }
-        />
-        <div className="absolute inset-0 rounded-2xl bg-black/35" />
-        {/* Sugestão de "chão" — reforça a leitura de plataforma em que os
-            dois lados caminham um em direção ao outro. */}
-        <div className="absolute inset-x-8 bottom-6 h-3 rounded-full bg-black/50 blur-[2px]" />
-
-        <div className="relative z-10 flex w-full items-center justify-between gap-4">
-          <div
-            className={`relative flex flex-col items-center p-2 transition-transform duration-[420ms] ease-in-out ${
-              avancoJogador
-                ? "translate-x-[1000px] sm:translate-x-[120px]"
-                : "translate-x-0"
-            } ${
-              isShieldActive ? "shield-active border border-cyan-400/50" : ""
-            }`}
-          >
-            <div className="pointer-events-none absolute -top-12 left-1/2 z-20 flex -translate-x-1/2 flex-col items-center">
-              {floatingTextsPlayer.map((ft) => (
-                <span
-                  key={ft.id}
-                  className="animate-float-up absolute whitespace-nowrap text-lg font-bold sm:text-xl"
-                  style={{
-                    color: ft.color,
-                  }}
-                >
-                  {ft.text}
-                </span>
-              ))}
-            </div>
-
-            <PlayerSprite
-              className={`battle-sprite h-28 w-28 sm:h-36 sm:w-36 ${
-                animJogador !== "idle" ? animJogador : ""
-              }`}
-              animState={animJogador}
-              poseOverride={poseJogador.pose}
-              fireTint={poseJogador.fogo}
-            />
+        >
+          <div className="pointer-events-none absolute -top-20 left-1/2 z-20 flex -translate-x-1/2 flex-col items-center">
+            {floatingTextsEnemy.map((ft) => (
+              <span
+                key={ft.id}
+                className="animate-float-up absolute whitespace-nowrap text-lg font-bold sm:text-2xl"
+                style={{ color: ft.color }}
+              >
+                {ft.text}
+              </span>
+            ))}
           </div>
 
-          <div
-            className={`relative flex flex-col items-center p-2 transition-transform duration-[420ms] ease-in-out ${
-              avancoInimigo
-                ? "-translate-x-[1000px] sm:-translate-x-[120px]"
-                : "translate-x-0"
-            }`}
-          >
-            <div className="pointer-events-none absolute -top-12 left-1/2 z-20 flex -translate-x-1/2 flex-col items-center">
-              {floatingTextsEnemy.map((ft) => (
-                <span
-                  key={ft.id}
-                  className="animate-float-up absolute whitespace-nowrap text-lg font-bold sm:text-xl"
-                  style={{
-                    color: ft.color,
-                  }}
-                >
-                  {ft.text}
-                </span>
-              ))}
-            </div>
+          <BarraSobreCabeca
+            nome={`${enemy.nome} (Nv. ${enemy.nivel})`}
+            vidaAtual={enemy.vida_atual}
+            vidaMaxima={enemy.vida_maxima}
+          />
 
-            <EnemySprite
-              className={`battle-sprite h-28 w-28 sm:h-36 sm:w-36 ${
-                animInimigo !== "idle" ? animInimigo : ""
-              }`}
-              animState={animInimigo}
-            />
-          </div>
+          <EnemySprite
+            className={`battle-sprite h-32 w-32 sm:h-48 sm:w-48 ${
+              animInimigo !== "idle" ? animInimigo : ""
+            }`}
+            animState={animInimigo}
+          />
         </div>
       </div>
 
-      <div className="grid w-full grid-cols-1 gap-4 md:grid-cols-2">
-        <div className="rounded-2xl border border-green-900/20 bg-[#292018]/90 p-4 shadow-lg">
-          <p className="mb-1 font-imFeel text-xl">
-            {character.nome} (Nv. {nivelAtual}) (
-            <span className="text-sm text-white/70">
-              Pontos à distribuir: {pontosDistribuir}
-            </span>
-            )
-          </p>
-
-          <BarraDeStatus
-            label="Vida"
-            atual={vidaAtual}
-            maxima={vidaMaxima}
-            cor="bg-red-600"
-          />
-
-          <BarraDeStatus
-            label="Mana"
-            atual={manaAtual}
-            maxima={manaMaxima}
-            cor="bg-blue-600"
-          />
-        </div>
-
-        <div className="rounded-2xl border border-red-900/20 bg-[#292018]/90 p-4 shadow-lg">
-          <p className="mb-1 font-imFeel text-xl">
-            {enemy.nome} (Nv. {enemy.nivel})
-          </p>
-
-          <BarraDeStatus
-            label="Vida"
-            atual={enemy.vida_atual}
-            maxima={enemy.vida_maxima}
-            cor="bg-red-600"
-          />
-        </div>
-      </div>
+      {pontosDistribuir > 0 && (
+        <p className="absolute left-1/2 top-24 z-20 -translate-x-1/2 whitespace-nowrap rounded-full bg-black/50 px-3 py-1 text-xs text-[#F3B43F] shadow sm:top-28">
+          Pontos à distribuir: {pontosDistribuir}
+        </p>
+      )}
 
       {!resultado && (
-        // sticky bottom-0: barra de ações fica fixa embaixo da tela
-        // (estilo RPG normal) em vez de flutuar solta no meio do layout.
-        <div className="sticky bottom-0 z-30 -mx-2 bg-gradient-to-t from-[#1a1410] via-[#1a1410]/95 to-transparent px-2 pb-2 pt-4 sm:-mx-4 sm:px-4">
+        <div className="absolute inset-x-0 bottom-0 z-30 bg-gradient-to-t from-black/90 via-black/70 to-transparent px-3 pb-3 pt-10 sm:px-6">
           <CombatActionBar
             podeAgir={!resultado}
             ocupado={carregando}
@@ -996,42 +982,44 @@ export default function CombatArena({
       )}
 
       {resultado && (
-        <div className="rounded-2xl border-2 border-[#F3B43F] bg-[#292018]/90 p-5 text-center text-white shadow-xl">
-          <p className="mb-2 font-imFeel text-3xl">
-            {resultado === "vitoria" ? "Vitória!" : "Derrota..."}
-          </p>
-
-          {recompensa && (
-            <p className="mb-3">
-              +{recompensa.experiencia} de experiência
-              {" · +"}
-              {recompensa.dinheiro} moedas
+        <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/60 p-4">
+          <div className="w-full max-w-md rounded-2xl border-2 border-[#F3B43F] bg-[#292018] p-6 text-center text-white shadow-2xl">
+            <p className="mb-2 font-imFeel text-3xl">
+              {resultado === "vitoria" ? "Vitória!" : "Derrota..."}
             </p>
-          )}
 
-          {drop && (
-            <p className="mb-3 font-bold text-[#F3B43F]">
-              {drop.tipo === "item" && drop.item
-                ? `Você encontrou: ${drop.item.nome}!`
-                : `+${drop.dinheiro} moedas extras encontradas!`}
-            </p>
-          )}
+            {recompensa && (
+              <p className="mb-3">
+                +{recompensa.experiencia} de experiência
+                {" · +"}
+                {recompensa.dinheiro} moedas
+              </p>
+            )}
 
-          <button
-            onClick={() => {
-              if (resultado === "vitoria") {
-                if (onVitoria) onVitoria();
-                else router.refresh();
-              } else if (onDerrota) {
-                onDerrota();
-              } else {
-                router.push("/dashboard");
-              }
-            }}
-            className="rounded-lg bg-[#BC8418] px-4 py-2 font-bold text-black hover:bg-[#a5710f]"
-          >
-            {resultado === "vitoria" ? labelBotaoVitoria : "Voltar"}
-          </button>
+            {drop && (
+              <p className="mb-3 font-bold text-[#F3B43F]">
+                {drop.tipo === "item" && drop.item
+                  ? `Você encontrou: ${drop.item.nome}!`
+                  : `+${drop.dinheiro} moedas extras encontradas!`}
+              </p>
+            )}
+
+            <button
+              onClick={() => {
+                if (resultado === "vitoria") {
+                  if (onVitoria) onVitoria();
+                  else router.refresh();
+                } else if (onDerrota) {
+                  onDerrota();
+                } else {
+                  router.push("/dashboard");
+                }
+              }}
+              className="rounded-lg bg-[#BC8418] px-4 py-2 font-bold text-black hover:bg-[#a5710f]"
+            >
+              {resultado === "vitoria" ? labelBotaoVitoria : "Voltar"}
+            </button>
+          </div>
         </div>
       )}
 
@@ -1065,10 +1053,11 @@ export default function CombatArena({
 
               <button
                 type="button"
-                onClick={() => router.push("/dashboard")}
-                className="rounded-lg bg-[#BC8418] px-4 py-2 font-bold text-black hover:bg-[#a5710f]"
+                disabled={saindoDaAventura}
+                onClick={confirmarSaida}
+                className="rounded-lg bg-[#BC8418] px-4 py-2 font-bold text-black hover:bg-[#a5710f] disabled:opacity-60"
               >
-                Sair mesmo assim
+                {saindoDaAventura ? "Saindo..." : "Sair mesmo assim"}
               </button>
             </div>
           </div>
@@ -1110,40 +1099,56 @@ export default function CombatArena({
           </div>
         </div>
       )}
-      </div>
     </div>
   );
 }
 
-function BarraDeStatus({
-  label,
-  atual,
-  maxima,
-  cor,
+// Nome + vida (e mana, quando informada) flutuando acima da cabeça da
+// unidade, dentro da própria arena — em vez de um card de status
+// separado embaixo da cena. Vale tanto pro jogador quanto pro inimigo
+// hoje, e é a mesma peça que vai renderizar cada aliado quando o modo
+// em grupo existir (várias unidades, cada uma com sua barra em cima).
+function BarraSobreCabeca({
+  nome,
+  vidaAtual,
+  vidaMaxima,
+  manaAtual,
+  manaMaxima,
 }: {
-  label: string;
-  atual: number;
-  maxima: number;
-  cor: string;
+  nome: string;
+  vidaAtual: number;
+  vidaMaxima: number;
+  manaAtual?: number;
+  manaMaxima?: number;
 }) {
+  const percentVida = Math.max(0, Math.min(100, (vidaAtual / vidaMaxima) * 100));
+
+  const percentMana =
+    manaMaxima && manaMaxima > 0
+      ? Math.max(0, Math.min(100, ((manaAtual ?? 0) / manaMaxima) * 100))
+      : null;
+
   return (
-    <div className="mb-1">
-      <div className="mb-1 flex justify-between text-xs font-bold">
-        <span>{label}</span>
+    <div className="pointer-events-none absolute -top-10 left-1/2 z-10 flex w-max -translate-x-1/2 flex-col items-center gap-0.5">
+      <span className="whitespace-nowrap rounded bg-black/60 px-1.5 py-0.5 text-[10px] font-bold text-white shadow sm:text-xs">
+        {nome}
+      </span>
 
-        <span>
-          {atual} / {maxima}
-        </span>
-      </div>
-
-      <div className="h-3 w-full overflow-hidden rounded-full bg-black/20">
+      <div className="h-1.5 w-20 overflow-hidden rounded-full border border-black/50 bg-black/60 sm:w-24">
         <div
-          className={`h-full ${cor}`}
-          style={{
-            width: `${Math.max(0, Math.min(100, (atual / maxima) * 100))}%`,
-          }}
+          className="h-full bg-red-600 transition-[width] duration-300"
+          style={{ width: `${percentVida}%` }}
         />
       </div>
+
+      {percentMana !== null && (
+        <div className="h-1 w-20 overflow-hidden rounded-full border border-black/50 bg-black/60 sm:w-24">
+          <div
+            className="h-full bg-blue-500 transition-[width] duration-300"
+            style={{ width: `${percentMana}%` }}
+          />
+        </div>
+      )}
     </div>
   );
 }
