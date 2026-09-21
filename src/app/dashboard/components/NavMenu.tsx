@@ -1,14 +1,14 @@
 "use client";
 
 import { useRouter, usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
-import axiosInstance from "@/utils/axiosIntance";
+import { useState } from "react";
 import { getAvatarUrl, getClassPortrait } from "@/utils/media-url";
 import { logout } from "@/app/login/action";
 import CaelumBrand from "@/components/CaelumBrand/CaelumBrand";
 import OnlinePlayersBadge from "./OnlinePlayersBadge";
 import PatchNotesBell from "./PatchNotesBell";
 import SidebarHealthBar from "./SidebarHealthBar";
+import { useMessagesSocket } from "@/contexts/MessagesSocketContext";
 
 interface NavMenuItem {
   name: string;
@@ -16,22 +16,21 @@ interface NavMenuItem {
   path: string;
 }
 
-const INTERVALO_POLL_NOTIFICACOES_MS = 15000;
-
 export default function NavMenu({
-  currentUserId,
   classe,
   avatarKey,
 }: {
-  currentUserId?: number;
   classe?: string;
   avatarKey?: string | null;
 }) {
   const router = useRouter();
   const pathname = usePathname();
   const [menuAberto, setMenuAberto] = useState(false);
-  const [mensagensNaoLidas, setMensagensNaoLidas] = useState(0);
   const [saindo, setSaindo] = useState(false);
+  // Badge vem do MessagesSocketProvider (global, montado no layout raiz)
+  // — atualizado por socket (inbox:update/message:read), sem polling
+  // (spec Mensagens v2 §17).
+  const { totalNaoLidas: mensagensNaoLidas } = useMessagesSocket();
 
   const handleLogout = async () => {
     if (saindo) return;
@@ -44,46 +43,15 @@ export default function NavMenu({
     window.location.href = "/login";
   };
 
-  useEffect(() => {
-    if (!currentUserId) return;
-
-    let cancelado = false;
-
-    async function verificarNaoLidas() {
-      try {
-        const resposta = await axiosInstance.get<{
-          data?: { naoLidas?: number };
-        }>(`/messages/unread-count/${currentUserId}`);
-        if (!cancelado) {
-          setMensagensNaoLidas(resposta.data?.data?.naoLidas ?? 0);
-        }
-      } catch (error) {
-        console.error("Erro ao verificar mensagens não lidas:", error);
-      }
-    }
-
-    verificarNaoLidas();
-    const intervalo = setInterval(
-      verificarNaoLidas,
-      INTERVALO_POLL_NOTIFICACOES_MS,
-    );
-
-    return () => {
-      cancelado = true;
-      clearInterval(intervalo);
-    };
-  }, [currentUserId]);
-
-  // Zera o badge assim que o jogador entra na própria tela de
-  // mensagens (a conversa aberta lá já marca como lida no backend).
-  useEffect(() => {
-    if (pathname.startsWith("/dashboard/messages")) {
-      const tempo = setTimeout(() => setMensagensNaoLidas(0), 1000);
-      return () => clearTimeout(tempo);
-    }
-  }, [pathname]);
-
   const navItems: NavMenuItem[] = [
+    {
+      // Sem ícone próprio ainda — reaproveita o do Mapa como
+      // placeholder até ter arte dedicada (mesmo critério já usado
+      // pro Bestiário logo abaixo).
+      name: "Guia do Aventureiro",
+      iconUrl: "/icons/mapa.png",
+      path: "/dashboard/guide",
+    },
     {
       name: "Meu Personagem",
       iconUrl: "/icons/meu-personagem.png",

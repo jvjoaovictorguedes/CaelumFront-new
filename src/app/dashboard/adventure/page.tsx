@@ -203,6 +203,7 @@ export default async function AdventurePage() {
         character={character}
         abilities={habilidades}
         initialEnemy={inimigoInicial}
+        zona={sessao.area}
       />
     </div>
   );

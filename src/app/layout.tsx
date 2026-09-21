@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, IM_Fell_English_SC } from "next/font/google";
 import "./globals.css";
-import GlobalNotificationManager from "@/components/GlobalNotificationManager/GlobalNotificationManager";
 import { getUserCookie } from "@/app/create/temp-character-data-action";
+import { MessagesSocketProvider } from "@/contexts/MessagesSocketContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -38,10 +38,9 @@ export default async function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${imFellEnglish.variable} antialiased`}
       >
-        {children}
-        {currentUserId && (
-          <GlobalNotificationManager currentUserId={currentUserId} />
-        )}
+        <MessagesSocketProvider currentUserId={currentUserId ?? undefined}>
+          {children}
+        </MessagesSocketProvider>
       </body>
     </html>
   );

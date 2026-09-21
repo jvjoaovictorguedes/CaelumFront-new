@@ -41,6 +41,11 @@ export interface ConsumivelDuelo {
 export interface DueloIniciadoPayload {
   duelId: number;
   arena: string;
+  ranked?: boolean;
+  ratingA?: number;
+  ratingB?: number;
+  ligaA?: string;
+  ligaB?: string;
   a: LutadorDuelo;
   b: LutadorDuelo;
   vidaMaxA: number;
@@ -56,6 +61,31 @@ export interface DueloIniciadoPayload {
   consumiveisA: ConsumivelDuelo[];
   consumiveisB: ConsumivelDuelo[];
   turnoDe: "A" | "B";
+  prazoSegundos: number;
+}
+
+// Arena Ranqueada (PvP Competitivo v1) — eventos próprios do socket, além
+// dos "pvp:*" já existentes (que continuam servindo o Duelo casual sem
+// nenhuma mudança de comportamento).
+export interface RankedQueueUpdatePayload {
+  emFila: boolean;
+  tempoNaFilaMs?: number;
+}
+
+export interface RankedMatchFoundPayload {
+  duelId: number;
+  a: { id: number; nome: string; rating: number };
+  b: { id: number; nome: string; rating: number };
+}
+
+export interface RankedRatingUpdatePayload {
+  duelId: number;
+  jogadorA: { id: number; ratingAntes: number; ratingDepois: number; liga: string };
+  jogadorB: { id: number; ratingAntes: number; ratingDepois: number; liga: string };
+}
+
+export interface RankedOponenteDesconectadoPayload {
+  characterId: number;
   prazoSegundos: number;
 }
 
@@ -77,12 +107,16 @@ export interface TurnoResultadoPayload {
 
 export interface DueloFimPayload {
   duelId: number;
-  vencedorChave: "A" | "B";
-  vencedor: { id: number; nome: string };
-  perdedor: { id: number; nome: string };
-  recompensa: { dinheiro: number; experiencia: number };
-  nivelAposVitoria: number;
-  motivo: "combate" | "desistencia";
+  vencedorChave: "A" | "B" | null;
+  vencedor: { id: number; nome: string } | null;
+  perdedor: { id: number; nome: string } | null;
+  // Ranked não concede recompensa de Duelo casual nem nível — só rating
+  // (ver ranked:rating:update). "FalhaServidor"/"Abandono" só existem
+  // pra partidas ranked; casual continua só com "combate"/"desistencia".
+  recompensa?: { dinheiro: number; experiencia: number };
+  nivelAposVitoria?: number;
+  motivo: "combate" | "desistencia" | "Vitoria" | "Abandono" | "FalhaServidor";
+  ranked?: boolean;
 }
 
 interface DesafioRecebido {
@@ -106,6 +140,11 @@ interface PvpSocketContextValue {
   agir: (tipo: "attack" | "power" | "item", id?: number) => void;
   limparDuelo: () => void;
   limparErro: () => void;
+  // Arena Ranqueada
+  filaRanked: RankedQueueUpdatePayload | null;
+  matchEncontradoRanked: RankedMatchFoundPayload | null;
+  ratingUpdate: RankedRatingUpdatePayload | null;
+  oponenteDesconectadoRanked: RankedOponenteDesconectadoPayload | null;
 }
 
 const PvpSocketContext = createContext<PvpSocketContextValue | null>(null);
@@ -132,6 +171,11 @@ export function PvpSocketProvider({
   const [duelo, setDuelo] = useState<DueloIniciadoPayload | null>(null);
   const [turnos, setTurnos] = useState<TurnoResultadoPayload[]>([]);
   const [resultadoFinal, setResultadoFinal] = useState<DueloFimPayload | null>(null);
+  const [filaRanked, setFilaRanked] = useState<RankedQueueUpdatePayload | null>(null);
+  const [matchEncontradoRanked, setMatchEncontradoRanked] = useState<RankedMatchFoundPayload | null>(null);
+  const [ratingUpdate, setRatingUpdate] = useState<RankedRatingUpdatePayload | null>(null);
+  const [oponenteDesconectadoRanked, setOponenteDesconectadoRanked] =
+    useState<RankedOponenteDesconectadoPayload | null>(null);
 
   useEffect(() => {
     const usaMocks = process.env.NEXT_PUBLIC_USE_MOCKS === "true";
@@ -224,6 +268,41 @@ export function PvpSocketProvider({
       setErro(mensagem);
     });
 
+    // Arena Ranqueada — reaproveita "pvp:duelo-iniciado"'s equivalente
+    // (ranked:match:start), com o MESMO shape de payload, então o duelo
+    // vira o mesmo estado `duelo` que LiveDuelArena já sabe renderizar.
+    socket.on("ranked:queue:update", (payload: RankedQueueUpdatePayload) => {
+      setFilaRanked(payload);
+    });
+
+    socket.on("ranked:match:found", (payload: RankedMatchFoundPayload) => {
+      setMatchEncontradoRanked(payload);
+    });
+
+    socket.on("ranked:match:start", (payload: DueloIniciadoPayload) => {
+      setDesafioRecebido(null);
+      setDesafioEnviadoPara(null);
+      setResultadoFinal(null);
+      setRatingUpdate(null);
+      setOponenteDesconectadoRanked(null);
+      setFilaRanked(null);
+      setTurnos([]);
+      setDuelo(payload);
+      router.push("/dashboard/pvp");
+    });
+
+    socket.on("ranked:rating:update", (payload: RankedRatingUpdatePayload) => {
+      setRatingUpdate(payload);
+    });
+
+    socket.on("ranked:oponente-desconectado", (payload: RankedOponenteDesconectadoPayload) => {
+      setOponenteDesconectadoRanked(payload);
+    });
+
+    socket.on("ranked:oponente-reconectado", () => {
+      setOponenteDesconectadoRanked(null);
+    });
+
     return () => {
       socket.disconnect();
       socketRef.current = null;
@@ -252,6 +331,8 @@ export function PvpSocketProvider({
     setDuelo(null);
     setTurnos([]);
     setResultadoFinal(null);
+    setRatingUpdate(null);
+    setOponenteDesconectadoRanked(null);
   }, []);
 
   const limparErro = useCallback(() => setErro(""), []);
@@ -272,6 +353,10 @@ export function PvpSocketProvider({
         agir,
         limparDuelo,
         limparErro,
+        filaRanked,
+        matchEncontradoRanked,
+        ratingUpdate,
+        oponenteDesconectadoRanked,
       }}
     >
       {children}

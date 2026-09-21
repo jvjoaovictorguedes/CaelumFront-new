@@ -229,9 +229,9 @@ export default function GuildBossTab({
           <p className="mb-3 text-sm uppercase tracking-widest text-[#F3B43F]">Contribuidores</p>
           <div className="flex flex-col gap-1">
             {status.contribuidores.map((c, indice) => (
-              <div key={indice} className="flex justify-between text-sm text-white/80">
-                <span>{c.personagem?.nome ?? "Personagem removido"}</span>
-                <span className="text-white/50">{Number(c.dano_total).toLocaleString()} de dano</span>
+              <div key={indice} className="flex justify-between gap-2 text-sm text-white/80">
+                <span className="min-w-0 truncate">{c.personagem?.nome ?? "Personagem removido"}</span>
+                <span className="shrink-0 text-white/50">{Number(c.dano_total).toLocaleString()} de dano</span>
               </div>
             ))}
           </div>

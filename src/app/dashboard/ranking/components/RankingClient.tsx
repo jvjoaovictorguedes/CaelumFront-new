@@ -187,15 +187,15 @@ export default function RankingClient() {
                       key={item.id}
                       className={`flex items-center justify-between gap-3 rounded-lg px-2 py-2.5 ${destaqueTop3}`}
                     >
-                      <div className="flex items-center gap-3">
-                        <span className="w-8 text-center font-imFeel text-lg text-white/60">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <span className="w-8 shrink-0 text-center font-imFeel text-lg text-white/60">
                           #{item.posicao}
                         </span>
                         {typeof item.online === "boolean" && <IndicadorOnline online={item.online} />}
-                        <p className="font-bold text-[#F3B43F]">{item.nome}</p>
+                        <p className="min-w-0 truncate font-bold text-[#F3B43F]">{item.nome}</p>
                       </div>
 
-                      <div className="text-right text-sm">
+                      <div className="shrink-0 text-right text-sm">
                         <p className="font-bold text-white">{valorPrincipal(tipo, item)}</p>
                         {tipo === "pvp" && (
                           <p className="text-xs text-white/60">

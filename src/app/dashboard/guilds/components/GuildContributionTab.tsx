@@ -33,15 +33,15 @@ export default function GuildContributionTab({ idGuild }: { idGuild: number }) {
           {contribuicoes.map((contribuicao, indice) => (
             <div
               key={contribuicao.id}
-              className="flex items-center justify-between rounded-lg border border-white/10 bg-black/30 p-3"
+              className="flex items-center justify-between gap-2 rounded-lg border border-white/10 bg-black/30 p-3"
             >
-              <span className="flex items-center gap-3">
-                <span className="w-6 text-center font-bold text-[#F3B43F]">{indice + 1}º</span>
-                <span>
+              <span className="flex min-w-0 items-center gap-3">
+                <span className="w-6 shrink-0 text-center font-bold text-[#F3B43F]">{indice + 1}º</span>
+                <span className="truncate">
                   {contribuicao.Character?.nome} (nível {contribuicao.Character?.nivel})
                 </span>
               </span>
-              <span className="text-sm text-white/70">
+              <span className="shrink-0 text-right text-sm text-white/70">
                 {contribuicao.contribuicao_total} pts · {contribuicao.ouro_doado_total} ouro doado
               </span>
             </div>

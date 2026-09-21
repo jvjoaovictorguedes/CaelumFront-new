@@ -402,6 +402,118 @@ export const SPRITE_CONFIGS: Record<string, SpriteCharacterConfig> = {
     },
   },
 
+  // Bosque de Sussurros (Aranha Venenosa) — folhas extraídas de uma
+  // referência com fundo falso quadriculado (nunca teve alpha de
+  // verdade); cada frame já vem recortado ao conteúdo e centralizado num
+  // canvas quadrado por linha (ver scripts de extração), daí o scale bem
+  // menor que Knight_1/Minotaur_1 (canvas bruto de ~400-950px, não 128px).
+  Spider_1: {
+    scale: 0.48,
+    originX: "50%",
+    originY: "88%",
+    offsetX: 0,
+    offsetY: 0,
+
+    animations: {
+      idle: { file: "Idle.png", frames: 4, fps: 6 },
+      attack: { file: "Attack.png", frames: 4, fps: 9, scale: 0.29 },
+      poder: { file: "Attack.png", frames: 4, fps: 9, scale: 0.29 },
+      hurt: { file: "Hurt.png", frames: 1, fps: 1, scale: 0.41 },
+      dead: { file: "Dead.png", frames: 5, fps: 6, loop: false, scale: 0.41 },
+      victory: { file: "Idle.png", frames: 4, fps: 6 },
+    },
+  },
+
+  // Terras Devastadas (Bandido Errante)
+  Bandit_1: {
+    scale: 0.74,
+    originX: "50%",
+    originY: "90%",
+    offsetX: 0,
+    offsetY: 0,
+
+    animations: {
+      idle: { file: "Idle.png", frames: 6, fps: 6 },
+      attack: { file: "Attack.png", frames: 7, fps: 10, scale: 0.66 },
+      poder: { file: "Attack.png", frames: 7, fps: 10, scale: 0.66 },
+      hurt: { file: "Hurt.png", frames: 1, fps: 1 },
+      dead: { file: "Dead.png", frames: 8, fps: 7, loop: false, scale: 0.62 },
+      victory: { file: "Idle.png", frames: 6, fps: 6 },
+    },
+  },
+
+  // Terras Devastadas (Cultista Renegado)
+  Cultist_1: {
+    scale: 0.58,
+    originX: "50%",
+    originY: "88%",
+    offsetX: 0,
+    offsetY: 0,
+
+    animations: {
+      idle: { file: "Idle.png", frames: 5, fps: 6 },
+      attack: { file: "Attack.png", frames: 5, fps: 9, scale: 0.35 },
+      poder: { file: "Attack.png", frames: 5, fps: 9, scale: 0.35 },
+      hurt: { file: "Hurt.png", frames: 1, fps: 1 },
+      dead: { file: "Dead.png", frames: 4, fps: 6, loop: false, scale: 0.51 },
+      victory: { file: "Idle.png", frames: 5, fps: 6 },
+    },
+  },
+
+  // Covil do Minotauro (Golem de Pedra)
+  Golem_1: {
+    scale: 0.54,
+    originX: "50%",
+    originY: "88%",
+    offsetX: 0,
+    offsetY: 0,
+
+    animations: {
+      idle: { file: "Idle.png", frames: 5, fps: 6 },
+      attack: { file: "Attack.png", frames: 5, fps: 8, scale: 0.44 },
+      poder: { file: "Attack.png", frames: 5, fps: 8, scale: 0.44 },
+      hurt: { file: "Hurt.png", frames: 1, fps: 1, scale: 0.5 },
+      dead: { file: "Dead.png", frames: 6, fps: 6, loop: false, scale: 0.32 },
+      victory: { file: "Idle.png", frames: 5, fps: 6 },
+    },
+  },
+
+  // Covil do Minotauro (Orc Guerreiro)
+  Orc_1: {
+    scale: 0.57,
+    originX: "50%",
+    originY: "90%",
+    offsetX: 0,
+    offsetY: 0,
+
+    animations: {
+      idle: { file: "Idle.png", frames: 4, fps: 6 },
+      attack: { file: "Attack.png", frames: 5, fps: 9, scale: 0.34 },
+      poder: { file: "Attack.png", frames: 5, fps: 9, scale: 0.34 },
+      hurt: { file: "Hurt.png", frames: 1, fps: 1, scale: 0.51 },
+      dead: { file: "Dead.png", frames: 5, fps: 6, loop: false, scale: 0.34 },
+      victory: { file: "Idle.png", frames: 4, fps: 6 },
+    },
+  },
+
+  // Bosque de Sussurros (Espectro Sussurrante)
+  Wraith_1: {
+    scale: 0.51,
+    originX: "50%",
+    originY: "85%",
+    offsetX: 0,
+    offsetY: 0,
+
+    animations: {
+      idle: { file: "Idle.png", frames: 6, fps: 7 },
+      attack: { file: "Attack.png", frames: 3, fps: 6, scale: 0.31 },
+      poder: { file: "Attack.png", frames: 3, fps: 6, scale: 0.31 },
+      hurt: { file: "Hurt.png", frames: 1, fps: 1 },
+      dead: { file: "Dead.png", frames: 6, fps: 6, loop: false, scale: 0.31 },
+      victory: { file: "Idle.png", frames: 6, fps: 7 },
+    },
+  },
+
   // Frames contados a partir do tamanho real de cada folha em
   // public/Black_Werewolf (128px de altura por frame, largura total /
   // 128 = quantidade de frames) — sem essa config, WolfSprite caía no
