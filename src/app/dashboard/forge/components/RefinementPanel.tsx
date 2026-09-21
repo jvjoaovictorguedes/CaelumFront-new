@@ -65,6 +65,7 @@ export default function RefinementPanel({ onProgressoMudou }: { nivelForja: numb
   const [selecionada, setSelecionada] = useState<number | null>(null);
   const [pergaminhoEscolhido, setPergaminhoEscolhido] = useState<number | null>(null);
   const [previa, setPrevia] = useState<Previa | null>(null);
+  const [erroPrevia, setErroPrevia] = useState("");
   const [fila, setFila] = useState<EntradaFilaForja | null>(null);
   const [contagem, setContagem] = useState(0);
   const [carregando, setCarregando] = useState(true);
@@ -121,6 +122,7 @@ export default function RefinementPanel({ onProgressoMudou }: { nivelForja: numb
   const buscarPrevia = useCallback(async () => {
     if (!selecionada) {
       setPrevia(null);
+      setErroPrevia("");
       return;
     }
     try {
@@ -128,9 +130,14 @@ export default function RefinementPanel({ onProgressoMudou }: { nivelForja: numb
         params: { id_instancia: selecionada, id_item_pergaminho: pergaminhoEscolhido ?? undefined },
       });
       setPrevia(resp.data?.data ?? null);
-    } catch (error) {
+      setErroPrevia("");
+    } catch (error: unknown) {
       console.error("Erro ao calcular prévia de refinamento:", error);
       setPrevia(null);
+      const msg =
+        (error as { response?: { data?: { message?: string } } })?.response?.data?.message ??
+        "Não foi possível calcular a prévia desse refinamento.";
+      setErroPrevia(msg);
     }
   }, [selecionada, pergaminhoEscolhido]);
 
@@ -279,6 +286,12 @@ export default function RefinementPanel({ onProgressoMudou }: { nivelForja: numb
           </div>
         )}
       </div>
+
+      {instanciaSelecionada && erroPrevia && (
+        <div className="rounded-2xl border-2 border-red-500/60 bg-[#292018]/90 p-5 text-sm text-red-300 shadow-xl">
+          {erroPrevia}
+        </div>
+      )}
 
       {instanciaSelecionada && previa && (
         <div className="rounded-2xl border-2 border-[#F3B43F] bg-[#292018]/90 p-5 text-white shadow-xl">
