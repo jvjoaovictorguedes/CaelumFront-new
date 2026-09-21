@@ -56,11 +56,12 @@ const FUNDO_POR_ZONA: Record<string, string> = {
 // caem no fundo da zona.
 const FUNDO_POR_MONSTRO: Record<string, string> = {
   "Espectro Sussurrante": "/images/backgrounds/cripta-espectral.jpg",
-  "Bandido Errante": "/images/backgrounds/acampamento-bandido.jpg",
+  "Bandido Errante": "/images/backgrounds/terras-devastadas.jpg",
   "Golem de Pedra": "/images/backgrounds/templo-ancestral-golem.jpg",
   Minotauro: "/images/backgrounds/covil-minotauro.jpg",
   "Aranha Venenosa": "/images/backgrounds/ninho-aranhas.jpg",
   "Cultista Renegado": "/images/backgrounds/altar-cultos.jpg",
+  "Orc Guerreiro": "/images/backgrounds/acampamento-orc.jpg",
 };
 
 interface Power {
