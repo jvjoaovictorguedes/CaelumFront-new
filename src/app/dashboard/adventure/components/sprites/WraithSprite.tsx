@@ -1,13 +1,10 @@
 import AnimatedSpriteSheet from "./AnimatedSpriteSheet";
 
-import type {
-  BattleSpriteProps,
-} from "./spriteSheets";
+import type { BattleSpriteProps } from "./spriteSheets";
 
 export default function WraithSprite({
   className = "",
   animState = "idle",
-  stroke = "#8b0000",
   flip = true,
   poseOverride,
   fireTint = false,
@@ -17,7 +14,6 @@ export default function WraithSprite({
       pasta="Wraith_1"
       className={className}
       animState={animState}
-      stroke={stroke}
       flip={flip}
       poseOverride={poseOverride}
       fireTint={fireTint}
