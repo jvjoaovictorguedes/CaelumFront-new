@@ -365,8 +365,8 @@ export default function CraftingPanel({ onProgressoMudou }: { nivelForja: number
         key={blueprint.id}
         className="rounded-2xl border-2 border-[#F3B43F] bg-[#292018]/90 p-5 text-white shadow-xl"
       >
-        <div className="mb-3 flex items-center gap-3">
-          <div className="group relative h-14 w-14 shrink-0 overflow-hidden rounded-lg border-2 border-[#F3B43F]/60 bg-[#3a2f24]">
+        <div className="group relative mb-3 flex items-center gap-3">
+          <div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg border-2 border-[#F3B43F]/60 bg-[#3a2f24]">
             {src ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={src} alt={blueprint.nome} className="h-full w-full object-contain p-1.5" />
@@ -375,17 +375,17 @@ export default function CraftingPanel({ onProgressoMudou }: { nivelForja: number
                 {blueprint.nome.charAt(0)}
               </div>
             )}
-            {variante.propriedades && (
-              <div className="pointer-events-none absolute left-0 top-full z-10 mt-2 w-48 rounded-md bg-black/90 p-2 text-left text-xs opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
-                <p className="mb-1 text-white/50">Atributos ({variante.qualidade_exibicao}):</p>
-                <AtributosDoItem propriedades={variante.propriedades} />
-              </div>
-            )}
           </div>
           <div>
             <p className="font-imFeel text-xl uppercase">{blueprint.nome}</p>
             <p className="text-xs text-white/50">Nível mínimo de Forja: {blueprint.nivel_forja_minimo}</p>
           </div>
+          {variante.propriedades && (
+            <div className="pointer-events-none absolute left-0 top-full z-20 mt-2 w-52 rounded-md border border-[#F3B43F]/40 bg-black/95 p-2 text-left text-xs opacity-0 shadow-xl transition-opacity group-hover:opacity-100">
+              <p className="mb-1 text-white/50">Atributos ({variante.qualidade_exibicao}):</p>
+              <AtributosDoItem propriedades={variante.propriedades} />
+            </div>
+          )}
         </div>
 
         <div className="mb-3 flex flex-wrap gap-2">
