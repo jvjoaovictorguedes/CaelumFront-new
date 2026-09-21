@@ -24,6 +24,7 @@ export interface CurrentCharacter {
   slots_consumiveis_combate?: (number | null)[];
   natureza_magica?: string;
   regen_vida_restante_ms?: number;
+  regen_mana_restante_ms?: number;
   bonus_atributos?: {
     forca: number;
     vitalidade: number;
