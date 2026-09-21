@@ -14,13 +14,93 @@ interface IngredienteBlueprint {
   tipo_insumo: "Barra" | "RecursoExpedicao";
 }
 
+type Atributo = "Forca" | "Vitalidade" | "Inteligencia" | "Agilidade" | "Velocidade";
+
+const NOME_ATRIBUTO: Record<Atributo, string> = {
+  Forca: "Força",
+  Vitalidade: "Vitalidade",
+  Inteligencia: "Inteligência",
+  Agilidade: "Agilidade",
+  Velocidade: "Velocidade",
+};
+
+interface PropriedadesArma {
+  tipo: "Arma";
+  dano_min: number;
+  dano_max: number;
+  tipo_dano: "Fisico" | "Magico";
+  bonus_atributo: Atributo;
+  valor_bonus_atributo: number;
+}
+
+interface PropriedadesArmadura {
+  tipo: "Armadura";
+  defesa: number;
+  bonus_forca: number;
+  bonus_vitalidade: number;
+  bonus_inteligencia: number;
+  bonus_agilidade: number;
+  bonus_velocidade: number;
+}
+
+type PropriedadesItem = PropriedadesArma | PropriedadesArmadura | null;
+
 interface VarianteBlueprint {
   qualidade: string;
   qualidade_exibicao: string;
   ingredientes: IngredienteBlueprint[];
   pode_fabricar: boolean;
   chances_percentual: Record<string, number>;
+  propriedades: PropriedadesItem;
   tempo_segundos: number;
+}
+
+// Atributos do item que essa qualidade vai produzir — tooltip pro
+// jogador entender qual blueprint/qualidade vale mais a pena fabricar
+// sem precisar já ter o item em mãos.
+function AtributosDoItem({ propriedades }: { propriedades: PropriedadesItem }) {
+  if (!propriedades) return null;
+
+  if (propriedades.tipo === "Arma") {
+    return (
+      <ul className="space-y-0.5">
+        <li>
+          <span className="font-bold text-[#F3B43F]">Dano:</span> {propriedades.dano_min}–{propriedades.dano_max}{" "}
+          ({propriedades.tipo_dano === "Fisico" ? "Físico" : "Mágico"})
+        </li>
+        {propriedades.valor_bonus_atributo > 0 && (
+          <li>
+            <span className="font-bold text-[#F3B43F]">+{propriedades.valor_bonus_atributo}</span>{" "}
+            {NOME_ATRIBUTO[propriedades.bonus_atributo]}
+          </li>
+        )}
+      </ul>
+    );
+  }
+
+  const bonus: [Atributo, number][] = [
+    ["Forca", propriedades.bonus_forca],
+    ["Vitalidade", propriedades.bonus_vitalidade],
+    ["Inteligencia", propriedades.bonus_inteligencia],
+    ["Agilidade", propriedades.bonus_agilidade],
+    ["Velocidade", propriedades.bonus_velocidade],
+  ];
+  return (
+    <ul className="space-y-0.5">
+      {propriedades.defesa > 0 && (
+        <li>
+          <span className="font-bold text-[#F3B43F]">Defesa:</span> {propriedades.defesa}
+        </li>
+      )}
+      {bonus
+        .filter(([, valor]) => valor > 0)
+        .map(([atributo, valor]) => (
+          <li key={atributo}>
+            <span className="font-bold text-[#F3B43F]">+{valor}</span> {NOME_ATRIBUTO[atributo]}
+          </li>
+        ))}
+    </ul>
+  );
 }
 
 interface Blueprint {
@@ -285,7 +365,7 @@ export default function CraftingPanel({ onProgressoMudou }: { nivelForja: number
         key={blueprint.id}
         className="rounded-2xl border-2 border-[#F3B43F] bg-[#292018]/90 p-5 text-white shadow-xl"
       >
-        <div className="mb-3 flex items-center gap-3">
+        <div className="group relative mb-3 flex items-center gap-3">
           <div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg border-2 border-[#F3B43F]/60 bg-[#3a2f24]">
             {src ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -300,6 +380,12 @@ export default function CraftingPanel({ onProgressoMudou }: { nivelForja: number
             <p className="font-imFeel text-xl uppercase">{blueprint.nome}</p>
             <p className="text-xs text-white/50">Nível mínimo de Forja: {blueprint.nivel_forja_minimo}</p>
           </div>
+          {variante.propriedades && (
+            <div className="pointer-events-none absolute left-0 top-full z-20 mt-2 w-52 rounded-md border border-[#F3B43F]/40 bg-black/95 p-2 text-left text-xs opacity-0 shadow-xl transition-opacity group-hover:opacity-100">
+              <p className="mb-1 text-white/50">Atributos ({variante.qualidade_exibicao}):</p>
+              <AtributosDoItem propriedades={variante.propriedades} />
+            </div>
+          )}
         </div>
 
         <div className="mb-3 flex flex-wrap gap-2">

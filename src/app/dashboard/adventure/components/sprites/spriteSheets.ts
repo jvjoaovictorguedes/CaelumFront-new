@@ -514,6 +514,29 @@ export const SPRITE_CONFIGS: Record<string, SpriteCharacterConfig> = {
     },
   },
 
+  // Draconídeo Jovem (Modo Aventura) — folha própria recortada de uma
+  // referência com fundo transparente real; todas as 4 animações usam a
+  // MESMA altura de canvas (126px, pés sempre na base), então um único
+  // scale/origin serve pra todas sem precisar de override por animação
+  // (diferente de Minotaur_1/Golem_1 etc, cujas folhas variam de altura
+  // entre arquivos).
+  Draconideo_1: {
+    scale: 1.4,
+    originX: "50%",
+    originY: "86%",
+    offsetX: 0,
+    offsetY: 0,
+
+    animations: {
+      idle: { file: "Idle.png", frames: 4, fps: 6 },
+      attack: { file: "Attack.png", frames: 6, fps: 9 },
+      poder: { file: "Attack.png", frames: 6, fps: 9 },
+      hurt: { file: "Hurt.png", frames: 2, fps: 6 },
+      dead: { file: "Dead.png", frames: 5, fps: 6, loop: false },
+      victory: { file: "Idle.png", frames: 4, fps: 6 },
+    },
+  },
+
   // Frames contados a partir do tamanho real de cada folha em
   // public/Black_Werewolf (128px de altura por frame, largura total /
   // 128 = quantidade de frames) — sem essa config, WolfSprite caía no

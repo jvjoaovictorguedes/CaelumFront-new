@@ -5,17 +5,13 @@ import { useRouter } from "next/navigation";
 
 import axiosInstance from "@/utils/axiosIntance";
 import { useCharacter } from "@/contexts/CharacterContext";
-import CombatActionBar, { type ConsumivelAcao } from "@/components/combat/CombatActionBar";
+import CombatActionBar, {
+  type ConsumivelAcao,
+} from "@/components/combat/CombatActionBar";
 
-import {
-  spriteFolderForClass,
-  spriteForClass,
-} from "./sprites/spriteForClass";
+import { spriteFolderForClass, spriteForClass } from "./sprites/spriteForClass";
 
-import {
-  spriteFolderForEnemy,
-  spriteForEnemy,
-} from "./sprites/spriteForEnemy";
+import { spriteFolderForEnemy, spriteForEnemy } from "./sprites/spriteForEnemy";
 
 import {
   getSpriteAnimationDurationMs,
@@ -34,26 +30,14 @@ type EstadoAnimacao =
 
 const DURACAO_MOVIMENTO_MS = 500;
 const INTERVALO_ENTRE_FASES_MS = 50;
-// Tempo da "caminhada" até ficar ao lado do inimigo (e de volta) — mais
-// curto que a duração de golpe/reação pra não deixar o turno arrastado.
+
 const DURACAO_CAMINHADA_MS = 420;
 
-// Mapa nome-da-zona -> imagem de fundo local, usado como fallback
-// quando o monstro sorteado não tem fundo próprio (ver FUNDO_POR_MONSTRO
-// abaixo) e a zona não tem imagem_url vinda do servidor (hoje sempre
-// null — ver AdventureZone). Zonas sem entrada aqui caem no gradiente
-// padrão.
 const FUNDO_POR_ZONA: Record<string, string> = {
   "Bosque de Sussurros": "/images/backgrounds/selva-teste.jpg",
   "Terras Devastadas": "/images/backgrounds/terras-devastadas.jpg",
 };
 
-// Mapa nome-do-monstro -> imagem de fundo local — tem prioridade sobre
-// o fundo da zona (FUNDO_POR_ZONA), já que o mesmo monstro sempre
-// aparece no mesmo tipo de cenário (o Minotauro sempre num covil, por
-// exemplo), independente de qual zona especificamente ele estiver
-// vinculado. Nem todo monstro tem entrada aqui ainda — os que não têm
-// caem no fundo da zona.
 const FUNDO_POR_MONSTRO: Record<string, string> = {
   "Espectro Sussurrante": "/images/backgrounds/cripta-espectral.jpg",
   "Bandido Errante": "/images/backgrounds/terras-devastadas.jpg",
@@ -187,13 +171,7 @@ interface RespostaCombate {
 }
 
 function espera(ms: number) {
-  return new Promise(
-    (resolve) =>
-      setTimeout(
-        resolve,
-        ms,
-      ),
-  );
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function duracaoVisual(
@@ -208,10 +186,7 @@ function duracaoVisual(
   return Math.max(
     minimo,
 
-    getSpriteAnimationDurationMs(
-      pasta,
-      estado,
-    ),
+    getSpriteAnimationDurationMs(pasta, estado),
   );
 }
 
@@ -227,8 +202,7 @@ export default function CombatArena({
   tituloArena = "Aventura",
   zona = null,
 }: CombatArenaProps) {
-  const router =
-    useRouter();
+  const router = useRouter();
 
   // Sem propagar pro contexto compartilhado, o resto do app (NavMenu,
   // "Meu Personagem", etc.) continuava mostrando a vida/mana de ANTES da
@@ -237,102 +211,43 @@ export default function CombatArena({
   // usar item) chamasse refreshCharacter. Resultado: sair da Aventura no
   // meio de um combate mostrava vida errada em qualquer outro lugar até
   // dar F5.
-  const { atualizarCharacter } =
-    useCharacter();
+  const { atualizarCharacter } = useCharacter();
 
-  const vidaMaxima =
-    character.vida_maxima ??
-    30 +
-      character.vitalidade *
-        6;
+  const vidaMaxima = character.vida_maxima ?? 30 + character.vitalidade * 6;
 
-  const manaMaxima =
-    character.mana_maxima ??
-    20 +
-      character.inteligencia *
-        5;
+  const manaMaxima = character.mana_maxima ?? 20 + character.inteligencia * 5;
 
-  const PlayerSprite =
-    spriteForClass(
-      character.Class?.nome,
-    );
+  const PlayerSprite = spriteForClass(character.Class?.nome);
 
-  const pastaSpriteJogador =
-    spriteFolderForClass(
-      character.Class?.nome,
-    );
+  const pastaSpriteJogador = spriteFolderForClass(character.Class?.nome);
 
-  const [
-    vidaAtual,
-    setVidaAtual,
-  ] = useState(
-    character.vida_atual,
+  const [vidaAtual, setVidaAtual] = useState(character.vida_atual);
+
+  const [manaAtual, setManaAtual] = useState(character.mana_atual);
+
+  const [nivelAtual, setNivelAtual] = useState(character.nivel);
+
+  const [experienciaAtual, setExperienciaAtual] = useState(
+    character.experiencia ?? 0,
   );
 
-  const [
-    manaAtual,
-    setManaAtual,
-  ] = useState(
-    character.mana_atual,
+  const [pontosDistribuir, setPontosDistribuir] = useState(
+    character.pontos_distribuir ?? 0,
   );
 
-  const [
-    nivelAtual,
-    setNivelAtual,
-  ] = useState(
-    character.nivel,
-  );
+  const [enemy, setEnemy] = useState<EnemyState>(initialEnemy);
 
-  const [
-    experienciaAtual,
-    setExperienciaAtual,
-  ] = useState(
-    character.experiencia ??
-      0,
-  );
-
-  const [
-    pontosDistribuir,
-    setPontosDistribuir,
-  ] = useState(
-    character.pontos_distribuir ??
-      0,
-  );
-
-  const [
-    enemy,
-    setEnemy,
-  ] =
-    useState<EnemyState>(
-      initialEnemy,
-    );
-
-  const [
-    log,
-    setLog,
-  ] = useState<string[]>([
+  const [log, setLog] = useState<string[]>([
     `Um(a) ${initialEnemy.nome} apareceu!`,
   ]);
 
-  const [
-    carregando,
-    setCarregando,
-  ] =
-    useState(false);
+  const [carregando, setCarregando] = useState(false);
 
-  const [
-    resultado,
-    setResultado,
-  ] = useState<
-    | "vitoria"
-    | "derrota"
-    | null
-  >(null);
+  const [resultado, setResultado] = useState<"vitoria" | "derrota" | null>(
+    null,
+  );
 
-  const [
-    recompensa,
-    setRecompensa,
-  ] = useState<{
+  const [recompensa, setRecompensa] = useState<{
     experiencia: number;
     dinheiro: number;
   } | null>(null);
@@ -365,10 +280,9 @@ export default function CombatArena({
       }
 
       try {
-        const resp = await axiosInstance.get<{ data?: { inventory?: ItemInventarioApi[] } }>(
-          "/character-inventory",
-          { params: { characterId: character.id } },
-        );
+        const resp = await axiosInstance.get<{
+          data?: { inventory?: ItemInventarioApi[] };
+        }>("/character-inventory", { params: { characterId: character.id } });
         const inventario = resp.data?.data?.inventory ?? [];
         const lista: ConsumivelAcao[] = idsUnicos.map((idItem) => {
           const entrada = inventario.find((item) => item.id_item === idItem);
@@ -394,29 +308,12 @@ export default function CombatArena({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [character.id]);
 
-  const [
-    animJogador,
-    setAnimJogador,
-  ] =
-    useState<EstadoAnimacao>(
-      "idle",
-    );
+  const [animJogador, setAnimJogador] = useState<EstadoAnimacao>("idle");
 
-  const [
-    animInimigo,
-    setAnimInimigo,
-  ] =
-    useState<EstadoAnimacao>(
-      "idle",
-    );
+  const [animInimigo, setAnimInimigo] = useState<EstadoAnimacao>("idle");
 
-  const [
-    poseJogador,
-    setPoseJogador,
-  ] = useState<{
-    pose:
-      | EstadoSprite
-      | undefined;
+  const [poseJogador, setPoseJogador] = useState<{
+    pose: EstadoSprite | undefined;
 
     fogo: boolean;
   }>({
@@ -424,11 +321,7 @@ export default function CombatArena({
     fogo: false,
   });
 
-  const [
-    isShieldActive,
-    setIsShieldActive,
-  ] =
-    useState(false);
+  const [isShieldActive, setIsShieldActive] = useState(false);
 
   // Controlam a "caminhada" até a distância de combate corpo-a-corpo —
   // true desloca a coluna (via translateX no wrapper) em direção ao
@@ -441,35 +334,19 @@ export default function CombatArena({
   // só abre como popup ao clicar no ícone "i".
   const [mostrarLog, setMostrarLog] = useState(false);
 
-  const [
-    floatingTextsPlayer,
-    setFloatingTextsPlayer,
-  ] = useState<
+  const [floatingTextsPlayer, setFloatingTextsPlayer] = useState<
     FloatingText[]
   >([]);
 
-  const [
-    floatingTextsEnemy,
-    setFloatingTextsEnemy,
-  ] = useState<
-    FloatingText[]
-  >([]);
+  const [floatingTextsEnemy, setFloatingTextsEnemy] = useState<FloatingText[]>(
+    [],
+  );
 
-  const experienciaNivel =
-    Math.max(
-      100,
-      nivelAtual * 100,
-    );
+  const experienciaNivel = Math.max(100, nivelAtual * 100);
 
-  const EnemySprite =
-    spriteForEnemy(
-      enemy.nome,
-    );
+  const EnemySprite = spriteForEnemy(enemy.nome);
 
-  const pastaSpriteInimigo =
-    spriteFolderForEnemy(
-      enemy.nome,
-    );
+  const pastaSpriteInimigo = spriteFolderForEnemy(enemy.nome);
 
   // Prioridade: fundo específico do monstro atual > imagem_url vinda do
   // servidor (hoje sempre null — ver AdventureZone.js) > fundo padrão da
@@ -481,64 +358,42 @@ export default function CombatArena({
     null;
 
   function triggerFloatingText(
-    target:
-      | "player"
-      | "enemy",
+    target: "player" | "enemy",
 
     text: string,
 
     color: string,
   ) {
-    const id =
-      Date.now() +
-      Math.random();
+    const id = Date.now() + Math.random();
 
-    if (
-      target === "player"
-    ) {
-      setFloatingTextsPlayer(
-        (prev) => [
-          ...prev,
-          {
-            id,
-            text,
-            color,
-          },
-        ],
-      );
-
-      setTimeout(() => {
-        setFloatingTextsPlayer(
-          (prev) =>
-            prev.filter(
-              (item) =>
-                item.id !== id,
-            ),
-        );
-      }, 900);
-
-      return;
-    }
-
-    setFloatingTextsEnemy(
-      (prev) => [
+    if (target === "player") {
+      setFloatingTextsPlayer((prev) => [
         ...prev,
         {
           id,
           text,
           color,
         },
-      ],
-    );
+      ]);
+
+      setTimeout(() => {
+        setFloatingTextsPlayer((prev) => prev.filter((item) => item.id !== id));
+      }, 900);
+
+      return;
+    }
+
+    setFloatingTextsEnemy((prev) => [
+      ...prev,
+      {
+        id,
+        text,
+        color,
+      },
+    ]);
 
     setTimeout(() => {
-      setFloatingTextsEnemy(
-        (prev) =>
-          prev.filter(
-            (item) =>
-              item.id !== id,
-          ),
-      );
+      setFloatingTextsEnemy((prev) => prev.filter((item) => item.id !== id));
     }, 900);
   }
 
@@ -572,44 +427,27 @@ export default function CombatArena({
     usouPoder: boolean;
     usouPoderDeFogo: boolean;
 
-    // Commit da vida do inimigo/jogador é adiado pra cá (em vez de já
-    // entrar em executarAcao) pra sincronizar a barra de vida com o
-    // instante em que o golpe visualmente "chega" — sem isso, a barra
-    // caía assim que a resposta do servidor voltava, antes mesmo do
-    // personagem terminar de andar até o alvo, o que ficava dessincronizado
-    // com a nova caminhada até o inimigo.
     novoEnemy: EnemyState;
     novaVidaJogador: number;
   }) {
     if (usouCura) {
-      setIsShieldActive(
-        true,
-      );
+      setIsShieldActive(true);
 
-      triggerFloatingText(
-        "player",
-        "✨ ESCUDO ARCANO!",
-        "#00ffff",
-      );
+      triggerFloatingText("player", "✨ ESCUDO ARCANO!", "#00ffff");
 
       await espera(400);
     }
 
-    const estadoAcaoJogador: EstadoSprite =
-      usouCura
-        ? "idle"
-        : usouPoder
-          ? "poder"
-          : "attack";
+    const estadoAcaoJogador: EstadoSprite = usouCura
+      ? "idle"
+      : usouPoder
+        ? "poder"
+        : "attack";
 
-    if (
-      usouPoder &&
-      !usouCura
-    ) {
+    if (usouPoder && !usouCura) {
       setPoseJogador({
         pose: "poder",
-        fogo:
-          usouPoderDeFogo,
+        fogo: usouPoderDeFogo,
       });
     }
 
@@ -621,26 +459,14 @@ export default function CombatArena({
       await espera(DURACAO_CAMINHADA_MS);
     }
 
-    setAnimJogador(
-      usouCura
-        ? "idle"
-        : "anim-atacando-direita",
-    );
+    setAnimJogador(usouCura ? "idle" : "anim-atacando-direita");
 
     setAnimInimigo(
-      inimigoLevouDano
-        ? "anim-atingido"
-        : "anim-esquivando-direita",
+      inimigoLevouDano ? "anim-atingido" : "anim-esquivando-direita",
     );
 
-    if (
-      danoInimigo > 0
-    ) {
-      triggerFloatingText(
-        "enemy",
-        `-${danoInimigo}`,
-        "#ff3333",
-      );
+    if (danoInimigo > 0) {
+      triggerFloatingText("enemy", `-${danoInimigo}`, "#ff3333");
     }
 
     // A barra de vida do inimigo só reflete o novo valor aqui, no
@@ -648,46 +474,28 @@ export default function CombatArena({
     // ver comentário no cabeçalho da função.
     setEnemy(novoEnemy);
 
-    const duracaoAcaoJogador =
-      duracaoVisual(
-        pastaSpriteJogador,
-        estadoAcaoJogador,
-      );
-
-    const duracaoReacaoInimigo =
-      inimigoLevouDano
-        ? duracaoVisual(
-            pastaSpriteInimigo,
-            "hurt",
-          )
-        : DURACAO_MOVIMENTO_MS;
-
-    await espera(
-      Math.max(
-        duracaoAcaoJogador,
-        duracaoReacaoInimigo,
-      ),
+    const duracaoAcaoJogador = duracaoVisual(
+      pastaSpriteJogador,
+      estadoAcaoJogador,
     );
 
-    if (
-      acabouNaVitoria
-    ) {
-      setIsShieldActive(
-        false,
-      );
+    const duracaoReacaoInimigo = inimigoLevouDano
+      ? duracaoVisual(pastaSpriteInimigo, "hurt")
+      : DURACAO_MOVIMENTO_MS;
+
+    await espera(Math.max(duracaoAcaoJogador, duracaoReacaoInimigo));
+
+    if (acabouNaVitoria) {
+      setIsShieldActive(false);
 
       setPoseJogador({
         pose: undefined,
         fogo: false,
       });
 
-      setAnimJogador(
-        "anim-vitoria",
-      );
+      setAnimJogador("anim-vitoria");
 
-      setAnimInimigo(
-        "anim-derrota",
-      );
+      setAnimInimigo("anim-derrota");
 
       // Fica avançado ao lado do inimigo derrotado em vez de voltar pra
       // posição de origem — reforça a leitura de "golpe final", e o
@@ -701,9 +509,7 @@ export default function CombatArena({
       fogo: false,
     });
 
-    setAnimJogador(
-      "idle",
-    );
+    setAnimJogador("idle");
 
     // Volta caminhando pra posição de origem antes do contra-ataque do
     // inimigo (só quando de fato avançou — cura nunca avançou).
@@ -716,36 +522,21 @@ export default function CombatArena({
     setAvancoInimigo(true);
     await espera(DURACAO_CAMINHADA_MS);
 
-    setAnimInimigo(
-      "anim-atacando-esquerda",
-    );
+    setAnimInimigo("anim-atacando-esquerda");
 
-    await espera(
-      INTERVALO_ENTRE_FASES_MS,
-    );
+    await espera(INTERVALO_ENTRE_FASES_MS);
 
     if (usouCura) {
-      triggerFloatingText(
-        "player",
-        "🛡️ IMUNE!",
-        "#00ffff",
-      );
+      triggerFloatingText("player", "🛡️ IMUNE!", "#00ffff");
 
-      setAnimJogador(
-        "anim-esquivando-esquerda",
-      );
+      setAnimJogador("anim-esquivando-esquerda");
     } else {
       setAnimJogador(
-        jogadorLevouDano
-          ? "anim-atingido"
-          : "anim-esquivando-esquerda",
+        jogadorLevouDano ? "anim-atingido" : "anim-esquivando-esquerda",
       );
     }
 
-    if (
-      variacaoVidaJogador >
-      0
-    ) {
+    if (variacaoVidaJogador > 0) {
       triggerFloatingText(
         "player",
 
@@ -753,17 +544,11 @@ export default function CombatArena({
 
         "#44ff44",
       );
-    } else if (
-      variacaoVidaJogador <
-        0 &&
-      !usouCura
-    ) {
+    } else if (variacaoVidaJogador < 0 && !usouCura) {
       triggerFloatingText(
         "player",
 
-        `-${Math.abs(
-          variacaoVidaJogador,
-        )}`,
+        `-${Math.abs(variacaoVidaJogador)}`,
 
         "#ff3333",
       );
@@ -773,40 +558,19 @@ export default function CombatArena({
     // golpe (ou a cura) chega visualmente.
     setVidaAtual(novaVidaJogador);
 
-    const duracaoAtaqueInimigo =
-      duracaoVisual(
-        pastaSpriteInimigo,
-        "attack",
-      );
+    const duracaoAtaqueInimigo = duracaoVisual(pastaSpriteInimigo, "attack");
 
-    const duracaoReacaoJogador =
-      jogadorLevouDano
-        ? duracaoVisual(
-            pastaSpriteJogador,
-            "hurt",
-          )
-        : DURACAO_MOVIMENTO_MS;
+    const duracaoReacaoJogador = jogadorLevouDano
+      ? duracaoVisual(pastaSpriteJogador, "hurt")
+      : DURACAO_MOVIMENTO_MS;
 
-    await espera(
-      Math.max(
-        duracaoAtaqueInimigo,
-        duracaoReacaoJogador,
-      ),
-    );
+    await espera(Math.max(duracaoAtaqueInimigo, duracaoReacaoJogador));
 
-    setIsShieldActive(
-      false,
-    );
+    setIsShieldActive(false);
 
-    setAnimInimigo(
-      "idle",
-    );
+    setAnimInimigo("idle");
 
-    setAnimJogador(
-      acabouNaDerrota
-        ? "anim-derrota"
-        : "idle",
-    );
+    setAnimJogador(acabouNaDerrota ? "anim-derrota" : "idle");
 
     // Espelha a decisão da vitória: se o jogador caiu, o inimigo fica
     // parado avançado (golpe final) em vez de voltar pra posição de
@@ -831,26 +595,16 @@ export default function CombatArena({
           itemId: number;
         },
   ) {
-    if (
-      carregando ||
-      resultado
-    ) {
+    if (carregando || resultado) {
       return;
     }
 
     setCarregando(true);
 
     const poderUsado =
-      action.type ===
-      "power"
-        ? abilities.find(
-            (
-              habilidade,
-            ) =>
-              habilidade
-                .Power.id ===
-              action.powerId,
-          )?.Power
+      action.type === "power"
+        ? abilities.find((habilidade) => habilidade.Power.id === action.powerId)
+            ?.Power
         : null;
 
     const itemUsado =
@@ -858,109 +612,59 @@ export default function CombatArena({
         ? consumiveis.find((consumivel) => consumivel.id_item === action.itemId)
         : null;
 
-    const usouCura =
-      Boolean(
-        (poderUsado &&
-          (
-            poderUsado.cura_base >
-              0 ||
-            poderUsado.nome
-              .toLowerCase()
-              .includes(
-                "cura",
-              )
-          )) ||
-        (itemUsado && itemUsado.efeito_vida),
-      );
+    const usouCura = Boolean(
+      (poderUsado &&
+        (poderUsado.cura_base > 0 ||
+          poderUsado.nome.toLowerCase().includes("cura"))) ||
+      (itemUsado && itemUsado.efeito_vida),
+    );
 
-    const usouPoder =
-      action.type ===
-      "power";
+    const usouPoder = action.type === "power";
 
-    const usouPoderDeFogo =
-      Boolean(
-        poderUsado &&
-          poderUsado.nome
-            .toLowerCase()
-            .includes(
-              "fogo",
-            ),
-      );
+    const usouPoderDeFogo = Boolean(
+      poderUsado && poderUsado.nome.toLowerCase().includes("fogo"),
+    );
 
     try {
-      const response =
-        await axiosInstance.post<RespostaCombate>(
-          actionEndpoint,
-          {
-            characterId:
-              character.id,
+      const response = await axiosInstance.post<RespostaCombate>(
+        actionEndpoint,
+        {
+          characterId: character.id,
 
-            enemy,
+          enemy,
 
-            action,
-          },
-        );
-
-      const data =
-        response.data.data;
-
-      const danoInimigo =
-        enemy.vida_atual -
-        data.enemy
-          .vida_atual;
-
-      const variacaoVidaJogador =
-        data.character
-          .vida_atual -
-        vidaAtual;
-
-      const inimigoLevouDano =
-        danoInimigo > 0;
-
-      const jogadorLevouDano =
-        data.character
-          .vida_atual <
-        vidaAtual;
-
-      const acabouNaVitoria =
-        data.done &&
-        data.victory;
-
-      const acabouNaDerrota =
-        data.done &&
-        !data.victory;
-
-      setLog(
-        (atual) => [
-          ...atual,
-          ...data.log,
-        ],
+          action,
+        },
       );
+
+      const data = response.data.data;
+
+      const danoInimigo = enemy.vida_atual - data.enemy.vida_atual;
+
+      const variacaoVidaJogador = data.character.vida_atual - vidaAtual;
+
+      const inimigoLevouDano = danoInimigo > 0;
+
+      const jogadorLevouDano = data.character.vida_atual < vidaAtual;
+
+      const acabouNaVitoria = data.done && data.victory;
+
+      const acabouNaDerrota = data.done && !data.victory;
+
+      setLog((atual) => [...atual, ...data.log]);
 
       // setEnemy/setVidaAtual NÃO são commitados aqui — ficam pra
       // tocarAnimacaoDoTurno, disparados no instante em que o golpe chega
       // visualmente (ver comentário lá). O resto do personagem (mana,
       // nível, XP, pontos) não afeta as barras da arena em si, então
       // segue commitado imediatamente como antes.
-      setManaAtual(
-        data.character
-          .mana_atual,
-      );
+      setManaAtual(data.character.mana_atual);
 
-      setNivelAtual(
-        data.character
-          .nivel,
-      );
+      setNivelAtual(data.character.nivel);
 
-      setExperienciaAtual(
-        data.character
-          .experiencia,
-      );
+      setExperienciaAtual(data.character.experiencia);
 
-      setPontosDistribuir(
-        data.character
-          .pontos_distribuir,
-      );
+      setPontosDistribuir(data.character.pontos_distribuir);
 
       atualizarCharacter({
         vida_atual: data.character.vida_atual,
@@ -977,7 +681,10 @@ export default function CombatArena({
         setConsumiveis((atual) =>
           atual.map((consumivel) =>
             consumivel.id_item === action.itemId
-              ? { ...consumivel, quantidade: Math.max(0, consumivel.quantidade - 1) }
+              ? {
+                  ...consumivel,
+                  quantidade: Math.max(0, consumivel.quantidade - 1),
+                }
               : consumivel,
           ),
         );
@@ -1002,24 +709,14 @@ export default function CombatArena({
       });
 
       if (data.done) {
-        setResultado(
-          data.victory
-            ? "vitoria"
-            : "derrota",
-        );
+        setResultado(data.victory ? "vitoria" : "derrota");
 
-        if (
-          data.rewards
-        ) {
-          setRecompensa(
-            data.rewards,
-          );
+        if (data.rewards) {
+          setRecompensa(data.rewards);
         }
         setDrop(data.drop ?? null);
       }
-    } catch (
-      error: unknown
-    ) {
+    } catch (error: unknown) {
       const mensagem =
         (
           error as {
@@ -1029,9 +726,7 @@ export default function CombatArena({
               };
             };
           }
-        )?.response?.data
-          ?.message ??
-        "Erro ao processar o combate.";
+        )?.response?.data?.message ?? "Erro ao processar o combate.";
 
       // O servidor não reconhece mais este combate (ex.: a tela ficou
       // com um inimigo desatualizado por algum motivo) — sem uma saída
@@ -1049,16 +744,9 @@ export default function CombatArena({
         return;
       }
 
-      setLog(
-        (atual) => [
-          ...atual,
-          mensagem,
-        ],
-      );
+      setLog((atual) => [...atual, mensagem]);
     } finally {
-      setCarregando(
-        false,
-      );
+      setCarregando(false);
     }
   }
 
@@ -1124,13 +812,10 @@ export default function CombatArena({
         </p>
 
         <div className="flex flex-wrap items-end justify-between gap-3 pr-10">
-          <h1 className="font-imFeel text-4xl sm:text-5xl">
-            {tituloArena}
-          </h1>
+          <h1 className="font-imFeel text-4xl sm:text-5xl">{tituloArena}</h1>
 
           <p className="text-sm text-white/70">
-            XP:{" "}
-            {experienciaAtual}
+            XP: {experienciaAtual}
             {" / "}
             {experienciaNivel}
           </p>
@@ -1140,134 +825,88 @@ export default function CombatArena({
           <div
             className="h-full bg-[#F3B43F]"
             style={{
-              width:
-                `${Math.min(
-                  100,
-                  (
-                    experienciaAtual /
-                    experienciaNivel
-                  ) *
-                    100,
-                )}%`,
+              width: `${Math.min(
+                100,
+                (experienciaAtual / experienciaNivel) * 100,
+              )}%`,
             }}
           />
         </div>
       </div>
 
-      <div className="relative flex items-center justify-between gap-4 overflow-visible rounded-2xl border-2 border-[#F3B43F]/60 p-6 shadow-xl">
-        {/* Fundo por zona (ou gradiente padrão quando não há imagem) —
-            camada isolada em vez de background no container principal
-            pra não conflitar com o overflow-visible que os números de
-            dano/cura flutuantes precisam (ver floatingTexts* abaixo). */}
+      <div className="">
         <div
           className={`absolute inset-0 rounded-2xl bg-cover bg-center ${
             fundoZona ? "" : "bg-gradient-to-b from-[#3a2f24] to-[#1f1813]"
           }`}
           style={
-            fundoZona
-              ? { backgroundImage: `url(${fundoZona})` }
-              : undefined
+            fundoZona ? { backgroundImage: `url(${fundoZona})` } : undefined
           }
         />
         <div className="absolute inset-0 rounded-2xl bg-black/35" />
         {/* Sugestão de "chão" — reforça a leitura de plataforma em que os
             dois lados caminham um em direção ao outro. */}
-        <div className="absolute inset-x-8 bottom-6 h-3 rounded-full bg-black/50 blur-[2px]" />
 
         <div className="relative z-10 flex w-full items-center justify-between gap-4">
           <div
             className={`relative flex flex-col items-center p-2 transition-transform duration-[420ms] ease-in-out ${
               avancoJogador
-                ? "translate-x-[70px] sm:translate-x-[120px]"
+                ? "translate-x-[1000px] sm:translate-x-[120px]"
                 : "translate-x-0"
             } ${
-              isShieldActive
-                ? "shield-active border border-cyan-400/50"
-                : ""
+              isShieldActive ? "shield-active border border-cyan-400/50" : ""
             }`}
           >
             <div className="pointer-events-none absolute -top-12 left-1/2 z-20 flex -translate-x-1/2 flex-col items-center">
-              {floatingTextsPlayer.map(
-                (ft) => (
-                  <span
-                    key={
-                      ft.id
-                    }
-                    className="animate-float-up absolute whitespace-nowrap text-lg font-bold drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] sm:text-xl"
-                    style={{
-                      color:
-                        ft.color,
-                    }}
-                  >
-                    {
-                      ft.text
-                    }
-                  </span>
-                ),
-              )}
+              {floatingTextsPlayer.map((ft) => (
+                <span
+                  key={ft.id}
+                  className="animate-float-up absolute whitespace-nowrap text-lg font-bold sm:text-xl"
+                  style={{
+                    color: ft.color,
+                  }}
+                >
+                  {ft.text}
+                </span>
+              ))}
             </div>
 
             <PlayerSprite
               className={`battle-sprite h-28 w-28 sm:h-36 sm:w-36 ${
-                animJogador !==
-                "idle"
-                  ? animJogador
-                  : ""
+                animJogador !== "idle" ? animJogador : ""
               }`}
-              animState={
-                animJogador
-              }
-              poseOverride={
-                poseJogador.pose
-              }
-              fireTint={
-                poseJogador.fogo
-              }
+              animState={animJogador}
+              poseOverride={poseJogador.pose}
+              fireTint={poseJogador.fogo}
             />
           </div>
-
-          <p className="select-none font-imFeel text-2xl text-[#F3B43F]/70 drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]">
-            VS
-          </p>
 
           <div
             className={`relative flex flex-col items-center p-2 transition-transform duration-[420ms] ease-in-out ${
               avancoInimigo
-                ? "-translate-x-[70px] sm:-translate-x-[120px]"
+                ? "-translate-x-[1000px] sm:-translate-x-[120px]"
                 : "translate-x-0"
             }`}
           >
             <div className="pointer-events-none absolute -top-12 left-1/2 z-20 flex -translate-x-1/2 flex-col items-center">
-              {floatingTextsEnemy.map(
-                (ft) => (
-                  <span
-                    key={
-                      ft.id
-                    }
-                    className="animate-float-up absolute whitespace-nowrap text-lg font-bold drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] sm:text-xl"
-                    style={{
-                      color:
-                        ft.color,
-                    }}
-                  >
-                    {
-                      ft.text
-                    }
-                  </span>
-                ),
-              )}
+              {floatingTextsEnemy.map((ft) => (
+                <span
+                  key={ft.id}
+                  className="animate-float-up absolute whitespace-nowrap text-lg font-bold sm:text-xl"
+                  style={{
+                    color: ft.color,
+                  }}
+                >
+                  {ft.text}
+                </span>
+              ))}
             </div>
 
             <EnemySprite
               className={`battle-sprite h-28 w-28 sm:h-36 sm:w-36 ${
-                animInimigo !==
-                "idle"
-                  ? animInimigo
-                  : ""
+                animInimigo !== "idle" ? animInimigo : ""
               }`}
-              animState={
-                animInimigo
-              }
+              animState={animInimigo}
             />
           </div>
         </div>
@@ -1276,66 +915,37 @@ export default function CombatArena({
       <div className="grid w-full grid-cols-1 gap-4 md:grid-cols-2">
         <div className="rounded-2xl border border-green-900/20 bg-[#292018]/90 p-4 shadow-lg">
           <p className="mb-1 font-imFeel text-xl">
-            {
-              character.nome
-            }{" "}
-            (Nv.{" "}
-            {
-              nivelAtual
-            }){" "}
-            (
+            {character.nome} (Nv. {nivelAtual}) (
             <span className="text-sm text-white/70">
-              Pontos à
-              distribuir:{" "}
-              {
-                pontosDistribuir
-              }
+              Pontos à distribuir: {pontosDistribuir}
             </span>
             )
           </p>
 
           <BarraDeStatus
             label="Vida"
-            atual={
-              vidaAtual
-            }
-            maxima={
-              vidaMaxima
-            }
+            atual={vidaAtual}
+            maxima={vidaMaxima}
             cor="bg-red-600"
           />
 
           <BarraDeStatus
             label="Mana"
-            atual={
-              manaAtual
-            }
-            maxima={
-              manaMaxima
-            }
+            atual={manaAtual}
+            maxima={manaMaxima}
             cor="bg-blue-600"
           />
         </div>
 
         <div className="rounded-2xl border border-red-900/20 bg-[#292018]/90 p-4 shadow-lg">
           <p className="mb-1 font-imFeel text-xl">
-            {
-              enemy.nome
-            }{" "}
-            (Nv.{" "}
-            {
-              enemy.nivel
-            })
+            {enemy.nome} (Nv. {enemy.nivel})
           </p>
 
           <BarraDeStatus
             label="Vida"
-            atual={
-              enemy.vida_atual
-            }
-            maxima={
-              enemy.vida_maxima
-            }
+            atual={enemy.vida_atual}
+            maxima={enemy.vida_maxima}
             cor="bg-red-600"
           />
         </div>
@@ -1359,7 +969,9 @@ export default function CombatArena({
             }))}
             onUsarPoder={(powerId) => executarAcao({ type: "power", powerId })}
             consumiveis={consumiveis}
-            onUsarConsumivel={(itemId) => executarAcao({ type: "item", itemId })}
+            onUsarConsumivel={(itemId) =>
+              executarAcao({ type: "item", itemId })
+            }
           />
         </div>
       )}
@@ -1367,24 +979,14 @@ export default function CombatArena({
       {resultado && (
         <div className="rounded-2xl border-2 border-[#F3B43F] bg-[#292018]/90 p-5 text-center text-white shadow-xl">
           <p className="mb-2 font-imFeel text-3xl">
-            {resultado ===
-            "vitoria"
-              ? "Vitória!"
-              : "Derrota..."}
+            {resultado === "vitoria" ? "Vitória!" : "Derrota..."}
           </p>
 
           {recompensa && (
             <p className="mb-3">
-              +
-              {
-                recompensa.experiencia
-              }{" "}
-              de experiência
+              +{recompensa.experiencia} de experiência
               {" · +"}
-              {
-                recompensa.dinheiro
-              }{" "}
-              moedas
+              {recompensa.dinheiro} moedas
             </p>
           )}
 
@@ -1439,23 +1041,11 @@ export default function CombatArena({
 
             <div className="flex flex-1 flex-col-reverse overflow-y-auto rounded-xl bg-black/85 p-4 text-sm shadow-inner">
               <div>
-                {log.map(
-                  (
-                    linha,
-                    indice,
-                  ) => (
-                    <p
-                      key={
-                        indice
-                      }
-                      className="mb-1"
-                    >
-                      {
-                        linha
-                      }
-                    </p>
-                  ),
-                )}
+                {log.map((linha, indice) => (
+                  <p key={indice} className="mb-1">
+                    {linha}
+                  </p>
+                ))}
               </div>
             </div>
           </div>
@@ -1479,13 +1069,10 @@ function BarraDeStatus({
   return (
     <div className="mb-1">
       <div className="mb-1 flex justify-between text-xs font-bold">
-        <span>
-          {label}
-        </span>
+        <span>{label}</span>
 
         <span>
-          {atual} /{" "}
-          {maxima}
+          {atual} / {maxima}
         </span>
       </div>
 
@@ -1493,18 +1080,7 @@ function BarraDeStatus({
         <div
           className={`h-full ${cor}`}
           style={{
-            width:
-              `${Math.max(
-                0,
-                Math.min(
-                  100,
-                  (
-                    atual /
-                    maxima
-                  ) *
-                    100,
-                ),
-              )}%`,
+            width: `${Math.max(0, Math.min(100, (atual / maxima) * 100))}%`,
           }}
         />
       </div>
