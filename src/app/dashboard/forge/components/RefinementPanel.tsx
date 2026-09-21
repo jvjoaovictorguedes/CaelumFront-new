@@ -164,6 +164,11 @@ export default function RefinementPanel({ onProgressoMudou }: { nivelForja: numb
         id_item_pergaminho: pergaminhoEscolhido ?? undefined,
       });
       setMensagem("Refinamento iniciado! Volte em instantes pra coletar o resultado.");
+      // Fecha o popup na hora — sem isso, o card "Refinando..." lá em
+      // cima da tela ficava escondido atrás do popup (que continuava
+      // mostrando o botão "Refinar" como se nada tivesse acontecido)
+      // até o jogador fechar manualmente.
+      setSelecionada(null);
       await carregar();
     } catch (error: unknown) {
       const msg =
