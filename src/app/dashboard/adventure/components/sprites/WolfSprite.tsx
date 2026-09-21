@@ -7,7 +7,6 @@ import type {
 export default function WolfSprite({
   className = "",
   animState = "idle",
-  stroke = "#8b0000",
   flip = true,
   poseOverride,
   fireTint = false,
@@ -17,7 +16,6 @@ export default function WolfSprite({
       pasta="Black_Werewolf"
       className={className}
       animState={animState}
-      stroke={stroke}
       flip={flip}
       poseOverride={poseOverride}
       fireTint={fireTint}

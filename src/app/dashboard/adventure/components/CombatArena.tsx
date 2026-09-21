@@ -334,6 +334,13 @@ export default function CombatArena({
   // só abre como popup ao clicar no ícone "i".
   const [mostrarLog, setMostrarLog] = useState(false);
 
+  // Aventura ocupa a tela inteira (sem o menu do dashboard) e, uma vez
+  // dentro do combate, não dá pra sair clicando em outro lugar — só pelo
+  // botão "Retornar", que avisa antes: a vida já tomada nesta luta fica
+  // perdida (cada turno já persiste no personagem, ver combatController),
+  // mas XP/moedas só são concedidos quando a luta termina de verdade.
+  const [mostrarConfirmarSaida, setMostrarConfirmarSaida] = useState(false);
+
   const [floatingTextsPlayer, setFloatingTextsPlayer] = useState<
     FloatingText[]
   >([]);
@@ -751,7 +758,8 @@ export default function CombatArena({
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-5 p-2 sm:p-4">
+    <div className="fixed inset-0 z-[70] overflow-y-auto bg-[#1a1410]">
+      <div className="mx-auto flex w-full max-w-5xl flex-col gap-5 p-2 sm:p-4">
       <style jsx>{`
         @keyframes floatUp {
           0% {
@@ -796,7 +804,17 @@ export default function CombatArena({
         }
       `}</style>
 
-      <div className="relative rounded-2xl border-2 border-[#F3B43F] bg-[#292018]/90 p-5 text-white shadow-xl">
+      <div className="relative rounded-2xl border-2 border-[#F3B43F] bg-[#292018]/90 p-5 pt-12 text-white shadow-xl">
+        {!resultado && (
+          <button
+            type="button"
+            onClick={() => setMostrarConfirmarSaida(true)}
+            className="absolute left-4 top-4 rounded-full border-2 border-[#F3B43F]/60 bg-black/40 px-3 py-1 font-imFeel text-sm text-[#F3B43F] transition hover:bg-black/60"
+          >
+            ← Retornar
+          </button>
+        )}
+
         <button
           type="button"
           onClick={() => setMostrarLog(true)}
@@ -834,7 +852,7 @@ export default function CombatArena({
         </div>
       </div>
 
-      <div className="">
+      <div className="relative flex items-center justify-between gap-4 overflow-visible rounded-2xl border-2 border-[#F3B43F]/60 p-6 shadow-xl">
         <div
           className={`absolute inset-0 rounded-2xl bg-cover bg-center ${
             fundoZona ? "" : "bg-gradient-to-b from-[#3a2f24] to-[#1f1813]"
@@ -846,6 +864,7 @@ export default function CombatArena({
         <div className="absolute inset-0 rounded-2xl bg-black/35" />
         {/* Sugestão de "chão" — reforça a leitura de plataforma em que os
             dois lados caminham um em direção ao outro. */}
+        <div className="absolute inset-x-8 bottom-6 h-3 rounded-full bg-black/50 blur-[2px]" />
 
         <div className="relative z-10 flex w-full items-center justify-between gap-4">
           <div
@@ -1016,6 +1035,46 @@ export default function CombatArena({
         </div>
       )}
 
+      {mostrarConfirmarSaida && (
+        <div
+          className="fixed inset-0 z-[80] flex items-center justify-center bg-black/70 p-4"
+          onClick={() => setMostrarConfirmarSaida(false)}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl border-2 border-[#F3B43F] bg-[#292018] p-5 text-white shadow-2xl"
+            onClick={(evento) => evento.stopPropagation()}
+          >
+            <p className="mb-2 font-imFeel text-xl text-[#F3B43F]">
+              Sair da Aventura?
+            </p>
+
+            <p className="mb-4 text-sm text-white/80">
+              Você ainda está em combate. Se sair agora, o dano que você já
+              tomou nesta luta é mantido — você não vai receber a experiência
+              nem as moedas desta batalha, já que ela não foi concluída.
+            </p>
+
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setMostrarConfirmarSaida(false)}
+                className="rounded-lg border border-white/30 px-4 py-2 font-bold text-white/80 transition hover:bg-white/10"
+              >
+                Continuar lutando
+              </button>
+
+              <button
+                type="button"
+                onClick={() => router.push("/dashboard")}
+                className="rounded-lg bg-[#BC8418] px-4 py-2 font-bold text-black hover:bg-[#a5710f]"
+              >
+                Sair mesmo assim
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {mostrarLog && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
@@ -1051,6 +1110,7 @@ export default function CombatArena({
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

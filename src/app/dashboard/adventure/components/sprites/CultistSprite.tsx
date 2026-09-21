@@ -7,7 +7,6 @@ import type {
 export default function CultistSprite({
   className = "",
   animState = "idle",
-  stroke = "#8b0000",
   flip = true,
   poseOverride,
   fireTint = false,
@@ -17,7 +16,6 @@ export default function CultistSprite({
       pasta="Cultist_1"
       className={className}
       animState={animState}
-      stroke={stroke}
       flip={flip}
       poseOverride={poseOverride}
       fireTint={fireTint}

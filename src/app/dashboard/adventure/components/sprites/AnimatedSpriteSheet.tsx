@@ -67,16 +67,7 @@ export default function AnimatedSpriteSheet({
 
   return (
     <div className={className}>
-      <div
-        className="
-          relative
-          h-full
-          w-full
-          overflow-visible
-          rounded-2xl
-          shadow-[0_0_16px_rgba(243,180,63,0.5)]
-        "
-      >
+      <div className="relative h-full w-full overflow-visible rounded-2xl">
         <div
           key={`${pasta}-${estado}-${flip}-${frame.file}`}
           className="

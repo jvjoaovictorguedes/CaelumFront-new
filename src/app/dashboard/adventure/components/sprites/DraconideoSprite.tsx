@@ -7,7 +7,6 @@ import type {
 export default function DraconideoSprite({
   className = "",
   animState = "idle",
-  stroke = "#2f6f8f",
   flip = true,
   poseOverride,
   fireTint = false,
@@ -17,7 +16,6 @@ export default function DraconideoSprite({
       pasta="Draconideo_1"
       className={className}
       animState={animState}
-      stroke={stroke}
       flip={flip}
       poseOverride={poseOverride}
       fireTint={fireTint}
