@@ -126,6 +126,103 @@ interface DesafioRecebido {
   recebidoEm: number;
 }
 
+// Aventura em grupo (party) — convite reaproveita a MESMA conexão/
+// presença online do Duelo ao vivo (ver comentário no topo de
+// partySocket.js sobre não precisar de "identificar" próprio).
+export interface MembroGrupo {
+  id: number;
+  nome: string;
+  classe: string | null;
+  pronto: boolean;
+}
+
+export interface GrupoAtualizadoPayload {
+  partyId: number;
+  hostId: string;
+  membros: MembroGrupo[];
+}
+
+interface ConvitePartyRecebido {
+  idConvidante: number;
+  nomeConvidante: string;
+  partyId: number;
+  membros: MembroGrupo[];
+  prazoSegundos: number;
+  recebidoEm: number;
+}
+
+export interface PoderGrupo {
+  id: number;
+  nome: string;
+  imagem_url?: string | null;
+  custo_mana: number;
+  dano_base: number;
+  cura_base: number;
+}
+
+export interface ConsumivelGrupo {
+  id_item: number;
+  nome: string;
+  imagem_url?: string | null;
+  quantidade: number;
+  efeito_vida?: number;
+  efeito_mana?: number;
+}
+
+export interface AliadoBatalhaGrupo {
+  id: number;
+  nome: string;
+  genero: string;
+  classe?: string;
+  vidaMax: number;
+  manaMax: number;
+  vida: number;
+  mana: number;
+  poderes: PoderGrupo[];
+  consumiveis: ConsumivelGrupo[];
+}
+
+export interface BatalhaGrupoIniciadaPayload {
+  battleId: number;
+  zona: { id: number; nome: string };
+  inimigo: { nome: string; nivel: number; vida_atual: number; vida_maxima: number };
+  membros: AliadoBatalhaGrupo[];
+  ordem: string[];
+  turnoDe: string;
+  prazoSegundos: number;
+}
+
+export interface TurnoGrupoPayload {
+  battleId: number;
+  origem: "aliado" | "monstro";
+  idAtor?: string;
+  idAlvo?: number;
+  nomeAcao: string;
+  dano: number;
+  cura?: number;
+  manaCurada?: number;
+  esquivou: boolean;
+  vidaInimigo?: number;
+  vidaAliado?: number;
+  manaAliado?: number;
+  rodada: number;
+}
+
+export interface ProximoTurnoGrupoPayload {
+  battleId: number;
+  turnoDe: string;
+  prazoSegundos: number;
+  rodada: number;
+}
+
+export interface BatalhaGrupoFimPayload {
+  battleId: number;
+  vitoria: boolean;
+  motivo: string;
+  recompensas: Record<string, { experiencia: number; dinheiro: number; nivel: number; pontos_distribuir: number }>;
+  drops: Record<string, { tipo: "item" | "ouro"; item?: { id: number; nome: string; raridade: string }; dinheiro?: number }>;
+}
+
 interface PvpSocketContextValue {
   conectado: boolean;
   onlineIds: Set<number>;
@@ -145,6 +242,24 @@ interface PvpSocketContextValue {
   matchEncontradoRanked: RankedMatchFoundPayload | null;
   ratingUpdate: RankedRatingUpdatePayload | null;
   oponenteDesconectadoRanked: RankedOponenteDesconectadoPayload | null;
+  // Aventura em grupo (party)
+  grupoAtual: GrupoAtualizadoPayload | null;
+  convitePartyRecebido: ConvitePartyRecebido | null;
+  convitePartyEnviadoPara: number | null;
+  erroParty: string;
+  batalhaGrupo: BatalhaGrupoIniciadaPayload | null;
+  turnosGrupo: TurnoGrupoPayload[];
+  turnoAtualGrupo: string | null;
+  rodadaAtualGrupo: number;
+  resultadoGrupo: BatalhaGrupoFimPayload | null;
+  convidarParaGrupo: (idConvidado: number) => void;
+  responderConvitePartyFn: (aceitar: boolean) => void;
+  marcarPronto: (pronto: boolean) => void;
+  sairDoGrupo: () => void;
+  iniciarAventuraEmGrupo: (idZona: number) => void;
+  agirGrupo: (tipo: "attack" | "power" | "item", id?: number) => void;
+  limparBatalhaGrupo: () => void;
+  limparErroParty: () => void;
 }
 
 const PvpSocketContext = createContext<PvpSocketContextValue | null>(null);
@@ -176,6 +291,15 @@ export function PvpSocketProvider({
   const [ratingUpdate, setRatingUpdate] = useState<RankedRatingUpdatePayload | null>(null);
   const [oponenteDesconectadoRanked, setOponenteDesconectadoRanked] =
     useState<RankedOponenteDesconectadoPayload | null>(null);
+  const [grupoAtual, setGrupoAtual] = useState<GrupoAtualizadoPayload | null>(null);
+  const [convitePartyRecebido, setConvitePartyRecebido] = useState<ConvitePartyRecebido | null>(null);
+  const [convitePartyEnviadoPara, setConvitePartyEnviadoPara] = useState<number | null>(null);
+  const [erroParty, setErroParty] = useState("");
+  const [batalhaGrupo, setBatalhaGrupo] = useState<BatalhaGrupoIniciadaPayload | null>(null);
+  const [turnosGrupo, setTurnosGrupo] = useState<TurnoGrupoPayload[]>([]);
+  const [turnoAtualGrupo, setTurnoAtualGrupo] = useState<string | null>(null);
+  const [rodadaAtualGrupo, setRodadaAtualGrupo] = useState(1);
+  const [resultadoGrupo, setResultadoGrupo] = useState<BatalhaGrupoFimPayload | null>(null);
 
   useEffect(() => {
     const usaMocks = process.env.NEXT_PUBLIC_USE_MOCKS === "true";
@@ -303,6 +427,66 @@ export function PvpSocketProvider({
       setOponenteDesconectadoRanked(null);
     });
 
+    // Aventura em grupo (party)
+    socket.on("party:convite-recebido", (payload: Omit<ConvitePartyRecebido, "recebidoEm">) => {
+      setConvitePartyRecebido({ ...payload, recebidoEm: Date.now() });
+    });
+
+    socket.on("party:convite-enviado", ({ idConvidado }: { idConvidado: number }) => {
+      setConvitePartyEnviadoPara(idConvidado);
+    });
+
+    socket.on("party:convite-recusado", () => {
+      setConvitePartyEnviadoPara(null);
+      setErroParty("O jogador recusou o convite.");
+    });
+
+    socket.on("party:convite-expirado", () => {
+      setConvitePartyEnviadoPara(null);
+      setErroParty("O jogador não respondeu a tempo.");
+    });
+
+    socket.on("party:convite-cancelado", () => {
+      setConvitePartyRecebido(null);
+    });
+
+    socket.on("party:grupo-atualizado", (payload: GrupoAtualizadoPayload) => {
+      setConvitePartyRecebido(null);
+      setConvitePartyEnviadoPara(null);
+      setGrupoAtual(payload);
+    });
+
+    socket.on("party:grupo-desfeito", () => {
+      setGrupoAtual(null);
+    });
+
+    socket.on("party:batalha-iniciada", (payload: BatalhaGrupoIniciadaPayload) => {
+      setGrupoAtual(null);
+      setResultadoGrupo(null);
+      setTurnosGrupo([]);
+      setBatalhaGrupo(payload);
+      setTurnoAtualGrupo(payload.turnoDe);
+      setRodadaAtualGrupo(1);
+      router.push("/dashboard/adventure");
+    });
+
+    socket.on("party:turno-resultado", (payload: TurnoGrupoPayload) => {
+      setTurnosGrupo((atual) => [...atual, payload]);
+    });
+
+    socket.on("party:proximo-turno", (payload: ProximoTurnoGrupoPayload) => {
+      setTurnoAtualGrupo(payload.turnoDe);
+      setRodadaAtualGrupo(payload.rodada);
+    });
+
+    socket.on("party:batalha-fim", (payload: BatalhaGrupoFimPayload) => {
+      setResultadoGrupo(payload);
+    });
+
+    socket.on("party:erro", ({ mensagem }: { mensagem: string }) => {
+      setErroParty(mensagem);
+    });
+
     return () => {
       socket.disconnect();
       socketRef.current = null;
@@ -337,6 +521,45 @@ export function PvpSocketProvider({
 
   const limparErro = useCallback(() => setErro(""), []);
 
+  const convidarParaGrupo = useCallback((idConvidado: number) => {
+    socketRef.current?.emit("party:convidar", { idConvidado });
+  }, []);
+
+  const responderConvitePartyFn = useCallback((aceitar: boolean) => {
+    socketRef.current?.emit("party:responder-convite", { aceitar });
+    if (!aceitar) setConvitePartyRecebido(null);
+  }, []);
+
+  const marcarPronto = useCallback((pronto: boolean) => {
+    socketRef.current?.emit("party:pronto", { pronto });
+  }, []);
+
+  const sairDoGrupo = useCallback(() => {
+    socketRef.current?.emit("party:sair");
+    setGrupoAtual(null);
+  }, []);
+
+  const iniciarAventuraEmGrupo = useCallback((idZona: number) => {
+    socketRef.current?.emit("party:iniciar", { idZona });
+  }, []);
+
+  const agirGrupo = useCallback((tipo: "attack" | "power" | "item", id?: number) => {
+    socketRef.current?.emit("party:acao", {
+      tipo,
+      idPoder: tipo === "power" ? id : undefined,
+      idItem: tipo === "item" ? id : undefined,
+    });
+  }, []);
+
+  const limparBatalhaGrupo = useCallback(() => {
+    setBatalhaGrupo(null);
+    setTurnosGrupo([]);
+    setTurnoAtualGrupo(null);
+    setResultadoGrupo(null);
+  }, []);
+
+  const limparErroParty = useCallback(() => setErroParty(""), []);
+
   return (
     <PvpSocketContext.Provider
       value={{
@@ -357,6 +580,23 @@ export function PvpSocketProvider({
         matchEncontradoRanked,
         ratingUpdate,
         oponenteDesconectadoRanked,
+        grupoAtual,
+        convitePartyRecebido,
+        convitePartyEnviadoPara,
+        erroParty,
+        batalhaGrupo,
+        turnosGrupo,
+        turnoAtualGrupo,
+        rodadaAtualGrupo,
+        resultadoGrupo,
+        convidarParaGrupo,
+        responderConvitePartyFn,
+        marcarPronto,
+        sairDoGrupo,
+        iniciarAventuraEmGrupo,
+        agirGrupo,
+        limparBatalhaGrupo,
+        limparErroParty,
       }}
     >
       {children}
@@ -366,7 +606,63 @@ export function PvpSocketProvider({
           onResponder={responderDesafio}
         />
       )}
+      {convitePartyRecebido && (
+        <ConvitePartyModal
+          convite={convitePartyRecebido}
+          onResponder={responderConvitePartyFn}
+        />
+      )}
     </PvpSocketContext.Provider>
+  );
+}
+
+function ConvitePartyModal({
+  convite,
+  onResponder,
+}: {
+  convite: ConvitePartyRecebido;
+  onResponder: (aceitar: boolean) => void;
+}) {
+  const [restante, setRestante] = useState(convite.prazoSegundos);
+
+  useEffect(() => {
+    const intervalo = setInterval(() => {
+      const passado = (Date.now() - convite.recebidoEm) / 1000;
+      setRestante(Math.max(0, Math.ceil(convite.prazoSegundos - passado)));
+    }, 250);
+    return () => clearInterval(intervalo);
+  }, [convite]);
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4">
+      <div className="w-full max-w-sm rounded-2xl border-2 border-[#F3B43F] bg-[#292018] p-6 text-center text-white shadow-2xl">
+        <p className="text-sm uppercase tracking-widest text-[#F3B43F]">
+          Convite pra Aventura em grupo
+        </p>
+        <h2 className="mb-1 font-imFeel text-2xl">{convite.nomeConvidante}</h2>
+        <p className="mb-2 text-sm text-white/70">te chamou pra um grupo!</p>
+        {convite.membros.length > 1 && (
+          <p className="mb-3 text-xs text-white/50">
+            Grupo: {convite.membros.map((m) => m.nome).join(", ")}
+          </p>
+        )}
+        <p className="mb-4 text-3xl font-bold text-[#F3B43F]">{restante}s</p>
+        <div className="flex gap-3">
+          <button
+            onClick={() => onResponder(false)}
+            className="flex-1 rounded-lg border-2 border-white/30 bg-transparent px-3 py-2 font-bold text-white hover:bg-white/10"
+          >
+            Recusar
+          </button>
+          <button
+            onClick={() => onResponder(true)}
+            className="flex-1 rounded-lg bg-[#BC8418] px-3 py-2 font-bold text-black hover:bg-[#a5710f]"
+          >
+            Aceitar
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 

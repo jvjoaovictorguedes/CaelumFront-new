@@ -7,6 +7,7 @@ import {
 import CombatArena from "./components/CombatArena";
 import ZoneSelector, { type ZonaApi } from "./components/ZoneSelector";
 import HuntingSessionHeader, { type SessaoApi } from "./components/HuntingSessionHeader";
+import PartyAdventureSection from "./components/PartyAdventureSection";
 
 export default async function AdventurePage() {
   const character =
@@ -121,6 +122,7 @@ export default async function AdventurePage() {
 
     return (
       <div className="flex h-full flex-col gap-4">
+        <PartyAdventureSection zonas={zonas} />
         <ZoneSelector zonas={zonas} />
       </div>
     );
