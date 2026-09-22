@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import axiosInstance from "@/utils/axiosIntance";
 import { resolveMediaUrl } from "@/utils/media-url";
 import { useCharacter } from "@/contexts/CharacterContext";
+import { useToast } from "@/contexts/ToastContext";
 
 interface Instancia {
   id: number;
@@ -83,8 +84,8 @@ export default function RefinementPanel({ onProgressoMudou }: { nivelForja: numb
   const [ultimoResultado, setUltimoResultado] = useState<{ sucesso: boolean; refinamento_atual: number | null } | null>(
     null,
   );
-  const [mensagem, setMensagem] = useState("");
   const intervaloRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const { mostrarErro, mostrarSucesso } = useToast();
 
   const carregar = useCallback(async () => {
     if (!character) return;
@@ -108,11 +109,11 @@ export default function RefinementPanel({ onProgressoMudou }: { nivelForja: numb
       setContagem(filaForja?.segundos_restantes ?? 0);
     } catch (error) {
       console.error("Erro ao carregar Refinamento:", error);
-      setMensagem("Não foi possível carregar o Refinamento.");
+      mostrarErro("Não foi possível carregar o Refinamento.");
     } finally {
       setCarregando(false);
     }
-  }, [character]);
+  }, [character, mostrarErro]);
 
   useEffect(() => {
     carregar();
@@ -157,13 +158,12 @@ export default function RefinementPanel({ onProgressoMudou }: { nivelForja: numb
   async function refinar() {
     if (!selecionada || refinando || fila) return;
     setRefinando(true);
-    setMensagem("");
     try {
       await axiosInstance.post("/crafting/refine", {
         id_instancia: selecionada,
         id_item_pergaminho: pergaminhoEscolhido ?? undefined,
       });
-      setMensagem("Refinamento iniciado! Volte em instantes pra coletar o resultado.");
+      mostrarSucesso("Refinamento iniciado! Volte em instantes pra coletar o resultado.");
       // Fecha o popup na hora — sem isso, o card "Refinando..." lá em
       // cima da tela ficava escondido atrás do popup (que continuava
       // mostrando o botão "Refinar" como se nada tivesse acontecido)
@@ -174,7 +174,7 @@ export default function RefinementPanel({ onProgressoMudou }: { nivelForja: numb
       const msg =
         (error as { response?: { data?: { message?: string } } })?.response?.data?.message ??
         "Não foi possível iniciar o refinamento.";
-      setMensagem(msg);
+      mostrarErro(msg);
     } finally {
       setRefinando(false);
     }
@@ -183,7 +183,6 @@ export default function RefinementPanel({ onProgressoMudou }: { nivelForja: numb
   async function coletar() {
     if (coletando) return;
     setColetando(true);
-    setMensagem("");
     try {
       const resp = await axiosInstance.post<{
         data?: { sucesso: boolean; refinamento_atual: number | null };
@@ -195,7 +194,7 @@ export default function RefinementPanel({ onProgressoMudou }: { nivelForja: numb
       const msg =
         (error as { response?: { data?: { message?: string } } })?.response?.data?.message ??
         "Não foi possível coletar.";
-      setMensagem(msg);
+      mostrarErro(msg);
     } finally {
       setColetando(false);
     }
@@ -214,12 +213,6 @@ export default function RefinementPanel({ onProgressoMudou }: { nivelForja: numb
 
   return (
     <div className="flex flex-col gap-4">
-      {mensagem && (
-        <p className="rounded-xl border border-[#F3B43F]/40 bg-[#292018]/90 p-3 text-sm text-purple-300">
-          {mensagem}
-        </p>
-      )}
-
       {ultimoResultado && (
         <div
           className={`rounded-2xl border-2 bg-[#292018]/90 p-5 text-center text-white shadow-xl ${

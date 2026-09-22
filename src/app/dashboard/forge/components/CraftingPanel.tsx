@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import axiosInstance from "@/utils/axiosIntance";
 import { resolveMediaUrl } from "@/utils/media-url";
+import { useToast } from "@/contexts/ToastContext";
 
 interface IngredienteBlueprint {
   id_item: number;
@@ -187,9 +188,9 @@ export default function CraftingPanel({ onProgressoMudou }: { nivelForja: number
   const [carregando, setCarregando] = useState(true);
   const [forjando, setForjando] = useState<number | null>(null);
   const [coletando, setColetando] = useState(false);
-  const [mensagem, setMensagem] = useState("");
   const [secoesFechadas, setSecoesFechadas] = useState<Record<string, boolean>>({});
   const intervaloRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const { mostrarErro, mostrarSucesso } = useToast();
 
   const carregar = useCallback(async () => {
     try {
@@ -211,11 +212,11 @@ export default function CraftingPanel({ onProgressoMudou }: { nivelForja: number
       setContagem(filaForja?.segundos_restantes ?? 0);
     } catch (error) {
       console.error("Erro ao carregar Fabricação:", error);
-      setMensagem("Não foi possível carregar a Fabricação.");
+      mostrarErro("Não foi possível carregar a Fabricação.");
     } finally {
       setCarregando(false);
     }
-  }, []);
+  }, [mostrarErro]);
 
   useEffect(() => {
     carregar();
@@ -234,16 +235,15 @@ export default function CraftingPanel({ onProgressoMudou }: { nivelForja: number
   async function forjar(blueprint: Blueprint, variante: VarianteBlueprint) {
     if (forjando || fila) return;
     setForjando(blueprint.id);
-    setMensagem("");
     try {
       await axiosInstance.post("/crafting/craft", { id_blueprint: blueprint.id, qualidade: variante.qualidade });
-      setMensagem(`Fabricação de ${blueprint.nome} iniciada! Fica pronta em ${formatarTempo(variante.tempo_segundos)}.`);
+      mostrarSucesso(`Fabricação de ${blueprint.nome} iniciada! Fica pronta em ${formatarTempo(variante.tempo_segundos)}.`);
       await carregar();
     } catch (error: unknown) {
       const msg =
         (error as { response?: { data?: { message?: string } } })?.response?.data?.message ??
         "Não foi possível iniciar a fabricação.";
-      setMensagem(msg);
+      mostrarErro(msg);
     } finally {
       setForjando(null);
     }
@@ -252,20 +252,19 @@ export default function CraftingPanel({ onProgressoMudou }: { nivelForja: number
   async function coletar() {
     if (coletando) return;
     setColetando(true);
-    setMensagem("");
     try {
       const resp = await axiosInstance.post<{ data?: { instancia?: { nome: string; raridade: string } } }>(
         "/crafting/forge-collect",
         { slot: "Forja" },
       );
       const instancia = resp.data?.data?.instancia;
-      setMensagem(instancia ? `Você forjou: ${instancia.nome} (${instancia.raridade})!` : "Trabalho coletado!");
+      mostrarSucesso(instancia ? `Você forjou: ${instancia.nome} (${instancia.raridade})!` : "Trabalho coletado!");
       await Promise.all([carregar(), onProgressoMudou()]);
     } catch (error: unknown) {
       const msg =
         (error as { response?: { data?: { message?: string } } })?.response?.data?.message ??
         "Não foi possível coletar.";
-      setMensagem(msg);
+      mostrarErro(msg);
     } finally {
       setColetando(false);
     }
@@ -283,12 +282,6 @@ export default function CraftingPanel({ onProgressoMudou }: { nivelForja: number
 
   return (
     <div className="flex flex-col gap-4">
-      {mensagem && (
-        <p className="rounded-xl border border-[#F3B43F]/40 bg-[#292018]/90 p-3 text-sm text-purple-300">
-          {mensagem}
-        </p>
-      )}
-
       {fila && (
         <div
           className={`flex flex-col gap-3 rounded-2xl border-2 bg-[#292018]/90 p-5 text-white shadow-xl sm:flex-row sm:items-center sm:justify-between ${

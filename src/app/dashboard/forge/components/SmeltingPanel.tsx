@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import axiosInstance from "@/utils/axiosIntance";
 import { resolveMediaUrl } from "@/utils/media-url";
+import { useToast } from "@/contexts/ToastContext";
 
 interface OpcaoFundicao {
   id_recurso: number;
@@ -51,8 +52,8 @@ export default function SmeltingPanel({
   const [carregando, setCarregando] = useState(true);
   const [fundindo, setFundindo] = useState<string | null>(null);
   const [quantidades, setQuantidades] = useState<Record<string, number>>({});
-  const [mensagem, setMensagem] = useState("");
   const [secoesFechadas, setSecoesFechadas] = useState<Record<string, boolean>>({});
+  const { mostrarErro, mostrarSucesso } = useToast();
 
   const carregar = useCallback(async () => {
     try {
@@ -60,11 +61,11 @@ export default function SmeltingPanel({
       setOpcoes(resp.data?.data?.opcoes ?? []);
     } catch (error) {
       console.error("Erro ao carregar opções de Fundição:", error);
-      setMensagem("Não foi possível carregar a Fundição.");
+      mostrarErro("Não foi possível carregar a Fundição.");
     } finally {
       setCarregando(false);
     }
-  }, []);
+  }, [mostrarErro]);
 
   useEffect(() => {
     carregar();
@@ -79,7 +80,6 @@ export default function SmeltingPanel({
     const quantidade = quantidades[k] ?? 1;
     if (fundindo) return;
     setFundindo(k);
-    setMensagem("");
     try {
       const resp = await axiosInstance.post<{
         data?: { barras_produzidas: number; barras_bonus: number; subiu_nivel: boolean };
@@ -89,7 +89,7 @@ export default function SmeltingPanel({
         quantidade_barras: quantidade,
       });
       const dados = resp.data?.data;
-      setMensagem(
+      mostrarSucesso(
         `Você fundiu ${dados?.barras_produzidas ?? quantidade} barra(s) de ${opcao.nome_recurso}${
           dados?.barras_bonus ? ` (${dados.barras_bonus} de bônus!)` : ""
         }.${dados?.subiu_nivel ? " Sua Forja subiu de nível!" : ""}`,
@@ -99,7 +99,7 @@ export default function SmeltingPanel({
       const msg =
         (error as { response?: { data?: { message?: string } } })?.response?.data?.message ??
         "Não foi possível fundir.";
-      setMensagem(msg);
+      mostrarErro(msg);
     } finally {
       setFundindo(null);
     }
@@ -115,12 +115,6 @@ export default function SmeltingPanel({
 
   return (
     <div className="flex flex-col gap-4">
-      {mensagem && (
-        <p className="rounded-xl border border-[#F3B43F]/40 bg-[#292018]/90 p-3 text-sm text-purple-300">
-          {mensagem}
-        </p>
-      )}
-
       {opcoes.length === 0 ? (
         <div className="rounded-2xl border-2 border-[#F3B43F] bg-[#292018]/90 p-5 text-white shadow-xl">
           <p className="text-sm text-white/60">
