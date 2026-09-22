@@ -1,6 +1,7 @@
 import axiosInstance from "@/utils/axiosIntance";
 import { getCurrentCharacter } from "@/utils/character-session";
-import ShopItem, { type ShopItemData } from "./components/ShopItem";
+import { type ShopItemData } from "./components/ShopItem";
+import ShopCatalog from "./components/ShopCatalog";
 
 interface ItemsResponse {
   data?: {
@@ -9,17 +10,6 @@ interface ItemsResponse {
 }
 
 const MOSTRAR_ITENS_RAROS = false;
-
-// Agrupa a vitrine por tipo pra ficar fácil de escanear (arma, armadura,
-// consumível...) em vez de uma grade única misturando tudo.
-const ORDEM_TIPOS: { tipo: ShopItemData["tipo_item"]; titulo: string }[] = [
-  { tipo: "Arma", titulo: "Armas" },
-  { tipo: "Capacete", titulo: "Elmos" },
-  { tipo: "Armadura", titulo: "Armaduras" },
-  { tipo: "Escudo", titulo: "Escudos" },
-  { tipo: "Consumivel", titulo: "Consumíveis" },
-  { tipo: "Material", titulo: "Materiais" },
-];
 
 /**
  * Busca todos os itens cadastrados na API
@@ -80,37 +70,14 @@ export default async function ShopPage() {
         </div>
       </div>
 
-      {/* ITENS, AGRUPADOS POR TIPO */}
-      {ORDEM_TIPOS.map(({ tipo, titulo }) => {
-        const itensDoTipo = itensDaLoja.filter((item) => item.tipo_item === tipo);
-        if (itensDoTipo.length === 0) return null;
-
-        return (
-          <section key={tipo} className="flex flex-col gap-3">
-            <h2 className="font-imFeel text-2xl text-[#F3B43F] sm:text-3xl">
-              {titulo}
-            </h2>
-            <div className="grid w-full gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {itensDoTipo.map((item) => (
-                <ShopItem
-                  key={item.id}
-                  characterId={character?.id}
-                  initialCoins={moedas}
-                  item={item}
-                  classeDoPersonagem={classeDoPersonagem}
-                />
-              ))}
-            </div>
-          </section>
-        );
-      })}
-
-      {/* CASO NÃO TENHA ITENS */}
-      {itensDaLoja.length === 0 && (
-        <div className="rounded-2xl border border-white/10 bg-[#292018]/80 p-8 text-center text-white/60">
-          Nenhum item disponível na loja no momento.
-        </div>
-      )}
+      {/* SEÇÕES (Equipamentos/Consumíveis/Materiais), FILTROS DE SUBTIPO
+          E GRADE DE ITENS — tudo interativo, ver ShopCatalog.tsx */}
+      <ShopCatalog
+        itens={itensDaLoja}
+        characterId={character?.id}
+        moedas={moedas}
+        classeDoPersonagem={classeDoPersonagem}
+      />
     </div>
   );
 }
