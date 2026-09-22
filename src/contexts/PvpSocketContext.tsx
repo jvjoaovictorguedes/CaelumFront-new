@@ -42,6 +42,15 @@ export interface DueloIniciadoPayload {
   duelId: number;
   arena: string;
   ranked?: boolean;
+  // Partida de torneio: é um duelo ao vivo como qualquer outro (mesma
+  // tela), só marcado pra a UI saber que faz parte de uma série.
+  torneio?: boolean;
+  torneioId?: number;
+  torneioPartidaId?: number;
+  torneioFase?: string;
+  torneioFormato?: string;
+  torneioPlacarA?: number;
+  torneioPlacarB?: number;
   ratingA?: number;
   ratingB?: number;
   ligaA?: string;
@@ -412,6 +421,18 @@ export function PvpSocketProvider({
       setFilaRanked(null);
       setTurnos([]);
       setDuelo(payload);
+      router.push("/dashboard/pvp");
+    });
+
+    // Torneio — cada jogo de uma série (MD3/MD5) é um duelo ao vivo
+    // normal, então reaproveita exatamente o mesmo estado `duelo` e a
+    // mesma tela (LiveDuelArena), só com o flag `torneio`.
+    socket.on("torneio:duelo-iniciado", (payload: DueloIniciadoPayload) => {
+      setDesafioRecebido(null);
+      setDesafioEnviadoPara(null);
+      setResultadoFinal(null);
+      setTurnos([]);
+      setDuelo({ ...payload, torneio: true });
       router.push("/dashboard/pvp");
     });
 

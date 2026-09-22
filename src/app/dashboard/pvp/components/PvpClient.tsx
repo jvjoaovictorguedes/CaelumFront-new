@@ -5,7 +5,17 @@ import axiosInstance from "@/utils/axiosIntance";
 import PvpArena, { type ResultadoDuelo } from "./PvpArena";
 import LiveDuelArena from "./LiveDuelArena";
 import RankedPanel from "./RankedPanel";
+import TournamentsPanel from "./TournamentsPanel";
 import { usePvpSocket } from "@/contexts/PvpSocketContext";
+import { AVISO_CASUAL_NAO_COMPETITIVO } from "@/lib/api/pvp";
+
+type Aba = "casual" | "ranked" | "torneios";
+
+const ABAS: { chave: Aba; label: string }[] = [
+  { chave: "casual", label: "Casual" },
+  { chave: "ranked", label: "Arena Ranqueada" },
+  { chave: "torneios", label: "Torneios" },
+];
 
 interface OponenteApi {
   id: number;
@@ -45,7 +55,7 @@ export default function PvpClient({
   const [carregandoId, setCarregandoId] = useState<number | null>(null);
   const [resultado, setResultado] = useState<ResultadoDuelo | null>(null);
   const [erro, setErro] = useState("");
-  const [aba, setAba] = useState<"casual" | "ranked">("casual");
+  const [aba, setAba] = useState<Aba>("casual");
 
   const {
     onlineIds,
@@ -72,6 +82,15 @@ export default function PvpClient({
 
   useEffect(() => {
     if (!resultadoFinal || duelosProcessadosRef.current.has(resultadoFinal.duelId)) return;
+    // Só resultado CASUAL mexe nos contadores casuais. Antes este efeito
+    // rodava pra qualquer duelo: uma vitória ranqueada (ou de torneio)
+    // aparecia como vitória casual até o próximo refresh, misturando os
+    // dois modos. Ranqueada só altera Elo/Rating (ver RankedPanel).
+    const ehCasual = !resultadoFinal.ranked && !duelo?.ranked && !duelo?.torneio;
+    if (!ehCasual) {
+      duelosProcessadosRef.current.add(resultadoFinal.duelId);
+      return;
+    }
     duelosProcessadosRef.current.add(resultadoFinal.duelId);
     const venci = resultadoFinal.vencedorChave === (duelo?.a.id === character.id ? "A" : "B");
     setStatus((atual) => ({
@@ -139,27 +158,21 @@ export default function PvpClient({
         <h1 className="font-imFeel text-4xl sm:text-5xl">Duelo</h1>
       </div>
 
-      <div className="flex gap-2">
-        <button
-          onClick={() => setAba("casual")}
-          className={`flex-1 rounded-lg border-2 px-4 py-2 text-sm font-bold uppercase tracking-widest transition ${
-            aba === "casual"
-              ? "border-[#F3B43F] bg-[#BC8418] text-black"
-              : "border-white/20 bg-transparent text-white/70 hover:bg-white/10"
-          }`}
-        >
-          Casual
-        </button>
-        <button
-          onClick={() => setAba("ranked")}
-          className={`flex-1 rounded-lg border-2 px-4 py-2 text-sm font-bold uppercase tracking-widest transition ${
-            aba === "ranked"
-              ? "border-[#F3B43F] bg-[#BC8418] text-black"
-              : "border-white/20 bg-transparent text-white/70 hover:bg-white/10"
-          }`}
-        >
-          Arena Ranqueada
-        </button>
+      <div className="flex flex-wrap gap-2">
+        {ABAS.map(({ chave, label }) => (
+          <button
+            key={chave}
+            type="button"
+            onClick={() => setAba(chave)}
+            className={`flex-1 rounded-lg border-2 px-3 py-2 text-xs font-bold uppercase tracking-widest transition sm:text-sm ${
+              aba === chave
+                ? "border-[#F3B43F] bg-[#BC8418] text-black"
+                : "border-white/20 bg-transparent text-white/70 hover:bg-white/10"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
       </div>
 
       {erroSocket && (
@@ -173,8 +186,16 @@ export default function PvpClient({
 
       {aba === "ranked" ? (
         <RankedPanel meuCharacterId={character.id} />
+      ) : aba === "torneios" ? (
+        <TournamentsPanel meuCharacterId={character.id} />
       ) : (
         <>
+          {/* Aviso obrigatório da spec §7 — curto, mas sempre visível na
+              aba Casual (e na visão casual do Ranking). */}
+          <p className="rounded-xl border border-[#F3B43F]/30 bg-black/30 px-4 py-2 text-xs leading-relaxed text-white/65">
+            {AVISO_CASUAL_NAO_COMPETITIVO}
+          </p>
+
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <EstatisticaCard label="Vitórias" valor={status?.vitorias ?? 0} />
             <EstatisticaCard label="Derrotas" valor={status?.derrotas ?? 0} />

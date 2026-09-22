@@ -1,23 +1,11 @@
-import axiosInstance from "@/utils/axiosIntance";
 import { getCurrentCharacter } from "@/utils/character-session";
+import {
+  buscarOponentesCasuais,
+  buscarStatusCasual,
+  type OponenteCasual,
+  type PvpStatusCasual,
+} from "@/lib/api/pvp";
 import PvpClient from "./components/PvpClient";
-
-interface OponenteApi {
-  id: number;
-  nome: string;
-  nivel: number;
-  genero: string;
-  Race?: { nome_masculino?: string; nome_feminino?: string };
-  Class?: { nome?: string };
-}
-
-interface StatusApi {
-  total_batalhas: number;
-  vitorias: number;
-  derrotas: number;
-  sequencia_vitorias: number;
-  maximo_sequencia_vitorias: number;
-}
 
 export default async function PvpPage() {
   const character = await getCurrentCharacter();
@@ -33,23 +21,12 @@ export default async function PvpPage() {
     );
   }
 
-  let oponentes: OponenteApi[] = [];
-  let status: StatusApi | null = null;
-
-  try {
-    const [respOponentes, respStatus] = await Promise.all([
-      axiosInstance.get<{ data?: { oponentes?: OponenteApi[] } }>(
-        `/pvp/opponents/${character.id}`,
-      ),
-      axiosInstance.get<{ data?: { pvpStatus?: StatusApi } }>(
-        `/pvp/status/${character.id}`,
-      ),
-    ]);
-    oponentes = respOponentes.data?.data?.oponentes ?? [];
-    status = respStatus.data?.data?.pvpStatus ?? null;
-  } catch (error) {
-    console.error("Erro ao carregar dados de PVP:", error);
-  }
+  // As duas chamadas já tratam erro internamente (lista vazia / null), a
+  // página nunca quebra por causa de um endpoint fora do ar.
+  const [oponentes, status]: [OponenteCasual[], PvpStatusCasual | null] = await Promise.all([
+    buscarOponentesCasuais(character.id),
+    buscarStatusCasual(character.id),
+  ]);
 
   return (
     <PvpClient
