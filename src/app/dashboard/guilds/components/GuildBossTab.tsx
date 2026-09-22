@@ -72,7 +72,6 @@ export default function GuildBossTab({
   const [carregando, setCarregando] = useState(true);
   const [processando, setProcessando] = useState(false);
   const [mensagem, setMensagem] = useState("");
-  const [ultimoAtaque, setUltimoAtaque] = useState<{ dano: number; derrotado: boolean } | null>(null);
 
   const carregar = useCallback(async () => {
     try {
@@ -108,29 +107,6 @@ export default function GuildBossTab({
       const msg =
         (error as { response?: { data?: { message?: string } } })?.response?.data
           ?.message ?? "Não foi possível liberar o Boss.";
-      setMensagem(msg);
-    } finally {
-      setProcessando(false);
-    }
-  }
-
-  async function atacarBoss() {
-    if (processando) return;
-    setProcessando(true);
-    setMensagem("");
-    setUltimoAtaque(null);
-    try {
-      const resp = await axiosInstance.post<{ data?: { dano_causado: number; derrotado: boolean } }>(
-        `/guilds/${idGuild}/boss/atacar`,
-      );
-      if (resp.data?.data) {
-        setUltimoAtaque({ dano: resp.data.data.dano_causado, derrotado: resp.data.data.derrotado });
-      }
-      await carregar();
-    } catch (error: unknown) {
-      const msg =
-        (error as { response?: { data?: { message?: string } } })?.response?.data
-          ?.message ?? "Não foi possível atacar o Boss.";
       setMensagem(msg);
     } finally {
       setProcessando(false);
@@ -202,28 +178,13 @@ export default function GuildBossTab({
                   {formatarTempoRestante(tentativa.expira_em)}
                 </p>
 
-                <button
-                  type="button"
-                  onClick={atacarBoss}
-                  disabled={processando}
-                  className="mt-3 rounded-lg bg-[#F3B43F] px-4 py-2 text-sm font-bold text-black transition hover:bg-[#e0a52f] disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {processando ? "Atacando..." : "Atacar o Boss"}
-                </button>
-
-                {ultimoAtaque && (
-                  <p className={`mt-2 text-sm ${ultimoAtaque.derrotado ? "text-green-400" : "text-white/70"}`}>
-                    Você causou {ultimoAtaque.dano} de dano.
-                    {ultimoAtaque.derrotado && " O Boss foi derrotado — recompensas distribuídas!"}
-                  </p>
-                )}
-
                 {!batalhaBossGuilda && (
                   <div className="mt-4 rounded-lg border border-[#F3B43F]/30 bg-black/20 p-3">
-                    <p className="text-xs uppercase tracking-widest text-[#F3B43F]/80">Luta ao vivo (V2.0)</p>
+                    <p className="text-xs uppercase tracking-widest text-[#F3B43F]/80">Atacar o Boss</p>
                     <p className="mt-1 text-xs text-white/60">
                       Entre numa sala com outros membros online e enfrentem o Boss em tempo real — ele
                       revida com dano crescente a cada rodada. Consumíveis não podem ser usados aqui.
+                      Depois de lutar, espere 20min pra atacar de novo.
                     </p>
 
                     {lobbyBossGuilda ? (
@@ -252,9 +213,9 @@ export default function GuildBossTab({
                       <button
                         type="button"
                         onClick={entrarNoBossGuilda}
-                        className="mt-2 rounded-lg bg-[#BC8418] px-3 py-1.5 text-xs font-bold text-black transition hover:bg-[#a5710f]"
+                        className="mt-2 rounded-lg bg-[#F3B43F] px-4 py-2 text-sm font-bold text-black transition hover:bg-[#e0a52f]"
                       >
-                        Entrar na luta ao vivo
+                        Atacar o Boss
                       </button>
                     )}
 
