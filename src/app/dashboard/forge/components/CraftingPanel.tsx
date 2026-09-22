@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import axiosInstance from "@/utils/axiosIntance";
 import { resolveMediaUrl } from "@/utils/media-url";
 import { useToast } from "@/contexts/ToastContext";
+import { formatarTier } from "@/utils/equipmentTier";
 
 interface IngredienteBlueprint {
   id_item: number;
@@ -107,6 +108,7 @@ function AtributosDoItem({ propriedades }: { propriedades: PropriedadesItem }) {
 interface Blueprint {
   id: number;
   nome: string;
+  tier_equipamento: number | null;
   categoria_equipamento: string;
   tipo_arma?: string | null;
   nivel_forja_minimo: number;
@@ -370,7 +372,14 @@ export default function CraftingPanel({ onProgressoMudou }: { nivelForja: number
             )}
           </div>
           <div>
-            <p className="font-imFeel text-xl uppercase">{blueprint.nome}</p>
+            <div className="flex items-center gap-2">
+              <p className="font-imFeel text-xl uppercase">{blueprint.nome}</p>
+              {formatarTier(blueprint.tier_equipamento) && (
+                <span className="rounded-full border border-[#F3B43F]/60 bg-black/40 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#F3B43F]">
+                  {formatarTier(blueprint.tier_equipamento)}
+                </span>
+              )}
+            </div>
             <p className="text-xs text-white/50">Nível mínimo de Forja: {blueprint.nivel_forja_minimo}</p>
           </div>
           {variante.propriedades && (

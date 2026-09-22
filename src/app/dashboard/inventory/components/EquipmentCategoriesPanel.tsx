@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import axiosInstance from "@/utils/axiosIntance";
 import { resolveMediaUrl } from "@/utils/media-url";
 import { useCharacter } from "@/contexts/CharacterContext";
+import { formatarTier } from "@/utils/equipmentTier";
 
 type Slot =
   | "Cabeca"
@@ -70,6 +71,7 @@ interface InstanciaApi {
   nome: string;
   tipo_item: string;
   raridade: string;
+  tier_equipamento: number | null;
   imagem_url: string | null;
   refinamento: number;
   estado: "Inventario" | "Equipada" | "Mercado";
@@ -84,6 +86,7 @@ interface EquipadoApi {
   nome: string;
   tipo_item: string;
   raridade: string;
+  tier_equipamento: number | null;
   imagem_url: string | null;
   refinamento: number;
   propriedades_base: Propriedades;
@@ -300,7 +303,12 @@ export default function EquipmentCategoriesPanel() {
                   <span className="font-bold text-[#F3B43F]">
                     {equipadoNoSlot.nome}
                     {equipadoNoSlot.refinamento > 0 && ` +${equipadoNoSlot.refinamento}`}
-                  </span>{" "}
+                  </span>
+                  {formatarTier(equipadoNoSlot.tier_equipamento) && (
+                    <span className="ml-1.5 rounded-full border border-[#F3B43F]/60 bg-black/40 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[#F3B43F]">
+                      {formatarTier(equipadoNoSlot.tier_equipamento)}
+                    </span>
+                  )}{" "}
                   <button
                     type="button"
                     onClick={() => desequipar(slot)}
@@ -344,14 +352,24 @@ export default function EquipmentCategoriesPanel() {
                           +{instancia.refinamento}
                         </span>
                       )}
+                      {instancia.tier_equipamento != null && (
+                        <span className="pointer-events-none absolute -top-1 -left-1 rounded bg-black/80 px-1 text-[9px] font-bold text-[#F3B43F]">
+                          T{instancia.tier_equipamento}
+                        </span>
+                      )}
 
-                      {/* Nome/atributos só aparecem no hover, flutuando
-                          acima do item. */}
+                      {/* Nome/tier/atributos só aparecem no hover,
+                          flutuando acima do item. */}
                       <div className="pointer-events-none absolute bottom-full left-1/2 mb-2 w-40 -translate-x-1/2 rounded-md bg-black/90 p-2 text-center opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
                         <span className="block text-[10px] font-bold leading-tight text-white">
                           {instancia.nome}
                           {instancia.refinamento > 0 && ` +${instancia.refinamento}`}
                         </span>
+                        {formatarTier(instancia.tier_equipamento) && (
+                          <span className="mt-0.5 block text-[9px] font-bold uppercase tracking-wide text-[#F3B43F]/90">
+                            {formatarTier(instancia.tier_equipamento)} · {instancia.raridade}
+                          </span>
+                        )}
                         <div className="mt-1 text-[9px] leading-tight text-white/90">
                           <ListaDeAtributos base={instancia.propriedades_base} efetivo={instancia.propriedades_efetivas} />
                         </div>

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import axiosInstance from "@/utils/axiosIntance";
 import { useCharacter } from "@/contexts/CharacterContext";
+import { formatarTier } from "@/utils/equipmentTier";
 
 interface WeaponPropertiesApi {
   dano_min: number;
@@ -26,6 +27,7 @@ interface ItemApi {
   nome: string;
   tipo_item: string;
   raridade: string;
+  tier_equipamento: number | null;
   weaponProperties?: WeaponPropertiesApi | null;
   armorProperties?: ArmorPropertiesApi | null;
 }
@@ -232,7 +234,11 @@ const ORDENACOES = [
   { valor: "price_desc", label: "Preço: maior primeiro" },
   { valor: "date_desc", label: "Mais recentes" },
   { valor: "refinement_desc", label: "Refinamento: maior primeiro" },
+  { valor: "tier_asc", label: "Tier: mais forte primeiro" },
+  { valor: "tier_desc", label: "Tier: mais básico primeiro" },
 ] as const;
+
+const OPCOES_TIER = [1, 2, 3, 4, 5] as const;
 
 function AbaComprar({ characterId }: { characterId: number }) {
   const [listings, setListings] = useState<ListingApi[] | null>(null);
@@ -245,6 +251,7 @@ function AbaComprar({ characterId }: { characterId: number }) {
   const [precoMin, setPrecoMin] = useState("");
   const [precoMax, setPrecoMax] = useState("");
   const [refinamentoMin, setRefinamentoMin] = useState("");
+  const [tierFiltro, setTierFiltro] = useState("");
   const [ordenar, setOrdenar] = useState<string>("price_asc");
   const [pagina, setPagina] = useState(1);
   const [totalPaginas, setTotalPaginas] = useState(1);
@@ -263,6 +270,7 @@ function AbaComprar({ characterId }: { characterId: number }) {
           preco_min: precoMin || undefined,
           preco_max: precoMax || undefined,
           refinamento_min: refinamentoMin || undefined,
+          tier: tierFiltro || undefined,
           sort: ordenar,
           page: pagina,
           limit: LIMITE_POR_PAGINA,
@@ -287,7 +295,7 @@ function AbaComprar({ characterId }: { characterId: number }) {
     } finally {
       setCarregando(false);
     }
-  }, [filtroNome, precoMin, precoMax, refinamentoMin, ordenar, pagina]);
+  }, [filtroNome, precoMin, precoMax, refinamentoMin, tierFiltro, ordenar, pagina]);
 
   useEffect(() => {
     carregar();
@@ -297,7 +305,7 @@ function AbaComprar({ characterId }: { characterId: number }) {
   // ficar numa página 5 que não existe mais depois de filtrar.
   useEffect(() => {
     setPagina(1);
-  }, [filtroNome, precoMin, precoMax, refinamentoMin, ordenar]);
+  }, [filtroNome, precoMin, precoMax, refinamentoMin, tierFiltro, ordenar]);
 
   async function comprar(listing: ListingApi) {
     if (comprando) return;
@@ -319,7 +327,7 @@ function AbaComprar({ characterId }: { characterId: number }) {
 
   return (
     <div className="rounded-2xl border-2 border-[#F3B43F] bg-[#292018]/90 p-5 text-white shadow-xl">
-      <div className="mb-4 grid grid-cols-1 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+      <div className="mb-4 grid grid-cols-1 gap-2 sm:grid-cols-3 lg:grid-cols-6">
         <input
           value={filtroNome}
           onChange={(e) => setFiltroNome(e.target.value)}
@@ -348,6 +356,18 @@ function AbaComprar({ characterId }: { characterId: number }) {
           placeholder="Refinamento mín."
           className="min-w-0 rounded-lg border border-white/20 bg-black/30 px-3 py-2 text-white placeholder-white/40 outline-none focus:border-[#F3B43F]"
         />
+        <select
+          value={tierFiltro}
+          onChange={(e) => setTierFiltro(e.target.value)}
+          className="min-w-0 rounded-lg border border-white/20 bg-black/30 px-3 py-2 text-white outline-none focus:border-[#F3B43F]"
+        >
+          <option value="">Qualquer Tier</option>
+          {OPCOES_TIER.map((t) => (
+            <option key={t} value={t}>
+              {formatarTier(t)}
+            </option>
+          ))}
+        </select>
         <select
           value={ordenar}
           onChange={(e) => setOrdenar(e.target.value)}
@@ -382,8 +402,15 @@ function AbaComprar({ characterId }: { characterId: number }) {
                     {listing.item.nome}
                     {listing.instancia ? ` +${listing.instancia.refinamento}` : ""}
                   </p>
-                  <p className={`text-xs font-bold ${CORES_RARIDADE[listing.item.raridade] ?? "text-white/70"}`}>
-                    {listing.item.raridade} · {listing.item.tipo_item}
+                  <p className="flex flex-wrap items-center gap-1.5">
+                    <span className={`text-xs font-bold ${CORES_RARIDADE[listing.item.raridade] ?? "text-white/70"}`}>
+                      {listing.item.raridade} · {listing.item.tipo_item}
+                    </span>
+                    {formatarTier(listing.item.tier_equipamento) && (
+                      <span className="rounded-full border border-[#F3B43F]/60 bg-black/30 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[#F3B43F]">
+                        {formatarTier(listing.item.tier_equipamento)}
+                      </span>
+                    )}
                   </p>
                   {listing.instancia && <PropriedadesEquipamento item={listing.item} instancia={listing.instancia} />}
                   <p className="mt-2 text-sm text-white/70">
