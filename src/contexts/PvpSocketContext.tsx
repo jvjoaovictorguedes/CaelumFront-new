@@ -292,6 +292,8 @@ interface PvpSocketContextValue {
   turnoAtualGrupo: string | null;
   rodadaAtualGrupo: number;
   resultadoGrupo: BatalhaGrupoFimPayload | null;
+  criarGrupo: () => void;
+  listarJogadoresOnline: () => Promise<{ id: number; nome: string }[]>;
   convidarParaGrupo: (idConvidado: number) => void;
   responderConvitePartyFn: (aceitar: boolean) => void;
   marcarPronto: (pronto: boolean) => void;
@@ -598,6 +600,27 @@ export function PvpSocketProvider({
 
   const limparErro = useCallback(() => setErro(""), []);
 
+  const criarGrupo = useCallback(() => {
+    socketRef.current?.emit("party:criar");
+  }, []);
+
+  const listarJogadoresOnline = useCallback((): Promise<{ id: number; nome: string }[]> => {
+    return new Promise((resolve) => {
+      const socket = socketRef.current;
+      if (!socket) {
+        resolve([]);
+        return;
+      }
+      socket.emit(
+        "party:listar-online",
+        {},
+        (resposta: { jogadores?: { id: number; nome: string }[] }) => {
+          resolve(resposta?.jogadores ?? []);
+        },
+      );
+    });
+  }, []);
+
   const convidarParaGrupo = useCallback((idConvidado: number) => {
     socketRef.current?.emit("party:convidar", { idConvidado });
   }, []);
@@ -685,6 +708,8 @@ export function PvpSocketProvider({
         resultadoGrupo,
         convidarParaGrupo,
         responderConvitePartyFn,
+        criarGrupo,
+        listarJogadoresOnline,
         marcarPronto,
         sairDoGrupo,
         expulsarDoGrupo,

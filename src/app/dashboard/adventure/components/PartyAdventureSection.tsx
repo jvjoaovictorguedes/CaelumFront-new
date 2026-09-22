@@ -22,6 +22,8 @@ export default function PartyAdventureSection({ zonas }: { zonas: ZonaApi[] }) {
     grupoAtual,
     convitePartyEnviadoPara,
     erroParty,
+    criarGrupo,
+    listarJogadoresOnline,
     convidarParaGrupo,
     marcarPronto,
     sairDoGrupo,
@@ -29,6 +31,23 @@ export default function PartyAdventureSection({ zonas }: { zonas: ZonaApi[] }) {
     iniciarAventuraEmGrupo,
     limparErroParty,
   } = usePvpSocket();
+
+  // "Jogador #123" (o id cru) era tudo que a lista de convite mostrava —
+  // onlineIds só carrega os ids da presença online, sem nome nenhum.
+  // Busca os nomes via socket sempre que a lista de quem está online
+  // muda, pra não ficar com nome desatualizado se alguém entrar/sair.
+  const [nomesOnline, setNomesOnline] = useState<Record<number, string>>({});
+
+  useEffect(() => {
+    let cancelado = false;
+    listarJogadoresOnline().then((jogadores) => {
+      if (cancelado) return;
+      setNomesOnline(Object.fromEntries(jogadores.map((j) => [j.id, j.nome])));
+    });
+    return () => {
+      cancelado = true;
+    };
+  }, [onlineIds, listarJogadoresOnline]);
 
   const [mostrarConvidar, setMostrarConvidar] = useState(false);
   const [mostrarConvidarNoGrupo, setMostrarConvidarNoGrupo] = useState(false);
@@ -85,13 +104,22 @@ export default function PartyAdventureSection({ zonas }: { zonas: ZonaApi[] }) {
               Chame amigos online pra enfrentar juntos um monstro mais forte.
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => setMostrarConvidar((atual) => !atual)}
-            className="rounded-lg bg-[#BC8418] px-4 py-2 font-bold text-black transition hover:bg-[#a5710f]"
-          >
-            {mostrarConvidar ? "Fechar" : "Chamar amigos"}
-          </button>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={criarGrupo}
+              className="rounded-lg bg-[#BC8418] px-4 py-2 font-bold text-black transition hover:bg-[#a5710f]"
+            >
+              Criar grupo
+            </button>
+            <button
+              type="button"
+              onClick={() => setMostrarConvidar((atual) => !atual)}
+              className="rounded-lg border border-[#F3B43F]/60 px-4 py-2 font-bold text-[#F3B43F] transition hover:bg-[#F3B43F]/10"
+            >
+              {mostrarConvidar ? "Fechar" : "Chamar amigos"}
+            </button>
+          </div>
         </div>
 
         {erroParty && (
@@ -116,7 +144,7 @@ export default function PartyAdventureSection({ zonas }: { zonas: ZonaApi[] }) {
                   >
                     <span className="flex items-center gap-2">
                       <span className="h-2 w-2 rounded-full bg-green-500" />
-                      Jogador #{id}
+                      {nomesOnline[id] ?? `Jogador #${id}`}
                     </span>
                     <button
                       type="button"
@@ -217,7 +245,7 @@ export default function PartyAdventureSection({ zonas }: { zonas: ZonaApi[] }) {
                     >
                       <span className="flex items-center gap-2">
                         <span className="h-2 w-2 rounded-full bg-green-500" />
-                        Jogador #{id}
+                        {nomesOnline[id] ?? `Jogador #${id}`}
                       </span>
                       <button
                         type="button"
