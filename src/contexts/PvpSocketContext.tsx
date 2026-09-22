@@ -296,6 +296,7 @@ interface PvpSocketContextValue {
   responderConvitePartyFn: (aceitar: boolean) => void;
   marcarPronto: (pronto: boolean) => void;
   sairDoGrupo: () => void;
+  expulsarDoGrupo: (idAlvo: number) => void;
   iniciarAventuraEmGrupo: (idZona: number) => void;
   agirGrupo: (tipo: "attack" | "power" | "item", id?: number) => void;
   limparBatalhaGrupo: () => void;
@@ -523,6 +524,11 @@ export function PvpSocketProvider({
       setGrupoAtual(null);
     });
 
+    socket.on("party:expulso", () => {
+      setGrupoAtual(null);
+      setErroParty("Você foi removido do grupo pelo anfitrião.");
+    });
+
     socket.on("party:batalha-iniciada", (payload: BatalhaGrupoIniciadaPayload) => {
       setGrupoAtual(null);
       setResultadoGrupo(null);
@@ -596,10 +602,20 @@ export function PvpSocketProvider({
     socketRef.current?.emit("party:convidar", { idConvidado });
   }, []);
 
-  const responderConvitePartyFn = useCallback((aceitar: boolean) => {
-    socketRef.current?.emit("party:responder-convite", { aceitar });
-    if (!aceitar) setConvitePartyRecebido(null);
-  }, []);
+  const responderConvitePartyFn = useCallback(
+    (aceitar: boolean) => {
+      socketRef.current?.emit("party:responder-convite", { aceitar });
+      if (!aceitar) {
+        setConvitePartyRecebido(null);
+        return;
+      }
+      // O convidado pode estar em qualquer tela do dashboard quando aceita
+      // — sem isso, ele ficava parado onde estava, sem ver o lobby do
+      // grupo que acabou de entrar.
+      router.push("/dashboard/adventure");
+    },
+    [router],
+  );
 
   const marcarPronto = useCallback((pronto: boolean) => {
     socketRef.current?.emit("party:pronto", { pronto });
@@ -608,6 +624,10 @@ export function PvpSocketProvider({
   const sairDoGrupo = useCallback(() => {
     socketRef.current?.emit("party:sair");
     setGrupoAtual(null);
+  }, []);
+
+  const expulsarDoGrupo = useCallback((idAlvo: number) => {
+    socketRef.current?.emit("party:expulsar", { idAlvo });
   }, []);
 
   const iniciarAventuraEmGrupo = useCallback((idZona: number) => {
@@ -667,6 +687,7 @@ export function PvpSocketProvider({
         responderConvitePartyFn,
         marcarPronto,
         sairDoGrupo,
+        expulsarDoGrupo,
         iniciarAventuraEmGrupo,
         agirGrupo,
         limparBatalhaGrupo,

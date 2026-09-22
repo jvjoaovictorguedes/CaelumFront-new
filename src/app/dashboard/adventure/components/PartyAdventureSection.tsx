@@ -6,6 +6,8 @@ import { usePvpSocket } from "@/contexts/PvpSocketContext";
 import { useCharacter } from "@/contexts/CharacterContext";
 import type { ZonaApi } from "./ZoneSelector";
 
+const TAMANHO_MAXIMO_GRUPO = 4;
+
 // Convite pra Aventura em grupo (party) — mesma tela da Aventura solo,
 // só ganha esta seção pra chamar amigos online, esperar todo mundo
 // marcar "pronto" (estilo DDTank) e o anfitrião escolher a área e
@@ -23,11 +25,13 @@ export default function PartyAdventureSection({ zonas }: { zonas: ZonaApi[] }) {
     convidarParaGrupo,
     marcarPronto,
     sairDoGrupo,
+    expulsarDoGrupo,
     iniciarAventuraEmGrupo,
     limparErroParty,
   } = usePvpSocket();
 
   const [mostrarConvidar, setMostrarConvidar] = useState(false);
+  const [mostrarConvidarNoGrupo, setMostrarConvidarNoGrupo] = useState(false);
   const [zonaEscolhida, setZonaEscolhida] = useState<number | "">("");
   const [iniciando, setIniciando] = useState(false);
   const timeoutIniciarRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -62,6 +66,14 @@ export default function PartyAdventureSection({ zonas }: { zonas: ZonaApi[] }) {
     () => Array.from(onlineIds).filter((id) => id !== characterId),
     [onlineIds, characterId],
   );
+
+  // Mesma lista de "quem dá pra chamar", só que também tirando quem já
+  // está no grupo — usada pelo anfitrião pra convidar mais gente sem
+  // precisar sair do lobby (ver seção "Grupo" abaixo).
+  const outrosOnlineForaDoGrupo = useMemo(() => {
+    const idsNoGrupo = new Set(grupoAtual?.membros.map((m) => m.id) ?? []);
+    return outrosOnline.filter((id) => !idsNoGrupo.has(id));
+  }, [outrosOnline, grupoAtual]);
 
   if (!grupoAtual) {
     return (
@@ -132,7 +144,7 @@ export default function PartyAdventureSection({ zonas }: { zonas: ZonaApi[] }) {
     <div className="w-full rounded-2xl border-2 border-[#F3B43F] bg-[#292018]/90 p-4 text-white shadow-xl">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="font-imFeel text-xl">
-          Grupo ({grupoAtual.membros.length}/4){souHost ? " — você é o anfitrião" : ""}
+          Grupo ({grupoAtual.membros.length}/{TAMANHO_MAXIMO_GRUPO}){souHost ? " — você é o anfitrião" : ""}
         </h2>
         <button
           type="button"
@@ -155,8 +167,19 @@ export default function PartyAdventureSection({ zonas }: { zonas: ZonaApi[] }) {
                 <span className="ml-2 text-[10px] uppercase text-[#F3B43F]">anfitrião</span>
               )}
             </span>
-            <span className={`text-xs font-bold ${membro.pronto ? "text-green-400" : "text-white/40"}`}>
-              {membro.pronto ? "Pronto" : "Aguardando"}
+            <span className="flex items-center gap-3">
+              <span className={`text-xs font-bold ${membro.pronto ? "text-green-400" : "text-white/40"}`}>
+                {membro.pronto ? "Pronto" : "Aguardando"}
+              </span>
+              {souHost && membro.id !== characterId && (
+                <button
+                  type="button"
+                  onClick={() => expulsarDoGrupo(membro.id)}
+                  className="rounded-lg border border-red-400/50 px-2 py-1 text-[10px] font-bold text-red-300 transition hover:bg-red-500/10"
+                >
+                  Remover
+                </button>
+              )}
             </span>
           </li>
         ))}
@@ -169,6 +192,48 @@ export default function PartyAdventureSection({ zonas }: { zonas: ZonaApi[] }) {
             ok
           </button>
         </p>
+      )}
+
+      {souHost && grupoAtual.membros.length < TAMANHO_MAXIMO_GRUPO && (
+        <div className="mt-4 border-t border-white/10 pt-3">
+          <button
+            type="button"
+            onClick={() => setMostrarConvidarNoGrupo((atual) => !atual)}
+            className="rounded-lg border border-[#F3B43F]/60 px-3 py-1.5 text-xs font-bold text-[#F3B43F] transition hover:bg-[#F3B43F]/10"
+          >
+            {mostrarConvidarNoGrupo ? "Fechar" : "Chamar mais alguém"}
+          </button>
+
+          {mostrarConvidarNoGrupo && (
+            <div className="mt-3">
+              {outrosOnlineForaDoGrupo.length === 0 ? (
+                <p className="text-sm text-white/60">Nenhum outro jogador online agora.</p>
+              ) : (
+                <ul className="flex flex-col gap-2">
+                  {outrosOnlineForaDoGrupo.map((id) => (
+                    <li
+                      key={id}
+                      className="flex items-center justify-between rounded-lg bg-black/30 px-3 py-2 text-sm"
+                    >
+                      <span className="flex items-center gap-2">
+                        <span className="h-2 w-2 rounded-full bg-green-500" />
+                        Jogador #{id}
+                      </span>
+                      <button
+                        type="button"
+                        disabled={convitePartyEnviadoPara === id}
+                        onClick={() => convidarParaGrupo(id)}
+                        className="rounded-lg border border-[#F3B43F]/60 px-3 py-1 text-xs font-bold text-[#F3B43F] transition hover:bg-[#F3B43F]/10 disabled:opacity-50"
+                      >
+                        {convitePartyEnviadoPara === id ? "Convite enviado..." : "Convidar"}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+        </div>
       )}
 
       <div className="mt-4 flex flex-wrap items-center gap-3">
