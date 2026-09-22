@@ -3,22 +3,46 @@
 import { useMemo, useState } from "react";
 import ShopItem, { type ShopItemData } from "./ShopItem";
 
-type Secao = "Equipamentos" | "Consumiveis" | "Materiais";
+type Secao = "Equipamentos" | "Acessorios" | "Botas" | "Consumiveis" | "Materiais";
 
-const SECOES: { chave: Secao; titulo: string; tipos: ShopItemData["tipo_item"][] }[] = [
-  { chave: "Equipamentos", titulo: "Equipamentos", tipos: ["Arma", "Escudo", "Capacete", "Armadura"] },
-  { chave: "Consumiveis", titulo: "Consumíveis", tipos: ["Consumivel"] },
-  { chave: "Materiais", titulo: "Materiais", tipos: ["Material"] },
+// "Botas" é Armadura com slot_equipamento "Pes" — mesmo tipo_item das
+// peças de peito, só separadas aqui por seção pra facilitar achar.
+function ehBota(item: ShopItemData) {
+  return item.tipo_item === "Armadura" && item.armorProperties?.slot_equipamento === "Pes";
+}
+
+const SECOES: { chave: Secao; titulo: string; pertence: (item: ShopItemData) => boolean }[] = [
+  {
+    chave: "Equipamentos",
+    titulo: "Equipamentos",
+    pertence: (item) =>
+      item.tipo_item === "Arma" ||
+      item.tipo_item === "Escudo" ||
+      item.tipo_item === "Capacete" ||
+      (item.tipo_item === "Armadura" && !ehBota(item)),
+  },
+  {
+    chave: "Acessorios",
+    titulo: "Acessórios",
+    pertence: (item) => item.tipo_item === "Acessorio1" || item.tipo_item === "Acessorio2",
+  },
+  {
+    chave: "Botas",
+    titulo: "Botas",
+    pertence: ehBota,
+  },
+  { chave: "Consumiveis", titulo: "Consumíveis", pertence: (item) => item.tipo_item === "Consumivel" },
+  { chave: "Materiais", titulo: "Materiais", pertence: (item) => item.tipo_item === "Material" },
 ];
 
 // Só "Equipamentos" ganha os filtros de subtipo (estilo loja de LoL:
-// desmarcar um papel some com os itens dele na hora) — Consumíveis e
-// Materiais já são pequenos o bastante pra não precisar disso.
-const FILTROS_EQUIPAMENTO: { tipo: ShopItemData["tipo_item"]; label: string; icone: string }[] = [
-  { tipo: "Arma", label: "Armas", icone: "⚔️" },
-  { tipo: "Escudo", label: "Escudos", icone: "🛡️" },
-  { tipo: "Capacete", label: "Elmos", icone: "🪖" },
-  { tipo: "Armadura", label: "Armaduras", icone: "👕" },
+// desmarcar um papel some com os itens dele na hora) — as demais seções
+// já são pequenas o bastante pra não precisar disso.
+const FILTROS_EQUIPAMENTO: { tipo: ShopItemData["tipo_item"]; label: string }[] = [
+  { tipo: "Arma", label: "Armas" },
+  { tipo: "Escudo", label: "Escudos" },
+  { tipo: "Capacete", label: "Elmos" },
+  { tipo: "Armadura", label: "Armaduras" },
 ];
 
 interface ShopCatalogProps {
@@ -38,7 +62,7 @@ export default function ShopCatalog({
     () =>
       SECOES.map((secao) => ({
         ...secao,
-        itens: itens.filter((item) => secao.tipos.includes(item.tipo_item)),
+        itens: itens.filter((item) => secao.pertence(item)),
       })).filter((secao) => secao.itens.length > 0),
     [itens],
   );
@@ -86,7 +110,7 @@ export default function ShopCatalog({
 
   return (
     <div className="flex flex-col gap-5">
-      {/* SEÇÕES: Equipamentos / Consumíveis / Materiais */}
+      {/* SEÇÕES: Equipamentos / Acessórios / Botas / Consumíveis / Materiais */}
       <div className="flex flex-wrap gap-2 border-b border-white/10 pb-3">
         {secoesComItens.map((secao) => {
           const ativa = secao.chave === secaoAtiva;
@@ -113,14 +137,14 @@ export default function ShopCatalog({
       {/* FILTROS DE SUBTIPO — só dentro de Equipamentos */}
       {secaoSelecionada?.chave === "Equipamentos" && filtrosDisponiveis.length > 0 && (
         <div className="flex flex-wrap gap-2">
-          {filtrosDisponiveis.map(({ tipo, label, icone }) => {
+          {filtrosDisponiveis.map(({ tipo, label }) => {
             const marcado = filtrosEquipamento.has(tipo);
             return (
               <label
                 key={tipo}
                 className={`flex cursor-pointer select-none items-center gap-2 rounded-full border-2 px-3 py-1.5 text-sm font-bold transition ${
                   marcado
-                    ? "border-[#F3B43F] bg-[#F3B43F]/20 text-[#F3B43F]"
+                    ? "border-[#F3B43F] bg-[#F3B43F] text-[#292018]"
                     : "border-white/20 bg-transparent text-white/40 hover:border-white/40 hover:text-white/70"
                 }`}
               >
@@ -130,7 +154,6 @@ export default function ShopCatalog({
                   onChange={() => alternarFiltro(tipo)}
                   className="h-3.5 w-3.5 accent-[#F3B43F]"
                 />
-                <span aria-hidden="true">{icone}</span>
                 {label}
               </label>
             );
