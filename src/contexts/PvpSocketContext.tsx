@@ -259,6 +259,83 @@ export interface BatalhaGrupoFimPayload {
   drops: Record<string, { tipo: "item" | "ouro"; item?: { id: number; nome: string; raridade: string }; dinheiro?: number }>;
 }
 
+// Boss da Guilda V2.0 (batalha em tempo real) — mesmo modelo de payload
+// da Aventura em grupo acima, só trocando "inimigo"/"zona" por "chefe"
+// e sem consumíveis (o boss da guilda não aceita ação tipo "item").
+export interface MembroBossGuilda {
+  id: number;
+  nome: string;
+  classe: string | null;
+}
+
+export interface LobbyBossGuildaPayload {
+  idGuild: number;
+  participantes: MembroBossGuilda[];
+}
+
+export interface AliadoBossGuilda {
+  id: number;
+  nome: string;
+  genero: string;
+  classe?: string;
+  vidaMax: number;
+  manaMax: number;
+  vida: number;
+  mana: number;
+  poderes: PoderGrupo[];
+}
+
+export interface BatalhaBossGuildaIniciadaPayload {
+  battleId: number;
+  nomeChefe: string;
+  vidaAtual: number;
+  vidaTotal: number;
+  membros: AliadoBossGuilda[];
+  ordem: string[];
+  turnoDe: string;
+  rodada: number;
+  prazoSegundos: number;
+}
+
+export interface TurnoBossGuildaPayload {
+  battleId: number;
+  origem: "aliado" | "chefe";
+  idAtor?: string;
+  idAlvo?: number;
+  nomeAcao: string;
+  dano: number;
+  cura?: number;
+  manaCurada?: number;
+  esquivou: boolean;
+  vidaChefe?: number;
+  vidaAliado?: number;
+  manaAliado?: number;
+  rodada: number;
+}
+
+export interface ProximoTurnoBossGuildaPayload {
+  battleId: number;
+  turnoDe: string;
+  prazoSegundos: number;
+  rodada: number;
+}
+
+export interface RecompensasBossGuilda {
+  xpGuilda: number;
+  subiuNivel: boolean;
+  niveisGanhos: number;
+  participantes: { idPersonagem: number; dinheiro: number; xp: number; nivel?: number }[];
+  premioMaiorDano: { idPersonagem: number; ouro: number } | null;
+}
+
+export interface BatalhaBossGuildaFimPayload {
+  battleId: number;
+  vitoria: boolean;
+  motivo: string;
+  vidaChefe: number;
+  recompensas: RecompensasBossGuilda | null;
+}
+
 interface PvpSocketContextValue {
   conectado: boolean;
   onlineIds: Set<number>;
@@ -303,6 +380,20 @@ interface PvpSocketContextValue {
   agirGrupo: (tipo: "attack" | "power" | "item", id?: number) => void;
   limparBatalhaGrupo: () => void;
   limparErroParty: () => void;
+  // Boss da Guilda V2.0 (batalha em tempo real)
+  lobbyBossGuilda: LobbyBossGuildaPayload | null;
+  erroBossGuilda: string;
+  batalhaBossGuilda: BatalhaBossGuildaIniciadaPayload | null;
+  turnosBossGuilda: TurnoBossGuildaPayload[];
+  turnoAtualBossGuilda: string | null;
+  rodadaAtualBossGuilda: number;
+  resultadoBossGuilda: BatalhaBossGuildaFimPayload | null;
+  entrarNoBossGuilda: () => void;
+  sairDoBossGuilda: () => void;
+  iniciarBossGuildaAoVivo: () => void;
+  agirBossGuilda: (tipo: "attack" | "power", idPoder?: number) => void;
+  limparBatalhaBossGuilda: () => void;
+  limparErroBossGuilda: () => void;
 }
 
 const PvpSocketContext = createContext<PvpSocketContextValue | null>(null);
@@ -344,6 +435,13 @@ export function PvpSocketProvider({
   const [turnoAtualGrupo, setTurnoAtualGrupo] = useState<string | null>(null);
   const [rodadaAtualGrupo, setRodadaAtualGrupo] = useState(1);
   const [resultadoGrupo, setResultadoGrupo] = useState<BatalhaGrupoFimPayload | null>(null);
+  const [lobbyBossGuilda, setLobbyBossGuilda] = useState<LobbyBossGuildaPayload | null>(null);
+  const [erroBossGuilda, setErroBossGuilda] = useState("");
+  const [batalhaBossGuilda, setBatalhaBossGuilda] = useState<BatalhaBossGuildaIniciadaPayload | null>(null);
+  const [turnosBossGuilda, setTurnosBossGuilda] = useState<TurnoBossGuildaPayload[]>([]);
+  const [turnoAtualBossGuilda, setTurnoAtualBossGuilda] = useState<string | null>(null);
+  const [rodadaAtualBossGuilda, setRodadaAtualBossGuilda] = useState(1);
+  const [resultadoBossGuilda, setResultadoBossGuilda] = useState<BatalhaBossGuildaFimPayload | null>(null);
 
   useEffect(() => {
     const usaMocks = process.env.NEXT_PUBLIC_USE_MOCKS === "true";
@@ -558,6 +656,41 @@ export function PvpSocketProvider({
       setErroParty(mensagem);
     });
 
+    // Boss da Guilda V2.0 (batalha em tempo real)
+    socket.on("guildboss:lobby-atualizada", (payload: LobbyBossGuildaPayload) => {
+      setLobbyBossGuilda(payload);
+    });
+
+    socket.on("guildboss:sala-desfeita", () => {
+      setLobbyBossGuilda(null);
+    });
+
+    socket.on("guildboss:batalha-iniciada", (payload: BatalhaBossGuildaIniciadaPayload) => {
+      setLobbyBossGuilda(null);
+      setResultadoBossGuilda(null);
+      setTurnosBossGuilda([]);
+      setBatalhaBossGuilda(payload);
+      setTurnoAtualBossGuilda(payload.turnoDe);
+      setRodadaAtualBossGuilda(payload.rodada);
+    });
+
+    socket.on("guildboss:turno-resultado", (payload: TurnoBossGuildaPayload) => {
+      setTurnosBossGuilda((atual) => [...atual, payload]);
+    });
+
+    socket.on("guildboss:proximo-turno", (payload: ProximoTurnoBossGuildaPayload) => {
+      setTurnoAtualBossGuilda(payload.turnoDe);
+      setRodadaAtualBossGuilda(payload.rodada);
+    });
+
+    socket.on("guildboss:batalha-fim", (payload: BatalhaBossGuildaFimPayload) => {
+      setResultadoBossGuilda(payload);
+    });
+
+    socket.on("guildboss:erro", ({ mensagem }: { mensagem: string }) => {
+      setErroBossGuilda(mensagem);
+    });
+
     return () => {
       socket.disconnect();
       socketRef.current = null;
@@ -674,6 +807,32 @@ export function PvpSocketProvider({
 
   const limparErroParty = useCallback(() => setErroParty(""), []);
 
+  const entrarNoBossGuilda = useCallback(() => {
+    socketRef.current?.emit("guildboss:entrar");
+  }, []);
+
+  const sairDoBossGuilda = useCallback(() => {
+    socketRef.current?.emit("guildboss:sair");
+    setLobbyBossGuilda(null);
+  }, []);
+
+  const iniciarBossGuildaAoVivo = useCallback(() => {
+    socketRef.current?.emit("guildboss:iniciar");
+  }, []);
+
+  const agirBossGuilda = useCallback((tipo: "attack" | "power", idPoder?: number) => {
+    socketRef.current?.emit("guildboss:acao", { tipo, idPoder: tipo === "power" ? idPoder : undefined });
+  }, []);
+
+  const limparBatalhaBossGuilda = useCallback(() => {
+    setBatalhaBossGuilda(null);
+    setTurnosBossGuilda([]);
+    setTurnoAtualBossGuilda(null);
+    setResultadoBossGuilda(null);
+  }, []);
+
+  const limparErroBossGuilda = useCallback(() => setErroBossGuilda(""), []);
+
   return (
     <PvpSocketContext.Provider
       value={{
@@ -717,6 +876,19 @@ export function PvpSocketProvider({
         agirGrupo,
         limparBatalhaGrupo,
         limparErroParty,
+        lobbyBossGuilda,
+        erroBossGuilda,
+        batalhaBossGuilda,
+        turnosBossGuilda,
+        turnoAtualBossGuilda,
+        rodadaAtualBossGuilda,
+        resultadoBossGuilda,
+        entrarNoBossGuilda,
+        sairDoBossGuilda,
+        iniciarBossGuildaAoVivo,
+        agirBossGuilda,
+        limparBatalhaBossGuilda,
+        limparErroBossGuilda,
       }}
     >
       {children}

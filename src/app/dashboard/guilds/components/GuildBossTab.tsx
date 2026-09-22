@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import axiosInstance from "@/utils/axiosIntance";
+import { usePvpSocket } from "@/contexts/PvpSocketContext";
 import type { Permissao } from "./types";
 
 interface ChefeBossApi {
@@ -15,6 +16,7 @@ interface ChefeBossApi {
   xp_guilda_concedido: number;
   pool_dinheiro_total: number;
   pool_xp_total: number;
+  premio_maior_dano: number;
 }
 
 interface TentativaApi {
@@ -28,6 +30,7 @@ interface TentativaApi {
 interface ContribuidorApi {
   personagem: { id: number; nome: string } | null;
   dano_total: string;
+  numero_ataques: number;
 }
 
 interface StatusBossApi {
@@ -54,6 +57,17 @@ export default function GuildBossTab({
   idGuild: number;
   pode: Record<Permissao, boolean>;
 }) {
+  const {
+    lobbyBossGuilda,
+    erroBossGuilda,
+    batalhaBossGuilda,
+    resultadoBossGuilda,
+    entrarNoBossGuilda,
+    sairDoBossGuilda,
+    iniciarBossGuildaAoVivo,
+    limparErroBossGuilda,
+  } = usePvpSocket();
+
   const [status, setStatus] = useState<StatusBossApi | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [processando, setProcessando] = useState(false);
@@ -71,6 +85,13 @@ export default function GuildBossTab({
       setCarregando(false);
     }
   }, [idGuild]);
+
+  // A luta ao vivo persiste dano direto no banco a cada golpe — quando
+  // ela termina (vitória, derrota ou desconexão), o status/ranking desta
+  // aba fica desatualizado até recarregar de novo.
+  useEffect(() => {
+    if (resultadoBossGuilda) carregar();
+  }, [resultadoBossGuilda, carregar]);
 
   useEffect(() => {
     carregar();
@@ -161,6 +182,8 @@ export default function GuildBossTab({
             <p className="mt-2 text-xs text-white/50">
               Janela: {status.chefe.janela_horas}h · Custo de liberação: {status.chefe.custo_liberacao.toLocaleString()} de
               ouro do Tesouro · +{status.chefe.xp_guilda_concedido} XP de Guilda ao derrotar
+              {status.chefe.premio_maior_dano > 0 &&
+                ` · +${status.chefe.premio_maior_dano.toLocaleString()} de ouro extra pra quem causar mais dano`}
             </p>
 
             {bossAtivo && tentativa ? (
@@ -193,6 +216,57 @@ export default function GuildBossTab({
                     Você causou {ultimoAtaque.dano} de dano.
                     {ultimoAtaque.derrotado && " O Boss foi derrotado — recompensas distribuídas!"}
                   </p>
+                )}
+
+                {!batalhaBossGuilda && (
+                  <div className="mt-4 rounded-lg border border-[#F3B43F]/30 bg-black/20 p-3">
+                    <p className="text-xs uppercase tracking-widest text-[#F3B43F]/80">Luta ao vivo (V2.0)</p>
+                    <p className="mt-1 text-xs text-white/60">
+                      Entre numa sala com outros membros online e enfrentem o Boss em tempo real — ele
+                      revida com dano crescente a cada rodada. Consumíveis não podem ser usados aqui.
+                    </p>
+
+                    {lobbyBossGuilda ? (
+                      <div className="mt-2">
+                        <p className="text-xs text-white/60">
+                          Na sala: {lobbyBossGuilda.participantes.map((p) => p.nome).join(", ")}
+                        </p>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            onClick={iniciarBossGuildaAoVivo}
+                            className="rounded-lg bg-[#F3B43F] px-3 py-1.5 text-xs font-bold text-black transition hover:bg-[#e0a52f]"
+                          >
+                            Iniciar Luta
+                          </button>
+                          <button
+                            type="button"
+                            onClick={sairDoBossGuilda}
+                            className="rounded-lg border border-white/30 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-white/10"
+                          >
+                            Sair da sala
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={entrarNoBossGuilda}
+                        className="mt-2 rounded-lg bg-[#BC8418] px-3 py-1.5 text-xs font-bold text-black transition hover:bg-[#a5710f]"
+                      >
+                        Entrar na luta ao vivo
+                      </button>
+                    )}
+
+                    {erroBossGuilda && (
+                      <p className="mt-2 text-xs text-red-400">
+                        {erroBossGuilda}{" "}
+                        <button type="button" onClick={limparErroBossGuilda} className="underline">
+                          ok
+                        </button>
+                      </p>
+                    )}
+                  </div>
                 )}
               </div>
             ) : status.liberado_esta_semana ? (
@@ -230,8 +304,14 @@ export default function GuildBossTab({
           <div className="flex flex-col gap-1">
             {status.contribuidores.map((c, indice) => (
               <div key={indice} className="flex justify-between gap-2 text-sm text-white/80">
-                <span className="min-w-0 truncate">{c.personagem?.nome ?? "Personagem removido"}</span>
-                <span className="shrink-0 text-white/50">{Number(c.dano_total).toLocaleString()} de dano</span>
+                <span className="min-w-0 truncate">
+                  {indice === 0 && Number(c.dano_total) > 0 && "🏆 "}
+                  {c.personagem?.nome ?? "Personagem removido"}
+                </span>
+                <span className="shrink-0 text-white/50">
+                  {Number(c.dano_total).toLocaleString()} de dano · {c.numero_ataques} ataque
+                  {c.numero_ataques === 1 ? "" : "s"}
+                </span>
               </div>
             ))}
           </div>

@@ -6,6 +6,7 @@ import { CharacterProvider } from "@/contexts/CharacterContext";
 import { ToastProvider } from "@/contexts/ToastContext";
 import SessionKeepAlive from "@/components/SessionKeepAlive/SessionKeepAlive";
 import PartyBattleArena from "./adventure/components/PartyBattleArena";
+import GuildBossLiveArena from "./guilds/components/GuildBossLiveArena";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -34,6 +35,7 @@ export default async function DashboardLayout({
             </main>
           </div>
           <PartyBattleArena />
+          <GuildBossLiveArena />
         </PvpSocketProvider>
       </CharacterProvider>
     </ToastProvider>
