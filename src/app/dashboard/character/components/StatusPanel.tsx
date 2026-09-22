@@ -36,6 +36,10 @@ export default function StatusPanel({
 
   return (
     <div className="flex flex-col gap-4">
+      {/* Bloco central: avatar à esquerda, identidade no centro e os
+          atributos à direita no desktop; tudo empilhado no mobile, sem
+          perder a ordem de leitura. */}
+      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[1fr_minmax(18rem,24rem)]">
       <div className="grid grid-cols-1 gap-4 rounded-2xl border border-black/10 bg-[#3a2f24] p-5 shadow-lg sm:grid-cols-[auto_1fr]">
         <div className="flex flex-col items-center gap-2">
           <div
@@ -91,7 +95,9 @@ export default function StatusPanel({
       </div>
 
       <CharacterAttributes character={character} bonus={bonus} />
+      </div>
 
+      {/* Rodapé do Status: competitivo (Elo) + troféus de torneio. */}
       <PvpStatsCard characterId={character.id} />
 
       {pickerAberto && (

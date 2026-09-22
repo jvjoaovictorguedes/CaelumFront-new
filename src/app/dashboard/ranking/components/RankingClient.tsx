@@ -4,17 +4,31 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import axiosInstance from "@/utils/axiosIntance";
+import { AVISO_CASUAL_NAO_COMPETITIVO, rotuloDeElo } from "@/lib/api/pvp";
 
-type TipoRanking = "level" | "gold" | "guild" | "pvp" | "forge" | "boss";
+// O PvP era UMA aba só ("pvp"), que misturava casual e competitivo. Com a
+// Arena Ranqueada v2 os dois modos têm rankings independentes: o casual
+// não altera Elo nem posição no ranqueado.
+type TipoRanking =
+  | "level"
+  | "gold"
+  | "guild"
+  | "pvp_casual"
+  | "pvp_ranked"
+  | "forge"
+  | "boss";
 
 const ABAS: { tipo: TipoRanking; label: string }[] = [
   { tipo: "level", label: "Nível" },
   { tipo: "gold", label: "Gold" },
   { tipo: "guild", label: "Guildas" },
-  { tipo: "pvp", label: "PvP" },
+  { tipo: "pvp_ranked", label: "PvP Ranqueado" },
+  { tipo: "pvp_casual", label: "PvP Casual" },
   { tipo: "forge", label: "Forja" },
   { tipo: "boss", label: "Boss da Guilda" },
 ];
+
+const TIPOS_PVP: TipoRanking[] = ["pvp_casual", "pvp_ranked"];
 
 interface ItemRanking {
   posicao: number;
@@ -33,6 +47,10 @@ interface ItemRanking {
   combates?: number;
   rank?: string;
   bosses_derrotados_total?: number;
+  // Ranqueado v2
+  rating?: number;
+  tier?: string | null;
+  division?: string | null;
 }
 
 interface MinhaPosicaoNivelGoldForja {
@@ -50,6 +68,9 @@ interface MinhaPosicaoPvp {
   motivo?: string;
   posicao?: number;
   pontuacao?: number;
+  rating?: number;
+  tier?: string | null;
+  division?: string | null;
   vitorias?: number;
   derrotas?: number;
   saldo?: number;
@@ -89,8 +110,10 @@ function valorPrincipal(tipo: TipoRanking, item: ItemRanking): string {
       return `${(item.experiencia ?? 0).toLocaleString("pt-BR")} XP`;
     case "forge":
       return `Forja Nível ${item.forja_nivel} · ${(item.forja_xp ?? 0).toLocaleString("pt-BR")} XP`;
-    case "pvp":
-      return `Pontuação: ${item.pontuacao}`;
+    case "pvp_ranked":
+      return `${rotuloDeElo(item.tier, item.division)} · ${item.rating ?? item.pontuacao ?? 0}`;
+    case "pvp_casual":
+      return `Pontuação: ${item.pontuacao ?? 0}`;
     case "boss":
       return `${item.bosses_derrotados_total ?? 0} Boss(es) derrotado(s) · Ranque ${item.rank}`;
     default:
@@ -171,6 +194,12 @@ export default function RankingClient() {
 
       {!carregando && !erro && dados && (
         <>
+          {tipo === "pvp_casual" && (
+            <p className="rounded-xl border border-[#F3B43F]/30 bg-black/30 px-4 py-2 text-xs leading-relaxed text-white/65">
+              {AVISO_CASUAL_NAO_COMPETITIVO}
+            </p>
+          )}
+
           <MinhaPosicaoBox tipo={tipo} minhaPosicao={dados.minhaPosicao} />
 
           {dados.itens.length === 0 ? (
@@ -197,7 +226,7 @@ export default function RankingClient() {
 
                       <div className="shrink-0 text-right text-sm">
                         <p className="font-bold text-white">{valorPrincipal(tipo, item)}</p>
-                        {tipo === "pvp" && (
+                        {TIPOS_PVP.includes(tipo) && (
                           <p className="text-xs text-white/60">
                             {item.vitorias}V · {item.derrotas}D · Saldo: {item.saldo! >= 0 ? "+" : ""}
                             {item.saldo} · {item.combates} combates
@@ -249,7 +278,7 @@ function MinhaPosicaoBox({
 }) {
   if (!minhaPosicao) return null;
 
-  if (tipo === "pvp") {
+  if (TIPOS_PVP.includes(tipo)) {
     const posicaoPvp = minhaPosicao as MinhaPosicaoPvp;
     return (
       <div className="rounded-xl border border-[#F3B43F]/40 bg-black/30 p-3 text-white">
@@ -258,7 +287,10 @@ function MinhaPosicaoBox({
           <>
             <p className="font-imFeel text-2xl">#{posicaoPvp.posicao}</p>
             <p className="text-xs text-white/60">
-              Pontuação: {posicaoPvp.pontuacao} · {posicaoPvp.vitorias}V · {posicaoPvp.derrotas}D · Saldo:{" "}
+              {tipo === "pvp_ranked"
+                ? `${rotuloDeElo(posicaoPvp.tier, posicaoPvp.division)} · ${posicaoPvp.rating ?? posicaoPvp.pontuacao ?? 0}`
+                : `Pontuação: ${posicaoPvp.pontuacao ?? 0}`}{" "}
+              · {posicaoPvp.vitorias}V · {posicaoPvp.derrotas}D · Saldo:{" "}
               {posicaoPvp.saldo! >= 0 ? "+" : ""}
               {posicaoPvp.saldo}
             </p>
