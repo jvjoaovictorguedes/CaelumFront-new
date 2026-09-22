@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import axiosInstance from "@/utils/axiosIntance";
 import { resolveMediaUrl } from "@/utils/media-url";
 import { useCharacter } from "@/contexts/CharacterContext";
+import CombatArena from "../../adventure/components/CombatArena";
 
 type TipoProfissao = "Mineracao" | "Silvicultura" | "Exploracao";
 
@@ -47,8 +48,40 @@ interface ItemGanho {
   imagem_url?: string | null;
 }
 
+// Mesmo formato de InimigoApi em adventure/page.tsx — o inimigo da
+// interrupção vem calibrado igual ao de uma Área de Caça normal (ver
+// expeditionService.coletar), só que sem zona nenhuma por trás.
+interface InimigoInterrupcao {
+  nome: string;
+  nivel: number;
+  vida_atual: number;
+  vida_maxima: number;
+  forca: number;
+  vitalidade: number;
+  agilidade: number;
+  velocidade: number;
+  dano_base: number;
+}
+
+interface HabilidadeApi {
+  id: number;
+  is_active: boolean;
+  Power: {
+    id: number;
+    nome: string;
+    descricao: string;
+    tipo_poder: string;
+    custo_mana: number;
+    dano_base: number;
+    cura_base: number;
+    imagem_url?: string | null;
+  };
+}
+
 interface ResultadoColeta {
-  resultado: string;
+  interrompida: boolean;
+  enemy: InimigoInterrupcao | null;
+  resultado: string | null;
   item_ganho: ItemGanho | null;
   quantidade: number;
   xp_ganho: number;
@@ -148,8 +181,37 @@ export default function ExpeditionClient() {
   const [resultado, setResultado] = useState<ResultadoColeta | null>(null);
   const [erro, setErro] = useState("");
   const [agora, setAgora] = useState(() => Date.now());
-  const { refreshCharacter } = useCharacter();
+  const [regiaoInterrompida, setRegiaoInterrompida] = useState<Regiao | null>(null);
+  const [inimigoInterrupcao, setInimigoInterrupcao] = useState<InimigoInterrupcao | null>(null);
+  const [habilidadesCombate, setHabilidadesCombate] = useState<HabilidadeApi[]>([]);
+  const { character, refreshCharacter } = useCharacter();
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Poderes pro combate de interrupção (ver CombatArena abaixo) — busca
+  // uma vez, igual dashboard/adventure/page.tsx faz no servidor; aqui é
+  // client-side porque a interrupção só se sabe depois de um clique em
+  // "Iniciar Expedição", não no carregamento da página.
+  useEffect(() => {
+    if (!character?.id) return;
+    let cancelado = false;
+    axiosInstance
+      .get<{ data?: { characterAbilities?: HabilidadeApi[] } }>("/character-abilities", {
+        params: { characterId: character.id },
+      })
+      .then((resp) => {
+        if (cancelado) return;
+        const todas = resp.data?.data?.characterAbilities ?? [];
+        setHabilidadesCombate(
+          todas.filter((h) => h.is_active && h.Power?.tipo_poder === "Ativo"),
+        );
+      })
+      .catch((error) => {
+        console.error("Erro ao carregar habilidades pra combate de expedição:", error);
+      });
+    return () => {
+      cancelado = true;
+    };
+  }, [character?.id]);
 
   const carregarProfissoes = useCallback(async () => {
     try {
@@ -212,6 +274,24 @@ export default function ExpeditionClient() {
         `/expeditions/regions/${regiao.id}/collect`,
       );
       const dados = resp.data.data;
+
+      // O cooldown foi consumido do mesmo jeito (ver expeditionService.
+      // coletar) mesmo sem ganhar recurso, então a barra/relógio da
+      // profissão ainda precisa refletir isso.
+      setProfissoes((atuais) =>
+        atuais.map((profissao) =>
+          profissao.tipo === regiao.profissao
+            ? { ...profissao, proxima_coleta_em: dados.proxima_coleta_em }
+            : profissao,
+        ),
+      );
+
+      if (dados.interrompida && dados.enemy) {
+        setRegiaoInterrompida(regiao);
+        setInimigoInterrupcao(dados.enemy);
+        return;
+      }
+
       setResultado(dados);
       setProfissoes((atuais) =>
         atuais.map((profissao) =>
@@ -245,8 +325,34 @@ export default function ExpeditionClient() {
     );
   }
 
+  function encerrarInterrupcao() {
+    setInimigoInterrupcao(null);
+    setRegiaoInterrompida(null);
+    refreshCharacter();
+  }
+
   return (
     <div className="flex flex-col gap-4">
+      {/* Interrupção de monstro — cobre a tela inteira (fixed inset-0,
+          ver CombatArena) igual o combate normal da Aventura; ao
+          terminar (vitória ou derrota), some e devolve pra tela de
+          Expedição normal. */}
+      {character && inimigoInterrupcao && (
+        <CombatArena
+          key={`expedicao-${inimigoInterrupcao.nome}-${Date.now()}`}
+          character={character}
+          abilities={habilidadesCombate}
+          initialEnemy={inimigoInterrupcao}
+          onVitoria={encerrarInterrupcao}
+          onDerrota={encerrarInterrupcao}
+          labelBotaoVitoria="Voltar à expedição"
+          tituloZona={regiaoInterrompida ? regiaoInterrompida.nome : "Expedição"}
+          tituloArena="Emboscada!"
+          aoSairEndpoint={null}
+          aoSairRota="/dashboard/expedition"
+        />
+      )}
+
       {erro && (
         <p className="rounded-xl border border-red-500/40 bg-[#292018]/90 p-3 text-sm text-red-300">{erro}</p>
       )}

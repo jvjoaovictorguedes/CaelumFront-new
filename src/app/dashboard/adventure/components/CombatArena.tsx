@@ -119,6 +119,14 @@ interface CombatArenaProps {
   // usada pra escolher o fundo da arena por nome/imagem_url, não afeta a
   // lógica de combate.
   zona?: { id: number; nome: string; imagem_url: string | null } | null;
+  // Pra onde "← Retornar"/"Sair mesmo assim" navega e o que chama antes
+  // (ver confirmarSaida) — default é o comportamento de sempre (encerra
+  // a sessão de Área de Caça e volta pra Aventura). Um chamador fora da
+  // Aventura (ex.: interrupção de monstro na Expedição, ver
+  // ExpeditionClient.tsx) não tem sessão de caça nenhuma pra encerrar,
+  // então passa `aoSairEndpoint={null}` e a rota de volta certa.
+  aoSairEndpoint?: string | null;
+  aoSairRota?: string;
 }
 
 interface FloatingText {
@@ -188,6 +196,8 @@ export default function CombatArena({
   tituloZona = "Zona de combate",
   tituloArena = "Aventura",
   zona = null,
+  aoSairEndpoint = "/adventure/leave",
+  aoSairRota = "/dashboard/adventure",
 }: CombatArenaProps) {
   const router = useRouter();
 
@@ -336,12 +346,16 @@ export default function CombatArena({
       // Sem isso a sessão de caça continuava ativa no servidor — ao
       // voltar pra Aventura o jogador caía direto de novo neste mesmo
       // combate em vez de ir pra seleção de área (bug reportado: "buga
-      // e me deixa travado no bosque que eu escolhi").
-      await axiosInstance.post("/adventure/leave");
+      // e me deixa travado no bosque que eu escolhi"). Chamador fora da
+      // Aventura (aoSairEndpoint=null, ver ExpeditionClient.tsx) não tem
+      // sessão nenhuma pra encerrar.
+      if (aoSairEndpoint) {
+        await axiosInstance.post(aoSairEndpoint);
+      }
     } catch (error) {
       console.error("Erro ao sair da área de caça:", error);
     } finally {
-      router.push("/dashboard/adventure");
+      router.push(aoSairRota);
     }
   }
 
