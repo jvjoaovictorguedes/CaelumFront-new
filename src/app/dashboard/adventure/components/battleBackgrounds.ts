@@ -4,6 +4,12 @@
 export const FUNDO_POR_ZONA: Record<string, string> = {
   "Bosque de Sussurros": "/images/backgrounds/selva-teste.jpg",
   "Terras Devastadas": "/images/backgrounds/terras-devastadas.jpg",
+  // Faltava essa zona aqui — Draconídeo Jovem (Covil do Minotauro) não
+  // tem fundo próprio em FUNDO_POR_MONSTRO, a zona nunca tem imagem_url
+  // vinda do servidor (sempre null), e sem essa entrada as três
+  // prioridades de fundoDeBatalha erravam todas, caindo no gradiente
+  // padrão em vez de um fundo temático (bug reportado).
+  "Covil do Minotauro": "/images/backgrounds/covil-minotauro.jpg",
 };
 
 export const FUNDO_POR_MONSTRO: Record<string, string> = {
