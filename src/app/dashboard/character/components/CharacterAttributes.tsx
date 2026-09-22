@@ -183,18 +183,18 @@ export default function CharacterAttributes({
         </div>
       ))}
 
-      <div className="flex flex-col gap-3 rounded-lg bg-[#F3B43F]/50 p-3 sm:col-span-2">
-        <div className="flex items-center justify-between gap-3">
-          <span className="font-imFeel text-xl">Pontos para distribuir</span>
+      <div className="flex items-center justify-between gap-3 rounded-lg bg-[#F3B43F]/50 p-3">
+        <span className="font-imFeel text-xl">Pontos para distribuir</span>
 
-          <span className="font-bold text-xl">{pontos}</span>
-        </div>
+        <span className="font-bold text-xl">{pontos}</span>
+      </div>
 
+      <div className="sm:col-span-2">
         <button
           type="button"
           onClick={distribuirAleatoriamente}
           disabled={carregando || pontos <= 0}
-          className="rounded-lg bg-[#BC8418] px-4 py-2 font-bold text-black transition hover:bg-[#a5710f] disabled:cursor-not-allowed disabled:opacity-40 sm:self-start"
+          className="w-full rounded-lg bg-[#BC8418] px-4 py-2 font-bold text-black transition hover:bg-[#a5710f] disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
         >
           Distribuir aleatoriamente
         </button>
