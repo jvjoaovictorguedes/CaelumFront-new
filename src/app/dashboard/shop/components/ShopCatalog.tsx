@@ -3,10 +3,10 @@
 import { useMemo, useState } from "react";
 import ShopItem, { type ShopItemData } from "./ShopItem";
 
-type Secao = "Equipamentos" | "Acessorios" | "Botas" | "Consumiveis" | "Materiais";
+type Secao = "Equipamentos" | "Consumiveis" | "Materiais";
 
 // "Botas" é Armadura com slot_equipamento "Pes" — mesmo tipo_item das
-// peças de peito, só separadas aqui por seção pra facilitar achar.
+// peças de peito, só separadas aqui como filtro pra facilitar achar.
 function ehBota(item: ShopItemData) {
   return item.tipo_item === "Armadura" && item.armorProperties?.slot_equipamento === "Pes";
 }
@@ -19,17 +19,9 @@ const SECOES: { chave: Secao; titulo: string; pertence: (item: ShopItemData) => 
       item.tipo_item === "Arma" ||
       item.tipo_item === "Escudo" ||
       item.tipo_item === "Capacete" ||
-      (item.tipo_item === "Armadura" && !ehBota(item)),
-  },
-  {
-    chave: "Acessorios",
-    titulo: "Acessórios",
-    pertence: (item) => item.tipo_item === "Acessorio1" || item.tipo_item === "Acessorio2",
-  },
-  {
-    chave: "Botas",
-    titulo: "Botas",
-    pertence: ehBota,
+      item.tipo_item === "Armadura" ||
+      item.tipo_item === "Acessorio1" ||
+      item.tipo_item === "Acessorio2",
   },
   { chave: "Consumiveis", titulo: "Consumíveis", pertence: (item) => item.tipo_item === "Consumivel" },
   { chave: "Materiais", titulo: "Materiais", pertence: (item) => item.tipo_item === "Material" },
@@ -37,12 +29,20 @@ const SECOES: { chave: Secao; titulo: string; pertence: (item: ShopItemData) => 
 
 // Só "Equipamentos" ganha os filtros de subtipo (estilo loja de LoL:
 // desmarcar um papel some com os itens dele na hora) — as demais seções
-// já são pequenas o bastante pra não precisar disso.
-const FILTROS_EQUIPAMENTO: { tipo: ShopItemData["tipo_item"]; label: string }[] = [
-  { tipo: "Arma", label: "Armas" },
-  { tipo: "Escudo", label: "Escudos" },
-  { tipo: "Capacete", label: "Elmos" },
-  { tipo: "Armadura", label: "Armaduras" },
+// já são pequenas o bastante pra não precisar disso. Acessórios e
+// Botas moram aqui dentro de Equipamentos, não em seções próprias —
+// cada um com seu próprio filtro pra continuar fácil de achar.
+const FILTROS_EQUIPAMENTO: { chave: string; label: string; pertence: (item: ShopItemData) => boolean }[] = [
+  { chave: "Arma", label: "Armas", pertence: (item) => item.tipo_item === "Arma" },
+  { chave: "Escudo", label: "Escudos", pertence: (item) => item.tipo_item === "Escudo" },
+  { chave: "Capacete", label: "Elmos", pertence: (item) => item.tipo_item === "Capacete" },
+  { chave: "Armadura", label: "Armaduras", pertence: (item) => item.tipo_item === "Armadura" && !ehBota(item) },
+  { chave: "Botas", label: "Botas", pertence: ehBota },
+  {
+    chave: "Acessorio",
+    label: "Acessórios",
+    pertence: (item) => item.tipo_item === "Acessorio1" || item.tipo_item === "Acessorio2",
+  },
 ];
 
 interface ShopCatalogProps {
@@ -73,17 +73,17 @@ export default function ShopCatalog({
 
   // Todos marcados por padrão — igual mostrar tudo, só filtra quando o
   // jogador desmarca algum papel específico.
-  const [filtrosEquipamento, setFiltrosEquipamento] = useState<Set<ShopItemData["tipo_item"]>>(
-    () => new Set(FILTROS_EQUIPAMENTO.map((f) => f.tipo)),
+  const [filtrosEquipamento, setFiltrosEquipamento] = useState<Set<string>>(
+    () => new Set(FILTROS_EQUIPAMENTO.map((f) => f.chave)),
   );
 
-  function alternarFiltro(tipo: ShopItemData["tipo_item"]) {
+  function alternarFiltro(chave: string) {
     setFiltrosEquipamento((atual) => {
       const proximo = new Set(atual);
-      if (proximo.has(tipo)) {
-        proximo.delete(tipo);
+      if (proximo.has(chave)) {
+        proximo.delete(chave);
       } else {
-        proximo.add(tipo);
+        proximo.add(chave);
       }
       return proximo;
     });
@@ -92,12 +92,14 @@ export default function ShopCatalog({
   const secaoSelecionada = secoesComItens.find((secao) => secao.chave === secaoAtiva) ?? secoesComItens[0];
 
   const filtrosDisponiveis = FILTROS_EQUIPAMENTO.filter((filtro) =>
-    secaoSelecionada?.itens.some((item) => item.tipo_item === filtro.tipo),
+    secaoSelecionada?.itens.some((item) => filtro.pertence(item)),
   );
 
   const itensExibidos =
     secaoSelecionada?.chave === "Equipamentos"
-      ? secaoSelecionada.itens.filter((item) => filtrosEquipamento.has(item.tipo_item))
+      ? secaoSelecionada.itens.filter((item) =>
+          FILTROS_EQUIPAMENTO.some((f) => filtrosEquipamento.has(f.chave) && f.pertence(item)),
+        )
       : (secaoSelecionada?.itens ?? []);
 
   if (secoesComItens.length === 0) {
@@ -110,7 +112,7 @@ export default function ShopCatalog({
 
   return (
     <div className="flex flex-col gap-5">
-      {/* SEÇÕES: Equipamentos / Acessórios / Botas / Consumíveis / Materiais */}
+      {/* SEÇÕES: Equipamentos / Consumíveis / Materiais */}
       <div className="flex flex-wrap gap-2 border-b border-white/10 pb-3">
         {secoesComItens.map((secao) => {
           const ativa = secao.chave === secaoAtiva;
@@ -137,11 +139,11 @@ export default function ShopCatalog({
       {/* FILTROS DE SUBTIPO — só dentro de Equipamentos */}
       {secaoSelecionada?.chave === "Equipamentos" && filtrosDisponiveis.length > 0 && (
         <div className="flex flex-wrap gap-2">
-          {filtrosDisponiveis.map(({ tipo, label }) => {
-            const marcado = filtrosEquipamento.has(tipo);
+          {filtrosDisponiveis.map(({ chave, label }) => {
+            const marcado = filtrosEquipamento.has(chave);
             return (
               <label
-                key={tipo}
+                key={chave}
                 className={`flex cursor-pointer select-none items-center gap-2 rounded-full border-2 px-3 py-1.5 text-sm font-bold transition ${
                   marcado
                     ? "border-[#F3B43F] bg-[#F3B43F] text-[#292018]"
@@ -151,7 +153,7 @@ export default function ShopCatalog({
                 <input
                   type="checkbox"
                   checked={marcado}
-                  onChange={() => alternarFiltro(tipo)}
+                  onChange={() => alternarFiltro(chave)}
                   className="h-3.5 w-3.5 accent-[#F3B43F]"
                 />
                 {label}
