@@ -9,10 +9,19 @@ import WorldMapNodePin from "./WorldMapNode";
 const ZOOM_MIN = 0.8;
 const ZOOM_MAX = 2.5;
 
-// Zoom/pan feito à mão (spec §25: "biblioteca leve, mapa ilustrado de
-// fantasia — não precisa de API de mapa geográfico real") — sem
-// dependência nova, só transform CSS + Pointer Events (unifica mouse e
-// touch, inclusive pinch com dois ponteiros ativos).
+// Só zoom, sem pan — o mapa fica travado no lugar (feedback do
+// jogador: arrastar com o mouse não deveria mover o mapa inteiro).
+// Zoom por roda do mouse ou pinça de dois dedos, sem dependência nova
+// (spec §25: "biblioteca leve, mapa ilustrado de fantasia — não precisa
+// de API de mapa geográfico real").
+//
+// A versão anterior também arrastava com 1 ponteiro (mouse ou dedo) e
+// chamava setPointerCapture no viewport em TODO pointerdown, inclusive
+// o que começa em cima de um pino — isso sequestrava o pointerup/click
+// seguinte pro viewport em vez do botão do pino (bug reportado: clicar
+// numa área não abria o painel/redirecionava). Sem captura de ponteiro
+// e sem esse branch de arrasto, o clique nos pinos volta a funcionar
+// normalmente.
 export default function WorldMapCanvas({
   territories,
   nodes,
@@ -29,13 +38,9 @@ export default function WorldMapCanvas({
   onSelectNode: (id: number) => void;
 }) {
   const [scale, setScale] = useState(1);
-  const [tx, setTx] = useState(0);
-  const [ty, setTy] = useState(0);
 
-  const viewportRef = useRef<HTMLDivElement | null>(null);
-  const arrastandoRef = useRef(false);
-  const ultimaPosicaoRef = useRef({ x: 0, y: 0 });
-  // Ponteiros ativos (touch/pinch) — 2 pontos = gesto de pinça.
+  // Ponteiros ativos (touch/pinch) — 2 pontos = gesto de pinça, o único
+  // gesto que ainda mexe em algo (a escala) além da roda do mouse.
   const ponteirosRef = useRef<Map<number, { x: number; y: number }>>(new Map());
   const distanciaPinchInicialRef = useRef<number | null>(null);
   const escalaPinchInicialRef = useRef(1);
@@ -48,14 +53,8 @@ export default function WorldMapCanvas({
   }
 
   function aoPressionarPonteiro(evento: React.PointerEvent) {
-    viewportRef.current?.setPointerCapture(evento.pointerId);
     ponteirosRef.current.set(evento.pointerId, { x: evento.clientX, y: evento.clientY });
-
-    if (ponteirosRef.current.size === 1) {
-      arrastandoRef.current = true;
-      ultimaPosicaoRef.current = { x: evento.clientX, y: evento.clientY };
-    } else if (ponteirosRef.current.size === 2) {
-      arrastandoRef.current = false;
+    if (ponteirosRef.current.size === 2) {
       const [a, b] = Array.from(ponteirosRef.current.values());
       distanciaPinchInicialRef.current = Math.hypot(a.x - b.x, a.y - b.y);
       escalaPinchInicialRef.current = scale;
@@ -71,34 +70,21 @@ export default function WorldMapCanvas({
       const distanciaAtual = Math.hypot(a.x - b.x, a.y - b.y);
       const fator = distanciaAtual / distanciaPinchInicialRef.current;
       setScale(clamparEscala(escalaPinchInicialRef.current * fator));
-      return;
-    }
-
-    if (arrastandoRef.current && ponteirosRef.current.size === 1) {
-      const dx = evento.clientX - ultimaPosicaoRef.current.x;
-      const dy = evento.clientY - ultimaPosicaoRef.current.y;
-      ultimaPosicaoRef.current = { x: evento.clientX, y: evento.clientY };
-      setTx((atual) => atual + dx);
-      setTy((atual) => atual + dy);
     }
   }
 
   function aoSoltarPonteiro(evento: React.PointerEvent) {
     ponteirosRef.current.delete(evento.pointerId);
     if (ponteirosRef.current.size < 2) distanciaPinchInicialRef.current = null;
-    if (ponteirosRef.current.size === 0) arrastandoRef.current = false;
   }
 
   function centralizar() {
     setScale(1);
-    setTx(0);
-    setTy(0);
   }
 
   return (
     <div className="relative h-full w-full">
       <div
-        ref={viewportRef}
         onWheel={aoRodarRoda}
         onPointerDown={aoPressionarPonteiro}
         onPointerMove={aoMoverPonteiro}
@@ -108,7 +94,7 @@ export default function WorldMapCanvas({
       >
         <div
           className="relative aspect-[16/10] w-full origin-center"
-          style={{ transform: `translate(${tx}px, ${ty}px) scale(${scale})` }}
+          style={{ transform: `scale(${scale})` }}
         >
           {/* Arte base — mapa-caelum.webp ainda não existe (spec §24);
               placeholder de gradiente no estilo pergaminho/dourado já
