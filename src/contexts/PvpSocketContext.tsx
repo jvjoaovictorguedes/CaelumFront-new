@@ -43,14 +43,9 @@ export interface DueloIniciadoPayload {
   arena: string;
   ranked?: boolean;
   // Partida de torneio: é um duelo ao vivo como qualquer outro (mesma
-  // tela), só marcado pra a UI saber que faz parte de uma série.
-  torneio?: boolean;
-  torneioId?: number;
-  torneioPartidaId?: number;
-  torneioFase?: string;
-  torneioFormato?: string;
-  torneioPlacarA?: number;
-  torneioPlacarB?: number;
+  // tela), só marcado pra a UI saber que faz parte de uma série. O
+  // backend manda um objeto (nunca `true`) — {serieId, round, formato}.
+  torneio?: { serieId: number; round: string; formato: string } | boolean;
   ratingA?: number;
   ratingB?: number;
   ligaA?: string;
@@ -126,6 +121,20 @@ export interface DueloFimPayload {
   nivelAposVitoria?: number;
   motivo: "combate" | "desistencia" | "Vitoria" | "Abandono" | "FalhaServidor";
   ranked?: boolean;
+}
+
+// Torneio — atualização ao vivo de uma série (ready-check e placar),
+// recebida depois de "torneio:entrar-sala". O REST (GET /pvp/tournaments/:id)
+// não traz quem já confirmou presença — só o socket sabe.
+export interface TorneioSerieAtualizadaPayload {
+  serieId: number;
+  status?: string;
+  placar?: { a?: number; b?: number };
+  formato?: string;
+  prazoReadyCheckSegundos?: number;
+  readyA?: boolean;
+  readyB?: boolean;
+  vencedorSerie?: number | null;
 }
 
 interface DesafioRecebido {
@@ -251,6 +260,10 @@ interface PvpSocketContextValue {
   matchEncontradoRanked: RankedMatchFoundPayload | null;
   ratingUpdate: RankedRatingUpdatePayload | null;
   oponenteDesconectadoRanked: RankedOponenteDesconectadoPayload | null;
+  // Torneio — ready-check ao vivo
+  serieTorneio: TorneioSerieAtualizadaPayload | null;
+  entrarSalaTorneio: (serieId: number) => void;
+  confirmarProntoTorneio: (serieId: number) => void;
   // Aventura em grupo (party)
   grupoAtual: GrupoAtualizadoPayload | null;
   convitePartyRecebido: ConvitePartyRecebido | null;
@@ -300,6 +313,7 @@ export function PvpSocketProvider({
   const [ratingUpdate, setRatingUpdate] = useState<RankedRatingUpdatePayload | null>(null);
   const [oponenteDesconectadoRanked, setOponenteDesconectadoRanked] =
     useState<RankedOponenteDesconectadoPayload | null>(null);
+  const [serieTorneio, setSerieTorneio] = useState<TorneioSerieAtualizadaPayload | null>(null);
   const [grupoAtual, setGrupoAtual] = useState<GrupoAtualizadoPayload | null>(null);
   const [convitePartyRecebido, setConvitePartyRecebido] = useState<ConvitePartyRecebido | null>(null);
   const [convitePartyEnviadoPara, setConvitePartyEnviadoPara] = useState<number | null>(null);
@@ -425,15 +439,25 @@ export function PvpSocketProvider({
     });
 
     // Torneio — cada jogo de uma série (MD3/MD5) é um duelo ao vivo
-    // normal, então reaproveita exatamente o mesmo estado `duelo` e a
-    // mesma tela (LiveDuelArena), só com o flag `torneio`.
-    socket.on("torneio:duelo-iniciado", (payload: DueloIniciadoPayload) => {
-      setDesafioRecebido(null);
-      setDesafioEnviadoPara(null);
-      setResultadoFinal(null);
-      setTurnos([]);
-      setDuelo({ ...payload, torneio: true });
-      router.push("/dashboard/pvp");
+    // normal emitido pelo MESMO evento "pvp:duelo-iniciado" (tratado
+    // acima), só com `payload.torneio = {serieId, round, formato}`. Não
+    // existe um evento "torneio:duelo-iniciado" separado no backend.
+    //
+    // Ready-check da série: entra na sala com "torneio:entrar-sala" e
+    // ouve as atualizações — é o único jeito de saber quem já confirmou
+    // presença (o REST não expõe readyA/readyB).
+    socket.on("torneio:serie:atualizada", (payload: TorneioSerieAtualizadaPayload) => {
+      setSerieTorneio(payload);
+    });
+
+    socket.on("torneio:serie:placar", (payload: TorneioSerieAtualizadaPayload) => {
+      setSerieTorneio((atual) =>
+        atual && atual.serieId === payload.serieId ? { ...atual, ...payload } : payload,
+      );
+    });
+
+    socket.on("torneio:erro", ({ mensagem }: { mensagem: string }) => {
+      setErro(mensagem);
     });
 
     socket.on("ranked:rating:update", (payload: RankedRatingUpdatePayload) => {
@@ -540,6 +564,14 @@ export function PvpSocketProvider({
     setOponenteDesconectadoRanked(null);
   }, []);
 
+  const entrarSalaTorneio = useCallback((serieId: number) => {
+    socketRef.current?.emit("torneio:entrar-sala", { serieId });
+  }, []);
+
+  const confirmarProntoTorneio = useCallback((serieId: number) => {
+    socketRef.current?.emit("torneio:pronto", { serieId });
+  }, []);
+
   const limparErro = useCallback(() => setErro(""), []);
 
   const convidarParaGrupo = useCallback((idConvidado: number) => {
@@ -601,6 +633,9 @@ export function PvpSocketProvider({
         matchEncontradoRanked,
         ratingUpdate,
         oponenteDesconectadoRanked,
+        serieTorneio,
+        entrarSalaTorneio,
+        confirmarProntoTorneio,
         grupoAtual,
         convitePartyRecebido,
         convitePartyEnviadoPara,

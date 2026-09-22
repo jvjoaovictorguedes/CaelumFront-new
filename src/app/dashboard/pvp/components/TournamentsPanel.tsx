@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   FASES_TORNEIO,
   buscarTorneio,
-  confirmarProntoTorneio,
   dataCurta,
   inscreverEmTorneio,
   listarTorneios,
@@ -16,6 +15,7 @@ import {
   type ParticipanteTorneio,
   type ResumoTorneio,
 } from "@/lib/api/pvp";
+import { usePvpSocket } from "@/contexts/PvpSocketContext";
 
 const STATUS_ABERTOS = ["inscricoes", "aguardando", "em_andamento"];
 
@@ -52,6 +52,7 @@ function corDoStatus(status?: string | null): string {
 }
 
 export default function TournamentsPanel({ meuCharacterId }: { meuCharacterId: number }) {
+  const { entrarSalaTorneio, confirmarProntoTorneio, serieTorneio } = usePvpSocket();
   const [torneios, setTorneios] = useState<ResumoTorneio[] | null>(null);
   const [idSelecionado, setIdSelecionado] = useState<number | null>(null);
   const [detalhe, setDetalhe] = useState<DetalheTorneio | null>(null);
@@ -115,18 +116,13 @@ export default function TournamentsPanel({ meuCharacterId }: { meuCharacterId: n
     }
   }
 
-  async function confirmarPronto(partida: PartidaTorneio) {
-    if (idSelecionado === null) return;
-    setOcupado(true);
-    setErro("");
-    try {
-      await confirmarProntoTorneio(idSelecionado, partida.id);
-      await carregarDetalhe(idSelecionado);
-    } catch (error: unknown) {
-      setErro(mensagemDeErro(error, "Não foi possível confirmar que você está pronto."));
-    } finally {
-      setOcupado(false);
-    }
+  // Ready-check é resolvido por socket, não por REST: o backend não expõe
+  // uma rota "/ready", só o evento "torneio:pronto" (ver
+  // src/socket/tournamentSocket.js). A confirmação em si não tem retorno
+  // HTTP pra tratar erro — falhas chegam pelo evento "torneio:erro", que
+  // o contexto já injeta em `erro` (reaproveitado do duelo casual/ranked).
+  function confirmarPronto(partida: PartidaTorneio) {
+    confirmarProntoTorneio(partida.id);
   }
 
   if (idSelecionado !== null) {
@@ -137,6 +133,8 @@ export default function TournamentsPanel({ meuCharacterId }: { meuCharacterId: n
         meuCharacterId={meuCharacterId}
         ocupado={ocupado}
         erro={erro}
+        serieAoVivo={serieTorneio}
+        entrarSalaTorneio={entrarSalaTorneio}
         aoVoltar={() => setIdSelecionado(null)}
         aoInscrever={(entrar) => detalhe && acaoInscricao(detalhe, entrar)}
         aoConfirmarPronto={confirmarPronto}
@@ -181,10 +179,8 @@ export default function TournamentsPanel({ meuCharacterId }: { meuCharacterId: n
             <CardTorneio
               key={torneio.id}
               torneio={torneio}
-              ocupado={ocupado}
               historico={mostrarHistorico}
               aoAbrir={() => setIdSelecionado(torneio.id)}
-              aoInscrever={(entrar) => acaoInscricao(torneio, entrar)}
             />
           ))}
         </div>
@@ -203,21 +199,16 @@ function PainelVazio({ texto }: { texto: string }) {
 
 function CardTorneio({
   torneio,
-  ocupado,
   historico,
   aoAbrir,
-  aoInscrever,
 }: {
   torneio: ResumoTorneio;
-  ocupado: boolean;
   historico: boolean;
   aoAbrir: () => void;
-  aoInscrever: (entrar: boolean) => void;
 }) {
-  const inscricoesAbertas = (torneio.status ?? "").toLowerCase() === "inscricoes";
-  const lotado =
-    (torneio.participantes ?? 0) >= (torneio.maxParticipantes ?? 8) && !torneio.inscrito;
-
+  // A listagem (GET /pvp/tournaments) não traz contagem de inscritos nem
+  // se EU já estou inscrito — só o detalhe (GET /pvp/tournaments/:id) traz
+  // participantesLista. Inscrição/pódio ficam só na tela de detalhe.
   return (
     <div className="rounded-2xl border-2 border-[#F3B43F]/50 bg-[#292018]/90 p-4 text-white shadow-lg">
       <div className="flex flex-wrap items-start justify-between gap-2">
@@ -227,7 +218,7 @@ function CardTorneio({
             {torneio.nivelMinimo || torneio.nivelMaximo
               ? `Nível ${torneio.nivelMinimo ?? "?"}–${torneio.nivelMaximo ?? "?"} · `
               : ""}
-            {torneio.participantes ?? 0}/{torneio.maxParticipantes ?? 8} participantes
+            até {torneio.maxParticipantes ?? 8} participantes
             {torneio.comecaEm ? ` · Início: ${dataCurta(torneio.comecaEm)}` : ""}
           </p>
         </div>
@@ -244,14 +235,6 @@ function CardTorneio({
         </p>
       )}
 
-      {historico && (torneio.campeao || torneio.vice || torneio.terceiro) && (
-        <div className="mt-3 grid grid-cols-3 gap-2 text-center text-xs">
-          <Podio posicao="1º" nome={torneio.campeao?.nome} cor="#F3B43F" />
-          <Podio posicao="2º" nome={torneio.vice?.nome} cor="#d7dde3" />
-          <Podio posicao="3º" nome={torneio.terceiro?.nome} cor="#c08a4a" />
-        </div>
-      )}
-
       <div className="mt-3 flex flex-wrap gap-2">
         <button
           type="button"
@@ -260,20 +243,6 @@ function CardTorneio({
         >
           {historico ? "Ver chave" : "Abrir torneio"}
         </button>
-        {inscricoesAbertas && (
-          <button
-            type="button"
-            disabled={ocupado || lotado}
-            onClick={() => aoInscrever(!torneio.inscrito)}
-            className={`rounded-lg px-3 py-1.5 text-xs font-bold uppercase tracking-widest transition disabled:opacity-50 ${
-              torneio.inscrito
-                ? "border-2 border-white/30 text-white hover:bg-white/10"
-                : "border-2 border-[#F3B43F] bg-[#BC8418] text-black hover:bg-[#a5710f]"
-            }`}
-          >
-            {torneio.inscrito ? "Sair do torneio" : lotado ? "Lotado" : "Inscrever-se"}
-          </button>
-        )}
       </div>
     </div>
   );
@@ -296,6 +265,8 @@ function DetalheTorneioView({
   meuCharacterId,
   ocupado,
   erro,
+  serieAoVivo,
+  entrarSalaTorneio,
   aoVoltar,
   aoInscrever,
   aoConfirmarPronto,
@@ -305,10 +276,29 @@ function DetalheTorneioView({
   meuCharacterId: number;
   ocupado: boolean;
   erro: string;
+  serieAoVivo: { serieId: number; readyA?: boolean; readyB?: boolean } | null;
+  entrarSalaTorneio: (serieId: number) => void;
   aoVoltar: () => void;
   aoInscrever: (entrar: boolean) => void;
   aoConfirmarPronto: (partida: PartidaTorneio) => void;
 }) {
+  // Ready-check: a série do jogador que ainda não começou e está
+  // esperando as duas confirmações. Precisa calcular ANTES de qualquer
+  // return condicional (regras de hooks: o useEffect abaixo roda sempre).
+  const minhaPartidaPendente = (detalhe?.partidas ?? []).find(
+    (partida) =>
+      (partida.participanteA?.id === meuCharacterId || partida.participanteB?.id === meuCharacterId) &&
+      !!partida.readyCheckTerminaEm &&
+      (partida.status ?? "").toLowerCase() !== "finalizada",
+  );
+
+  useEffect(() => {
+    if (minhaPartidaPendente) entrarSalaTorneio(minhaPartidaPendente.id);
+    // Só precisa disparar quando o ID da série pendente muda, não a cada
+    // re-render do polling (o objeto é recriado a cada 5s).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [minhaPartidaPendente?.id, entrarSalaTorneio]);
+
   if (carregando && !detalhe) {
     return (
       <div className="flex flex-col gap-4">
@@ -329,15 +319,15 @@ function DetalheTorneioView({
 
   const inscricoesAbertas = (detalhe.status ?? "").toLowerCase() === "inscricoes";
   const terceiroLugar = partidasDaFase(detalhe, "terceiro");
+  const jaInscrito = (detalhe.participantesLista ?? []).some((p) => p.id === meuCharacterId);
 
-  // Ready-check: a série do jogador que ainda não começou e está
-  // esperando as duas confirmações.
-  const minhaPartidaPendente = (detalhe.partidas ?? []).find(
-    (partida) =>
-      (partida.participanteA?.id === meuCharacterId || partida.participanteB?.id === meuCharacterId) &&
-      !!partida.readyCheckTerminaEm &&
-      (partida.status ?? "").toLowerCase() !== "finalizada",
-  );
+  // O REST não traz readyA/readyB (só o socket, depois de entrar na sala
+  // da série) — combina os dois: status/placar vêm do REST, prontidão vem
+  // do socket quando bate o serieId.
+  const partidaComReady =
+    minhaPartidaPendente && serieAoVivo?.serieId === minhaPartidaPendente.id
+      ? { ...minhaPartidaPendente, prontoA: serieAoVivo.readyA, prontoB: serieAoVivo.readyB }
+      : minhaPartidaPendente;
 
   return (
     <div className="flex flex-col gap-4">
@@ -348,8 +338,7 @@ function DetalheTorneioView({
           <div className="min-w-0">
             <p className="font-imFeel text-3xl text-[#F3B43F]">{detalhe.nome}</p>
             <p className="mt-1 text-xs text-white/60">
-              {detalhe.participantes ?? detalhe.participantesLista?.length ?? 0}/
-              {detalhe.maxParticipantes ?? 8} participantes
+              {detalhe.participantesLista?.length ?? 0}/{detalhe.maxParticipantes ?? 8} participantes
               {detalhe.comecaEm ? ` · Início: ${dataCurta(detalhe.comecaEm)}` : ""}
             </p>
           </div>
@@ -366,30 +355,38 @@ function DetalheTorneioView({
           </p>
         )}
 
+        {(detalhe.campeao || detalhe.vice || detalhe.terceiro) && (
+          <div className="mt-3 grid grid-cols-3 gap-2 text-center text-xs">
+            <Podio posicao="1º" nome={detalhe.campeao?.nome} cor="#F3B43F" />
+            <Podio posicao="2º" nome={detalhe.vice?.nome} cor="#d7dde3" />
+            <Podio posicao="3º" nome={detalhe.terceiro?.nome} cor="#c08a4a" />
+          </div>
+        )}
+
         {erro && <p className="mt-3 text-sm text-red-400">{erro}</p>}
 
         {inscricoesAbertas && (
           <button
             type="button"
             disabled={ocupado}
-            onClick={() => aoInscrever(!detalhe.inscrito)}
+            onClick={() => aoInscrever(!jaInscrito)}
             className={`mt-4 rounded-lg px-4 py-2 text-sm font-bold uppercase tracking-widest transition disabled:opacity-50 ${
-              detalhe.inscrito
+              jaInscrito
                 ? "border-2 border-white/30 text-white hover:bg-white/10"
                 : "border-2 border-[#F3B43F] bg-[#BC8418] text-black hover:bg-[#a5710f]"
             }`}
           >
-            {detalhe.inscrito ? "Sair do torneio" : "Inscrever-se"}
+            {jaInscrito ? "Sair do torneio" : "Inscrever-se"}
           </button>
         )}
       </div>
 
-      {minhaPartidaPendente && (
+      {partidaComReady && (
         <ReadyCheck
-          partida={minhaPartidaPendente}
+          partida={partidaComReady}
           meuCharacterId={meuCharacterId}
           ocupado={ocupado}
-          aoConfirmar={() => aoConfirmarPronto(minhaPartidaPendente)}
+          aoConfirmar={() => aoConfirmarPronto(partidaComReady)}
         />
       )}
 

@@ -147,14 +147,54 @@ export interface MatchRankedIniciada {
   [chave: string]: unknown;
 }
 
+interface RespostaStatusRankedBackend {
+  temporada?: { id?: number; nome?: string; starts_at?: string; ends_at?: string; status?: string; diasRestantes?: number };
+  participacao?: {
+    rating?: number;
+    tier?: string;
+    divisao?: string | null;
+    tierLabel?: string;
+    tierAsset?: string;
+    jogos?: number;
+    vitorias?: number;
+    derrotas?: number;
+    peak_rating?: number;
+  };
+  limiteDiario?: { usadas?: number; limite?: number; restantes?: number; rotulo?: string };
+  emPartidaRanked?: boolean;
+  duelId?: number | null;
+}
+
+/**
+ * `GET /pvp/ranked/status` devolve `{ temporada, participacao, limiteDiario,
+ * emPartidaRanked, duelId }` (nomes em português, `divisao` em vez de
+ * `division`). Esta função traduz pra o formato que os componentes já
+ * consomem (StatusRanked), sem precisar mexer em RankedPanel/EloBadge.
+ */
 export async function buscarStatusRanked(): Promise<StatusRanked | null> {
   try {
-    const resposta = await axiosInstance.get<StatusRanked & { data?: StatusRanked }>(
-      "/pvp/ranked/status",
-    );
-    // Aceita tanto `{ ...status }` (v1) quanto `{ data: { ...status } }`
-    // (padrão do resto da API) — o backend v2 ainda pode mudar de ideia.
-    return resposta.data?.data ?? resposta.data ?? null;
+    const resposta = await axiosInstance.get<RespostaStatusRankedBackend>("/pvp/ranked/status");
+    const corpo = resposta.data;
+    const p = corpo?.participacao;
+    const t = corpo?.temporada;
+    const limite = corpo?.limiteDiario;
+    if (!p) return null;
+    return {
+      tier: p.tier ?? null,
+      division: p.divisao ?? null,
+      rating: p.rating ?? null,
+      seasonWins: p.vitorias ?? null,
+      seasonLosses: p.derrotas ?? null,
+      peakRating: p.peak_rating ?? null,
+      matchesToday: limite?.usadas ?? null,
+      dailyLimit: limite?.limite ?? null,
+      seasonEndsAt: t?.ends_at ?? null,
+      tierAssetKey: p.tierAsset ?? null,
+      temporada: t
+        ? { id: t.id, nome: t.nome, starts_at: t.starts_at, ends_at: t.ends_at, status: t.status }
+        : null,
+      emPartidaRanked: corpo?.emPartidaRanked ?? null,
+    };
   } catch {
     return null;
   }
@@ -173,13 +213,37 @@ export async function iniciarPartidaRanked(): Promise<MatchRankedIniciada | null
   return resposta.data?.data ?? resposta.data ?? null;
 }
 
+interface LinhaLeaderboardBackend {
+  posicao: number;
+  id: number;
+  nome: string;
+  rating: number;
+  tier?: string | null;
+  divisao?: string | null;
+  jogos?: number;
+  vitorias?: number;
+  derrotas?: number;
+  peak_rating?: number;
+  online?: boolean;
+}
+
 export async function buscarLeaderboardRanked(): Promise<LinhaLeaderboard[]> {
   try {
-    const resposta = await axiosInstance.get<{
-      itens?: LinhaLeaderboard[];
-      data?: { itens?: LinhaLeaderboard[] };
-    }>("/pvp/ranked/leaderboard");
-    return resposta.data?.itens ?? resposta.data?.data?.itens ?? [];
+    const resposta = await axiosInstance.get<{ itens?: LinhaLeaderboardBackend[] }>(
+      "/pvp/ranked/leaderboard",
+    );
+    return (resposta.data?.itens ?? []).map((linha) => ({
+      posicao: linha.posicao,
+      id: linha.id,
+      nome: linha.nome,
+      rating: linha.rating,
+      tier: linha.tier ?? null,
+      division: linha.divisao ?? null,
+      jogos: linha.jogos,
+      vitorias: linha.vitorias,
+      derrotas: linha.derrotas,
+      online: linha.online,
+    }));
   } catch {
     return [];
   }
@@ -198,12 +262,17 @@ export type StatusTorneio =
   | string;
 
 export interface ParticipanteTorneio {
+  /** characterId — comparável direto com `meuCharacterId`. */
   id: number;
+  /** id da linha TournamentParticipant no backend; uso interno (resolver série→participante). */
+  participantId?: number;
   nome?: string;
   nivel?: number;
   classe?: string | null;
   pronto?: boolean;
   eliminado?: boolean;
+  /** 1º/2º/3º/4º lugar quando o torneio já terminou, senão null. */
+  colocacao?: number | null;
 }
 
 export interface PartidaTorneio {
@@ -231,40 +300,147 @@ export interface ResumoTorneio {
   status: StatusTorneio;
   nivelMinimo?: number | null;
   nivelMaximo?: number | null;
+  /** Só vem preenchido na visão de detalhe (a listagem não traz contagem). */
   participantes?: number | null;
   maxParticipantes?: number | null;
   premio?: string | null;
   comecaEm?: string | null;
-  inscrito?: boolean | null;
-  campeao?: ParticipanteTorneio | null;
-  vice?: ParticipanteTorneio | null;
-  terceiro?: ParticipanteTorneio | null;
+  premioEntregue?: boolean | null;
 }
 
 export interface DetalheTorneio extends ResumoTorneio {
   participantesLista?: ParticipanteTorneio[];
   partidas?: PartidaTorneio[];
+  /** Só existe quando o torneio já terminou (colocacao=1/2/3 nos participantes). */
+  campeao?: ParticipanteTorneio | null;
+  vice?: ParticipanteTorneio | null;
+  terceiro?: ParticipanteTorneio | null;
 }
 
-function listaDeTorneios(payload: unknown): ResumoTorneio[] {
-  const corpo = payload as
-    | { itens?: ResumoTorneio[]; torneios?: ResumoTorneio[]; data?: { itens?: ResumoTorneio[]; torneios?: ResumoTorneio[] } }
-    | ResumoTorneio[]
-    | undefined;
-  if (Array.isArray(corpo)) return corpo;
-  return (
-    corpo?.itens ??
-    corpo?.torneios ??
-    corpo?.data?.itens ??
-    corpo?.data?.torneios ??
-    []
+/**
+ * Mapa de status do backend (PascalCase em português, vindo do enum do
+ * model `Tournament`) pro vocabulário que a UI já usa. "Rascunho" nunca
+ * aparece pro jogador — é torneio ainda não publicado pelo DEV/ADM.
+ */
+const STATUS_TORNEIO_BACKEND: Record<string, StatusTorneio> = {
+  Rascunho: "rascunho",
+  InscricoesAbertas: "inscricoes",
+  InscricoesFechadas: "aguardando",
+  EmAndamento: "em_andamento",
+  Finalizado: "finalizado",
+  Cancelado: "cancelado",
+};
+
+/** "Quartas" | "Semifinal" | "TerceiroLugar" | "Final" (enum do backend) → chave de fase da UI. */
+const FASE_TORNEIO_BACKEND: Record<string, string> = {
+  Quartas: "quartas",
+  Semifinal: "semifinal",
+  TerceiroLugar: "terceiro",
+  Final: "final",
+};
+
+interface ParticipanteTorneioBackend {
+  id: number;
+  characterId: number;
+  nome?: string;
+  nivel?: number | null;
+  seed?: number;
+  eliminado?: boolean;
+  colocacao?: number | null;
+}
+
+interface SerieTorneioBackend {
+  id: number;
+  round: string;
+  posicao?: number;
+  participanteA?: number | null;
+  participanteB?: number | null;
+  formato?: string;
+  placar?: { a?: number; b?: number };
+  vencedor?: number | null;
+  status?: string;
+  readyCheckExpiraEm?: string | null;
+}
+
+interface TorneioBackend {
+  id: number;
+  name: string;
+  description?: string | null;
+  level_min?: number | null;
+  level_max?: number | null;
+  starts_at?: string | null;
+  max_participants?: number | null;
+  prize_description?: string | null;
+  status: string;
+  prize_delivered?: boolean;
+  bracket?: unknown;
+  participantes?: ParticipanteTorneioBackend[];
+  series?: SerieTorneioBackend[];
+}
+
+function mapParticipante(raw: ParticipanteTorneioBackend): ParticipanteTorneio {
+  return {
+    id: raw.characterId,
+    participantId: raw.id,
+    nome: raw.nome,
+    nivel: raw.nivel ?? undefined,
+    eliminado: raw.eliminado,
+    colocacao: raw.colocacao ?? null,
+  };
+}
+
+function mapResumo(raw: TorneioBackend): ResumoTorneio {
+  return {
+    id: raw.id,
+    nome: raw.name,
+    status: STATUS_TORNEIO_BACKEND[raw.status] ?? raw.status,
+    nivelMinimo: raw.level_min ?? null,
+    nivelMaximo: raw.level_max ?? null,
+    maxParticipantes: raw.max_participants ?? null,
+    premio: raw.prize_description ?? null,
+    comecaEm: raw.starts_at ?? null,
+    premioEntregue: raw.prize_delivered ?? null,
+  };
+}
+
+function mapDetalhe(raw: TorneioBackend): DetalheTorneio {
+  const participantesLista = (raw.participantes ?? []).map(mapParticipante);
+  const porParticipantId = new Map(
+    (raw.participantes ?? []).map((p, indice) => [p.id, participantesLista[indice]]),
   );
+  const partidas: PartidaTorneio[] = (raw.series ?? []).map((s) => ({
+    id: s.id,
+    fase: FASE_TORNEIO_BACKEND[s.round] ?? s.round.toLowerCase(),
+    ordem: s.posicao,
+    formato: s.formato,
+    status: s.status,
+    participanteA: s.participanteA != null ? (porParticipantId.get(s.participanteA) ?? null) : null,
+    participanteB: s.participanteB != null ? (porParticipantId.get(s.participanteB) ?? null) : null,
+    placarA: s.placar?.a ?? 0,
+    placarB: s.placar?.b ?? 0,
+    vencedorId: s.vencedor != null ? (porParticipantId.get(s.vencedor)?.id ?? null) : null,
+    readyCheckTerminaEm: s.readyCheckExpiraEm ?? null,
+    // prontoA/prontoB não vêm por REST — chegam ao vivo via socket
+    // "torneio:serie:atualizada" depois de entrar na sala da série.
+  }));
+
+  return {
+    ...mapResumo(raw),
+    participantes: participantesLista.length,
+    participantesLista,
+    partidas,
+    campeao: participantesLista.find((p) => p.colocacao === 1) ?? null,
+    vice: participantesLista.find((p) => p.colocacao === 2) ?? null,
+    terceiro: participantesLista.find((p) => p.colocacao === 3) ?? null,
+  };
 }
 
 export async function listarTorneios(): Promise<ResumoTorneio[]> {
   try {
-    const resposta = await axiosInstance.get("/pvp/tournaments");
-    return listaDeTorneios(resposta.data);
+    const resposta = await axiosInstance.get<{ itens?: TorneioBackend[] }>("/pvp/tournaments");
+    return (resposta.data?.itens ?? [])
+      .filter((t) => t.status !== "Rascunho")
+      .map(mapResumo);
   } catch {
     return [];
   }
@@ -272,10 +448,10 @@ export async function listarTorneios(): Promise<ResumoTorneio[]> {
 
 export async function buscarTorneio(id: number): Promise<DetalheTorneio | null> {
   try {
-    const resposta = await axiosInstance.get<DetalheTorneio & { data?: DetalheTorneio }>(
+    const resposta = await axiosInstance.get<{ torneio: TorneioBackend }>(
       `/pvp/tournaments/${id}`,
     );
-    return resposta.data?.data ?? resposta.data ?? null;
+    return resposta.data?.torneio ? mapDetalhe(resposta.data.torneio) : null;
   } catch {
     return null;
   }
@@ -287,18 +463,6 @@ export async function inscreverEmTorneio(id: number): Promise<void> {
 
 export async function sairDoTorneio(id: number): Promise<void> {
   await axiosInstance.post(`/pvp/tournaments/${id}/leave`);
-}
-
-/**
- * Confirma o ready-check da série atual. Rota ASSUMIDA — a lista de
- * rotas do backend só cita join/leave; se o ready-check for resolvido
- * por socket, é só trocar esta chamada por um `emit`.
- */
-export async function confirmarProntoTorneio(
-  idTorneio: number,
-  idPartida?: number,
-): Promise<void> {
-  await axiosInstance.post(`/pvp/tournaments/${idTorneio}/ready`, { idPartida });
 }
 
 export const FASES_TORNEIO: { chave: string; label: string }[] = [
@@ -321,22 +485,24 @@ export interface TrofeusTorneio {
   ouro?: number | null;
   prata?: number | null;
   bronze?: number | null;
+  trofeus?: number | null;
 }
 
 /**
- * Medalhas do personagem. Endpoint ainda não confirmado com o backend —
- * tenta a rota dedicada e, se ela não existir, devolve `null` pra tela
- * mostrar zeros em vez de quebrar.
+ * Medalhas/troféus do personagem — `GET /pvp/tournaments/me/podium`
+ * (sempre resolve `req.personagemAtual` no servidor; o `characterId`
+ * recebido aqui só existe pra manter a assinatura estável caso a tela
+ * um dia precise mostrar o pódio de outro personagem por uma rota própria
+ * — hoje ele é ignorado porque a rota real não aceita um alvo escolhido
+ * pelo cliente).
  */
-export async function buscarTrofeusTorneio(characterId: number): Promise<TrofeusTorneio | null> {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export async function buscarTrofeusTorneio(_characterId: number): Promise<TrofeusTorneio | null> {
   try {
-    const resposta = await axiosInstance.get<{
-      data?: TrofeusTorneio & { trofeus?: TrofeusTorneio };
-      trofeus?: TrofeusTorneio;
-      ouro?: number;
-    }>(`/pvp/tournaments/trophies/${characterId}`);
-    const corpo = resposta.data;
-    return corpo?.data?.trofeus ?? corpo?.data ?? corpo?.trofeus ?? (corpo as TrofeusTorneio) ?? null;
+    const resposta = await axiosInstance.get<{ podio?: TrofeusTorneio }>(
+      "/pvp/tournaments/me/podium",
+    );
+    return resposta.data?.podio ?? null;
   } catch {
     return null;
   }
