@@ -191,7 +191,7 @@ export default function NavMenu({
                         </span>
                       )}
                     </span>
-                    <p className="ml-3 truncate font-imFeel text-lg font-bold text-black sm:text-xl">
+                    <p className="ml-3 min-w-0 flex-1 font-imFeel text-lg font-bold leading-tight text-black sm:text-xl">
                       {item.name}
                     </p>
                   </a>

@@ -28,7 +28,14 @@ export default function StatusPanel({
   const character = characterContexto ?? characterInicial;
   const [pickerAberto, setPickerAberto] = useState(false);
 
+  // Uma linha só de estilo pra identidade inteira: label pequeno e
+  // discreto à esquerda, valor em destaque à direita — igual em todos
+  // os campos (antes Nome/Classe/Natureza Mágica ficavam centralizados
+  // empilhados e Sexo/Level/Rank/Resets em linha, o que deixava o bloco
+  // sem um padrão único).
   const linhasComLabel: { label: string; valor: string | number }[] = [
+    { label: "Nome", valor: character.nome },
+    { label: "Classe", valor: character.Class?.nome ?? "—" },
     { label: "Level", valor: character.nivel },
     { label: "Rank", valor: character.rank ?? "F" },
     { label: "Resets", valor: character.reset ?? 0 },
@@ -38,9 +45,10 @@ export default function StatusPanel({
     <div className="flex flex-col gap-4">
       {/* Bloco central: avatar à esquerda, identidade no centro e os
           atributos à direita no desktop; tudo empilhado no mobile, sem
-          perder a ordem de leitura. */}
-      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[1fr_minmax(18rem,24rem)]">
-      <div className="grid grid-cols-1 gap-4 rounded-2xl border border-black/10 bg-[#3a2f24] p-5 shadow-lg sm:grid-cols-[auto_1fr]">
+          perder a ordem de leitura. Atributos ganham mais espaço que a
+          identidade (que é só texto curto) pra não ficar espremido. */}
+      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(20rem,26rem)_1fr]">
+      <div className="grid min-w-0 grid-cols-1 gap-4 rounded-2xl border border-black/10 bg-[#3a2f24] p-5 shadow-lg sm:grid-cols-[auto_1fr]">
         <div className="flex flex-col items-center gap-2">
           <div
             className="h-24 w-24 rounded-full border-4 border-[#F3B43F] bg-[#292018] bg-cover bg-center"
@@ -57,37 +65,36 @@ export default function StatusPanel({
           </button>
         </div>
 
-        <div className="flex flex-col gap-2">
-          <div className="rounded-lg bg-[#F3B43F]/50 px-4 py-2 text-center">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-black/50">Nome</p>
-            <p className="font-imFeel text-xl leading-tight">{character.nome}</p>
-          </div>
-          <div className="rounded-lg bg-[#F3B43F]/50 px-4 py-2 text-center">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-black/50">Classe</p>
-            <p className="font-imFeel text-lg leading-tight">{character.Class?.nome ?? "—"}</p>
-          </div>
-          <div className="flex items-center justify-between rounded-lg bg-[#F3B43F]/50 px-4 py-2">
-            <span className="font-imFeel text-lg">Sexo</span>
-            <div className="flex items-center gap-2">
-              <span className="font-bold">{character.genero}</span>
-              <GenderToggleButton characterId={character.id} generoAtual={character.genero} />
-            </div>
-          </div>
+        <div className="flex min-w-0 flex-col gap-2">
           {linhasComLabel.map(({ label, valor }) => (
             <div
               key={label}
-              className="flex items-center justify-between rounded-lg bg-[#F3B43F]/50 px-4 py-2"
+              className="flex items-center justify-between gap-3 rounded-lg bg-[#F3B43F]/50 px-4 py-2"
             >
-              <span className="font-imFeel text-lg">{label}</span>
-              <span className="font-bold">{valor}</span>
+              <span className="shrink-0 font-imFeel text-lg">{label}</span>
+              <span className="min-w-0 truncate text-right font-bold" title={String(valor)}>
+                {valor}
+              </span>
             </div>
           ))}
-          <div className="rounded-lg bg-[#F3B43F]/50 px-4 py-2 text-center">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-black/50">
-              Natureza Mágica
-            </p>
-            <p className="font-imFeel text-lg leading-tight">{character.natureza_magica ?? "—"}</p>
-            <p className="mt-0.5 text-[10px] text-black/50">
+          <div className="flex items-center justify-between gap-3 rounded-lg bg-[#F3B43F]/50 px-4 py-2">
+            <span className="shrink-0 font-imFeel text-lg">Sexo</span>
+            <div className="flex min-w-0 items-center gap-2">
+              <span className="truncate font-bold">{character.genero}</span>
+              <GenderToggleButton characterId={character.id} generoAtual={character.genero} />
+            </div>
+          </div>
+          <div className="rounded-lg bg-[#F3B43F]/50 px-4 py-2">
+            <div className="flex items-center justify-between gap-3">
+              <span className="shrink-0 font-imFeel text-lg">Natureza Mágica</span>
+              <span
+                className="min-w-0 truncate text-right font-bold"
+                title={character.natureza_magica ?? undefined}
+              >
+                {character.natureza_magica ?? "—"}
+              </span>
+            </div>
+            <p className="mt-1 text-[10px] text-black/50">
               Define as evoluções de habilidade disponíveis na aba Classe
             </p>
           </div>

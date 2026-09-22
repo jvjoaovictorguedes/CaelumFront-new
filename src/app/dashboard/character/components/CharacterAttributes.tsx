@@ -156,15 +156,14 @@ export default function CharacterAttributes({
   }
 
   return (
-    <div className="grid grid-cols-2 gap-3 rounded-2xl border border-black/10 bg-[#3a2f24] p-5 shadow-lg sm:grid-cols-2">
+    <div className="grid grid-cols-1 gap-3 rounded-2xl border border-black/10 bg-[#3a2f24] p-5 shadow-lg sm:grid-cols-2">
       {ATRIBUTOS.map(({ label, campo }) => (
         <div
           key={campo}
-          className="bg-[#F3B43F]/50 rounded-lg p-3 flex justify-between items-center"
+          className="flex items-center justify-between gap-3 rounded-lg bg-[#F3B43F]/50 p-3"
         >
-          <div>
-            <span className="font-imFeel text-xl mr-2">{label}</span>
-
+          <div className="min-w-0">
+            <span className="font-imFeel text-xl">{label}</span>{" "}
             <span className="font-bold text-xl">{atributos[campo]}</span>
             {bonusAtual && bonusAtual[campo] > 0 && (
               <span className="ml-1 text-sm font-bold text-green-600">
@@ -177,15 +176,15 @@ export default function CharacterAttributes({
             type="button"
             onClick={() => adicionarPonto(campo)}
             disabled={carregando || pontos <= 0}
-            className="rounded-lg bg-[#BC8418] px-3 py-1 text-xl font-bold text-black transition hover:bg-[#a5710f] disabled:cursor-not-allowed disabled:opacity-40"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#BC8418] text-xl font-bold text-black transition hover:bg-[#a5710f] disabled:cursor-not-allowed disabled:opacity-40"
           >
             +
           </button>
         </div>
       ))}
 
-      <div className="col-span-2 flex flex-col gap-3 rounded-lg bg-[#F3B43F]/50 p-3 sm:col-span-1">
-        <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 rounded-lg bg-[#F3B43F]/50 p-3 sm:col-span-2">
+        <div className="flex items-center justify-between gap-3">
           <span className="font-imFeel text-xl">Pontos para distribuir</span>
 
           <span className="font-bold text-xl">{pontos}</span>
@@ -195,7 +194,7 @@ export default function CharacterAttributes({
           type="button"
           onClick={distribuirAleatoriamente}
           disabled={carregando || pontos <= 0}
-          className="rounded-lg bg-[#BC8418] px-4 py-2 font-bold text-black transition hover:bg-[#a5710f] disabled:cursor-not-allowed disabled:opacity-40"
+          className="rounded-lg bg-[#BC8418] px-4 py-2 font-bold text-black transition hover:bg-[#a5710f] disabled:cursor-not-allowed disabled:opacity-40 sm:self-start"
         >
           Distribuir aleatoriamente
         </button>
