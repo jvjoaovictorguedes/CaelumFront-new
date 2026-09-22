@@ -446,6 +446,69 @@ export async function listarTorneios(): Promise<ResumoTorneio[]> {
   }
 }
 
+/* ------------------------------------------------------------------ */
+/* Torneios — administração (DEV/ADM)                                  */
+/*                                                                      */
+/* As rotas abaixo exigem authMiddleware + adminMiddleware no backend   */
+/* (checagem real de User.isAdmin a cada chamada) — nada aqui           */
+/* concede acesso por si só, só fala com as rotas que já são            */
+/* protegidas.                                                          */
+/* ------------------------------------------------------------------ */
+
+/** Igual a listarTorneios(), mas sem esconder "Rascunho" — é o que o admin precisa ver. */
+export async function listarTorneiosAdmin(): Promise<ResumoTorneio[]> {
+  try {
+    const resposta = await axiosInstance.get<{ itens?: TorneioBackend[] }>("/pvp/tournaments");
+    return (resposta.data?.itens ?? []).map(mapResumo);
+  } catch {
+    return [];
+  }
+}
+
+export interface NovoTorneio {
+  name: string;
+  description?: string;
+  level_min?: number;
+  level_max?: number;
+  starts_at: string;
+  max_participants: number;
+  prize_description?: string;
+}
+
+export async function criarTorneio(dados: NovoTorneio): Promise<ResumoTorneio> {
+  const resposta = await axiosInstance.post<{ torneio: TorneioBackend }>(
+    "/admin/pvp/tournaments",
+    dados,
+  );
+  return mapResumo(resposta.data.torneio);
+}
+
+export async function iniciarTorneioAdmin(id: number): Promise<ResumoTorneio> {
+  const resposta = await axiosInstance.post<{ torneio: TorneioBackend }>(
+    `/admin/pvp/tournaments/${id}/start`,
+  );
+  return mapResumo(resposta.data.torneio);
+}
+
+export async function cancelarTorneioAdmin(id: number, motivo?: string): Promise<ResumoTorneio> {
+  const resposta = await axiosInstance.post<{ torneio: TorneioBackend }>(
+    `/admin/pvp/tournaments/${id}/cancel`,
+    { motivo },
+  );
+  return mapResumo(resposta.data.torneio);
+}
+
+export async function marcarPremioEntregueAdmin(
+  id: number,
+  entregue: boolean,
+): Promise<ResumoTorneio> {
+  const resposta = await axiosInstance.post<{ torneio: TorneioBackend }>(
+    `/admin/pvp/tournaments/${id}/prize-delivered`,
+    { entregue },
+  );
+  return mapResumo(resposta.data.torneio);
+}
+
 export async function buscarTorneio(id: number): Promise<DetalheTorneio | null> {
   try {
     const resposta = await axiosInstance.get<{ torneio: TorneioBackend }>(

@@ -60,6 +60,7 @@ export interface CurrentCharacter {
 interface CurrentCharacterResponse {
   data?: {
     character?: CurrentCharacter;
+    isAdmin?: boolean;
   };
 }
 
@@ -84,4 +85,23 @@ export async function getCurrentCharacter() {
 export async function getCurrentCharacterId() {
   const cookieStore = await cookies();
   return cookieStore.get("characterId")?.value ?? null;
+}
+
+/**
+ * Só uma pista de UI (ex.: mostrar ou não o link de administração de
+ * Torneios) — a autorização de verdade em cada rota administrativa
+ * continua sendo o adminMiddleware do backend, que confere no banco a
+ * cada chamada. Chamada separada de getCurrentCharacter() porque a
+ * maioria das páginas não precisa saber disso e não vale mudar o shape
+ * que todo mundo já consome.
+ */
+export async function isCurrentUserAdmin() {
+  try {
+    const response = await axiosInstance.get<CurrentCharacterResponse>(
+      "/characters/me",
+    );
+    return Boolean(response.data?.data?.isAdmin);
+  } catch {
+    return false;
+  }
 }

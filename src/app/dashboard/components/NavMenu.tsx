@@ -19,9 +19,11 @@ interface NavMenuItem {
 export default function NavMenu({
   classe,
   avatarKey,
+  isAdmin,
 }: {
   classe?: string;
   avatarKey?: string | null;
+  isAdmin?: boolean;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -95,6 +97,19 @@ export default function NavMenu({
       iconUrl: "/icons/bestiario.png",
       path: "/dashboard/bestiary",
     },
+    // Sem ícone próprio ainda — reaproveita o de Duelo (mesma área,
+    // PvP), só o texto já diferencia. Só entra na lista pra quem é
+    // admin de verdade (isAdmin vem de /characters/me); a rota em si
+    // também é protegida (ver page.tsx), isso aqui é só visibilidade.
+    ...(isAdmin
+      ? [
+          {
+            name: "Admin: Torneios",
+            iconUrl: "/icons/duelo.png",
+            path: "/dashboard/admin/tournaments",
+          },
+        ]
+      : []),
   ];
   const handleNavigation = (path: string) => {
     setMenuAberto(false);
