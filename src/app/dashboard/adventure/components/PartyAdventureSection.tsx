@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { usePvpSocket } from "@/contexts/PvpSocketContext";
 import { useCharacter } from "@/contexts/CharacterContext";
@@ -30,6 +30,33 @@ export default function PartyAdventureSection({ zonas }: { zonas: ZonaApi[] }) {
   const [mostrarConvidar, setMostrarConvidar] = useState(false);
   const [zonaEscolhida, setZonaEscolhida] = useState<number | "">("");
   const [iniciando, setIniciando] = useState(false);
+  const timeoutIniciarRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function limparTimeoutIniciar() {
+    if (timeoutIniciarRef.current) {
+      clearTimeout(timeoutIniciarRef.current);
+      timeoutIniciarRef.current = null;
+    }
+  }
+
+  // "Iniciando..." nunca tinha um jeito de voltar a "Iniciar" — nem
+  // quando o servidor respondia com erro (ex.: área sem monstro
+  // configurado), nem quando o grupo mudava. Um clique que não
+  // completasse deixava o botão travado pro resto da sessão (bug
+  // reportado: preso em "Iniciando..." mesmo com os dois prontos).
+  useEffect(() => {
+    if (erroParty) {
+      limparTimeoutIniciar();
+      setIniciando(false);
+    }
+  }, [erroParty]);
+
+  useEffect(() => {
+    limparTimeoutIniciar();
+    setIniciando(false);
+  }, [grupoAtual?.partyId]);
+
+  useEffect(() => limparTimeoutIniciar, []);
 
   const outrosOnline = useMemo(
     () => Array.from(onlineIds).filter((id) => id !== characterId),
@@ -178,6 +205,13 @@ export default function PartyAdventureSection({ zonas }: { zonas: ZonaApi[] }) {
                 if (!zonaEscolhida) return;
                 setIniciando(true);
                 iniciarAventuraEmGrupo(zonaEscolhida);
+                // Nem toda falha volta como "party:erro" (ex.: soquete
+                // caiu no meio do caminho) — sem esse limite o botão
+                // ficava preso em "Iniciando..." pra sempre nesse caso.
+                limparTimeoutIniciar();
+                timeoutIniciarRef.current = setTimeout(() => {
+                  setIniciando(false);
+                }, 15000);
               }}
               className="rounded-lg bg-[#BC8418] px-4 py-2 font-bold text-black transition hover:bg-[#a5710f] disabled:opacity-50"
             >
