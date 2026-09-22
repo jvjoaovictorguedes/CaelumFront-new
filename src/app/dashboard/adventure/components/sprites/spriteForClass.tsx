@@ -25,7 +25,7 @@ export function spriteFolderForClass(
     nome.includes("mago") ||
     nome.includes("mage")
   ) {
-    return "Mago Aventureiro";
+    return "Wanderer Magican";
   }
 
   return "Knight_1";
@@ -36,7 +36,7 @@ export function spriteForClass(
 ): BattleSpriteComponent {
   return spriteFolderForClass(
     nomeClasse,
-  ) === "Mago Aventureiro"
+  ) === "Wanderer Magican"
     ? MageSprite
     : PlayerSprite;
 }
