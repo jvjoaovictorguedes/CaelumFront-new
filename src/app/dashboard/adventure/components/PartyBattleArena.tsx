@@ -1,18 +1,40 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import { usePvpSocket } from "@/contexts/PvpSocketContext";
+import { usePvpSocket, type TurnoGrupoPayload } from "@/contexts/PvpSocketContext";
 import { useCharacter } from "@/contexts/CharacterContext";
 import CombatActionBar from "@/components/combat/CombatActionBar";
-import { spriteForClass } from "./sprites/spriteForClass";
-import { spriteForEnemy } from "./sprites/spriteForEnemy";
+import { spriteForClass, spriteFolderForClass } from "./sprites/spriteForClass";
+import { spriteForEnemy, spriteFolderForEnemy } from "./sprites/spriteForEnemy";
+import { getSpriteAnimationDurationMs, type EstadoSprite } from "./sprites/spriteSheets";
+import { fundoDeBatalha } from "./battleBackgrounds";
 
 interface FloatingText {
   id: number;
   text: string;
   color: string;
+}
+
+type EstadoAnimacao =
+  | "idle"
+  | "anim-atacando-direita"
+  | "anim-atacando-esquerda"
+  | "anim-atingido"
+  | "anim-esquivando-direita"
+  | "anim-esquivando-esquerda";
+
+const DURACAO_MOVIMENTO_MS = 500;
+const DURACAO_CAMINHADA_MS = 420;
+
+function espera(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function duracaoVisual(pasta: string | null, estado: EstadoSprite, minimo = DURACAO_MOVIMENTO_MS) {
+  if (!pasta) return minimo;
+  return Math.max(minimo, getSpriteAnimationDurationMs(pasta, estado));
 }
 
 // Batalha em grupo (N aliados vs 1 monstro escalado) — a MESMA ideia de
@@ -41,7 +63,25 @@ export default function PartyBattleArena() {
   const [manasAliados, setManasAliados] = useState<Record<number, number>>({});
   const [floatingInimigo, setFloatingInimigo] = useState<FloatingText[]>([]);
   const [floatingAliados, setFloatingAliados] = useState<Record<number, FloatingText[]>>({});
-  const [ultimoIndexProcessado, setUltimoIndexProcessado] = useState(0);
+
+  // Animação: cada aliado tem seu próprio estado de sprite + se está
+  // "avançado" (caminhando até o monstro pra golpear) — igual ao motor
+  // de CombatArena.tsx, só generalizado pra um Record por id em vez de
+  // uma única variável de jogador.
+  const [animAliados, setAnimAliados] = useState<Record<number, EstadoAnimacao>>({});
+  const [avancoAliados, setAvancoAliados] = useState<Record<number, boolean>>({});
+  const [animInimigo, setAnimInimigo] = useState<EstadoAnimacao>("idle");
+  const [avancoInimigo, setAvancoInimigo] = useState(false);
+  const [processandoTurnos, setProcessandoTurnos] = useState(false);
+
+  // Fila de turnos processados um de cada vez, cada um com sua própria
+  // sequência de "caminhar até o alvo > golpear > voltar" (ver
+  // tocarAnimacaoDoTurno) — sem isso, os turnos que chegam em rajada do
+  // servidor aplicavam vida/dano tudo de uma vez, sem o personagem se
+  // mexer (bug reportado: "não está indo pra frente pra atacar").
+  const ultimoIndexEnfileiradoRef = useRef(0);
+  const filaTurnosRef = useRef<TurnoGrupoPayload[]>([]);
+  const processandoRef = useRef(false);
 
   useEffect(() => {
     if (!batalhaGrupo) return;
@@ -49,46 +89,116 @@ export default function PartyBattleArena() {
     setVidaMaxInimigo(batalhaGrupo.inimigo.vida_maxima);
     setVidasAliados(Object.fromEntries(batalhaGrupo.membros.map((m) => [m.id, m.vida])));
     setManasAliados(Object.fromEntries(batalhaGrupo.membros.map((m) => [m.id, m.mana])));
-    setUltimoIndexProcessado(0);
+    setAnimAliados({});
+    setAvancoAliados({});
+    setAnimInimigo("idle");
+    setAvancoInimigo(false);
+    ultimoIndexEnfileiradoRef.current = 0;
+    filaTurnosRef.current = [];
+    processandoRef.current = false;
+    setProcessandoTurnos(false);
   }, [batalhaGrupo]);
 
   useEffect(() => {
-    if (turnosGrupo.length <= ultimoIndexProcessado) return;
-    const novos = turnosGrupo.slice(ultimoIndexProcessado);
-    setUltimoIndexProcessado(turnosGrupo.length);
-
-    for (const turno of novos) {
-      if (turno.origem === "aliado") {
-        if (typeof turno.vidaInimigo === "number") setVidaInimigo(turno.vidaInimigo);
-        if (turno.idAtor && typeof turno.vidaAliado === "number") {
-          setVidasAliados((atual) => ({ ...atual, [Number(turno.idAtor)]: turno.vidaAliado! }));
-        }
-        if (turno.idAtor && typeof turno.manaAliado === "number") {
-          setManasAliados((atual) => ({ ...atual, [Number(turno.idAtor)]: turno.manaAliado! }));
-        }
-        if (turno.dano > 0) {
-          dispararFloatingInimigo(`-${turno.dano}`, "#ff3333");
-        } else if (turno.esquivou) {
-          dispararFloatingInimigo("Esquivou!", "#cccccc");
-        }
-        if (turno.cura && turno.cura > 0 && turno.idAtor) {
-          dispararFloatingAliado(Number(turno.idAtor), `+${turno.cura}`, "#44ff44");
-        }
-      } else {
-        if (turno.idAlvo && typeof turno.vidaAliado === "number") {
-          setVidasAliados((atual) => ({ ...atual, [turno.idAlvo!]: turno.vidaAliado! }));
-        }
-        if (turno.idAlvo) {
-          if (turno.dano > 0) {
-            dispararFloatingAliado(turno.idAlvo, `-${turno.dano}`, "#ff3333");
-          } else if (turno.esquivou) {
-            dispararFloatingAliado(turno.idAlvo, "Esquivou!", "#cccccc");
-          }
-        }
-      }
-    }
+    if (turnosGrupo.length <= ultimoIndexEnfileiradoRef.current) return;
+    const novos = turnosGrupo.slice(ultimoIndexEnfileiradoRef.current);
+    ultimoIndexEnfileiradoRef.current = turnosGrupo.length;
+    filaTurnosRef.current.push(...novos);
+    processarFila();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [turnosGrupo]);
+
+  const pastaSpriteInimigo = spriteFolderForEnemy(batalhaGrupo?.inimigo.nome);
+
+  async function processarFila() {
+    if (processandoRef.current) return;
+    processandoRef.current = true;
+    setProcessandoTurnos(true);
+    while (filaTurnosRef.current.length > 0) {
+      const turno = filaTurnosRef.current.shift()!;
+      await tocarAnimacaoDoTurno(turno);
+    }
+    processandoRef.current = false;
+    setProcessandoTurnos(false);
+  }
+
+  async function tocarAnimacaoDoTurno(turno: TurnoGrupoPayload) {
+    if (turno.origem === "aliado") {
+      const idAtor = turno.idAtor ? Number(turno.idAtor) : undefined;
+      if (!idAtor) return;
+      const pastaAtor = spriteFolderForClass(
+        batalhaGrupo?.membros.find((m) => m.id === idAtor)?.classe,
+      );
+
+      setAvancoAliados((atual) => ({ ...atual, [idAtor]: true }));
+      await espera(DURACAO_CAMINHADA_MS);
+
+      setAnimAliados((atual) => ({ ...atual, [idAtor]: "anim-atacando-direita" }));
+      setAnimInimigo(turno.dano > 0 ? "anim-atingido" : turno.esquivou ? "anim-esquivando-direita" : "idle");
+
+      if (turno.dano > 0) {
+        dispararFloatingInimigo(`-${turno.dano}`, "#ff3333");
+      } else if (turno.esquivou) {
+        dispararFloatingInimigo("Esquivou!", "#cccccc");
+      }
+      if (typeof turno.vidaInimigo === "number") setVidaInimigo(turno.vidaInimigo);
+      if (typeof turno.vidaAliado === "number") {
+        setVidasAliados((atual) => ({ ...atual, [idAtor]: turno.vidaAliado! }));
+      }
+      if (typeof turno.manaAliado === "number") {
+        setManasAliados((atual) => ({ ...atual, [idAtor]: turno.manaAliado! }));
+      }
+      if (turno.cura && turno.cura > 0) {
+        dispararFloatingAliado(idAtor, `+${turno.cura}`, "#44ff44");
+      }
+
+      const duracaoAcao = duracaoVisual(pastaAtor, "attack");
+      const duracaoReacaoInimigo = turno.dano > 0 ? duracaoVisual(pastaSpriteInimigo, "hurt") : DURACAO_MOVIMENTO_MS;
+      await espera(Math.max(duracaoAcao, duracaoReacaoInimigo));
+
+      setAnimAliados((atual) => ({ ...atual, [idAtor]: "idle" }));
+      setAnimInimigo("idle");
+
+      setAvancoAliados((atual) => ({ ...atual, [idAtor]: false }));
+      await espera(DURACAO_CAMINHADA_MS);
+    } else {
+      setAvancoInimigo(true);
+      await espera(DURACAO_CAMINHADA_MS);
+
+      setAnimInimigo("anim-atacando-esquerda");
+
+      const idAlvo = turno.idAlvo;
+      if (idAlvo) {
+        setAnimAliados((atual) => ({
+          ...atual,
+          [idAlvo]: turno.dano > 0 ? "anim-atingido" : turno.esquivou ? "anim-esquivando-esquerda" : "idle",
+        }));
+        if (turno.dano > 0) {
+          dispararFloatingAliado(idAlvo, `-${turno.dano}`, "#ff3333");
+        } else if (turno.esquivou) {
+          dispararFloatingAliado(idAlvo, "Esquivou!", "#cccccc");
+        }
+        if (typeof turno.vidaAliado === "number") {
+          setVidasAliados((atual) => ({ ...atual, [idAlvo]: turno.vidaAliado! }));
+        }
+      }
+
+      const pastaAlvo = idAlvo
+        ? spriteFolderForClass(batalhaGrupo?.membros.find((m) => m.id === idAlvo)?.classe)
+        : null;
+      const duracaoAtaque = duracaoVisual(pastaSpriteInimigo, "attack");
+      const duracaoReacaoAliado = turno.dano > 0 ? duracaoVisual(pastaAlvo, "hurt") : DURACAO_MOVIMENTO_MS;
+      await espera(Math.max(duracaoAtaque, duracaoReacaoAliado));
+
+      if (idAlvo) {
+        setAnimAliados((atual) => ({ ...atual, [idAlvo]: "idle" }));
+      }
+      setAnimInimigo("idle");
+
+      setAvancoInimigo(false);
+      await espera(DURACAO_CAMINHADA_MS);
+    }
+  }
 
   function dispararFloatingInimigo(text: string, color: string) {
     const id = Date.now() + Math.random();
@@ -120,6 +230,16 @@ export default function PartyBattleArena() {
   if (!batalhaGrupo) return null;
 
   const EnemySprite = spriteForEnemy(batalhaGrupo.inimigo.nome);
+
+  const fundoBatalha = fundoDeBatalha({
+    nomeMonstro: batalhaGrupo.inimigo.nome,
+    nomeZona: batalhaGrupo.zona.nome,
+  });
+
+  // Só mostra o popup de fim de batalha depois que a última animação em
+  // fila terminar de tocar — senão o resultado corta a cena no meio do
+  // golpe final.
+  const mostrarResultado = Boolean(resultadoGrupo) && !processandoTurnos;
 
   return (
     <div className="fixed inset-0 z-[90] overflow-hidden bg-[#1a1410]">
@@ -155,7 +275,12 @@ export default function PartyBattleArena() {
         }
       `}</style>
 
-      <div className="absolute inset-0 bg-gradient-to-b from-[#3a2f24] to-[#1f1813]" />
+      <div
+        className={`absolute inset-0 bg-cover bg-center ${
+          fundoBatalha ? "" : "bg-gradient-to-b from-[#3a2f24] to-[#1f1813]"
+        }`}
+        style={fundoBatalha ? { backgroundImage: `url(${fundoBatalha})` } : undefined}
+      />
       <div className="absolute inset-0 bg-black/30" />
 
       <div className="absolute inset-x-0 top-0 z-20 flex flex-col items-center p-3 text-center text-white drop-shadow-lg sm:p-4">
@@ -169,7 +294,8 @@ export default function PartyBattleArena() {
 
       {/* Aliados: empilhados à esquerda, cada um com nome+vida+mana acima
           da cabeça — mesmo critério do combate solo, só que N vezes. O
-          aliado da vez ganha um glow pulsante em volta do sprite. */}
+          aliado da vez ganha um glow pulsante em volta do sprite, e quem
+          agir nesse turno anda até o monstro pra golpear (avancoAliados). */}
       <div className="absolute inset-y-0 left-0 z-10 flex w-[45%] flex-col items-center justify-center gap-16 py-24 sm:w-[38%] sm:gap-20">
         {batalhaGrupo.membros.map((membro) => {
           const PlayerSprite = spriteForClass(membro.classe);
@@ -177,8 +303,15 @@ export default function PartyBattleArena() {
           const mana = manasAliados[membro.id] ?? membro.mana;
           const vivo = vida > 0;
           const daVez = turnoAtualGrupo === String(membro.id);
+          const anim = animAliados[membro.id] ?? "idle";
+          const avancado = avancoAliados[membro.id] ?? false;
           return (
-            <div key={membro.id} className={`relative flex flex-col items-center ${vivo ? "" : "opacity-40 grayscale"}`}>
+            <div
+              key={membro.id}
+              className={`relative flex flex-col items-center transition-transform duration-[420ms] ease-in-out ${
+                avancado ? "translate-x-[20vw]" : "translate-x-0"
+              } ${vivo ? "" : "opacity-40 grayscale"}`}
+            >
               <div className="pointer-events-none absolute -top-16 left-1/2 z-20 flex -translate-x-1/2 flex-col items-center">
                 {(floatingAliados[membro.id] ?? []).map((ft) => (
                   <span
@@ -205,16 +338,24 @@ export default function PartyBattleArena() {
               </div>
 
               <div className={daVez && vivo ? "turno-ativo" : ""}>
-                <PlayerSprite className="battle-sprite h-20 w-20 sm:h-28 sm:w-28" animState="idle" />
+                <PlayerSprite
+                  className={`battle-sprite h-20 w-20 sm:h-28 sm:w-28 ${anim !== "idle" ? anim : ""}`}
+                  animState={anim}
+                />
               </div>
             </div>
           );
         })}
       </div>
 
-      {/* Monstro à direita */}
+      {/* Monstro à direita — anda até o centro (avancoInimigo) quando é
+          quem está golpeando. */}
       <div className="absolute inset-y-0 right-0 z-10 flex w-[45%] flex-col items-center justify-center sm:w-[38%]">
-        <div className="relative flex flex-col items-center">
+        <div
+          className={`relative flex flex-col items-center transition-transform duration-[420ms] ease-in-out ${
+            avancoInimigo ? "-translate-x-[20vw]" : "translate-x-0"
+          }`}
+        >
           <div className="pointer-events-none absolute -top-16 left-1/2 z-20 flex -translate-x-1/2 flex-col items-center">
             {floatingInimigo.map((ft) => (
               <span
@@ -236,16 +377,19 @@ export default function PartyBattleArena() {
             </div>
           </div>
 
-          <EnemySprite className="battle-sprite h-32 w-32 sm:h-48 sm:w-48" animState="idle" />
+          <EnemySprite
+            className={`battle-sprite h-32 w-32 sm:h-48 sm:w-48 ${animInimigo !== "idle" ? animInimigo : ""}`}
+            animState={animInimigo}
+          />
         </div>
       </div>
 
-      {!resultadoGrupo && (
+      {!mostrarResultado && (
         <div className="absolute inset-x-0 bottom-0 z-30 bg-gradient-to-t from-black/90 via-black/70 to-transparent px-3 pb-3 pt-10 sm:px-6">
           {meuTurno ? (
             <CombatActionBar
               podeAgir={meuTurno}
-              ocupado={false}
+              ocupado={processandoTurnos}
               manaAtual={manasAliados[meuId ?? -1] ?? meuMembro?.mana ?? 0}
               onAtaqueBasico={() => agirGrupo("attack")}
               poderes={(meuMembro?.poderes ?? []).map((p) => ({
@@ -267,7 +411,7 @@ export default function PartyBattleArena() {
         </div>
       )}
 
-      {resultadoGrupo && (
+      {mostrarResultado && resultadoGrupo && (
         <div className="absolute inset-0 z-40 flex items-center justify-center bg-black/60 p-4">
           <div className="w-full max-w-md rounded-2xl border-2 border-[#F3B43F] bg-[#292018] p-6 text-center text-white shadow-2xl">
             <p className="mb-2 font-imFeel text-3xl">

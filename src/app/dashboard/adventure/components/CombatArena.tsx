@@ -18,6 +18,8 @@ import {
   type EstadoSprite,
 } from "./sprites/spriteSheets";
 
+import { fundoDeBatalha } from "./battleBackgrounds";
+
 type EstadoAnimacao =
   | "idle"
   | "anim-atacando-direita"
@@ -32,21 +34,6 @@ const DURACAO_MOVIMENTO_MS = 500;
 const INTERVALO_ENTRE_FASES_MS = 50;
 
 const DURACAO_CAMINHADA_MS = 420;
-
-const FUNDO_POR_ZONA: Record<string, string> = {
-  "Bosque de Sussurros": "/images/backgrounds/selva-teste.jpg",
-  "Terras Devastadas": "/images/backgrounds/terras-devastadas.jpg",
-};
-
-const FUNDO_POR_MONSTRO: Record<string, string> = {
-  "Espectro Sussurrante": "/images/backgrounds/cripta-espectral.jpg",
-  "Bandido Errante": "/images/backgrounds/terras-devastadas.jpg",
-  "Golem de Pedra": "/images/backgrounds/templo-ancestral-golem.jpg",
-  Minotauro: "/images/backgrounds/covil-minotauro.jpg",
-  "Aranha Venenosa": "/images/backgrounds/ninho-aranhas.jpg",
-  "Cultista Renegado": "/images/backgrounds/altar-cultos.jpg",
-  "Orc Guerreiro": "/images/backgrounds/acampamento-orc.jpg",
-};
 
 interface Power {
   id: number;
@@ -372,14 +359,12 @@ export default function CombatArena({
 
   const pastaSpriteInimigo = spriteFolderForEnemy(enemy.nome);
 
-  // Prioridade: fundo específico do monstro atual > imagem_url vinda do
-  // servidor (hoje sempre null — ver AdventureZone.js) > fundo padrão da
-  // zona > gradiente padrão (null).
-  const fundoZona =
-    FUNDO_POR_MONSTRO[enemy.nome] ||
-    zona?.imagem_url ||
-    (zona?.nome ? FUNDO_POR_ZONA[zona.nome] : undefined) ||
-    null;
+  // zona.imagem_url vem do servidor (hoje sempre null — ver AdventureZone.js).
+  const fundoZona = fundoDeBatalha({
+    nomeMonstro: enemy.nome,
+    nomeZona: zona?.nome,
+    imagemUrlZona: zona?.imagem_url,
+  });
 
   function triggerFloatingText(
     target: "player" | "enemy",

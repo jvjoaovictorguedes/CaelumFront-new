@@ -62,20 +62,20 @@ export default function CombatActionBar({
   const desabilitadoGeral = !podeAgir || ocupado;
 
   return (
-    <div className="flex flex-col gap-4 rounded-2xl border-2 border-[#F3B43F]/60 bg-[#292018]/90 p-4 shadow-lg">
+    <div className="flex flex-col gap-2.5 rounded-xl border-2 border-[#F3B43F]/50 bg-[#292018]/60 p-2.5 shadow-lg backdrop-blur-sm">
       <button
         type="button"
         onClick={onAtaqueBasico}
         disabled={desabilitadoGeral}
-        className="self-start rounded-lg border-2 border-[#F3B43F] bg-[#BC8418] px-4 py-2 font-bold text-black shadow-md transition hover:bg-[#a5710f] disabled:cursor-not-allowed disabled:opacity-50"
+        className="self-start rounded-lg border-2 border-[#F3B43F] bg-[#BC8418]/90 px-3 py-1.5 text-sm font-bold text-black shadow-md transition hover:bg-[#a5710f] disabled:cursor-not-allowed disabled:opacity-50"
       >
         Ataque básico
       </button>
 
       {poderes.length > 0 && (
         <div>
-          <p className="mb-2 text-xs font-bold uppercase tracking-widest text-[#F3B43F]">Poderes</p>
-          <div className="flex flex-wrap gap-3">
+          <p className="mb-1 text-[10px] font-bold uppercase tracking-widest text-[#F3B43F]/90">Poderes</p>
+          <div className="flex flex-wrap gap-1.5">
             {poderes.map((poder) => {
               const semMana = manaAtual < poder.custo_mana;
               return (
@@ -95,7 +95,7 @@ export default function CombatActionBar({
                     type="button"
                     onClick={() => onUsarPoder(poder.id)}
                     disabled={desabilitadoGeral || semMana}
-                    className="h-16 w-16 overflow-hidden rounded-lg border-2 border-[#F3B43F]/60 bg-[#3a2f24] shadow-md transition hover:border-[#F3B43F] disabled:cursor-not-allowed disabled:opacity-40"
+                    className="h-10 w-10 overflow-hidden rounded-md border-2 border-[#F3B43F]/50 bg-[#3a2f24]/70 shadow-md transition hover:border-[#F3B43F] disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     <IconeAcao nome={poder.nome} imagemUrl={poder.imagem_url} />
                   </button>
@@ -108,8 +108,8 @@ export default function CombatActionBar({
 
       {consumiveis.length > 0 && (
         <div>
-          <p className="mb-2 text-xs font-bold uppercase tracking-widest text-[#F3B43F]">Consumíveis</p>
-          <div className="flex flex-wrap gap-3">
+          <p className="mb-1 text-[10px] font-bold uppercase tracking-widest text-[#F3B43F]/90">Consumíveis</p>
+          <div className="flex flex-wrap gap-1.5">
             {consumiveis.map((item) => {
               const semEstoque = item.quantidade <= 0;
               return (
@@ -128,10 +128,10 @@ export default function CombatActionBar({
                     type="button"
                     onClick={() => onUsarConsumivel(item.id_item)}
                     disabled={desabilitadoGeral || semEstoque}
-                    className="relative h-16 w-16 overflow-hidden rounded-lg border-2 border-[#F3B43F]/60 bg-[#3a2f24] shadow-md transition hover:border-[#F3B43F] disabled:cursor-not-allowed disabled:opacity-40"
+                    className="relative h-10 w-10 overflow-hidden rounded-md border-2 border-[#F3B43F]/50 bg-[#3a2f24]/70 shadow-md transition hover:border-[#F3B43F] disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     <IconeAcao nome={item.nome} imagemUrl={item.imagem_url} />
-                    <span className="absolute bottom-0 right-0 rounded-tl bg-black/70 px-1 text-[10px] font-bold text-white">
+                    <span className="absolute bottom-0 right-0 rounded-tl bg-black/70 px-1 text-[9px] font-bold text-white">
                       {item.quantidade}
                     </span>
                   </button>
