@@ -7,7 +7,7 @@ import type { NodeApi, TerritorioApi } from "./WorldMapClient";
 
 const LABEL_SERVICO: Record<string, string> = {
   SHOP: "Loja",
-  MARKET: "Mercado",
+  MARKET: "Mercado Negro",
   FORGE: "Forja",
   GUILDS: "Guildas",
   QUESTS: "Guilda dos Aventureiros",

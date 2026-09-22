@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import axiosInstance from "@/utils/axiosIntance";
 import { useCharacter } from "@/contexts/CharacterContext";
 import { formatarTier } from "@/utils/equipmentTier";
+import { resolveMediaUrl } from "@/utils/media-url";
 
 interface WeaponPropertiesApi {
   dano_min: number;
@@ -28,6 +29,7 @@ interface ItemApi {
   tipo_item: string;
   raridade: string;
   tier_equipamento: number | null;
+  imagem_url?: string | null;
   weaponProperties?: WeaponPropertiesApi | null;
   armorProperties?: ArmorPropertiesApi | null;
 }
@@ -96,6 +98,36 @@ const CORES_RARIDADE: Record<string, string> = {
   Lendario: "text-orange-400",
   Mitico: "text-red-400",
 };
+
+const OPCOES_RARIDADE = ["Comum", "Incomum", "Raro", "Epico", "Lendario", "Mitico"] as const;
+
+// Fallback quando o item não tem imagem cadastrada — mesmo glifo por
+// tipo já usado na Loja (ShopItem.tsx), só sem depender daquele arquivo.
+const ICONE_POR_TIPO: Record<string, string> = {
+  Arma: "⚔️",
+  Capacete: "🪖",
+  Armadura: "🛡️",
+  Escudo: "🛡️",
+  Consumivel: "🧪",
+  Material: "⛏️",
+  Acessorio1: "💍",
+  Acessorio2: "📿",
+};
+
+function IconeItem({ item }: { item: ItemApi }) {
+  const imagemResolvida = resolveMediaUrl(item.imagem_url);
+  return (
+    <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-black/30">
+      {imagemResolvida ? (
+        <img src={imagemResolvida} alt={item.nome} className="h-full w-full object-contain p-1" />
+      ) : (
+        <span className="text-2xl" aria-hidden="true">
+          {ICONE_POR_TIPO[item.tipo_item] ?? "📦"}
+        </span>
+      )}
+    </div>
+  );
+}
 
 type Aba = "comprar" | "vender" | "meus-anuncios";
 
@@ -252,6 +284,7 @@ function AbaComprar({ characterId }: { characterId: number }) {
   const [precoMax, setPrecoMax] = useState("");
   const [refinamentoMin, setRefinamentoMin] = useState("");
   const [tierFiltro, setTierFiltro] = useState("");
+  const [raridadeFiltro, setRaridadeFiltro] = useState("");
   const [ordenar, setOrdenar] = useState<string>("price_asc");
   const [pagina, setPagina] = useState(1);
   const [totalPaginas, setTotalPaginas] = useState(1);
@@ -271,6 +304,7 @@ function AbaComprar({ characterId }: { characterId: number }) {
           preco_max: precoMax || undefined,
           refinamento_min: refinamentoMin || undefined,
           tier: tierFiltro || undefined,
+          raridade: raridadeFiltro || undefined,
           sort: ordenar,
           page: pagina,
           limit: LIMITE_POR_PAGINA,
@@ -295,7 +329,7 @@ function AbaComprar({ characterId }: { characterId: number }) {
     } finally {
       setCarregando(false);
     }
-  }, [filtroNome, precoMin, precoMax, refinamentoMin, tierFiltro, ordenar, pagina]);
+  }, [filtroNome, precoMin, precoMax, refinamentoMin, tierFiltro, raridadeFiltro, ordenar, pagina]);
 
   useEffect(() => {
     carregar();
@@ -305,7 +339,7 @@ function AbaComprar({ characterId }: { characterId: number }) {
   // ficar numa página 5 que não existe mais depois de filtrar.
   useEffect(() => {
     setPagina(1);
-  }, [filtroNome, precoMin, precoMax, refinamentoMin, tierFiltro, ordenar]);
+  }, [filtroNome, precoMin, precoMax, refinamentoMin, tierFiltro, raridadeFiltro, ordenar]);
 
   async function comprar(listing: ListingApi) {
     if (comprando) return;
@@ -327,7 +361,7 @@ function AbaComprar({ characterId }: { characterId: number }) {
 
   return (
     <div className="rounded-2xl border-2 border-[#F3B43F] bg-[#292018]/90 p-5 text-white shadow-xl">
-      <div className="mb-4 grid grid-cols-1 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+      <div className="mb-4 grid grid-cols-1 gap-2 sm:grid-cols-3 lg:grid-cols-7">
         <input
           value={filtroNome}
           onChange={(e) => setFiltroNome(e.target.value)}
@@ -369,6 +403,18 @@ function AbaComprar({ characterId }: { characterId: number }) {
           ))}
         </select>
         <select
+          value={raridadeFiltro}
+          onChange={(e) => setRaridadeFiltro(e.target.value)}
+          className="min-w-0 rounded-lg border border-white/20 bg-black/30 px-3 py-2 text-white outline-none focus:border-[#F3B43F]"
+        >
+          <option value="">Qualquer Raridade</option>
+          {OPCOES_RARIDADE.map((r) => (
+            <option key={r} value={r}>
+              {r}
+            </option>
+          ))}
+        </select>
+        <select
           value={ordenar}
           onChange={(e) => setOrdenar(e.target.value)}
           className="min-w-0 rounded-lg border border-white/20 bg-black/30 px-3 py-2 text-white outline-none focus:border-[#F3B43F]"
@@ -398,20 +444,25 @@ function AbaComprar({ characterId }: { characterId: number }) {
 
               return (
                 <div key={listing.id} className="rounded-xl border border-white/10 bg-[#3a2f24] p-3">
-                  <p className="font-bold">
-                    {listing.item.nome}
-                    {listing.instancia ? ` +${listing.instancia.refinamento}` : ""}
-                  </p>
-                  <p className="flex flex-wrap items-center gap-1.5">
-                    <span className={`text-xs font-bold ${CORES_RARIDADE[listing.item.raridade] ?? "text-white/70"}`}>
-                      {listing.item.raridade} · {listing.item.tipo_item}
-                    </span>
-                    {formatarTier(listing.item.tier_equipamento) && (
-                      <span className="rounded-full border border-[#F3B43F]/60 bg-black/30 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[#F3B43F]">
-                        {formatarTier(listing.item.tier_equipamento)}
-                      </span>
-                    )}
-                  </p>
+                  <div className="flex items-start gap-3">
+                    <IconeItem item={listing.item} />
+                    <div className="min-w-0 flex-1">
+                      <p className="font-bold">
+                        {listing.item.nome}
+                        {listing.instancia ? ` +${listing.instancia.refinamento}` : ""}
+                      </p>
+                      <p className="flex flex-wrap items-center gap-1.5">
+                        <span className={`text-xs font-bold ${CORES_RARIDADE[listing.item.raridade] ?? "text-white/70"}`}>
+                          {listing.item.raridade} · {listing.item.tipo_item}
+                        </span>
+                        {formatarTier(listing.item.tier_equipamento) && (
+                          <span className="rounded-full border border-[#F3B43F]/60 bg-black/30 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[#F3B43F]">
+                            {formatarTier(listing.item.tier_equipamento)}
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                  </div>
                   {listing.instancia && <PropriedadesEquipamento item={listing.item} instancia={listing.instancia} />}
                   <p className="mt-2 text-sm text-white/70">
                     Vendedor: {listing.vendedor?.nome ?? "?"} ·{" "}

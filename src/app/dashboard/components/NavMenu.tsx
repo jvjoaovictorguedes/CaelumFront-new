@@ -62,7 +62,7 @@ export default function NavMenu({
       path: "/dashboard/inventory",
     },
     { name: "Loja", iconUrl: "/icons/loja.png", path: "/dashboard/shop" },
-    { name: "Mercado", iconUrl: "/icons/ui/mercado.png", path: "/dashboard/market" },
+    { name: "Mercado Negro", iconUrl: "/icons/ui/mercado.png", path: "/dashboard/market" },
     { name: "Forja", iconUrl: "/icons/ui/forja.png", path: "/dashboard/forge" },
     { name: "Expedição", iconUrl: "/icons/ui/expedicao.png", path: "/dashboard/expedition" },
     {
