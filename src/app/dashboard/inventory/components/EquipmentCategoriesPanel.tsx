@@ -289,21 +289,28 @@ export default function EquipmentCategoriesPanel() {
             </div>
 
             {equipadoNoSlot && (
-              <p className="mb-3 text-center text-xs text-white/60">
-                Equipado:{" "}
-                <span className="font-bold text-[#F3B43F]">
-                  {equipadoNoSlot.nome}
-                  {equipadoNoSlot.refinamento > 0 && ` +${equipadoNoSlot.refinamento}`}
-                </span>{" "}
-                <button
-                  type="button"
-                  onClick={() => desequipar(slot)}
-                  disabled={processando}
-                  className="ml-1 underline hover:text-white disabled:opacity-50"
+              <div className="mb-3 flex items-center justify-center gap-2">
+                <div
+                  className={`h-10 w-10 shrink-0 overflow-hidden rounded-lg border-2 bg-[#3a2f24] ${bordaPorRaridade(equipadoNoSlot.raridade)}`}
                 >
-                  desequipar
-                </button>
-              </p>
+                  <ItemThumb item={equipadoNoSlot} />
+                </div>
+                <p className="text-center text-xs text-white/60">
+                  Equipado:{" "}
+                  <span className="font-bold text-[#F3B43F]">
+                    {equipadoNoSlot.nome}
+                    {equipadoNoSlot.refinamento > 0 && ` +${equipadoNoSlot.refinamento}`}
+                  </span>{" "}
+                  <button
+                    type="button"
+                    onClick={() => desequipar(slot)}
+                    disabled={processando}
+                    className="ml-1 underline hover:text-white disabled:opacity-50"
+                  >
+                    desequipar
+                  </button>
+                </p>
+              </div>
             )}
 
             {disponiveis.length === 0 ? (
