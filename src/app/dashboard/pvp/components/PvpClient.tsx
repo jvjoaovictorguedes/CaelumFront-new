@@ -63,11 +63,42 @@ export default function PvpClient({
     resultadoFinal,
     desafiar: desafiarAoVivo,
     desafioEnviadoPara,
+    ratingUpdate,
     erro: erroSocket,
     limparErro: limparErroSocket,
   } = usePvpSocket();
 
   const duelosProcessadosRef = useRef<Set<number>>(new Set());
+
+  // O RankedPanel é DESMONTADO enquanto o duelo ao vivo ocupa a tela, então
+  // ele não consegue ver por si só o fim da partida ranqueada. O PvpClient,
+  // que fica montado o tempo todo, guarda o desfecho aqui e entrega pronto
+  // pro painel quando ele volta — é assim que a tela de resultado ranqueado
+  // (antes → depois, promoção/rebaixamento) sobrevive à volta pra arena.
+  const [resultadoRankedBruto, setResultadoRankedBruto] = useState<{
+    duelId: number;
+    venceu: boolean;
+    ratingAntes: number | null;
+    ratingDepois: number | null;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!resultadoFinal) return;
+    if (!resultadoFinal.ranked && !duelo?.ranked) return;
+    if (resultadoFinal.motivo === "FalhaServidor") return;
+    const minhaChave = duelo?.a.id === character.id ? "A" : "B";
+    const doSocket = ratingUpdate
+      ? minhaChave === "A"
+        ? ratingUpdate.jogadorA
+        : ratingUpdate.jogadorB
+      : null;
+    setResultadoRankedBruto({
+      duelId: resultadoFinal.duelId,
+      venceu: resultadoFinal.vencedorChave === minhaChave,
+      ratingAntes: doSocket?.ratingAntes ?? null,
+      ratingDepois: doSocket?.ratingDepois ?? null,
+    });
+  }, [resultadoFinal, duelo, ratingUpdate, character.id]);
 
   // Online primeiro, depois por nível (maior pro menor) — recalculado
   // sempre que onlineIds muda (socket), não só na carga inicial.
@@ -185,7 +216,11 @@ export default function PvpClient({
       )}
 
       {aba === "ranked" ? (
-        <RankedPanel meuCharacterId={character.id} />
+        <RankedPanel
+          meuCharacterId={character.id}
+          resultadoBruto={resultadoRankedBruto}
+          aoLimparResultado={() => setResultadoRankedBruto(null)}
+        />
       ) : aba === "torneios" ? (
         <TournamentsPanel meuCharacterId={character.id} />
       ) : (

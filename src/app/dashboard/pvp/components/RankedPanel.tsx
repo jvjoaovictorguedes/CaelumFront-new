@@ -22,8 +22,31 @@ interface EloAntes {
   rating?: number | null;
 }
 
-export default function RankedPanel({ meuCharacterId }: { meuCharacterId: number }) {
-  const { conectado, duelo, resultadoFinal, ratingUpdate } = usePvpSocket();
+export interface ResultadoRankedBruto {
+  duelId: number;
+  venceu: boolean;
+  ratingAntes: number | null;
+  ratingDepois: number | null;
+}
+
+/**
+ * Escopo de MÓDULO de propósito: este painel é desmontado enquanto o duelo
+ * ao vivo ocupa a tela, então um `useState` com o Elo de antes da partida
+ * seria perdido justamente quando ele é necessário (na volta). A variável
+ * vive fora do componente pra atravessar a desmontagem.
+ */
+let snapshotEloAntes: EloAntes | null = null;
+
+export default function RankedPanel({
+  meuCharacterId,
+  resultadoBruto,
+  aoLimparResultado,
+}: {
+  meuCharacterId: number;
+  resultadoBruto?: ResultadoRankedBruto | null;
+  aoLimparResultado?: () => void;
+}) {
+  const { conectado, duelo } = usePvpSocket();
 
   const [status, setStatus] = useState<StatusRanked | null>(null);
   const [carregandoStatus, setCarregandoStatus] = useState(true);
@@ -31,15 +54,13 @@ export default function RankedPanel({ meuCharacterId }: { meuCharacterId: number
   const [erro, setErro] = useState("");
   const [leaderboard, setLeaderboard] = useState<LinhaLeaderboard[] | null>(null);
   const [carregandoLeaderboard, setCarregandoLeaderboard] = useState(false);
-  const [eloAntes, setEloAntes] = useState<EloAntes | null>(null);
   const [resultadoRanked, setResultadoRanked] = useState<{
     venceu: boolean;
     antes: EloAntes;
     depois: EloAntes;
   } | null>(null);
 
-  const eloAntesRef = useRef<EloAntes | null>(null);
-  eloAntesRef.current = eloAntes;
+  const duelIdProcessadoRef = useRef<number | null>(null);
 
   const carregarStatus = useCallback(async () => {
     const novo = await buscarStatusRanked();
@@ -52,38 +73,32 @@ export default function RankedPanel({ meuCharacterId }: { meuCharacterId: number
     carregarStatus();
   }, [carregarStatus]);
 
-  // Quando um duelo ranqueado termina, recarrega o status e monta a tela
-  // de resultado (antes → depois). O backend v2 pode mandar o tier novo
-  // no `ranked:rating:update`; se não mandar, o status recarregado já
-  // traz — por isso os dois caminhos são tolerados.
+  // Desfecho da última partida ranqueada — vem do PvpClient, que fica
+  // montado durante o duelo. O tier/divisão novos saem do status
+  // recarregado; o rating pode vir do socket (`ranked:rating:update`) ou
+  // do próprio status, por isso os dois caminhos são tolerados.
   useEffect(() => {
-    if (!resultadoFinal || !duelo?.ranked) return;
-    const minhaChave = duelo.a.id === meuCharacterId ? "A" : "B";
-    const venceu = resultadoFinal.vencedorChave === minhaChave;
-    const antes = eloAntesRef.current ?? {};
+    if (!resultadoBruto) return;
+    if (duelIdProcessadoRef.current === resultadoBruto.duelId) return;
+    duelIdProcessadoRef.current = resultadoBruto.duelId;
+    const antes = snapshotEloAntes ?? {};
 
     carregarStatus().then((novo) => {
-      const doSocket = ratingUpdate
-        ? minhaChave === "A"
-          ? ratingUpdate.jogadorA
-          : ratingUpdate.jogadorB
-        : null;
       setResultadoRanked({
-        venceu,
+        venceu: resultadoBruto.venceu,
         antes: {
           tier: antes.tier ?? null,
           division: antes.division ?? null,
-          rating: antes.rating ?? doSocket?.ratingAntes ?? null,
+          rating: antes.rating ?? resultadoBruto.ratingAntes ?? null,
         },
         depois: {
           tier: novo?.tier ?? null,
           division: novo?.division ?? null,
-          rating: novo?.rating ?? doSocket?.ratingDepois ?? null,
+          rating: novo?.rating ?? resultadoBruto.ratingDepois ?? null,
         },
       });
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [resultadoFinal?.duelId, duelo?.ranked]);
+  }, [resultadoBruto, carregarStatus]);
 
   async function buscarPartida() {
     if (buscandoPartida) return;
@@ -91,11 +106,11 @@ export default function RankedPanel({ meuCharacterId }: { meuCharacterId: number
     setErro("");
     setResultadoRanked(null);
     // Guarda o Elo atual pra conseguir mostrar "antes → depois" no fim.
-    setEloAntes({
+    snapshotEloAntes = {
       tier: status?.tier ?? null,
       division: status?.division ?? null,
       rating: status?.rating ?? null,
-    });
+    };
     try {
       await iniciarPartidaRanked();
       // O duelo em si chega pelo socket (ranked:match:start) e o
@@ -140,7 +155,10 @@ export default function RankedPanel({ meuCharacterId }: { meuCharacterId: number
           resultado={resultadoRanked}
           partidasHoje={partidasHoje}
           limiteDiario={limiteDiario}
-          aoFechar={() => setResultadoRanked(null)}
+          aoFechar={() => {
+            setResultadoRanked(null);
+            aoLimparResultado?.();
+          }}
         />
       )}
 
