@@ -297,7 +297,7 @@ export default function LiveDuelArena({ meuCharacterId }: { meuCharacterId: numb
             </p>
           )}
           {duelo.ranked && ratingUpdate && (
-            <RatingDelta ratingUpdate={ratingUpdate} minhaChave={minhaChave} />
+            <RatingDelta ratingUpdate={ratingUpdate} />
           )}
           <button
             onClick={limparDuelo}
@@ -312,23 +312,18 @@ export default function LiveDuelArena({ meuCharacterId }: { meuCharacterId: numb
   );
 }
 
-function RatingDelta({
-  ratingUpdate,
-  minhaChave,
-}: {
-  ratingUpdate: RankedRatingUpdatePayload;
-  minhaChave: "A" | "B";
-}) {
-  const meu = minhaChave === "A" ? ratingUpdate.jogadorA : ratingUpdate.jogadorB;
-  const delta = meu.ratingDepois - meu.ratingAntes;
+function RatingDelta({ ratingUpdate }: { ratingUpdate: RankedRatingUpdatePayload }) {
+  // Sempre sobre o desafiante (eu) — o defensor é IA e nunca tem rating
+  // alterado, então o backend não manda um valor por jogador (ver §8).
+  const { ratingAntes, ratingDepois, delta, tierDepois } = ratingUpdate;
   return (
     <p className="mb-3 text-sm">
-      Rating: {meu.ratingAntes} →{" "}
+      Rating: {ratingAntes} →{" "}
       <span className={delta >= 0 ? "text-green-400" : "text-red-400"}>
-        {meu.ratingDepois} ({delta >= 0 ? "+" : ""}
+        {ratingDepois} ({delta >= 0 ? "+" : ""}
         {delta})
       </span>{" "}
-      · Liga: {meu.liga}
+      · Elo: {tierDepois.tierLabel}
     </p>
   );
 }

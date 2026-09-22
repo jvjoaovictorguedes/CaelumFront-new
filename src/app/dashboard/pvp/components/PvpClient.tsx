@@ -87,16 +87,14 @@ export default function PvpClient({
     if (!resultadoFinal.ranked && !duelo?.ranked) return;
     if (resultadoFinal.motivo === "FalhaServidor") return;
     const minhaChave = duelo?.a.id === character.id ? "A" : "B";
-    const doSocket = ratingUpdate
-      ? minhaChave === "A"
-        ? ratingUpdate.jogadorA
-        : ratingUpdate.jogadorB
-      : null;
+    // "ranked:rating:update" é sempre sobre o desafiante (eu) — o
+    // defensor é IA e nunca tem rating alterado (§8), então não há
+    // jogadorA/jogadorB pra escolher, é um valor só.
     setResultadoRankedBruto({
       duelId: resultadoFinal.duelId,
       venceu: resultadoFinal.vencedorChave === minhaChave,
-      ratingAntes: doSocket?.ratingAntes ?? null,
-      ratingDepois: doSocket?.ratingDepois ?? null,
+      ratingAntes: ratingUpdate?.ratingAntes ?? null,
+      ratingDepois: ratingUpdate?.ratingDepois ?? null,
     });
   }, [resultadoFinal, duelo, ratingUpdate, character.id]);
 

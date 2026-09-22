@@ -82,10 +82,28 @@ export interface RankedMatchFoundPayload {
   b: { id: number; nome: string; rating: number };
 }
 
+export interface ResumoTierPayload {
+  rating: number;
+  tier: string;
+  divisao: string | null;
+  tierLabel: string;
+  tierAsset: string;
+}
+
+/**
+ * Sempre sobre o DESAFIANTE (eu) — o defensor é controlado por IA e nunca
+ * tem rating alterado (PvP v2 §8), então o backend não manda um par
+ * jogadorA/jogadorB como na v1: é sempre "antes → depois" do meu lado.
+ */
 export interface RankedRatingUpdatePayload {
   duelId: number;
-  jogadorA: { id: number; ratingAntes: number; ratingDepois: number; liga: string };
-  jogadorB: { id: number; ratingAntes: number; ratingDepois: number; liga: string };
+  ratingAntes: number;
+  ratingDepois: number;
+  delta: number;
+  tierAntes: ResumoTierPayload;
+  tierDepois: ResumoTierPayload;
+  defensorControladoPorIA: boolean;
+  ratingDefensorInalterado: number;
 }
 
 export interface RankedOponenteDesconectadoPayload {
