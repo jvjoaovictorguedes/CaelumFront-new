@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { usePvpSocket, type ConsumivelDuelo, type RankedRatingUpdatePayload } from "@/contexts/PvpSocketContext";
 import { spriteForClass } from "../../adventure/components/sprites/spriteForClass";
 import CombatActionBar from "@/components/combat/CombatActionBar";
+import { fundoDeBatalhaPorSemente } from "@/utils/battleBackground";
 
 function esperar(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -128,6 +129,16 @@ export default function LiveDuelArena({ meuCharacterId }: { meuCharacterId: numb
     return () => clearInterval(intervalo);
   }, [turnoAtual, resultadoFinal]);
 
+  // Fundo da arena: igual à Aventura de hoje (CombatArena.tsx), mas
+  // sorteado — PvP não tem monstro nem zona pra amarrar um cenário. O
+  // useMemo é chaveado pelo duelId, então o cenário é escolhido UMA vez
+  // por duelo e não troca a cada turno/re-render. Vale pra casual,
+  // ranqueada e torneio, já que todos renderizam por aqui.
+  const fundoArena = useMemo(
+    () => fundoDeBatalhaPorSemente(duelo?.duelId),
+    [duelo?.duelId],
+  );
+
   if (!duelo) return null;
 
   const minhaChave = duelo.a.id === meuCharacterId ? "A" : "B";
@@ -160,8 +171,21 @@ export default function LiveDuelArena({ meuCharacterId }: { meuCharacterId: numb
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
-      <div className="flex items-center justify-between gap-4 rounded-2xl border-2 border-[#F3B43F]/60 bg-gradient-to-b from-[#3a2f24] to-[#1f1813] p-6 shadow-xl">
+    <div className="relative mx-auto w-full max-w-3xl overflow-hidden rounded-2xl border-2 border-[#F3B43F]/40 shadow-2xl">
+      {/* Camada de fundo — mesmo tratamento do combate da Aventura
+          (CombatArena.tsx): imagem em bg-cover/bg-center, gradiente de
+          fallback quando não há imagem, e um véu preto por cima pra
+          manter texto e barras legíveis. */}
+      <div
+        className={`absolute inset-0 bg-cover bg-center ${
+          fundoArena ? "" : "bg-gradient-to-b from-[#3a2f24] to-[#1f1813]"
+        }`}
+        style={fundoArena ? { backgroundImage: `url(${fundoArena})` } : undefined}
+      />
+      <div className="absolute inset-0 bg-black/30" />
+
+      <div className="relative z-10 flex w-full flex-col gap-4 p-3 sm:p-4">
+      <div className="flex items-center justify-between gap-4 rounded-2xl border-2 border-[#F3B43F]/60 bg-black/25 p-6 shadow-xl">
         <div className="flex flex-col items-center gap-2">
           <SpriteA className={`battle-sprite h-24 w-24 sm:h-32 sm:w-32 ${animA}`} animState={animA} stroke="#F3B43F" />
           <p className="text-sm font-bold text-[#F3B43F]">
@@ -283,6 +307,7 @@ export default function LiveDuelArena({ meuCharacterId }: { meuCharacterId: numb
           </button>
         </div>
       )}
+      </div>
     </div>
   );
 }
