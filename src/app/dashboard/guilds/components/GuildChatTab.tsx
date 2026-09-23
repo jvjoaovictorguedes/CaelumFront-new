@@ -28,6 +28,7 @@ export default function GuildChatTab({
   const [conectado, setConectado] = useState(false);
   const [mensagens, setMensagens] = useState<MensagemChat[]>([]);
   const [texto, setTexto] = useState("");
+  const [erroConexao, setErroConexao] = useState("");
   const listaRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -38,7 +39,7 @@ export default function GuildChatTab({
     socketRef.current = socket;
 
     socket.on("connect", () => {
-      setConectado(true);
+      setErroConexao("");
       // Igual ao PvP ao vivo: busca um ticket de curta duração (o JWT é
       // httpOnly) em vez de mandar o characterId cru pro socket.
       axiosInstance
@@ -52,23 +53,55 @@ export default function GuildChatTab({
           // guildSocket.js). Usar o mesmo nome de evento fazia esse
           // socket também "logar" no PvP ao vivo e derrubar a conexão
           // de PvP de verdade do jogador só por abrir o chat da guilda.
-          socket.emit("guild:identificar", { ticket });
-          socket.emit(
-            "guild:join-room",
-            {},
-            (resposta: { erro?: string; historico?: MensagemChat[] }) => {
-              if (resposta?.erro) return console.error("Erro ao entrar na sala de chat:", resposta.erro);
-              if (resposta?.historico) setMensagens(resposta.historico);
-            },
-          );
+          //
+          // Só dispara "guild:join-room" DEPOIS do ack de
+          // "guild:identificar" — identificar consulta o banco (async)
+          // pra resolver o personagem a partir do ticket; disparar os
+          // dois eventos de uma vez (sem esperar) fazia join-room quase
+          // sempre correr na frente dessa consulta e falhar com
+          // "Identifique seu personagem antes.", e qualquer
+          // guild:message mandado em seguida (já que o botão só
+          // dependia do "connect" bruto do transporte) era descartado
+          // em silêncio — a causa raiz do chat não enviar mensagem.
+          socket.emit("guild:identificar", { ticket }, (respostaIdentificar: { erro?: string }) => {
+            if (respostaIdentificar?.erro) {
+              console.error("Erro ao identificar personagem no chat:", respostaIdentificar.erro);
+              setErroConexao("Não foi possível autenticar a conexão do chat.");
+              return;
+            }
+            socket.emit(
+              "guild:join-room",
+              {},
+              (resposta: { erro?: string; historico?: MensagemChat[] }) => {
+                if (resposta?.erro) {
+                  console.error("Erro ao entrar na sala de chat:", resposta.erro);
+                  setErroConexao(resposta.erro);
+                  return;
+                }
+                if (resposta?.historico) setMensagens(resposta.historico);
+                // Só agora a conexão está de fato pronta pra enviar
+                // mensagem — antes disso, mesmo com o transporte já
+                // conectado, o servidor ainda não tinha characterId nem
+                // sala setados.
+                setConectado(true);
+              },
+            );
+          });
         })
-        .catch((erro) => console.error("Erro ao autenticar conexão de chat:", erro));
+        .catch((erro) => {
+          console.error("Erro ao autenticar conexão de chat:", erro);
+          setErroConexao("Não foi possível autenticar a conexão do chat.");
+        });
     });
 
     socket.on("disconnect", () => setConectado(false));
 
     socket.on("guild:message:new", (mensagem: MensagemChat) => {
       setMensagens((atual) => [...atual, mensagem]);
+    });
+
+    socket.on("guild:erro", ({ mensagem }: { mensagem?: string }) => {
+      if (mensagem) setErroConexao(mensagem);
     });
 
     return () => {
@@ -102,6 +135,7 @@ export default function GuildChatTab({
         ref={listaRef}
         className="mb-3 flex h-80 flex-col gap-2 overflow-y-auto rounded-lg border border-white/10 bg-black/30 p-3"
       >
+        {erroConexao && <p className="text-sm text-red-400">{erroConexao}</p>}
         {mensagens.length === 0 ? (
           <p className="text-sm text-white/40">
             Nenhuma mensagem ainda esse mês. Seja o primeiro a falar!
