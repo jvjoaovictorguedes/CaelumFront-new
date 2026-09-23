@@ -7,6 +7,7 @@ import CharacterTabs from "./components/CharacterTabs";
 import ClassEvolutionCard from "./components/ClassEvolutionCard";
 import CombatLoadoutPanel from "./components/CombatLoadoutPanel";
 import EquipmentPanel from "./components/EquipmentPanel";
+import EquipmentPrivacyToggle from "./components/EquipmentPrivacyToggle";
 import EvolutionsPanel from "./components/EvolutionsPanel";
 import StatusPanel from "./components/StatusPanel";
 
@@ -55,7 +56,12 @@ export default async function CharacterPage() {
           </div>
         }
         combate={<CombatLoadoutPanel characterId={character.id} />}
-        informacoes={<ChangePasswordForm email={user?.email} />}
+        informacoes={
+          <div className="flex flex-col gap-4">
+            <EquipmentPrivacyToggle characterId={character.id} />
+            <ChangePasswordForm email={user?.email} />
+          </div>
+        }
       />
     </div>
   );

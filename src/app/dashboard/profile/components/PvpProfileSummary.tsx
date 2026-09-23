@@ -1,44 +1,61 @@
 "use client";
 
-// PvP — reaproveita as mesmas fontes do PvpStatsCard (Especificação
-// Perfil de Jogador §17). Troféu de torneio != medalha de temporada.
+// PvP do perfil — só Arena Ranqueada (temporada atual + medalhas de
+// temporadas encerradas), com o emblema do Elo.
+import Image from "next/image";
+import EloBadge from "@/components/pvp/EloBadge";
 import type { PerfilPvp } from "@/lib/api/profile";
+
+function Linha({ label, valor }: { label: string; valor: string | number }) {
+  return (
+    <p className="text-white/70">
+      {label}: <span className="font-bold text-white">{valor}</span>
+    </p>
+  );
+}
+
+function Medalha({ icone, label, valor }: { icone: string; label: string; valor: number }) {
+  return (
+    <div className="flex items-center gap-1.5">
+      <Image src={icone} alt="" width={18} height={20} className="shrink-0" />
+      <span className="text-white/70">
+        {label}: <span className="font-bold text-white">{valor}</span>
+      </span>
+    </div>
+  );
+}
 
 export default function PvpProfileSummary({ pvp }: { pvp: PerfilPvp }) {
   return (
     <div className="rounded-2xl border-2 border-[#F3B43F]/60 bg-[#292018]/90 p-4 text-white shadow-lg">
-      <p className="mb-2 text-xs uppercase tracking-widest text-[#F3B43F]">PvP</p>
+      <p className="mb-3 text-xs uppercase tracking-widest text-[#F3B43F]">
+        PvP Ranqueado{pvp.temporada?.nome ? ` • ${pvp.temporada.nome}` : ""}
+      </p>
 
-      {pvp.ranked ? (
-        <p className="mb-2 text-lg font-bold text-[#F3B43F]">{pvp.ranked.tier_label}</p>
-      ) : (
-        <p className="mb-2 text-sm text-white/50">Ainda sem classificação ranqueada.</p>
-      )}
+      <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-start">
+        <EloBadge tier={pvp.ranked?.tier} divisao={pvp.ranked?.divisao} tamanho="md" />
 
-      <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
-        <p className="text-white/70">
-          Vitórias da temporada: <span className="font-bold text-white">{pvp.vitorias_temporada}</span>
-        </p>
-        <p className="text-white/70">
-          Derrotas da temporada: <span className="font-bold text-white">{pvp.derrotas_temporada}</span>
-        </p>
-        {pvp.taxa_vitoria_temporada !== null && (
-          <p className="text-white/70">
-            Taxa de vitória: <span className="font-bold text-white">{pvp.taxa_vitoria_temporada}%</span>
-          </p>
-        )}
-        <p className="text-white/70">
-          Melhor sequência: <span className="font-bold text-white">{pvp.melhor_sequencia}</span>
-        </p>
+        <div className="grid flex-1 grid-cols-1 gap-y-1 text-sm">
+          {pvp.ranked ? (
+            <>
+              <Linha label="Rating" valor={pvp.ranked.rating} />
+              <Linha label="Pico da temporada" valor={`${pvp.ranked.pico_tier_label} (${pvp.ranked.pico_rating})`} />
+            </>
+          ) : (
+            <p className="text-white/50">Ainda sem classificação ranqueada.</p>
+          )}
+          <Linha label="Vitórias" valor={pvp.vitorias_temporada} />
+          <Linha label="Derrotas" valor={pvp.derrotas_temporada} />
+          {pvp.taxa_vitoria_temporada !== null && (
+            <Linha label="Taxa de vitória" valor={`${pvp.taxa_vitoria_temporada}%`} />
+          )}
+        </div>
       </div>
 
-      <div className="mt-3 border-t border-white/10 pt-2 text-sm">
-        <p className="text-white/70">
-          Troféus de torneio: <span className="font-bold text-[#F3B43F]">{pvp.trofeus_torneio}</span>
-        </p>
-        <p className="text-white/70">
-          Medalhas de temporada: {pvp.medalhas.ouro} Ouro • {pvp.medalhas.prata} Prata • {pvp.medalhas.bronze} Bronze
-        </p>
+      <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 border-t border-white/10 pt-2 text-sm">
+        <Medalha icone="/images/badges/medalha-ouro.png" label="Ouro" valor={pvp.medalhas.ouro} />
+        <Medalha icone="/images/badges/medalha-prata.png" label="Prata" valor={pvp.medalhas.prata} />
+        <Medalha icone="/images/badges/medalha-bronze.png" label="Bronze" valor={pvp.medalhas.bronze} />
       </div>
     </div>
   );

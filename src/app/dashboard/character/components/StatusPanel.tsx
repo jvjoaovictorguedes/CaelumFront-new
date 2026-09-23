@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { getAvatarUrl } from "@/utils/media-url";
 import { useCharacter } from "@/contexts/CharacterContext";
 import type { CurrentCharacter } from "@/utils/character-session";
+import { buscarMeuPoder } from "@/lib/api/profile";
 import AvatarPickerModal from "./AvatarPickerModal";
 import CharacterAttributes from "./CharacterAttributes";
 import GenderToggleButton from "./GenderToggleButton";
@@ -27,6 +28,19 @@ export default function StatusPanel({
   const { character: characterContexto } = useCharacter();
   const character = characterContexto ?? characterInicial;
   const [pickerAberto, setPickerAberto] = useState(false);
+  const [poder, setPoder] = useState<number | null>(null);
+
+  // Recalcula sempre que o contexto do personagem muda (equipar,
+  // distribuir pontos, subir de nível já chamam refreshCharacter).
+  useEffect(() => {
+    let cancelado = false;
+    buscarMeuPoder().then((dados) => {
+      if (!cancelado) setPoder(dados?.total ?? null);
+    });
+    return () => {
+      cancelado = true;
+    };
+  }, [character]);
 
   // Uma linha só de estilo pra identidade inteira: label pequeno e
   // discreto à esquerda, valor em destaque à direita — igual em todos
@@ -66,6 +80,12 @@ export default function StatusPanel({
         </div>
 
         <div className="flex min-w-0 flex-col gap-2">
+          <div className="flex items-center justify-between gap-3 rounded-lg border-2 border-[#F3B43F] bg-[#292018] px-4 py-2 text-[#F3B43F]">
+            <span className="shrink-0 font-imFeel text-lg">Poder</span>
+            <span className="font-imFeel text-2xl leading-none">
+              {poder === null ? "—" : poder.toLocaleString("pt-BR")}
+            </span>
+          </div>
           {linhasComLabel.map(({ label, valor }) => (
             <div
               key={label}

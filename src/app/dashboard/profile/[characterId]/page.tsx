@@ -115,23 +115,24 @@ export default function ProfilePage({ params }: { params: Promise<{ characterId:
         ))}
       </div>
 
+      {/* Cada bloco aparece numa aba só — Progressão e Conquistas ficam
+          nas próprias abas em vez de repetir na Visão Geral. */}
       {aba === "visao_geral" && (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <PvpProfileSummary pvp={perfil.pvp} />
           <BestiaryProfileSummary bestiary={perfil.bestiary} monstrosFavoritos={perfil.highlights.monstros} />
-          <ProgressionSummary progression={perfil.progression} />
-          <AchievementShowcase achievements={perfil.achievements} destaques={perfil.highlights.conquistas} />
         </div>
       )}
 
-      {aba === "equipamentos" && <PublicEquipmentPanel equipment={perfil.equipment} />}
-
-      {aba === "progressao" && (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <ProgressionSummary progression={perfil.progression} />
-          <PvpProfileSummary pvp={perfil.pvp} />
-        </div>
+      {aba === "equipamentos" && (
+        <PublicEquipmentPanel
+          equipment={perfil.equipment}
+          classe={perfil.identity.classe}
+          oculto={perfil.equipment_oculto}
+        />
       )}
+
+      {aba === "progressao" && <ProgressionSummary progression={perfil.progression} />}
 
       {aba === "conquistas" && (
         <AchievementShowcase achievements={perfil.achievements} destaques={perfil.highlights.conquistas} />

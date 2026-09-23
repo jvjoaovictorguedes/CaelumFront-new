@@ -7,6 +7,7 @@
  * este arquivo só tipa e expõe, nunca recalcula nada aqui.
  */
 import axiosInstance from "@/utils/axiosIntance";
+import type { Propriedades, Slot } from "@/components/equipment/BonecoDePapel";
 
 export interface PerfilIdentity {
   id: number;
@@ -43,7 +44,7 @@ export interface PerfilGuild {
 }
 
 export interface PerfilEquipamento {
-  slot: string;
+  slot: Slot;
   id_instancia: number | null;
   id_item: number;
   nome: string;
@@ -52,8 +53,8 @@ export interface PerfilEquipamento {
   tier_equipamento: number | null;
   imagem_url: string | null;
   refinamento: number;
-  propriedades_base: Record<string, unknown> | null;
-  propriedades_efetivas: Record<string, unknown> | null;
+  propriedades_base: Propriedades;
+  propriedades_efetivas: Propriedades;
 }
 
 export interface PerfilProgressao {
@@ -63,13 +64,20 @@ export interface PerfilProgressao {
   expedicao: { mineracao: number; silvicultura: number; exploracao: number };
 }
 
+// Só Arena Ranqueada — PvP casual e Torneio não entram no perfil.
 export interface PerfilPvp {
-  ranked: { tier: string; divisao: string | null; tier_label: string; rating: number } | null;
+  ranked: {
+    tier: string;
+    divisao: string | null;
+    tier_label: string;
+    rating: number;
+    pico_rating: number;
+    pico_tier_label: string;
+  } | null;
+  temporada: { id: number; nome: string | null } | null;
   vitorias_temporada: number;
   derrotas_temporada: number;
   taxa_vitoria_temporada: number | null;
-  melhor_sequencia: number;
-  trofeus_torneio: number;
   medalhas: { ouro: number; prata: number; bronze: number };
 }
 
@@ -108,6 +116,8 @@ export interface PerfilJogador {
   combatPower: PerfilCombatPower | null;
   guild: PerfilGuild | null;
   equipment: PerfilEquipamento[];
+  // true só pra visitante quando o dono ocultou os equipamentos.
+  equipment_oculto: boolean;
   progression: PerfilProgressao;
   pvp: PerfilPvp;
   bestiary: PerfilBestiario;
@@ -116,6 +126,8 @@ export interface PerfilJogador {
   permissions: PerfilPermissoes;
   // Só presente no próprio perfil (TitleSelector, §25/§43).
   titulos_disponiveis?: { id: number; nome: string }[];
+  // Só presente no próprio perfil.
+  privacidade?: { ocultar_equipamentos: boolean };
 }
 
 export async function buscarPerfil(characterId: number): Promise<PerfilJogador | null> {
@@ -132,6 +144,7 @@ export interface AtualizarPerfilPayload {
   id_titulo_selecionado?: number | null;
   conquistas_destaque?: (number | null)[];
   monstros_destaque?: (number | null)[];
+  ocultar_equipamentos?: boolean;
 }
 
 export async function atualizarPerfilProprio(payload: AtualizarPerfilPayload): Promise<PerfilJogador> {
@@ -140,4 +153,13 @@ export async function atualizarPerfilProprio(payload: AtualizarPerfilPayload): P
     payload as unknown as Record<string, unknown>,
   );
   return resp.data.data;
+}
+
+export async function buscarMeuPoder(): Promise<PerfilCombatPower | null> {
+  try {
+    const resp = await axiosInstance.get<{ data: PerfilCombatPower }>("/characters/me/combat-power");
+    return resp.data.data;
+  } catch {
+    return null;
+  }
 }
