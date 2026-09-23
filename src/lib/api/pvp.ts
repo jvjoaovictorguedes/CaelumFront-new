@@ -352,8 +352,9 @@ const STATUS_TORNEIO_BACKEND: Record<string, StatusTorneio> = {
   Cancelado: "cancelado",
 };
 
-/** "Quartas" | "Semifinal" | "TerceiroLugar" | "Final" (enum do backend) → chave de fase da UI. */
+/** "Oitavas" | "Quartas" | "Semifinal" | "TerceiroLugar" | "Final" (enum do backend) → chave de fase da UI. */
 const FASE_TORNEIO_BACKEND: Record<string, string> = {
+  Oitavas: "oitavas",
   Quartas: "quartas",
   Semifinal: "semifinal",
   TerceiroLugar: "terceiro",
@@ -550,6 +551,7 @@ export async function sairDoTorneio(id: number): Promise<void> {
 }
 
 export const FASES_TORNEIO: { chave: string; label: string }[] = [
+  { chave: "oitavas", label: "Oitavas" },
   { chave: "quartas", label: "Quartas" },
   { chave: "semifinal", label: "Semifinal" },
   { chave: "final", label: "Final" },

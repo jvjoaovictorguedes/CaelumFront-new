@@ -499,9 +499,11 @@ function ReadyCheck({
 }
 
 /**
- * Chave visual — colunas Quartas → Semifinal → Final da esquerda pra
- * direita. Em telas pequenas as colunas empilham (ainda legível), no
- * desktop ficam lado a lado como uma chave de verdade.
+ * Chave visual — colunas Oitavas → Quartas → Semifinal → Final da
+ * esquerda pra direita (colunas sem partida nenhuma somem sozinhas, ver
+ * filter abaixo — é assim que um torneio de 4/8 sem Oitavas não mostra
+ * uma coluna vazia). Em telas pequenas as colunas empilham (ainda
+ * legível), no desktop ficam lado a lado como uma chave de verdade.
  */
 function Chave({ detalhe, meuCharacterId }: { detalhe: DetalheTorneio; meuCharacterId: number }) {
   const colunas = FASES_TORNEIO.map((fase) => ({

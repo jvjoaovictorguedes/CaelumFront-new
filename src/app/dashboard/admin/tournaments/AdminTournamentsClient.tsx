@@ -189,6 +189,7 @@ export default function AdminTournamentsClient() {
             >
               <option value={4}>4</option>
               <option value={8}>8</option>
+              <option value={16}>16</option>
             </select>
           </Campo>
           <Campo label="Início">
@@ -203,7 +204,8 @@ export default function AdminTournamentsClient() {
         </div>
 
         <p className="-mt-1 text-[11px] text-white/45">
-          A primeira versão do chaveamento só inicia com exatamente 4 ou 8 inscritos.
+          Mínimo de 2 inscritos pra iniciar. Se o número de inscritos for menor que o formato
+          escolhido, quem ficar sem oponente avança sozinho pra próxima fase (W.O.).
         </p>
 
         <Campo label="Premiação (informativa)">
