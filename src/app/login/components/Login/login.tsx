@@ -26,12 +26,13 @@ export default function Login() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage("");
-    setIsLoading(true);
 
-    const result = await login({ email, password, rememberMe });
-
-    if (isLoading) return;
-
+    // Validação ANTES de chamar login() — antes disso a requisição real
+    // já tinha sido disparada mesmo com campo vazio/inválido, e o
+    // isLoading só voltava a false se essas checagens passassem (senão o
+    // formulário ficava travado em "Entrando..." pro resto da vida do
+    // componente, sem nenhum jeito de tentar de novo sem recarregar a
+    // página).
     if (!email || !password) {
       setErrorMessage("Por favor, preencha todos os campos.");
       return;
@@ -46,16 +47,27 @@ export default function Login() {
       );
       return;
     }
-    setIsLoading(false);
 
-    if (result.success && result.character === 200) {
+    setIsLoading(true);
+    try {
+      const result = await login({ email, password, rememberMe });
+
+      if (!result.success) {
+        setErrorMessage(result.message || "Erro desconhecido ao fazer login.");
+        return;
+      }
+
+      // Login em si já deu certo aqui (senha correta, sessão criada) —
+      // 404 só distingue "ainda não tem personagem" de "tem" (200).
+      // Qualquer OUTRO status da busca de personagem (403/500/etc, ex.:
+      // uma falha passageira) não pode virar "senha incorreta" pro
+      // jogador: a senha estava certa. Manda pro dashboard (mesmo
+      // destino do caso normal) e deixa a tela seguinte lidar com
+      // qualquer detalhe de personagem que faltar.
       alert("Login bem-sucedido! Redirecionando...");
-      router.push("/dashboard");
-    } else if (result.success && result.character === 404) {
-      alert("Login bem-sucedido! Redirecionando...");
-      router.push("/create");
-    } else {
-      setErrorMessage(result.message || "Erro desconhecido ao fazer login.");
+      router.push(result.character === 404 ? "/create" : "/dashboard");
+    } finally {
+      setIsLoading(false);
     }
   };
 
