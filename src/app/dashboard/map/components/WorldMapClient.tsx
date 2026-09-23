@@ -133,16 +133,15 @@ export default function WorldMapClient({ mapa }: { mapa: WorldMapApi }) {
           selectedNodeId={nodeSelecionadoId}
           onSelectNode={(id) => setNodeSelecionadoId(id)}
         />
-        {nodeSelecionado && (
+      </div>
+
+      {nodeSelecionado && (
         <WorldMapLocationPanel
           node={nodeSelecionado}
           territorio={mapa.territories.find((t) => t.id === nodeSelecionado.id_territorio) ?? null}
           onFechar={() => setNodeSelecionadoId(null)}
         />
       )}
-      </div>
-
-      
     </div>
   );
 }
