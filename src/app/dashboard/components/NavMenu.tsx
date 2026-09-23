@@ -161,6 +161,7 @@ export default function NavMenu({
             {navItems.map((item) => {
               const ehMensagens = item.path === "/dashboard/messages";
               const mostrarBadge = ehMensagens && mensagensNaoLidas > 0;
+              const iconePequeno = ["/dashboard/guide", "/dashboard/bestiary"].includes(item.path);
 
               return (
                 <li key={item.path} className="flex w-full flex-row">
@@ -176,7 +177,7 @@ export default function NavMenu({
                         : "hover:bg-[rgba(0,0,0,0.1)]"
                     }`}
                   >
-                    <span className="relative h-11 w-11 flex-shrink-0">
+                    <span className={`relative flex-shrink-0 ${iconePequeno ? "h-14 w-14" : "h-11 w-11"}`}>
                       <span
                         className="block h-full w-full rounded-md"
                         style={{
