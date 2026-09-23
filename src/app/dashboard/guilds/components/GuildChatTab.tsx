@@ -53,9 +53,14 @@ export default function GuildChatTab({
           // socket também "logar" no PvP ao vivo e derrubar a conexão
           // de PvP de verdade do jogador só por abrir o chat da guilda.
           socket.emit("guild:identificar", { ticket });
-          socket.emit("guild:join-room", {}, (resposta: { erro?: string }) => {
-            if (resposta?.erro) console.error("Erro ao entrar na sala de chat:", resposta.erro);
-          });
+          socket.emit(
+            "guild:join-room",
+            {},
+            (resposta: { erro?: string; historico?: MensagemChat[] }) => {
+              if (resposta?.erro) return console.error("Erro ao entrar na sala de chat:", resposta.erro);
+              if (resposta?.historico) setMensagens(resposta.historico);
+            },
+          );
         })
         .catch((erro) => console.error("Erro ao autenticar conexão de chat:", erro));
     });
@@ -99,7 +104,7 @@ export default function GuildChatTab({
       >
         {mensagens.length === 0 ? (
           <p className="text-sm text-white/40">
-            Nenhuma mensagem ainda — o histórico não fica salvo, só quem está com a tela aberta vê.
+            Nenhuma mensagem ainda esse mês. Seja o primeiro a falar!
           </p>
         ) : (
           mensagens.map((mensagem, indice) => (
