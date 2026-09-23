@@ -166,6 +166,12 @@ interface RespostaCombate {
     character: {
       vida_atual: number;
       mana_atual: number;
+      // Vida/mana logo após a SUA ação (poder/item/ataque), antes do
+      // contra-ataque do inimigo — ausente em respostas antigas
+      // (compatibilidade), tratado como igual a vida_atual/mana_atual
+      // nesse caso (ver uso em tocarAnimacaoDoTurno).
+      vida_apos_sua_acao?: number;
+      mana_apos_sua_acao?: number;
       nivel: number;
       experiencia: number;
       pontos_distribuir: number;
@@ -456,13 +462,12 @@ export default function CombatArena({
 
   async function tocarAnimacaoDoTurno({
     inimigoLevouDano,
-    jogadorLevouDano,
 
     acabouNaVitoria,
     acabouNaDerrota,
 
     danoInimigo,
-    variacaoVidaJogador,
+    vidaAposAcaoJogador,
 
     usouCura,
     usouPoder,
@@ -472,13 +477,17 @@ export default function CombatArena({
     novaVidaJogador,
   }: {
     inimigoLevouDano: boolean;
-    jogadorLevouDano: boolean;
 
     acabouNaVitoria: boolean;
     acabouNaDerrota: boolean;
 
     danoInimigo: number;
-    variacaoVidaJogador: number;
+    // Vida do jogador logo após A PRÓPRIA ação (cura de poder/item ou
+    // nenhuma, se foi ataque), ainda sem o contra-ataque do inimigo —
+    // ver combatController.js (vida_apos_sua_acao). Usado pra separar
+    // visualmente "quanto eu curei" de "quanto o inimigo me tirou",
+    // em vez de só mostrar o saldo líquido do turno inteiro.
+    vidaAposAcaoJogador: number;
 
     usouCura: boolean;
     usouPoder: boolean;
@@ -487,11 +496,33 @@ export default function CombatArena({
     novoEnemy: EnemyState;
     novaVidaJogador: number;
   }) {
-    if (usouCura) {
+    // Cura de verdade (poder ou item) desse turno — independente do que
+    // o inimigo faz em seguida. Antes disso, a cura só aparecia na tela
+    // quando o SALDO do turno inteiro (cura menos o contra-ataque) desse
+    // positivo — se o inimigo batesse mais forte que a cura, a poção
+    // "sumia" da tela mesmo tendo funcionado (log dizia que curou, a
+    // vida não subia visivelmente nunca).
+    const curaRecebida = Math.max(0, vidaAposAcaoJogador - vidaAtual);
+    // Dano real do contra-ataque do inimigo NESTE turno — não mais
+    // inferido do saldo líquido (que confundia "esquivei" com "curei
+    // mais do que apanhei"). "usouCura" nunca mais implica imunidade: o
+    // servidor sempre deixa o inimigo contra-atacar depois de um
+    // item/poder (só um ataque básico "gasta o turno" igual), então a
+    // animação agora mostra o que de fato aconteceu.
+    const danoRecebidoDoContraAtaque = Math.max(0, vidaAposAcaoJogador - novaVidaJogador);
+    const jogadorLevouDano = danoRecebidoDoContraAtaque > 0;
+    if (curaRecebida > 0) {
+      // Borda ciano só de indicação visual de "acabou de se curar" —
+      // NUNCA implica imunidade ao contra-ataque do inimigo, que
+      // continua valendo normalmente (ver comentário mais abaixo sobre
+      // jogadorLevouDano/danoRecebidoDoContraAtaque).
       setIsShieldActive(true);
-
-      triggerFloatingText("player", "✨ ESCUDO ARCANO!", "#00ffff");
-
+      triggerFloatingText("player", `+${curaRecebida} CURA`, "#44ff44");
+      // Sobe a vida na hora, na própria cura — sem isso a barra só
+      // refletia o saldo do turno inteiro lá no final (depois do
+      // contra-ataque), e uma cura real podia nunca aparecer visível
+      // na tela quando o inimigo batia mais forte que ela em seguida.
+      setVidaAtual(vidaAposAcaoJogador);
       await espera(400);
     }
 
@@ -583,36 +614,22 @@ export default function CombatArena({
 
     await espera(INTERVALO_ENTRE_FASES_MS);
 
-    if (usouCura) {
-      triggerFloatingText("player", "🛡️ IMUNE!", "#00ffff");
+    // Usar item/poder NUNCA torna o jogador imune ao contra-ataque —
+    // o servidor sempre deixa o inimigo golpear depois (só o ataque
+    // básico "usa o turno" de um jeito diferente), então a animação
+    // reflete o que realmente aconteceu (esquivou de verdade ou
+    // apanhou de verdade), nunca mais assume imunidade só por ter se
+    // curado.
+    setAnimJogador(
+      jogadorLevouDano ? "anim-atingido" : "anim-esquivando-esquerda",
+    );
 
-      setAnimJogador("anim-esquivando-esquerda");
-    } else {
-      setAnimJogador(
-        jogadorLevouDano ? "anim-atingido" : "anim-esquivando-esquerda",
-      );
+    if (jogadorLevouDano) {
+      triggerFloatingText("player", `-${danoRecebidoDoContraAtaque}`, "#ff3333");
     }
 
-    if (variacaoVidaJogador > 0) {
-      triggerFloatingText(
-        "player",
-
-        `+${variacaoVidaJogador} CURA`,
-
-        "#44ff44",
-      );
-    } else if (variacaoVidaJogador < 0 && !usouCura) {
-      triggerFloatingText(
-        "player",
-
-        `-${Math.abs(variacaoVidaJogador)}`,
-
-        "#ff3333",
-      );
-    }
-
-    // Mesma lógica do inimigo: a vida do jogador só é commitada quando o
-    // golpe (ou a cura) chega visualmente.
+    // Vida final do turno (depois do contra-ataque, se houve) — a cura
+    // já foi mostrada e aplicada antes, no início desta função.
     setVidaAtual(novaVidaJogador);
 
     const duracaoAtaqueInimigo = duracaoVisual(pastaSpriteInimigo, "attack");
@@ -698,11 +715,7 @@ export default function CombatArena({
 
       const danoInimigo = enemy.vida_atual - data.enemy.vida_atual;
 
-      const variacaoVidaJogador = data.character.vida_atual - vidaAtual;
-
       const inimigoLevouDano = danoInimigo > 0;
-
-      const jogadorLevouDano = data.character.vida_atual < vidaAtual;
 
       const acabouNaVitoria = data.done && data.victory;
 
@@ -759,13 +772,14 @@ export default function CombatArena({
 
       await tocarAnimacaoDoTurno({
         inimigoLevouDano,
-        jogadorLevouDano,
 
         acabouNaVitoria,
         acabouNaDerrota,
 
         danoInimigo,
-        variacaoVidaJogador,
+        // Ausente em respostas antigas (compatibilidade) — sem contra-
+        // ataque separado pra mostrar, cai direto pro valor final.
+        vidaAposAcaoJogador: data.character.vida_apos_sua_acao ?? data.character.vida_atual,
 
         usouCura,
         usouPoder,
