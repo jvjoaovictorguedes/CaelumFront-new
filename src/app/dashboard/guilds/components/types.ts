@@ -67,7 +67,12 @@ export interface LogGuild {
   id: number;
   tipo: string;
   id_personagem_responsavel: number | null;
+  // Nome já resolvido pelo backend (bug corrigido: o log só mostrava O
+  // QUE foi feito, nunca QUEM fez) — null quando o personagem não tem
+  // responsável/alvo registrado ou foi removido depois do log.
+  nome_responsavel: string | null;
   id_personagem_alvo: number | null;
+  nome_alvo: string | null;
   detalhes: string | null;
   createdAt: string;
 }

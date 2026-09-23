@@ -18,6 +18,9 @@ const LABEL_TIPO: Record<string, string> = {
   gasto: "Gasto do tesouro",
   lideranca_transferida: "Liderança transferida",
   dissolucao: "Guilda dissolvida",
+  mural_mensagem_criada: "Postou no mural",
+  mural_mensagem_removida: "Removeu mensagem do mural",
+  emblema_atualizado: "Atualizou o emblema da guilda",
 };
 
 export default function GuildLogsTab({ idGuild }: { idGuild: number }) {
@@ -50,7 +53,12 @@ export default function GuildLogsTab({ idGuild }: { idGuild: number }) {
               className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm"
             >
               <span className="min-w-0 flex-1">
+                {log.nome_responsavel && (
+                  <span className="font-bold text-[#F3B43F]">{log.nome_responsavel}</span>
+                )}
+                {log.nome_responsavel ? " · " : ""}
                 {LABEL_TIPO[log.tipo] ?? log.tipo}
+                {log.nome_alvo ? ` → ${log.nome_alvo}` : ""}
                 {log.detalhes ? ` — ${log.detalhes}` : ""}
               </span>
               <span className="shrink-0 text-xs text-white/40">
