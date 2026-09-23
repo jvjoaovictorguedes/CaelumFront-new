@@ -9,16 +9,6 @@ import WorldMapNodePin from "./WorldMapNode";
 const ZOOM_MIN = 0.8;
 const ZOOM_MAX = 2.5;
 
-// Mapa redondo (pedido do jogador: "deixar redondo o mapa") — a janela
-// circular é mais estreita (diâmetro) do que o mapa (aspect-[16/10]) é
-// alto, então sem compensar apareceria fundo vazio em cima/embaixo do
-// círculo. BASE_ESCALA (16/10) amplia o conteúdo o suficiente pra cobrir
-// o círculo inteiro em qualquer zoom — aplicado por CIMA do `scale` do
-// usuário via transform, nunca mexendo no tamanho/aspect do container
-// real, então as posições percentuais dos Nodes continuam exatamente
-// onde sempre estiveram (só ficam visualmente maiores).
-const BASE_ESCALA = 16 / 10;
-
 export default function WorldMapCanvas({
   territories,
   nodes,
@@ -155,58 +145,52 @@ export default function WorldMapCanvas({
 
   return (
     <div className="relative h-full w-full overflow-hidden flex items-center justify-center bg-black/40">
-      {/* Moldura redonda — wrapper quadrado que define o tamanho real do
-          "medalhão"; viewport e botão de centralizar compartilham essa
-          mesma caixa, então o botão fica ancorado na borda do círculo em
-          vez de flutuar solto no espaço vazio ao redor dele. */}
-      <div className="relative aspect-square h-full max-h-full max-w-full">
-        {/* Viewport/Máscara — circular (rounded-full + overflow-hidden). */}
+      {/* Viewport/Máscara */}
+      <div
+        ref={viewportRef}
+        onPointerDown={aoPressionarPonteiro}
+        onPointerMove={aoMoverPonteiro}
+        onPointerUp={aoSoltarPonteiro}
+        onPointerCancel={aoSoltarPonteiro}
+        className="h-full w-full touch-none flex items-center justify-center cursor-grab active:cursor-grabbing"
+      >
+        {/* Container do Mapa escalável e arrastável */}
         <div
-          ref={viewportRef}
-          onPointerDown={aoPressionarPonteiro}
-          onPointerMove={aoMoverPonteiro}
-          onPointerUp={aoSoltarPonteiro}
-          onPointerCancel={aoSoltarPonteiro}
-          className="absolute inset-0 touch-none flex items-center justify-center cursor-grab active:cursor-grabbing overflow-hidden rounded-full border-4 border-[#F3B43F] shadow-[0_0_35px_rgba(243,180,63,0.25)]"
+          className="relative aspect-[16/10] w-full max-h-full max-w-full origin-center select-none"
+          style={{
+            transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
+          }}
         >
-          {/* Container do Mapa escalável e arrastável */}
-          <div
-            className="relative aspect-[16/10] w-full max-h-full max-w-full origin-center select-none"
-            style={{
-              transform: `translate(${position.x}px, ${position.y}px) scale(${BASE_ESCALA * scale})`,
-            }}
-          >
-            <div className="pointer-events-none absolute inset-0 rounded-xl bg-[radial-gradient(ellipse_at_center,rgba(243,180,63,0.08),transparent_70%)]" />
-            <WorldMapTerritoryLayer territories={territories} />
-            <WorldMapConnectionLayer nodes={nodes} connections={connections} />
-            {nodes.map((node) => (
-              <WorldMapNodePin
-                key={node.id}
-                node={node}
-                selecionado={node.id === selectedNodeId}
-                ativoAgora={
-                  node.tipo === "Adventure" &&
-                  node.adventure?.zona_id === activeAdventureZoneId
+          <div className="pointer-events-none absolute inset-0 rounded-xl bg-[radial-gradient(ellipse_at_center,rgba(243,180,63,0.08),transparent_70%)]" />
+          <WorldMapTerritoryLayer territories={territories} />
+          <WorldMapConnectionLayer nodes={nodes} connections={connections} />
+          {nodes.map((node) => (
+            <WorldMapNodePin
+              key={node.id}
+              node={node}
+              selecionado={node.id === selectedNodeId}
+              ativoAgora={
+                node.tipo === "Adventure" &&
+                node.adventure?.zona_id === activeAdventureZoneId
+              }
+              onClick={() => {
+                if (!hasDraggedRef.current) {
+                  onSelectNode(node.id);
                 }
-                onClick={() => {
-                  if (!hasDraggedRef.current) {
-                    onSelectNode(node.id);
-                  }
-                }}
-              />
-            ))}
-          </div>
+              }}
+            />
+          ))}
         </div>
-
-        {/* Botão de Centralizar, ancorado na borda do medalhão */}
-        <button
-          type="button"
-          onClick={centralizar}
-          className="absolute bottom-2 right-2 z-10 rounded-full border-2 border-[#F3B43F] bg-black/70 px-3 py-1.5 text-xs font-bold text-[#F3B43F] shadow-lg transition hover:bg-black/90 cursor-pointer"
-        >
-          Centralizar
-        </button>
       </div>
+
+      {/* Botão de Centralizar fixo no canto da tela */}
+      <button
+        type="button"
+        onClick={centralizar}
+        className="absolute bottom-3 right-3 z-10 rounded-full border-2 border-[#F3B43F] bg-black/70 px-3 py-1.5 text-xs font-bold text-[#F3B43F] shadow-lg transition hover:bg-black/90 cursor-pointer"
+      >
+        Centralizar
+      </button>
     </div>
   );
 }
