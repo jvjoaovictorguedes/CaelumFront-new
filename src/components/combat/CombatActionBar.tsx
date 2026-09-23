@@ -49,6 +49,11 @@ export default function CombatActionBar({
   onUsarPoder,
   consumiveis,
   onUsarConsumivel,
+  // Turnos restantes de cooldown por id de Power (§42 da Especificação
+  // Consolidada Poder/Status/Cooldown/Balanceamento) — opcional porque
+  // hoje só a Aventura solo (CombatArena.tsx) manda isso; o Duelo ao
+  // vivo (LiveDuelArena.tsx) ainda não integra o motor de cooldown.
+  cooldownsPorPoder = {},
 }: {
   podeAgir: boolean;
   ocupado: boolean;
@@ -58,6 +63,7 @@ export default function CombatActionBar({
   onUsarPoder: (id: number) => void;
   consumiveis: ConsumivelAcao[];
   onUsarConsumivel: (idItem: number) => void;
+  cooldownsPorPoder?: Record<number, number>;
 }) {
   const desabilitadoGeral = !podeAgir || ocupado;
 
@@ -78,6 +84,7 @@ export default function CombatActionBar({
           <div className="flex flex-wrap gap-1.5">
             {poderes.map((poder) => {
               const semMana = manaAtual < poder.custo_mana;
+              const emCooldown = (cooldownsPorPoder[poder.id] ?? 0) > 0;
               return (
                 <ActionTooltip
                   key={poder.id}
@@ -88,16 +95,26 @@ export default function CombatActionBar({
                       {poder.descricao && (
                         <p className="mt-1 text-xs text-[#3a2f24]/80">{poder.descricao}</p>
                       )}
+                      {emCooldown && (
+                        <p className="mt-1 text-xs font-bold text-[#F3B43F]">
+                          Disponível em {cooldownsPorPoder[poder.id]} turno(s)
+                        </p>
+                      )}
                     </div>
                   }
                 >
                   <button
                     type="button"
                     onClick={() => onUsarPoder(poder.id)}
-                    disabled={desabilitadoGeral || semMana}
-                    className="h-10 w-10 overflow-hidden rounded-md border-2 border-[#F3B43F]/50 bg-[#3a2f24]/70 shadow-md transition hover:border-[#F3B43F] disabled:cursor-not-allowed disabled:opacity-40"
+                    disabled={desabilitadoGeral || semMana || emCooldown}
+                    className="relative h-10 w-10 overflow-hidden rounded-md border-2 border-[#F3B43F]/50 bg-[#3a2f24]/70 shadow-md transition hover:border-[#F3B43F] disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     <IconeAcao nome={poder.nome} imagemUrl={poder.imagem_url} />
+                    {emCooldown && (
+                      <span className="absolute inset-0 flex items-center justify-center bg-black/70 text-sm font-bold text-white">
+                        {cooldownsPorPoder[poder.id]}
+                      </span>
+                    )}
                   </button>
                 </ActionTooltip>
               );

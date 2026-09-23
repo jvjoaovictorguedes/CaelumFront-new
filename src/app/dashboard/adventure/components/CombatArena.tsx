@@ -135,6 +135,21 @@ interface FloatingText {
   color: string;
 }
 
+// Motor de Status/Cooldown (Especificação Consolidada Poder/Status/
+// Cooldown/Balanceamento, §24/§37) — mesmo formato que o backend guarda
+// em encontro_pve.statusEffects e devolve em toda resposta de turno.
+interface StatusInstance {
+  key: "BURN" | "BLEED" | "POISON" | "SILENCE" | "SLOW" | "WEAKEN";
+  remainingTurns: number;
+  stacks: number;
+  potency: number;
+}
+
+interface StatusEffectsState {
+  player: StatusInstance[];
+  enemy: StatusInstance[];
+}
+
 interface RespostaCombate {
   data: {
     log: string[];
@@ -162,6 +177,11 @@ interface RespostaCombate {
       item?: { id: number; nome: string; raridade: string };
       dinheiro?: number;
     } | null;
+
+    // Ausentes em respostas antigas (compatibilidade) — tratado como
+    // vazio nesse caso, ver useState abaixo.
+    statusEffects?: StatusEffectsState;
+    cooldowns?: { player?: Record<string, number> };
   };
 }
 
@@ -221,6 +241,13 @@ export default function CombatArena({
   const [vidaAtual, setVidaAtual] = useState(character.vida_atual);
 
   const [manaAtual, setManaAtual] = useState(character.mana_atual);
+
+  // Motor de Status/Cooldown (§41/§42) — atualizado a cada resposta de
+  // /combat/action; vazio até o primeiro turno (ou pra sempre, num
+  // combate sem nenhum status/cooldown envolvido).
+  const [statusEffects, setStatusEffects] = useState<StatusEffectsState>({ player: [], enemy: [] });
+
+  const [cooldownsPorPoder, setCooldownsPorPoder] = useState<Record<number, number>>({});
 
   const [nivelAtual, setNivelAtual] = useState(character.nivel);
 
@@ -689,6 +716,16 @@ export default function CombatArena({
 
       setPontosDistribuir(data.character.pontos_distribuir);
 
+      setStatusEffects(data.statusEffects ?? { player: [], enemy: [] });
+      const cooldownsBrutos = data.cooldowns?.player ?? {};
+      const cooldownsMapeados: Record<number, number> = {};
+      for (const [chave, turnos] of Object.entries(cooldownsBrutos)) {
+        // Chave vem como "power:<id>" (ver cooldownService.js).
+        const id = Number(chave.split(":")[1]);
+        if (!Number.isNaN(id)) cooldownsMapeados[id] = turnos;
+      }
+      setCooldownsPorPoder(cooldownsMapeados);
+
       atualizarCharacter({
         vida_atual: data.character.vida_atual,
         mana_atual: data.character.mana_atual,
@@ -908,6 +945,7 @@ export default function CombatArena({
             manaAtual={manaAtual}
             manaMaxima={manaMaxima}
           />
+          <StatusIconsRow instancias={statusEffects.player} />
 
           <PlayerSprite
             className={`battle-sprite h-32 w-32 sm:h-48 sm:w-48 ${
@@ -941,6 +979,7 @@ export default function CombatArena({
             vidaAtual={enemy.vida_atual}
             vidaMaxima={enemy.vida_maxima}
           />
+          <StatusIconsRow instancias={statusEffects.enemy} />
 
           <EnemySprite
             className={`battle-sprite h-32 w-32 sm:h-48 sm:w-48 ${
@@ -976,6 +1015,7 @@ export default function CombatArena({
             onUsarConsumivel={(itemId) =>
               executarAcao({ type: "item", itemId })
             }
+            cooldownsPorPoder={cooldownsPorPoder}
           />
         </div>
       )}
@@ -1148,6 +1188,49 @@ function BarraSobreCabeca({
           />
         </div>
       )}
+    </div>
+  );
+}
+
+// Ícones de status (§41 — Especificação Consolidada Poder/Status/
+// Cooldown/Balanceamento): pequenos, com stacks e turnos restantes,
+// tooltip explica o efeito. Deliberadamente sem card pesado sobre a
+// arena.
+const ICONE_POR_STATUS: Record<StatusInstance["key"], string> = {
+  BURN: "🔥",
+  BLEED: "🩸",
+  POISON: "☠️",
+  SILENCE: "🔇",
+  SLOW: "🐌",
+  WEAKEN: "🔻",
+};
+
+const NOME_POR_STATUS: Record<StatusInstance["key"], string> = {
+  BURN: "Queimadura",
+  BLEED: "Sangramento",
+  POISON: "Veneno",
+  SILENCE: "Silêncio",
+  SLOW: "Lentidão",
+  WEAKEN: "Enfraquecimento",
+};
+
+function StatusIconsRow({ instancias }: { instancias: StatusInstance[] }) {
+  if (instancias.length === 0) return null;
+  return (
+    <div className="pointer-events-none absolute -top-3 left-1/2 z-10 flex -translate-x-1/2 gap-1">
+      {instancias.map((instancia) => (
+        <span
+          key={instancia.key}
+          title={`${NOME_POR_STATUS[instancia.key]}${
+            instancia.stacks > 1 ? ` ×${instancia.stacks}` : ""
+          } — ${instancia.remainingTurns} turno(s) restante(s)`}
+          className="flex items-center gap-0.5 rounded-full bg-black/70 px-1 py-0.5 text-[9px] font-bold text-white shadow"
+        >
+          <span>{ICONE_POR_STATUS[instancia.key] ?? "•"}</span>
+          {instancia.stacks > 1 && <span>×{instancia.stacks}</span>}
+          <span className="text-[#F3B43F]">{instancia.remainingTurns}T</span>
+        </span>
+      ))}
     </div>
   );
 }
