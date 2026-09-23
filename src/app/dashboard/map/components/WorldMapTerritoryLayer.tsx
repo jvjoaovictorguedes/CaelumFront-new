@@ -9,7 +9,26 @@ import type { TerritorioApi } from "./WorldMapClient";
 export default function WorldMapTerritoryLayer({ territories }: { territories: TerritorioApi[] }) {
   return (
     <>
-      <img src="/images/map/map.webp" className="w-full h-full" alt="Mapa do jogo" />
+      {/* draggable=false + pointer-events-none — sem isso, arrastar o mapa
+          a partir de cima da imagem disparava o drag nativo do navegador
+          (todo <img> é draggable por padrão), que sequestrava a sequência
+          de ponteiro do pan customizado (WorldMapCanvas) e travava o mapa
+          por completo (bug reportado: "não consigo ir pra lugar nenhum"). */}
+      <img
+        src="/images/map/map.webp"
+        className="pointer-events-none w-full h-full select-none"
+        alt="Mapa do jogo"
+        draggable={false}
+      />
+      {/* <polygon> é um elemento SVG — precisa estar dentro de um <svg>
+          pra ser válido; solto direto num Fragment ao lado de um <img> o
+          navegador simplesmente não sabia o que fazer com a tag, então os
+          contornos de território nunca apareciam. */}
+      <svg
+        viewBox="0 0 100 100"
+        preserveAspectRatio="none"
+        className="pointer-events-none absolute inset-0 h-full w-full"
+      >
         {territories.map((t) => (
           <polygon
             key={t.id}
@@ -20,6 +39,7 @@ export default function WorldMapTerritoryLayer({ territories }: { territories: T
             vectorEffect="non-scaling-stroke"
           />
         ))}
+      </svg>
       {territories.map((t) => (
         <div
           key={t.id}
