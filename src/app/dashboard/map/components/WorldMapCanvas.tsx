@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { TerritorioApi, NodeApi, ConnectionApi } from "./WorldMapClient";
 import WorldMapTerritoryLayer from "./WorldMapTerritoryLayer";
 import WorldMapConnectionLayer from "./WorldMapConnectionLayer";
@@ -27,9 +27,11 @@ export default function WorldMapCanvas({
   const [scale, setScale] = useState(1);
   const [position, setPosition] = useState({ x: 0, y: 0 });
 
+  const viewportRef = useRef<HTMLDivElement>(null);
+
   // Estado para controlar o arrasto (Pan)
   const isDraggingRef = useRef(false);
-  const hasDraggedRef = useRef(false); // Evita falso clique ao arrastar
+  const hasDraggedRef = useRef(false);
   const pointerStartPosRef = useRef({ x: 0, y: 0 });
   const dragStartRef = useRef({ x: 0, y: 0 });
   const positionRef = useRef({ x: 0, y: 0 });
@@ -44,13 +46,24 @@ export default function WorldMapCanvas({
     []
   );
 
-  function aoRodarRoda(evento: React.WheelEvent) {
-    evento.preventDefault();
-    setScale((atual) => clamparEscala(atual - evento.deltaY * 0.001));
-  }
+  // Registra o evento de roda de forma não-passiva para permitir o preventDefault()
+  useEffect(() => {
+    const elemento = viewportRef.current;
+    if (!elemento) return;
+
+    const tratarRoda = (evento: WheelEvent) => {
+      evento.preventDefault();
+      setScale((atual) => clamparEscala(atual - evento.deltaY * 0.001));
+    };
+
+    elemento.addEventListener("wheel", tratarRoda, { passive: false });
+
+    return () => {
+      elemento.removeEventListener("wheel", tratarRoda);
+    };
+  }, [clamparEscala]);
 
   function aoPressionarPonteiro(evento: React.PointerEvent) {
-    // Garante que o evento de soltar sempre chegue neste container
     try {
       (evento.currentTarget as HTMLElement).setPointerCapture(evento.pointerId);
     } catch {}
@@ -101,7 +114,6 @@ export default function WorldMapCanvas({
       const dx = Math.abs(evento.clientX - pointerStartPosRef.current.x);
       const dy = Math.abs(evento.clientY - pointerStartPosRef.current.y);
 
-      // Se moveu mais de 5px, é arraste e não clique
       if (dx > 5 || dy > 5) {
         hasDraggedRef.current = true;
       }
@@ -135,14 +147,14 @@ export default function WorldMapCanvas({
     <div className="relative h-full w-full overflow-hidden flex items-center justify-center bg-black/40">
       {/* Viewport/Máscara */}
       <div
-        onWheel={aoRodarRoda}
+        ref={viewportRef}
         onPointerDown={aoPressionarPonteiro}
         onPointerMove={aoMoverPonteiro}
         onPointerUp={aoSoltarPonteiro}
         onPointerCancel={aoSoltarPonteiro}
         className="h-full w-full touch-none flex items-center justify-center cursor-grab active:cursor-grabbing"
       >
-        {/* Container do Mapa */}
+        {/* Container do Mapa escalável e arrastável */}
         <div
           className="relative aspect-[16/10] w-full max-h-full max-w-full origin-center select-none"
           style={{
@@ -162,7 +174,6 @@ export default function WorldMapCanvas({
                 node.adventure?.zona_id === activeAdventureZoneId
               }
               onClick={() => {
-                // Só seleciona se o usuário NÃO estava arrastando o mapa
                 if (!hasDraggedRef.current) {
                   onSelectNode(node.id);
                 }
@@ -172,6 +183,7 @@ export default function WorldMapCanvas({
         </div>
       </div>
 
+      {/* Botão de Centralizar fixo no canto da tela */}
       <button
         type="button"
         onClick={centralizar}
