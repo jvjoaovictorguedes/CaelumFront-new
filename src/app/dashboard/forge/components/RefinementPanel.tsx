@@ -269,11 +269,24 @@ export default function RefinementPanel({ nivelForja, onProgressoMudou }: { nive
           </p>
         ) : (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {agruparInstancias(instancias, (i) => (i.equipada ? "equipada" : "solta")).map((grupo) => {
+            {agruparInstancias(instancias).map((grupo) => {
               const instancia = grupo.representante;
               const idAcao = grupo.ids[0];
               const src = resolveMediaUrl(instancia.imagem_url);
               const selecionadaAtual = idAcao === selecionada;
+              // Equipar/desequipar não é exigido pra refinar (ver
+              // forgeRefinementService — só bloqueia estado "Mercado"),
+              // então o grupo mistura livremente cópias equipadas e
+              // soltas. O rótulo reflete quantas do grupo estão
+              // equipadas, em vez de assumir que a representante fala
+              // pelas outras.
+              const equipadosNoGrupo = instancias.filter((i) => grupo.ids.includes(i.id) && i.equipada).length;
+              const rotuloEquipado =
+                equipadosNoGrupo === 0
+                  ? ""
+                  : equipadosNoGrupo === grupo.quantidade
+                    ? "· Equipado"
+                    : `· ${equipadosNoGrupo} equipado${equipadosNoGrupo > 1 ? "s" : ""}`;
               return (
                 <button
                   key={idAcao}
@@ -299,7 +312,7 @@ export default function RefinementPanel({ nivelForja, onProgressoMudou }: { nive
                       {grupo.quantidade > 1 && ` (x${grupo.quantidade})`}
                     </p>
                     <p className="text-xs text-white/50">
-                      {instancia.raridade} +{instancia.refinamento} {instancia.equipada ? "· Equipado" : ""}
+                      {instancia.raridade} +{instancia.refinamento} {rotuloEquipado}
                     </p>
                   </div>
                 </button>
