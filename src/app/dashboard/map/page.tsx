@@ -14,7 +14,7 @@ export default async function MapPage() {
   }
   if (!mapa) {
     return (
-      <div className="fixed p-5 inset-0 z-[90] flex flex-col items-center justify-center bg-[#1a1410] px-6 text-center">
+      <div className="fixed inset-0 z-[90] flex flex-col items-center justify-center bg-[#1a1410] px-6 text-center">
         <h1 className="mb-4 font-imFeel text-4xl">Mapa</h1>
 
         <p className="max-w-md text-lg text-white/70">
@@ -24,7 +24,7 @@ export default async function MapPage() {
     );
   }
   return (
-    <div className="fixed inset-0 z-[90] overflow-hidden bg-[#1a1410]">
+    <div className="fixed p-5 inset-0 z-[90] overflow-hidden bg-[#1a1410]">
       <WorldMapClient mapa={mapa} />
     </div>
   );

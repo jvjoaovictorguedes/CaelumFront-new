@@ -29,6 +29,8 @@ export default function WorldMapCanvas({
 
   // Estado para controlar o arrasto (Pan)
   const isDraggingRef = useRef(false);
+  const hasDraggedRef = useRef(false); // Evita falso clique ao arrastar
+  const pointerStartPosRef = useRef({ x: 0, y: 0 });
   const dragStartRef = useRef({ x: 0, y: 0 });
   const positionRef = useRef({ x: 0, y: 0 });
 
@@ -48,7 +50,11 @@ export default function WorldMapCanvas({
   }
 
   function aoPressionarPonteiro(evento: React.PointerEvent) {
-    // Adiciona ao mapa de ponteiros para o Zoom via Pinch/Touch
+    // Garante que o evento de soltar sempre chegue neste container
+    try {
+      (evento.currentTarget as HTMLElement).setPointerCapture(evento.pointerId);
+    } catch {}
+
     ponteirosRef.current.set(evento.pointerId, {
       x: evento.clientX,
       y: evento.clientY,
@@ -59,12 +65,14 @@ export default function WorldMapCanvas({
       distanciaPinchInicialRef.current = Math.hypot(a.x - b.x, a.y - b.y);
       escalaPinchInicialRef.current = scale;
       isDraggingRef.current = false;
+      hasDraggedRef.current = true;
       return;
     }
 
-    // Inicia o Pan apenas no ponteiro principal (mouse/1 toque no mapa)
     if (evento.isPrimary) {
       isDraggingRef.current = true;
+      hasDraggedRef.current = false;
+      pointerStartPosRef.current = { x: evento.clientX, y: evento.clientY };
       dragStartRef.current = {
         x: evento.clientX - positionRef.current.x,
         y: evento.clientY - positionRef.current.y,
@@ -90,6 +98,14 @@ export default function WorldMapCanvas({
 
     // Movimentação/Pan (1 ponteiro)
     if (isDraggingRef.current && ponteirosRef.current.size === 1) {
+      const dx = Math.abs(evento.clientX - pointerStartPosRef.current.x);
+      const dy = Math.abs(evento.clientY - pointerStartPosRef.current.y);
+
+      // Se moveu mais de 5px, é arraste e não clique
+      if (dx > 5 || dy > 5) {
+        hasDraggedRef.current = true;
+      }
+
       const newX = evento.clientX - dragStartRef.current.x;
       const newY = evento.clientY - dragStartRef.current.y;
 
@@ -100,6 +116,10 @@ export default function WorldMapCanvas({
   }
 
   function aoSoltarPonteiro(evento: React.PointerEvent) {
+    try {
+      (evento.currentTarget as HTMLElement).releasePointerCapture(evento.pointerId);
+    } catch {}
+
     ponteirosRef.current.delete(evento.pointerId);
     if (ponteirosRef.current.size < 2) distanciaPinchInicialRef.current = null;
     if (ponteirosRef.current.size === 0) isDraggingRef.current = false;
@@ -122,9 +142,9 @@ export default function WorldMapCanvas({
         onPointerCancel={aoSoltarPonteiro}
         className="h-full w-full touch-none flex items-center justify-center cursor-grab active:cursor-grabbing"
       >
-        {/* Container do Mapa escalável e arrastável */}
+        {/* Container do Mapa */}
         <div
-          className="relative aspect-[16/10] w-full max-h-full max-w-full origin-center transition-transform duration-75 ease-out select-none"
+          className="relative aspect-[16/10] w-full max-h-full max-w-full origin-center select-none"
           style={{
             transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
           }}
@@ -141,13 +161,17 @@ export default function WorldMapCanvas({
                 node.tipo === "Adventure" &&
                 node.adventure?.zona_id === activeAdventureZoneId
               }
-              onClick={() => onSelectNode(node.id)}
+              onClick={() => {
+                // Só seleciona se o usuário NÃO estava arrastando o mapa
+                if (!hasDraggedRef.current) {
+                  onSelectNode(node.id);
+                }
+              }}
             />
           ))}
         </div>
       </div>
 
-      {/* Botão de Centralizar fixo no canto da tela */}
       <button
         type="button"
         onClick={centralizar}
