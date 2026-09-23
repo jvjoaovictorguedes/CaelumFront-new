@@ -96,10 +96,6 @@ export default function WorldMapCanvas({
           className="relative aspect-[16/10] w-full origin-center"
           style={{ transform: `scale(${scale})` }}
         >
-          {/* Arte base — mapa-caelum.webp ainda não existe (spec §24);
-              placeholder de gradiente no estilo pergaminho/dourado já
-              usado no resto do jogo, até a arte final chegar. */}
-          <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-[#3a2f24] via-[#292018] to-[#1a1410]" />
           <div className="pointer-events-none absolute inset-0 rounded-xl bg-[radial-gradient(ellipse_at_center,rgba(243,180,63,0.08),transparent_70%)]" />
 
           <WorldMapTerritoryLayer territories={territories} />
