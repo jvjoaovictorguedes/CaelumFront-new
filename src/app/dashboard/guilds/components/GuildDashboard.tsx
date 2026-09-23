@@ -12,8 +12,18 @@ import GuildLogsTab from "./GuildLogsTab";
 import GuildBossTab from "./GuildBossTab";
 import GuildMissionsTab from "./GuildMissionsTab";
 import GuildBenefitsTab from "./GuildBenefitsTab";
+import GuildMuralTab from "./GuildMuralTab";
 
-type Aba = "membros" | "missoes" | "beneficios" | "boss" | "tesouro" | "contribuicao" | "chat" | "logs";
+type Aba =
+  | "membros"
+  | "missoes"
+  | "beneficios"
+  | "boss"
+  | "tesouro"
+  | "contribuicao"
+  | "chat"
+  | "mural"
+  | "logs";
 
 const ABAS: { chave: Aba; label: string }[] = [
   { chave: "membros", label: "Membros" },
@@ -23,6 +33,7 @@ const ABAS: { chave: Aba; label: string }[] = [
   { chave: "tesouro", label: "Tesouro" },
   { chave: "contribuicao", label: "Contribuição" },
   { chave: "chat", label: "Chat" },
+  { chave: "mural", label: "Mural" },
   { chave: "logs", label: "Logs" },
 ];
 
@@ -196,13 +207,6 @@ export default function GuildDashboard({
           </span>
         </div>
 
-        {guild.mural && (
-          <div className="mt-4 rounded-lg border border-white/10 bg-black/30 p-3 text-sm text-white/80">
-            <p className="mb-1 text-xs uppercase tracking-widest text-[#F3B43F]/80">Mural</p>
-            {guild.mural}
-          </div>
-        )}
-
         {editando && (
           <EditorIdentidade
             guild={guild}
@@ -249,6 +253,7 @@ export default function GuildDashboard({
       {aba === "chat" && (
         <GuildChatTab characterId={characterId} characterNome={characterNome} idGuild={guild.id} />
       )}
+      {aba === "mural" && <GuildMuralTab idGuild={guild.id} pode={pode} />}
       {aba === "tesouro" && (
         <GuildTreasuryTab guild={guild} characterId={characterId} pode={pode} onMudou={recarregarGuild} />
       )}
@@ -268,7 +273,6 @@ function EditorIdentidade({
   onSalvo: (guild: GuildResumo) => void;
 }) {
   const [descricao, setDescricao] = useState(guild.descricao ?? "");
-  const [mural, setMural] = useState(guild.mural ?? "");
   const [tipoRecrutamento, setTipoRecrutamento] = useState(guild.tipo_recrutamento);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState("");
@@ -279,7 +283,7 @@ function EditorIdentidade({
     try {
       const resp = await axiosInstance.patch<{ data?: { guild?: GuildResumo } }>(
         `/guilds/${guild.id}`,
-        { idResponsavel: characterId, descricao, mural, tipo_recrutamento: tipoRecrutamento },
+        { idResponsavel: characterId, descricao, tipo_recrutamento: tipoRecrutamento },
       );
       if (resp.data?.data?.guild) onSalvo(resp.data.data.guild);
     } catch (error) {
@@ -299,14 +303,6 @@ function EditorIdentidade({
         onChange={(e) => setDescricao(e.target.value)}
         maxLength={500}
         placeholder="Descrição pública"
-        className="rounded-lg border border-white/20 bg-black/30 px-3 py-2 text-sm text-white placeholder-white/40 outline-none focus:border-[#F3B43F]"
-        rows={2}
-      />
-      <textarea
-        value={mural}
-        onChange={(e) => setMural(e.target.value)}
-        maxLength={1000}
-        placeholder="Mural (metas, avisos...)"
         className="rounded-lg border border-white/20 bg-black/30 px-3 py-2 text-sm text-white placeholder-white/40 outline-none focus:border-[#F3B43F]"
         rows={2}
       />

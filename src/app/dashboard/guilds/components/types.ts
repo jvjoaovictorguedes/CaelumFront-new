@@ -55,6 +55,14 @@ export interface Candidatura {
   Character?: { id: number; nome: string; nivel: number };
 }
 
+export interface MensagemMural {
+  id: number;
+  idPersonagemAutor: number;
+  nomeAutor: string;
+  texto: string;
+  createdAt: string;
+}
+
 export interface LogGuild {
   id: number;
   tipo: string;
@@ -94,6 +102,7 @@ export const PERMISSOES = [
   "autorizar_gastos",
   "liberar_boss",
   "comprar_beneficios",
+  "gerenciar_mural",
 ] as const;
 
 export type Permissao = (typeof PERMISSOES)[number];
