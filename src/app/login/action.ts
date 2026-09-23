@@ -27,6 +27,64 @@ interface CookiesData {
   password: string;
   rememberMe?: boolean;
 }
+
+// Compartilhado por login() e loginComGoogle() — os dois terminam com
+// exatamente a mesma resposta do backend ({token, data: {user}}) e
+// precisam fazer exatamente o mesmo trabalho dali pra frente (setar
+// cookies, resolver se já existe personagem). Extraído pra não
+// duplicar esse bloco (cookies de sessão + lookup de personagem) toda
+// vez que um novo jeito de logar for adicionado.
+async function finalizarSessao(userData: LoginResponseData["data"], rememberMe: boolean) {
+  // "Lembrar-me" decide se os cookies sobrevivem ao fechamento do
+  // navegador: marcado, viram cookies persistentes (7 dias); desmarcado,
+  // viram cookies de sessão (sem maxAge) — o navegador os apaga ao
+  // fechar, então da próxima vez o usuário precisa logar de novo.
+  const maxAge = rememberMe ? 60 * 60 * 24 * 7 : undefined;
+
+  // O cookie do token precisa ser setado ANTES da busca do personagem
+  // logo abaixo: /characters/by-user agora exige authMiddleware (fecha
+  // aqui um buraco que existia antes), e o axiosInstance do lado do
+  // servidor só anexa o Bearer lendo esse mesmo cookie via
+  // cookies().get(). Com a ordem invertida (como estava antes), a
+  // busca saía sem token, o backend respondia 401, e o login parecia
+  // ter dado erro genérico mesmo tendo funcionado.
+  const cookieStore = await cookies();
+  cookieStore.set("user", JSON.stringify(userData.user), {
+    maxAge,
+    path: "/",
+  });
+
+  const character = await axiosInstance.get<CharacterLookupResponse>(
+    `/characters/by-user/${userData.user.id}`,
+    {
+      validateStatus: (status) => status <= 404,
+    },
+  );
+  const characterId = character.data?.data?.character?.id;
+
+  if (character.status === 200 && characterId !== undefined) {
+    const cookieStoreAtual = await cookies();
+    cookieStoreAtual.set("notCharacter", JSON.stringify(false), {
+      maxAge,
+      path: "/",
+    });
+    cookieStoreAtual.set("characterId", String(characterId), {
+      maxAge,
+      path: "/",
+    });
+  }
+  if (character.status === 404) {
+    const cookieStoreAtual = await cookies();
+    cookieStoreAtual.delete("characterId");
+    cookieStoreAtual.set("notCharacter", JSON.stringify(true), {
+      maxAge,
+      path: "/",
+    });
+  }
+
+  return { userId: userData.user.id, character: character.status };
+}
+
 export async function login(data: CookiesData) {
   try {
     const response = await axiosInstance.post<LoginResponseData>(
@@ -43,25 +101,10 @@ export async function login(data: CookiesData) {
     );
 
     const { token, data: userData } = response.data;
+    const rememberMe = Boolean(data.rememberMe);
+    const maxAge = rememberMe ? 60 * 60 * 24 * 7 : undefined;
 
-    // "Lembrar-me" decide se os cookies sobrevivem ao fechamento do
-    // navegador: marcado, viram cookies persistentes (7 dias); desmarcado,
-    // viram cookies de sessão (sem maxAge) — o navegador os apaga ao
-    // fechar, então da próxima vez o usuário precisa logar de novo.
-    const maxAge = data.rememberMe ? 60 * 60 * 24 * 7 : undefined;
-
-    // O cookie do token precisa ser setado ANTES da busca do personagem
-    // logo abaixo: /characters/by-user agora exige authMiddleware (fecha
-    // aqui um buraco que existia antes), e o axiosInstance do lado do
-    // servidor só anexa o Bearer lendo esse mesmo cookie via
-    // cookies().get(). Com a ordem invertida (como estava antes), a
-    // busca saía sem token, o backend respondia 401, e o login parecia
-    // ter dado erro genérico mesmo tendo funcionado.
     const cookieStore = await cookies();
-    cookieStore.set("user", JSON.stringify(userData.user), {
-      maxAge,
-      path: "/",
-    });
     cookieStore.set(TOKEN_KEY, token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
@@ -69,46 +112,10 @@ export async function login(data: CookiesData) {
       path: "/",
     });
 
-    const character = await axiosInstance.get<CharacterLookupResponse>(
-      `/characters/by-user/${userData.user.id}`,
-      {
-        validateStatus: (status) => status <= 404,
-      },
-    );
-    const characterId = character.data?.data?.character?.id;
+    const { userId, character } = await finalizarSessao(userData, rememberMe);
 
-    if (character.status === 200 && characterId !== undefined) {
-      const cookieStore = await cookies();
-      const notCharacter = false;
-      cookieStore.set("notCharacter", JSON.stringify(notCharacter), {
-        maxAge,
-        path: "/",
-      });
-
-      cookieStore.set("characterId", String(characterId), {
-        maxAge,
-        path: "/",
-      });
-    }
-    if (character.status === 404) {
-      const cookieStore = await cookies();
-      cookieStore.delete("characterId");
-      const notCharacter = true;
-      cookieStore.set("notCharacter", JSON.stringify(notCharacter), {
-        maxAge,
-        path: "/",
-      });
-    }
-
-    console.log(
-      "Usuário logado com sucesso (Server Action):",
-      userData.user.id,
-    );
-    return {
-      success: true,
-      userId: userData.user.id,
-      character: character.status,
-    };
+    console.log("Usuário logado com sucesso (Server Action):", userId);
+    return { success: true, userId, character };
   } catch (error: unknown) {
     const message = axios.isAxiosError(error)
       ? error.response?.data?.message
@@ -119,6 +126,48 @@ export async function login(data: CookiesData) {
     return {
       success: false,
       message: message || "Email ou senha incorretos. Tente novamente.",
+    };
+  }
+}
+
+// idToken = o "credential" que o botão "Sign in with Google" (Google
+// Identity Services, carregado em login.tsx) devolve pro CLIENTE — essa
+// action só repassa pro backend verificar a assinatura de verdade
+// (nunca confia em nada vindo do navegador sem essa verificação).
+export async function loginComGoogle(idToken: string) {
+  try {
+    const response = await axiosInstance.post<LoginResponseData>("/users/google-login", { idToken });
+    const { token, data: userData } = response.data;
+
+    // Sem checkbox de "lembrar-me" nesse fluxo (não existe no botão do
+    // Google) — sessão longa por padrão, igual ao login normal com
+    // "lembrar-me" marcado (o backend já assina o JWT com essa duração
+    // pra esse fluxo).
+    const rememberMe = true;
+    const maxAge = 60 * 60 * 24 * 7;
+
+    const cookieStore = await cookies();
+    cookieStore.set(TOKEN_KEY, token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      maxAge,
+      path: "/",
+    });
+
+    const { userId, character } = await finalizarSessao(userData, rememberMe);
+
+    console.log("Usuário logado com Google (Server Action):", userId);
+    return { success: true, userId, character };
+  } catch (error: unknown) {
+    const message = axios.isAxiosError(error)
+      ? error.response?.data?.message
+      : error instanceof Error
+        ? error.message
+        : undefined;
+    console.error("Erro ao logar com Google (Server Action):", message);
+    return {
+      success: false,
+      message: message || "Não foi possível entrar com o Google. Tente novamente.",
     };
   }
 }
