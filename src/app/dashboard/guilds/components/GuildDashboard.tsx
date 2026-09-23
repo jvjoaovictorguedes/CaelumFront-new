@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import axiosInstance from "@/utils/axiosIntance";
+import { resolveMediaUrl } from "@/utils/media-url";
 import type { Cargo, GuildResumo, MembroGuild, Permissao } from "./types";
 import { PERMISSOES } from "./types";
 import GuildMembersTab from "./GuildMembersTab";
@@ -13,6 +14,7 @@ import GuildBossTab from "./GuildBossTab";
 import GuildMissionsTab from "./GuildMissionsTab";
 import GuildBenefitsTab from "./GuildBenefitsTab";
 import GuildMuralTab from "./GuildMuralTab";
+import GuildEmblemUploader from "./GuildEmblemUploader";
 
 type Aba =
   | "membros"
@@ -142,12 +144,26 @@ export default function GuildDashboard({
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 p-2 sm:p-4">
       <div className="rounded-2xl border-2 border-[#F3B43F] bg-[#292018]/90 p-5 text-white shadow-xl">
         <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <p className="text-sm uppercase tracking-widest text-[#F3B43F]">
-              {guild.sigla} · Nível {guild.nivel} · Ranque {guild.rank ?? "F"}
-            </p>
-            <h1 className="font-imFeel text-4xl sm:text-5xl">{guild.nome}</h1>
-            {guild.descricao && <p className="mt-1 text-white/70">{guild.descricao}</p>}
+          <div className="flex items-start gap-4">
+            <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-[#F3B43F]/60 bg-black/40 sm:h-20 sm:w-20">
+              {guild.emblema_url ? (
+                // eslint-disable-next-line @next/next/no-img-element -- imagem enviada por jogador, nunca passa por next/image
+                <img
+                  src={resolveMediaUrl(guild.emblema_url)}
+                  alt={`Emblema de ${guild.nome}`}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <span className="font-imFeel text-2xl text-[#F3B43F]/40">{guild.sigla}</span>
+              )}
+            </div>
+            <div>
+              <p className="text-sm uppercase tracking-widest text-[#F3B43F]">
+                {guild.sigla} · Nível {guild.nivel} · Ranque {guild.rank ?? "F"}
+              </p>
+              <h1 className="font-imFeel text-4xl sm:text-5xl">{guild.nome}</h1>
+              {guild.descricao && <p className="mt-1 text-white/70">{guild.descricao}</p>}
+            </div>
           </div>
           <div className="flex flex-col items-end gap-2 text-sm">
             <span className="rounded-full border border-[#F3B43F]/60 px-3 py-1 text-[#F3B43F]">
@@ -310,6 +326,11 @@ function EditorIdentidade({
 
   return (
     <div className="mt-4 flex flex-col gap-2 rounded-lg border border-white/10 bg-black/30 p-3">
+      <GuildEmblemUploader
+        idGuild={guild.id}
+        emblemaAtual={guild.emblema_url}
+        onEnviado={(novaEmblemaUrl) => onSalvo({ ...guild, emblema_url: novaEmblemaUrl })}
+      />
       <textarea
         value={descricao}
         onChange={(e) => setDescricao(e.target.value)}

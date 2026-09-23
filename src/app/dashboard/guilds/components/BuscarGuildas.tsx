@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import axiosInstance from "@/utils/axiosIntance";
+import { resolveMediaUrl } from "@/utils/media-url";
 import type { GuildResumo } from "./types";
 
 export default function BuscarGuildas({
@@ -84,18 +85,32 @@ export default function BuscarGuildas({
                 key={guild.id}
                 className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-white/10 bg-black/30 p-3"
               >
-                <div>
-                  <p className="font-bold text-[#F3B43F]">
-                    {guild.nome} [{guild.sigla}]
-                  </p>
-                  <p className="text-xs text-white/50">
-                    Nível {guild.nivel} · {guild.totalMembros ?? 0}/{guild.limite_membros} membros ·{" "}
-                    {guild.tipo_recrutamento === "Aberto"
-                      ? "aberta"
-                      : guild.tipo_recrutamento === "Aprovacao"
-                        ? "por aprovação"
-                        : "só por convite"}
-                  </p>
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-[#F3B43F]/50 bg-black/40">
+                    {guild.emblema_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element -- imagem enviada por jogador, nunca passa por next/image
+                      <img
+                        src={resolveMediaUrl(guild.emblema_url)}
+                        alt={`Emblema de ${guild.nome}`}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <span className="font-imFeel text-xs text-[#F3B43F]/40">{guild.sigla}</span>
+                    )}
+                  </div>
+                  <div>
+                    <p className="font-bold text-[#F3B43F]">
+                      {guild.nome} [{guild.sigla}]
+                    </p>
+                    <p className="text-xs text-white/50">
+                      Nível {guild.nivel} · {guild.totalMembros ?? 0}/{guild.limite_membros} membros ·{" "}
+                      {guild.tipo_recrutamento === "Aberto"
+                        ? "aberta"
+                        : guild.tipo_recrutamento === "Aprovacao"
+                          ? "por aprovação"
+                          : "só por convite"}
+                    </p>
+                  </div>
                 </div>
                 <div className="flex items-center gap-2">
                   {mensagemPorGuild[guild.id] && (
