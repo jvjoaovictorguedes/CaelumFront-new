@@ -1,16 +1,14 @@
 "use client";
 
-import { coresDoTier, rotuloDeElo } from "@/lib/api/pvp";
+import { assetKeyDoTier, coresDoTier, rotuloDeElo } from "@/lib/api/pvp";
 
 /**
- * Emblema de Elo (Tier + Divisão).
- *
- * Ainda não existe arte real de emblema no projeto (public/images não tem
- * pasta de badges). Conforme a própria spec sugere — "preferir uma imagem
- * por Tier e renderizar IV/III/II/I como texto/overlay do frontend" — o
- * emblema aqui é um disco com o gradiente do Tier e a divisão em romano
- * por cima. Quando a arte chegar, basta trocar o miolo deste componente
- * por um <img src={...tierAssetKey}/> mantendo o overlay da divisão.
+ * Emblema de Elo (Tier + Divisão) — imagem real por Tier (public/images/
+ * ranked/<asset>.png), com a divisão em romano como overlay no canto
+ * (a própria spec sugia exatamente isso: "uma imagem por Tier e
+ * renderizar IV/III/II/I como texto/overlay do frontend"). Sem
+ * classificação ainda (personagem nunca jogou ranqueada) cai num
+ * círculo cinza com "?" — não existe emblema de "tier zero".
  */
 export default function EloBadge({
   tier,
@@ -27,25 +25,41 @@ export default function EloBadge({
   const semClassificacao = !tier;
 
   const dimensoes = {
-    sm: { disco: "h-12 w-12", divisao: "text-sm", rotulo: "text-xs" },
-    md: { disco: "h-20 w-20", divisao: "text-xl", rotulo: "text-sm" },
-    lg: { disco: "h-28 w-28", divisao: "text-3xl", rotulo: "text-base" },
+    sm: { disco: "h-12 w-12", divisao: "text-[10px]", rotulo: "text-xs" },
+    md: { disco: "h-20 w-20", divisao: "text-sm", rotulo: "text-sm" },
+    lg: { disco: "h-28 w-28", divisao: "text-lg", rotulo: "text-base" },
   }[tamanho];
 
   return (
     <div className="flex flex-col items-center gap-1.5">
       <div
-        className={`${dimensoes.disco} flex items-center justify-center rounded-full border-4 shadow-lg`}
-        style={{
-          borderColor: cores.borda,
-          background: `radial-gradient(circle at 35% 30%, ${cores.de}, ${cores.para})`,
-          color: cores.texto,
-        }}
+        className={`relative ${dimensoes.disco} flex items-center justify-center rounded-full`}
         title={rotuloDeElo(tier, divisao)}
       >
-        <span className={`font-imFeel font-bold ${dimensoes.divisao}`}>
-          {semClassificacao ? "?" : tier === "Mestre" ? "M" : (divisao ?? "—")}
-        </span>
+        {semClassificacao ? (
+          <div
+            className="flex h-full w-full items-center justify-center rounded-full border-4"
+            style={{ borderColor: cores.borda, background: cores.para, color: cores.texto }}
+          >
+            <span className="font-imFeel text-xl font-bold">?</span>
+          </div>
+        ) : (
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={`/images/ranked/${assetKeyDoTier(tier)}.png`}
+              alt={rotuloDeElo(tier, divisao)}
+              className="h-full w-full object-contain drop-shadow-lg"
+            />
+            {divisao && (
+              <span
+                className={`absolute -bottom-1 left-1/2 -translate-x-1/2 rounded-full border-2 border-black/40 bg-[#292018] px-2 py-0.5 font-imFeel font-bold leading-none text-[#F3B43F] shadow ${dimensoes.divisao}`}
+              >
+                {divisao}
+              </span>
+            )}
+          </>
+        )}
       </div>
       {mostrarRotulo && (
         <p className={`font-imFeel leading-none text-[#F3B43F] ${dimensoes.rotulo}`}>

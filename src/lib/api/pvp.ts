@@ -75,17 +75,17 @@ export const TIERS = [
   "Platina",
   "Diamante",
   "Mestre",
+  "Grão-Mestre",
 ] as const;
 
 export type Tier = (typeof TIERS)[number];
 
-/** Mestre não tem divisão; os demais vão de IV (entrada) a I (topo). */
+/** Mestre e Grão-Mestre não têm divisão; os demais vão de IV (entrada) a I (topo). */
 export type Divisao = "IV" | "III" | "II" | "I";
 
 /**
- * Cores por Tier — enquanto não existir arte real de emblema, o emblema
- * é um badge circular com essas cores e a divisão em romano por cima
- * (a própria spec sugere "uma imagem por Tier + IV/III/II/I como texto").
+ * Cores por Tier — usadas como fallback (borda/glow) em volta do emblema
+ * real (ver EloBadge.tsx) e enquanto a imagem carrega.
  */
 export const CORES_POR_TIER: Record<string, { de: string; para: string; borda: string; texto: string }> = {
   Ferro: { de: "#6b6b6b", para: "#3a3a3a", borda: "#8a8a8a", texto: "#e8e8e8" },
@@ -95,7 +95,28 @@ export const CORES_POR_TIER: Record<string, { de: string; para: string; borda: s
   Platina: { de: "#5fd6c4", para: "#1f7f73", borda: "#9af0e3", texto: "#06231f" },
   Diamante: { de: "#6fb3f5", para: "#2352a3", borda: "#a8d4ff", texto: "#04182f" },
   Mestre: { de: "#c07bf0", para: "#6a2aa8", borda: "#e0b6ff", texto: "#1d0530" },
+  "Grão-Mestre": { de: "#ff6b6b", para: "#a31d1d", borda: "#ffb3b3", texto: "#2f0505" },
 };
+
+// Chave de asset por Tier — espelha rankedTierService.tierParaAsset do
+// backend (mesma convenção: minúsculo, hífen). O backend é quem decide
+// oficialmente o tier a partir do rating; isso aqui só resolve o nome
+// do arquivo em public/images/ranked/ a partir do nome do tier que já
+// veio pronto da API.
+const ASSET_POR_TIER: Record<string, string> = {
+  Ferro: "ferro",
+  Bronze: "bronze",
+  Prata: "prata",
+  Ouro: "ouro",
+  Platina: "platina",
+  Diamante: "diamante",
+  Mestre: "mestre",
+  "Grão-Mestre": "grao-mestre",
+};
+
+export function assetKeyDoTier(tier?: string | null) {
+  return ASSET_POR_TIER[tier ?? ""] ?? ASSET_POR_TIER.Ferro;
+}
 
 export function coresDoTier(tier?: string | null) {
   return CORES_POR_TIER[tier ?? ""] ?? CORES_POR_TIER.Ferro;
