@@ -64,6 +64,25 @@ export default function WorldMapCanvas({
   }, [clamparEscala]);
 
   function aoPressionarPonteiro(evento: React.PointerEvent) {
+    // Clicar num pino de local (<button>, WorldMapNodePin) não pode virar
+    // gesto de pan — setPointerCapture no viewport redireciona TAMBÉM o
+    // evento de click subsequente pro elemento que capturou (o próprio
+    // viewport), não pro botão de verdade embaixo do cursor. Resultado:
+    // o botão nunca recebia o click, e clicar num local pra abrir o
+    // painel simplesmente não fazia nada (bug reportado). Ignorando o
+    // pointerdown aqui quando ele começa em cima de um botão, o clique
+    // segue o caminho normal do DOM sem a captura atrapalhar — arrastar
+    // a partir do fundo do mapa continua funcionando normalmente. Reseta
+    // hasDraggedRef ANTES do early return: senão, clicar um botão logo
+    // depois de um arrasto de verdade herdava o hasDraggedRef=true do
+    // gesto anterior (nunca mais resetado pra esse botão, já que ele não
+    // passa mais pelo resto desta função) e o clique ficava suprimido
+    // por engano.
+    hasDraggedRef.current = false;
+    if ((evento.target as HTMLElement).closest("button")) {
+      return;
+    }
+
     try {
       (evento.currentTarget as HTMLElement).setPointerCapture(evento.pointerId);
     } catch {}
