@@ -176,7 +176,7 @@ export default function NavMenu({
                         : "hover:bg-[rgba(0,0,0,0.1)]"
                     }`}
                   >
-                    <span className="relative h-14 w-14 flex-shrink-0">
+                    <span className="relative h-11 w-11 flex-shrink-0">
                       <span
                         className="block h-full w-full rounded-md"
                         style={{
@@ -191,7 +191,7 @@ export default function NavMenu({
                         </span>
                       )}
                     </span>
-                    <p className="ml-3 min-w-0 flex-1 font-imFeel text-xl font-bold leading-tight text-black sm:text-2xl">
+                    <p className="ml-3 min-w-0 flex-1 font-imFeel text-lg font-bold leading-tight text-black sm:text-xl">
                       {item.name}
                     </p>
                   </a>
