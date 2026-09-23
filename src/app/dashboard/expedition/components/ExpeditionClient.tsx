@@ -339,7 +339,19 @@ export default function ExpeditionClient() {
           Expedição normal. */}
       {character && inimigoInterrupcao && (
         <CombatArena
-          key={`expedicao-${inimigoInterrupcao.nome}-${Date.now()}`}
+          // Chave ESTÁTICA de propósito: `agora` (relógio do cooldown,
+          // 1x/s) rerenderiza este componente o tempo todo, inclusive
+          // durante o combate — uma key com Date.now() era recalculada a
+          // cada render e mudava a cada segundo, forçando o React a
+          // REMONTAR a CombatArena do zero em pleno combate (log, vida
+          // local e o `carregando` do turno voltavam ao estado inicial),
+          // o que travava a luta por completo (bug reportado: "não da pra
+          // atacar e nem sair a não ser que atualize a página"). Esta
+          // árvore só existe enquanto inimigoInterrupcao !== null — a
+          // própria renderização condicional já cuida da montagem/
+          // desmontagem entre uma emboscada e a próxima, então a key nem
+          // precisa mudar.
+          key="expedicao-emboscada"
           character={character}
           abilities={habilidadesCombate}
           initialEnemy={inimigoInterrupcao}
