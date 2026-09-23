@@ -57,18 +57,20 @@ export default function GuildDashboard({
   const [aba, setAba] = useState<Aba>("membros");
   const [mensagem, setMensagem] = useState("");
   const [editando, setEditando] = useState(false);
+  const [muralNaoLido, setMuralNaoLido] = useState(false);
 
   const souLider = guild.id_lider === characterId;
 
   const recarregarGuild = useCallback(async () => {
     try {
       const resp = await axiosInstance.get<{
-        data?: { guild?: GuildResumo; membros?: MembroGuild[] };
+        data?: { guild?: GuildResumo; membros?: MembroGuild[]; muralNaoLido?: boolean };
       }>(`/guilds/${guild.id}`, { params: { characterId } });
       if (resp.data?.data?.guild) setGuild(resp.data.data.guild);
       setMembros(resp.data?.data?.membros ?? []);
       const proprio = resp.data?.data?.membros?.find((m) => m.id_personagem === characterId);
       if (proprio) setCargo(proprio.cargo);
+      setMuralNaoLido(Boolean(resp.data?.data?.muralNaoLido));
     } catch (error) {
       console.error("Erro ao recarregar guilda:", error);
     }
@@ -225,14 +227,24 @@ export default function GuildDashboard({
         {ABAS.map(({ chave, label }) => (
           <button
             key={chave}
-            onClick={() => setAba(chave)}
-            className={`shrink-0 whitespace-nowrap rounded-lg px-3 py-2 text-xs font-bold transition-colors sm:px-4 sm:text-sm ${
+            onClick={() => {
+              setAba(chave);
+              // Otimista: abrir a aba já limpa o indicador aqui (o
+              // GuildMuralTab, ao listar, marca a leitura de verdade no
+              // servidor) — sem isso o ponto ficava aceso até a próxima
+              // vez que recarregarGuild rodasse.
+              if (chave === "mural") setMuralNaoLido(false);
+            }}
+            className={`relative shrink-0 whitespace-nowrap rounded-lg px-3 py-2 text-xs font-bold transition-colors sm:px-4 sm:text-sm ${
               aba === chave
                 ? "bg-[#BC8418] text-black"
                 : "text-white/70 hover:bg-white/10 hover:text-white"
             }`}
           >
             {label}
+            {chave === "mural" && muralNaoLido && (
+              <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-red-500" />
+            )}
           </button>
         ))}
       </div>
