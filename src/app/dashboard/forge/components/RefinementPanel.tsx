@@ -18,10 +18,16 @@ interface Instancia {
   equipada: boolean;
 }
 
+// Catálogo (GET /crafting/scrolls) já cruzado com estoque/nível de
+// Forja do personagem pelo backend — nunca inferido no cliente por
+// heurística de nome de item.
 interface Pergaminho {
   id_item: number;
   nome: string;
-  quantidade: number;
+  bonus_percentual: number;
+  nivel_forja_minimo: number;
+  quantidade_disponivel: number;
+  nivel_forja_suficiente: boolean;
 }
 
 interface MaterialPrevia {
@@ -36,9 +42,11 @@ interface MaterialPrevia {
 interface Previa {
   alvo: number;
   chance_percentual: number;
+  chance_percentual_sem_pergaminho: number;
   ouro_custo: number;
   materiais: MaterialPrevia[];
-  pergaminho_aplicado: string | null;
+  pergaminho_aplicado: { id_item: number; nome: string; bonus_percentual: number } | null;
+  pergaminho_erro: string | null;
 }
 
 interface EntradaFilaForja {
@@ -69,7 +77,7 @@ function marcoVisual(refinamento: number) {
   return "";
 }
 
-export default function RefinementPanel({ onProgressoMudou }: { nivelForja: number; onProgressoMudou: () => void }) {
+export default function RefinementPanel({ nivelForja, onProgressoMudou }: { nivelForja: number; onProgressoMudou: () => void }) {
   const { character } = useCharacter();
   const [instancias, setInstancias] = useState<Instancia[]>([]);
   const [pergaminhos, setPergaminhos] = useState<Pergaminho[]>([]);
@@ -91,20 +99,13 @@ export default function RefinementPanel({ onProgressoMudou }: { nivelForja: numb
   const carregar = useCallback(async () => {
     if (!character) return;
     try {
-      const [respInstancias, respInventario, respFila] = await Promise.all([
+      const [respInstancias, respPergaminhos, respFila] = await Promise.all([
         axiosInstance.get<{ data?: { instancias?: Instancia[] } }>("/crafting/instances"),
-        axiosInstance.get<{
-          data?: { inventory?: { id_item: number; quantidade: number; Item: { nome: string; tipo_item: string } }[] };
-        }>("/character-inventory", { params: { characterId: character.id } }),
+        axiosInstance.get<{ data?: { pergaminhos?: Pergaminho[] } }>("/crafting/scrolls"),
         axiosInstance.get<{ data?: { fila?: { Forja?: EntradaFilaForja | null } } }>("/crafting/forge-queue"),
       ]);
       setInstancias(respInstancias.data?.data?.instancias ?? []);
-      const inventario = respInventario.data?.data?.inventory ?? [];
-      setPergaminhos(
-        inventario
-          .filter((entrada) => entrada.Item.tipo_item === "Consumivel" && entrada.Item.nome.startsWith("Pergaminho"))
-          .map((entrada) => ({ id_item: entrada.id_item, nome: entrada.Item.nome, quantidade: entrada.quantidade })),
-      );
+      setPergaminhos(respPergaminhos.data?.data?.pergaminhos ?? []);
       const filaForja = respFila.data?.data?.fila?.Forja ?? null;
       setFila(filaForja);
       setContagem(filaForja?.segundos_restantes ?? 0);
@@ -129,6 +130,14 @@ export default function RefinementPanel({ onProgressoMudou }: { nivelForja: numb
       if (intervaloRef.current) clearInterval(intervaloRef.current);
     };
   }, [fila]);
+
+  // Trocar de equipamento reseta a seleção de pergaminho pra "Nenhum"
+  // (spec §7) — sem isso, escolher um pergaminho pra um item e depois
+  // trocar de equipamento podia gastar o mesmo pergaminho num item que
+  // o jogador nunca quis usá-lo, só porque a seleção ficou "grudada".
+  useEffect(() => {
+    setPergaminhoEscolhido(null);
+  }, [selecionada]);
 
   const buscarPrevia = useCallback(async () => {
     if (!selecionada) {
@@ -334,7 +343,19 @@ export default function RefinementPanel({ onProgressoMudou }: { nivelForja: numb
             {previa && previa.alvo <= 10 && (
               <>
                 <p className="text-sm text-white/70">Alvo: +{previa.alvo}</p>
-                <p className="text-sm text-white/70">Chance final: {previa.chance_percentual.toFixed(1)}%</p>
+                <p className="text-sm text-white/70">
+                  Chance final:{" "}
+                  {pergaminhoEscolhido && previa.pergaminho_aplicado ? (
+                    <>
+                      <span className="text-white/50 line-through">
+                        {previa.chance_percentual_sem_pergaminho.toFixed(1)}%
+                      </span>{" "}
+                      <span className="font-bold text-[#F3B43F]">{previa.chance_percentual.toFixed(1)}%</span>
+                    </>
+                  ) : (
+                    <span className="font-bold">{previa.chance_percentual.toFixed(1)}%</span>
+                  )}
+                </p>
                 <p className="text-sm text-white/70">Ouro necessário: {previa.ouro_custo}</p>
 
                 <p className="mb-1 mt-3 text-xs uppercase tracking-widest text-[#F3B43F]">Materiais necessários</p>
@@ -358,20 +379,44 @@ export default function RefinementPanel({ onProgressoMudou }: { nivelForja: numb
 
                 {pergaminhos.length > 0 && (
                   <div className="mt-3">
-                    <label className="text-xs uppercase tracking-widest text-[#F3B43F]">Pergaminho (opcional)</label>
+                    <label className="text-xs uppercase tracking-widest text-[#F3B43F]">
+                      Pergaminho de Melhoria (opcional)
+                    </label>
+                    <p className="text-[10px] text-white/40">Sua Forja está no nível {nivelForja}.</p>
                     <select
                       value={pergaminhoEscolhido ?? ""}
                       onChange={(e) => setPergaminhoEscolhido(e.target.value ? Number(e.target.value) : null)}
                       className="mt-1 block w-full rounded border border-white/20 bg-black/30 px-2 py-1.5 text-sm text-white"
                     >
                       <option value="">Nenhum</option>
-                      {pergaminhos.map((p) => (
-                        <option key={p.id_item} value={p.id_item}>
-                          {p.nome} (você tem {p.quantidade})
-                        </option>
-                      ))}
+                      {pergaminhos.map((p) => {
+                        const semEstoque = p.quantidade_disponivel < 1;
+                        const desabilitado = semEstoque || !p.nivel_forja_suficiente;
+                        const motivo = !p.nivel_forja_suficiente
+                          ? `exige Forja nível ${p.nivel_forja_minimo}`
+                          : semEstoque
+                            ? "você não tem nenhum"
+                            : null;
+                        return (
+                          <option key={p.id_item} value={p.id_item} disabled={desabilitado}>
+                            {p.nome} (+{p.bonus_percentual}%) — {p.quantidade_disponivel}x
+                            {motivo ? ` · ${motivo}` : ""}
+                          </option>
+                        );
+                      })}
                     </select>
                   </div>
+                )}
+
+                {previa.pergaminho_aplicado && (
+                  <p className="mt-2 rounded-lg border border-[#F3B43F]/40 bg-black/30 px-2 py-1.5 text-xs text-[#F3B43F]">
+                    Será consumido: {previa.pergaminho_aplicado.nome} (+{previa.pergaminho_aplicado.bonus_percentual}%)
+                  </p>
+                )}
+                {previa.pergaminho_erro && (
+                  <p className="mt-2 rounded-lg border border-red-500/40 bg-red-950/30 px-2 py-1.5 text-xs text-red-300">
+                    Esse pergaminho não pode ser usado: {previa.pergaminho_erro}
+                  </p>
                 )}
 
                 <p className="mt-2 text-xs text-white/50">
@@ -382,7 +427,7 @@ export default function RefinementPanel({ onProgressoMudou }: { nivelForja: numb
                 <button
                   type="button"
                   onClick={refinar}
-                  disabled={refinando || Boolean(fila)}
+                  disabled={refinando || Boolean(fila) || Boolean(previa.pergaminho_erro)}
                   className="mt-3 w-full rounded-lg bg-[#F3B43F] px-5 py-1.5 text-sm font-bold text-black transition hover:bg-[#e0a52f] disabled:cursor-not-allowed disabled:bg-black/40 disabled:text-white/50"
                 >
                   {fila ? "Posto ocupado" : refinando ? "Iniciando..." : "Refinar"}
