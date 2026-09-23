@@ -9,7 +9,7 @@ import type { TerritorioApi } from "./WorldMapClient";
 export default function WorldMapTerritoryLayer({ territories }: { territories: TerritorioApi[] }) {
   return (
     <>
-      <img src="/images/map/map.webp" alt="Mapa do jogo" />
+      <img src="/images/map/map.webp" className="w-full h-full" alt="Mapa do jogo" />
         {territories.map((t) => (
           <polygon
             key={t.id}
