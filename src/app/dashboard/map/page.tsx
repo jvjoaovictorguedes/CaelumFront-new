@@ -4,13 +4,6 @@ import WorldMapClient, { type WorldMapApi } from "./components/WorldMapClient";
 interface MapaResponse {
   data?: WorldMapApi;
 }
-
-// Mapa Mundial v1 (spec "Mapa de Caelum v1") — GET /api/world/map já
-// devolve território/local agregado com o estado real do personagem
-// (perigo, bestiário, maestria, desbloqueio de expedição, sessão de
-// caça ativa); esta página só busca uma vez no servidor e entrega pro
-// client component (zoom/pan/filtros/painel são interativos, ver
-// WorldMapClient.tsx).
 export default async function MapPage() {
   let mapa: WorldMapApi | null = null;
   try {
@@ -19,17 +12,20 @@ export default async function MapPage() {
   } catch (error) {
     console.error("Erro ao buscar o Mapa Mundial:", error);
   }
-
   if (!mapa) {
     return (
-      <div className="flex h-full flex-col items-center justify-center text-center px-6">
-        <h1 className="font-imFeel text-4xl mb-4">Mapa</h1>
-        <p className="text-lg text-white/70 max-w-md">
+      <div className="fixed inset-0 z-[90] flex flex-col items-center justify-center bg-[#1a1410] px-6 text-center">
+        <h1 className="mb-4 font-imFeel text-4xl">Mapa</h1>
+
+        <p className="max-w-md text-lg text-white/70">
           Não foi possível carregar o mapa agora. Tente novamente em instantes.
         </p>
       </div>
     );
   }
-
-  return <WorldMapClient mapa={mapa} />;
+  return (
+    <div className="fixed p-5 inset-0 z-[90] overflow-hidden bg-[#1a1410]">
+      <WorldMapClient mapa={mapa} />
+    </div>
+  );
 }

@@ -9,11 +9,7 @@ import type { TerritorioApi } from "./WorldMapClient";
 export default function WorldMapTerritoryLayer({ territories }: { territories: TerritorioApi[] }) {
   return (
     <>
-      <svg
-        viewBox="0 0 100 100"
-        preserveAspectRatio="none"
-        className="pointer-events-none absolute inset-0 h-full w-full"
-      >
+      <img src="/images/map/map.webp" className="w-full h-full" alt="Mapa do jogo" />
         {territories.map((t) => (
           <polygon
             key={t.id}
@@ -24,8 +20,6 @@ export default function WorldMapTerritoryLayer({ territories }: { territories: T
             vectorEffect="non-scaling-stroke"
           />
         ))}
-      </svg>
-
       {territories.map((t) => (
         <div
           key={t.id}
