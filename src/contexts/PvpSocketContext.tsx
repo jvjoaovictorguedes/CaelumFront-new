@@ -221,7 +221,15 @@ export interface AliadoBatalhaGrupo {
 export interface BatalhaGrupoIniciadaPayload {
   battleId: number;
   zona: { id: number; nome: string };
-  inimigo: { nome: string; nivel: number; vida_atual: number; vida_maxima: number };
+  inimigo: {
+    nome: string;
+    nivel: number;
+    vida_atual: number;
+    vida_maxima: number;
+    // Expansão Aventura Beta §29/§39 — Party resolve sprite igual ao
+    // combate solo, por sprite_key (null = EnemySprite genérico).
+    sprite_key?: string | null;
+  };
   membros: AliadoBatalhaGrupo[];
   ordem: string[];
   turnoDe: string;

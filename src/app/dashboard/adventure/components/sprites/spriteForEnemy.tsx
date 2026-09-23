@@ -20,7 +20,27 @@ import type {
 export type EnemySpriteComponent =
   ComponentType<BattleSpriteProps>;
 
-export function spriteFolderForEnemy(
+// Expansão Aventura Beta §29: "Não adicionar novos if (nome.includes(...))
+// pra cada criatura" — sprite_key (vindo do backend, AdventureMonster)
+// é a ÚNICA fonte de verdade a partir de agora. sprite_key nulo ou
+// desconhecido cai no EnemySprite genérico (§48 — fallback obrigatório,
+// o Beta não pode depender de toda arte estar pronta). O fallback por
+// NOME abaixo existe só pra não quebrar combates já em andamento no
+// exato momento do deploy (encontro antigo, sem sprite_key salvo) —
+// nunca ganha entradas novas pra monstro nenhum da expansão.
+const COMPONENTE_POR_SPRITE_KEY: Record<string, EnemySpriteComponent> = {
+  Minotaur_1: MinotauroSprite,
+  Draconideo_1: DraconideoSprite,
+  Black_Werewolf: WolfSprite,
+  Spider_1: SpiderSprite,
+  Bandit_1: BanditSprite,
+  Cultist_1: CultistSprite,
+  Golem_1: GolemSprite,
+  Orc_1: OrcSprite,
+  Wraith_1: WraithSprite,
+};
+
+function spriteFolderPorNomeLegado(
   nomeInimigo?: string,
 ): string | null {
   const nome =
@@ -29,91 +49,36 @@ export function spriteFolderForEnemy(
       ""
     ).toLowerCase();
 
-  if (
-    nome.includes("minotauro") ||
-    nome.includes("minotaur")
-  ) {
-    return "Minotaur_1";
-  } if (
-    nome.includes("dracon") ||
-    nome.includes("dragon")
-  ) {
-    return "Draconideo_1";
-  } if (
-    nome.includes("lobo") ||
-    nome.includes("wolf")
-  ) {
-    return "Black_Werewolf"
-  } if (
-    nome.includes("aranha") ||
-    nome.includes("spider")
-  ) {
-    return "Spider_1";
-  } if (
-    nome.includes("bandido") ||
-    nome.includes("bandit")
-  ) {
-    return "Bandit_1";
-  } if (
-    nome.includes("cultista") ||
-    nome.includes("cultist")
-  ) {
-    return "Cultist_1";
-  } if (
-    nome.includes("golem")
-  ) {
-    return "Golem_1";
-  } if (
-    nome.includes("orc")
-  ) {
-    return "Orc_1";
-  } if (
-    nome.includes("espectro") ||
-    nome.includes("wraith") ||
-    nome.includes("sussurrante")
-  ) {
-    return "Wraith_1";
-  }
+  if (nome.includes("minotauro") || nome.includes("minotaur")) return "Minotaur_1";
+  if (nome.includes("dracon") || nome.includes("dragon")) return "Draconideo_1";
+  if (nome.includes("lobo") || nome.includes("wolf")) return "Black_Werewolf";
+  if (nome.includes("aranha") || nome.includes("spider")) return "Spider_1";
+  if (nome.includes("bandido") || nome.includes("bandit")) return "Bandit_1";
+  if (nome.includes("cultista") || nome.includes("cultist")) return "Cultist_1";
+  if (nome.includes("golem")) return "Golem_1";
+  if (nome.includes("orc")) return "Orc_1";
+  if (nome.includes("espectro") || nome.includes("wraith") || nome.includes("sussurrante")) return "Wraith_1";
 
   return null;
 }
 
+// `spriteKey` é o campo novo (AdventureMonster.sprite_key, vindo do
+// encontro/inimigo da API) — tem prioridade sobre `nomeInimigoFallback`,
+// que só é usado quando spriteKey vier null/undefined (encontro antigo).
+export function spriteFolderForEnemy(
+  spriteKey?: string | null,
+  nomeInimigoFallback?: string | null,
+): string | null {
+  if (spriteKey && COMPONENTE_POR_SPRITE_KEY[spriteKey]) return spriteKey;
+  if (spriteKey) return null; // chave desconhecida — nunca adivinha por nome.
+  return spriteFolderPorNomeLegado(nomeInimigoFallback ?? undefined);
+}
+
 export function spriteForEnemy(
-  nomeInimigo?: string,
+  spriteKey?: string | null,
+  nomeInimigoFallback?: string | null,
 ): EnemySpriteComponent {
-  // Compara contra a PASTA resolvida por spriteFolderForEnemy (que já
-  // sabe achar "lobo"/"wolf" dentro do nome do inimigo), não contra o
-  // nome do inimigo em si — nenhum inimigo se chama literalmente
-  // "Black_Werewolf" (ex.: "Lobo das Sombras"), então comparar
-  // `nomeInimigo === "Black_Werewolf"` nunca era verdadeiro e o lobo
-  // nunca aparecia, caindo sempre no EnemySprite genérico.
-  const pasta = spriteFolderForEnemy(nomeInimigo);
-  if (pasta === "Minotaur_1") {
-    return MinotauroSprite;
-  }
-  if (pasta === "Draconideo_1") {
-    return DraconideoSprite;
-  }
-  if (pasta === "Black_Werewolf") {
-    return WolfSprite;
-  }
-  if (pasta === "Spider_1") {
-    return SpiderSprite;
-  }
-  if (pasta === "Bandit_1") {
-    return BanditSprite;
-  }
-  if (pasta === "Cultist_1") {
-    return CultistSprite;
-  }
-  if (pasta === "Golem_1") {
-    return GolemSprite;
-  }
-  if (pasta === "Orc_1") {
-    return OrcSprite;
-  }
-  if (pasta === "Wraith_1") {
-    return WraithSprite;
-  }
-  return EnemySprite;
+  const pasta = spriteFolderForEnemy(spriteKey, nomeInimigoFallback);
+  if (!pasta) return EnemySprite;
+  return COMPONENTE_POR_SPRITE_KEY[pasta] ?? EnemySprite;
 }

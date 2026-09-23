@@ -100,6 +100,10 @@ interface EnemyState {
   velocidade: number;
 
   dano_base: number;
+
+  // Expansão Aventura Beta §29 — resolve o sprite por chave, nunca mais
+  // por nome; null (monstro sem arte ainda) cai no EnemySprite genérico.
+  sprite_key?: string | null;
 }
 
 interface CombatArenaProps {
@@ -118,7 +122,7 @@ interface CombatArenaProps {
   // Área de caça ativa (ver HuntingSessionHeader.tsx / sessao.area) — só
   // usada pra escolher o fundo da arena por nome/imagem_url, não afeta a
   // lógica de combate.
-  zona?: { id: number; nome: string; imagem_url: string | null } | null;
+  zona?: { id: number; nome: string; imagem_url: string | null; battle_background_url?: string | null } | null;
   // Pra onde "← Retornar"/"Sair mesmo assim" navega e o que chama antes
   // (ver confirmarSaida) — default é o comportamento de sempre (encerra
   // a sessão de Área de Caça e volta pra Aventura). Um chamador fora da
@@ -396,15 +400,18 @@ export default function CombatArena({
 
   const experienciaNivel = Math.max(100, nivelAtual * 100);
 
-  const EnemySprite = spriteForEnemy(enemy.nome);
+  const EnemySprite = spriteForEnemy(enemy.sprite_key, enemy.nome);
 
-  const pastaSpriteInimigo = spriteFolderForEnemy(enemy.nome);
+  const pastaSpriteInimigo = spriteFolderForEnemy(enemy.sprite_key, enemy.nome);
 
-  // zona.imagem_url vem do servidor (hoje sempre null — ver AdventureZone.js).
+  // battle_background_url é o fundo de ARENA (Expansão Aventura Beta
+  // §31) — imagem_url continua sendo só card/mapa. Hoje ainda sempre
+  // null pra toda área (nenhuma arte enviada ainda), então isso só entra
+  // em uso assim que o Painel Administrativo de Mídia preencher o campo.
   const fundoZona = fundoDeBatalha({
     nomeMonstro: enemy.nome,
     nomeZona: zona?.nome,
-    imagemUrlZona: zona?.imagem_url,
+    imagemUrlZona: zona?.battle_background_url ?? zona?.imagem_url,
   });
 
   function triggerFloatingText(

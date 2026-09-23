@@ -108,7 +108,7 @@ export default function PartyBattleArena() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [turnosGrupo]);
 
-  const pastaSpriteInimigo = spriteFolderForEnemy(batalhaGrupo?.inimigo.nome);
+  const pastaSpriteInimigo = spriteFolderForEnemy(batalhaGrupo?.inimigo.sprite_key, batalhaGrupo?.inimigo.nome);
 
   async function processarFila() {
     if (processandoRef.current) return;
@@ -229,7 +229,7 @@ export default function PartyBattleArena() {
 
   if (!batalhaGrupo) return null;
 
-  const EnemySprite = spriteForEnemy(batalhaGrupo.inimigo.nome);
+  const EnemySprite = spriteForEnemy(batalhaGrupo.inimigo.sprite_key, batalhaGrupo.inimigo.nome);
 
   const fundoBatalha = fundoDeBatalha({
     nomeMonstro: batalhaGrupo.inimigo.nome,
