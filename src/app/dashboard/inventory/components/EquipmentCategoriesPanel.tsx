@@ -5,6 +5,7 @@ import axiosInstance from "@/utils/axiosIntance";
 import { resolveMediaUrl } from "@/utils/media-url";
 import { useCharacter } from "@/contexts/CharacterContext";
 import { formatarTier } from "@/utils/equipmentTier";
+import { agruparInstancias } from "@/utils/agruparInstancias";
 
 type Slot =
   | "Cabeca"
@@ -63,8 +64,10 @@ function ehArma(p: Propriedades): p is PropriedadesArma {
   return !!p && "dano_min" in p;
 }
 
-// Instância de equipamento (Inventário v2) — nunca mais um stack com
-// "x3": cada cópia é sua própria linha, com refinamento próprio.
+// Instância de equipamento (Inventário v2) — cada cópia continua sendo
+// sua própria linha NO DADO (refinamento é por cópia), mas cópias
+// idênticas (mesmo item, mesmo refinamento) são reagrupadas em "xN" na
+// EXIBIÇÃO (agruparInstancias) pra não poluir a tela.
 interface InstanciaApi {
   id: number;
   id_item: number;
@@ -327,15 +330,17 @@ export default function EquipmentCategoriesPanel() {
               </p>
             ) : (
               <div className="grid grid-cols-4 gap-2 sm:grid-cols-7">
-                {disponiveis.map((instancia) => {
-                  const marcado = selecionado?.slot === slot && selecionado.idInstancia === instancia.id;
+                {agruparInstancias(disponiveis).map((grupo) => {
+                  const instancia = grupo.representante;
+                  const idAcao = grupo.ids[0];
+                  const marcado = selecionado?.slot === slot && selecionado.idInstancia === idAcao;
                   return (
                     <button
-                      key={instancia.id}
+                      key={idAcao}
                       type="button"
                       onClick={() =>
                         setSelecionado((atual) =>
-                          atual?.idInstancia === instancia.id ? null : { slot, idInstancia: instancia.id },
+                          atual?.idInstancia === idAcao ? null : { slot, idInstancia: idAcao },
                         )
                       }
                       className={`group relative z-10 h-16 w-16 overflow-visible rounded-lg border-2 bg-[#3a2f24] transition hover:z-20 ${
@@ -347,8 +352,13 @@ export default function EquipmentCategoriesPanel() {
                       <div className="h-full w-full overflow-hidden rounded-lg">
                         <ItemThumb item={instancia} />
                       </div>
-                      {instancia.refinamento > 0 && (
+                      {grupo.quantidade > 1 && (
                         <span className="pointer-events-none absolute -bottom-1 -right-1 rounded bg-black/80 px-1 text-[9px] font-bold text-[#F3B43F]">
+                          x{grupo.quantidade}
+                        </span>
+                      )}
+                      {instancia.refinamento > 0 && (
+                        <span className="pointer-events-none absolute -bottom-1 -left-1 rounded bg-black/80 px-1 text-[9px] font-bold text-[#F3B43F]">
                           +{instancia.refinamento}
                         </span>
                       )}
@@ -364,6 +374,7 @@ export default function EquipmentCategoriesPanel() {
                         <span className="block text-[10px] font-bold leading-tight text-white">
                           {instancia.nome}
                           {instancia.refinamento > 0 && ` +${instancia.refinamento}`}
+                          {grupo.quantidade > 1 && ` (x${grupo.quantidade})`}
                         </span>
                         {formatarTier(instancia.tier_equipamento) && (
                           <span className="mt-0.5 block text-[9px] font-bold uppercase tracking-wide text-[#F3B43F]/90">

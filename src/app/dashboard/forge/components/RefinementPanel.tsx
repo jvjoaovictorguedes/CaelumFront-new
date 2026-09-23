@@ -5,6 +5,7 @@ import axiosInstance from "@/utils/axiosIntance";
 import { resolveMediaUrl } from "@/utils/media-url";
 import { useCharacter } from "@/contexts/CharacterContext";
 import { useToast } from "@/contexts/ToastContext";
+import { agruparInstancias } from "@/utils/agruparInstancias";
 
 interface Instancia {
   id: number;
@@ -259,14 +260,16 @@ export default function RefinementPanel({ onProgressoMudou }: { nivelForja: numb
           </p>
         ) : (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {instancias.map((instancia) => {
+            {agruparInstancias(instancias, (i) => (i.equipada ? "equipada" : "solta")).map((grupo) => {
+              const instancia = grupo.representante;
+              const idAcao = grupo.ids[0];
               const src = resolveMediaUrl(instancia.imagem_url);
-              const selecionadaAtual = instancia.id === selecionada;
+              const selecionadaAtual = idAcao === selecionada;
               return (
                 <button
-                  key={instancia.id}
+                  key={idAcao}
                   type="button"
-                  onClick={() => setSelecionada(instancia.id)}
+                  onClick={() => setSelecionada(idAcao)}
                   className={`flex items-center gap-3 rounded-xl border-2 bg-[#3a2f24] p-3 text-left transition ${
                     selecionadaAtual ? "border-[#F3B43F]" : `${bordaPorQualidade(instancia.raridade)} hover:border-[#F3B43F]/70`
                   } ${marcoVisual(instancia.refinamento)}`}
@@ -282,7 +285,10 @@ export default function RefinementPanel({ onProgressoMudou }: { nivelForja: numb
                     )}
                   </div>
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-bold">{instancia.nome}</p>
+                    <p className="truncate text-sm font-bold">
+                      {instancia.nome}
+                      {grupo.quantidade > 1 && ` (x${grupo.quantidade})`}
+                    </p>
                     <p className="text-xs text-white/50">
                       {instancia.raridade} +{instancia.refinamento} {instancia.equipada ? "· Equipado" : ""}
                     </p>
