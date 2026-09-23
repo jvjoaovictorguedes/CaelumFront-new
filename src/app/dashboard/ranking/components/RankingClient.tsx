@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 
 import axiosInstance from "@/utils/axiosIntance";
 import { AVISO_CASUAL_NAO_COMPETITIVO, rotuloDeElo } from "@/lib/api/pvp";
+import CharacterProfileLink from "@/components/profile/CharacterProfileLink";
 
 // O PvP era UMA aba só ("pvp"), que misturava casual e competitivo. Com a
 // Arena Ranqueada v2 os dois modos têm rankings independentes: o casual
@@ -29,6 +30,12 @@ const ABAS: { tipo: TipoRanking; label: string }[] = [
 ];
 
 const TIPOS_PVP: TipoRanking[] = ["pvp_casual", "pvp_ranked"];
+
+// Perfil de Jogador (Especificação Perfil de Jogador §34, integração
+// obrigatória na v1) — só nestas abas `item.id` é um id de PERSONAGEM;
+// em "guild"/"boss" é um id de GUILDA (ranking por dano/prestígio da
+// guilda), então o nome não abre perfil de jogador nenhum ali.
+const TIPOS_COM_PERSONAGEM: TipoRanking[] = ["level", "gold", "forge", "pvp_ranked", "pvp_casual"];
 
 interface ItemRanking {
   posicao: number;
@@ -221,7 +228,16 @@ export default function RankingClient() {
                           #{item.posicao}
                         </span>
                         {typeof item.online === "boolean" && <IndicadorOnline online={item.online} />}
-                        <p className="min-w-0 truncate font-bold text-[#F3B43F]">{item.nome}</p>
+                        {TIPOS_COM_PERSONAGEM.includes(tipo) ? (
+                          <CharacterProfileLink
+                            characterId={item.id}
+                            className="min-w-0 truncate font-bold text-[#F3B43F]"
+                          >
+                            {item.nome}
+                          </CharacterProfileLink>
+                        ) : (
+                          <p className="min-w-0 truncate font-bold text-[#F3B43F]">{item.nome}</p>
+                        )}
                       </div>
 
                       <div className="shrink-0 text-right text-sm">
