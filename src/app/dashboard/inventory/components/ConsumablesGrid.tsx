@@ -122,13 +122,17 @@ export default function ConsumablesGrid({ characterId }: { characterId: number }
                     atual === entrada.id_personagem_inventario ? null : entrada.id_personagem_inventario,
                   )
                 }
-                className={`relative z-10 h-16 w-16 overflow-hidden rounded-lg border-2 bg-[#3a2f24] transition duration-150 hover:z-20 hover:scale-110 ${
+                className={`relative z-10 h-16 w-16 rounded-lg border-2 bg-[#3a2f24] transition duration-150 hover:z-20 hover:scale-110 ${
                   selecionado === entrada.id_personagem_inventario
                     ? "border-[#F3B43F] ring-2 ring-[#F3B43F]/70"
                     : "border-[#F3B43F]/60 hover:border-[#F3B43F]"
                 }`}
               >
-                <ItemThumb item={entrada.Item} />
+                <div className="h-full w-full overflow-hidden rounded-lg">
+                  <ItemThumb item={entrada.Item} />
+                </div>
+                {/* Badge fora do wrapper com overflow-hidden acima — senão
+                    o offset negativo fica cortado pelo quadrado do item. */}
                 <span className="pointer-events-none absolute -bottom-1 -right-1 rounded bg-black/80 px-1 text-[9px] font-bold text-white">
                   x{entrada.quantidade}
                 </span>

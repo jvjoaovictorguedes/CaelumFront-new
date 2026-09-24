@@ -97,7 +97,7 @@ function GradeDePoderes({
             type="button"
             onClick={() => onSelecionar(poder)}
             title={poder.nome}
-            className={`relative z-10 h-16 w-16 overflow-hidden rounded-lg border-2 bg-[#3a2f24] transition duration-150 hover:z-20 hover:scale-110 ${
+            className={`relative z-10 h-16 w-16 rounded-lg border-2 bg-[#3a2f24] transition duration-150 hover:z-20 hover:scale-110 ${
               selecionadoId === poder.id_power
                 ? "border-[#F3B43F] ring-2 ring-[#F3B43F]/70"
                 : bloqueada
@@ -105,7 +105,11 @@ function GradeDePoderes({
                   : "border-[#F3B43F]/60 hover:border-[#F3B43F]"
             }`}
           >
-            <PoderThumb poder={poder} />
+            <div className="h-full w-full overflow-hidden rounded-lg">
+              <PoderThumb poder={poder} />
+            </div>
+            {/* Badge fora do wrapper com overflow-hidden acima — senão o
+                offset negativo fica cortado pelo quadrado do poder. */}
             {!bloqueada && poder.nivel_habilidade && (
               <span className="pointer-events-none absolute -bottom-1 -right-1 rounded bg-black/80 px-1 text-[9px] font-bold text-white">
                 {poder.nivel_habilidade}

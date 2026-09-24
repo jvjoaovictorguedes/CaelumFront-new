@@ -97,15 +97,20 @@ export default function MaterialsGrid({ characterId }: { characterId: number }) 
             <div
               key={entrada.id_personagem_inventario}
               title={entrada.Item.nome}
-              className={`group relative z-10 h-16 w-16 overflow-hidden rounded-lg border-2 bg-[#3a2f24] transition duration-150 hover:z-20 hover:scale-110 ${
+              className={`group relative z-10 h-16 w-16 rounded-lg border-2 bg-[#3a2f24] transition duration-150 hover:z-20 hover:scale-110 ${
                 CORES_RARIDADE[entrada.Item.raridade] ?? "border-white/20"
               }`}
             >
-              <ItemThumb item={entrada.Item} />
+              <div className="h-full w-full overflow-hidden rounded-lg">
+                <ItemThumb item={entrada.Item} />
+              </div>
+              {/* Badge fora do wrapper com overflow-hidden acima — senão o
+                  offset negativo (-bottom-1/-right-1) fica cortado pelo
+                  próprio quadrado do item. */}
               <span className="pointer-events-none absolute -bottom-1 -right-1 rounded bg-black/80 px-1 text-[9px] font-bold text-white">
                 x{entrada.quantidade}
               </span>
-              <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/85 p-1 text-center text-[10px] font-bold leading-tight opacity-0 transition-opacity group-hover:opacity-100">
+              <div className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-lg bg-black/85 p-1 text-center text-[10px] font-bold leading-tight opacity-0 transition-opacity group-hover:opacity-100">
                 {entrada.Item.nome}
               </div>
             </div>
