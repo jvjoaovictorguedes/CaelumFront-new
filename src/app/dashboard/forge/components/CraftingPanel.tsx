@@ -116,6 +116,11 @@ interface Blueprint {
   variantes: VarianteBlueprint[];
 }
 
+interface CategoriaResumo {
+  categoria_equipamento: string;
+  total: number;
+}
+
 interface EntradaFilaForja {
   id: number;
   slot: string;
@@ -138,24 +143,20 @@ function bordaPorQualidade(qualidade: string) {
   return BORDA_RARIDADE[qualidade.toLowerCase()] ?? BORDA_RARIDADE.comum;
 }
 
-const ORDEM_CATEGORIA = ["Arma", "Armadura", "Acessorio1", "Acessorio2"];
+const ORDEM_CATEGORIA = ["Arma", "Armadura", "Capacete", "Escudo", "Acessorio1", "Acessorio2"];
 const LABEL_CATEGORIA: Record<string, string> = {
   Arma: "Armas",
   Armadura: "Armaduras",
+  Capacete: "Capacetes",
+  Escudo: "Escudos",
   Acessorio1: "Acessórios",
   Acessorio2: "Acessórios",
 };
 
-function agruparPorCategoria(blueprints: Blueprint[]) {
-  const grupos = new Map<string, Blueprint[]>();
-  for (const blueprint of blueprints) {
-    const chave = blueprint.categoria_equipamento;
-    if (!grupos.has(chave)) grupos.set(chave, []);
-    grupos.get(chave)!.push(blueprint);
-  }
-  return [...grupos.entries()].sort((a, b) => {
-    const ia = ORDEM_CATEGORIA.indexOf(a[0]);
-    const ib = ORDEM_CATEGORIA.indexOf(b[0]);
+function ordenarCategorias(resumo: CategoriaResumo[]) {
+  return [...resumo].sort((a, b) => {
+    const ia = ORDEM_CATEGORIA.indexOf(a.categoria_equipamento);
+    const ib = ORDEM_CATEGORIA.indexOf(b.categoria_equipamento);
     return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
   });
 }
@@ -183,32 +184,61 @@ function formatarTempo(segundos: number) {
 }
 
 export default function CraftingPanel({ onProgressoMudou }: { nivelForja: number; onProgressoMudou: () => void }) {
-  const [blueprints, setBlueprints] = useState<Blueprint[]>([]);
+  // Seções começam FECHADAS: só pedimos a lista com ingredientes
+  // resolvidos (a parte cara — busca no banco por receita/qualidade) da
+  // categoria que o jogador de fato abrir, em vez do catálogo inteiro
+  // de uma vez (era o que deixava a Fabricação lenta/às vezes travando).
+  const [resumo, setResumo] = useState<CategoriaResumo[] | null>(null);
+  const [blueprintsPorCategoria, setBlueprintsPorCategoria] = useState<Record<string, Blueprint[]>>({});
+  const [carregandoCategoria, setCarregandoCategoria] = useState<Record<string, boolean>>({});
+  const [secoesAbertas, setSecoesAbertas] = useState<Record<string, boolean>>({});
   const [qualidadeSelecionada, setQualidadeSelecionada] = useState<Record<number, string>>({});
   const [fila, setFila] = useState<EntradaFilaForja | null>(null);
   const [contagem, setContagem] = useState(0);
   const [carregando, setCarregando] = useState(true);
   const [forjando, setForjando] = useState<number | null>(null);
   const [coletando, setColetando] = useState(false);
-  const [secoesFechadas, setSecoesFechadas] = useState<Record<string, boolean>>({});
   const intervaloRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const { mostrarErro, mostrarSucesso } = useToast();
 
-  const carregar = useCallback(async () => {
+  const mesclarQualidadesPadrao = useCallback((lista: Blueprint[]) => {
+    setQualidadeSelecionada((atual) => {
+      const novo = { ...atual };
+      for (const bp of lista) {
+        if (!novo[bp.id] && bp.variantes[0]) novo[bp.id] = bp.variantes[0].qualidade;
+      }
+      return novo;
+    });
+  }, []);
+
+  const carregarCategoria = useCallback(
+    async (categoria: string) => {
+      setCarregandoCategoria((atual) => ({ ...atual, [categoria]: true }));
+      try {
+        const resp = await axiosInstance.get<{ data?: { blueprints?: Blueprint[] } }>("/crafting/blueprints", {
+          params: { categoria },
+        });
+        const lista = resp.data?.data?.blueprints ?? [];
+        setBlueprintsPorCategoria((atual) => ({ ...atual, [categoria]: lista }));
+        mesclarQualidadesPadrao(lista);
+      } catch (error) {
+        console.error(`Erro ao carregar blueprints de ${categoria}:`, error);
+        mostrarErro("Não foi possível carregar essa categoria da Fabricação.");
+      } finally {
+        setCarregandoCategoria((atual) => ({ ...atual, [categoria]: false }));
+      }
+    },
+    [mesclarQualidadesPadrao, mostrarErro],
+  );
+
+  const carregarInicial = useCallback(async () => {
+    setCarregando(true);
     try {
-      const [respBlueprints, respFila] = await Promise.all([
-        axiosInstance.get<{ data?: { blueprints?: Blueprint[] } }>("/crafting/blueprints"),
+      const [respResumo, respFila] = await Promise.all([
+        axiosInstance.get<{ data?: { categorias?: CategoriaResumo[] } }>("/crafting/blueprints/summary"),
         axiosInstance.get<{ data?: { fila?: { Forja?: EntradaFilaForja | null } } }>("/crafting/forge-queue"),
       ]);
-      const lista = respBlueprints.data?.data?.blueprints ?? [];
-      setBlueprints(lista);
-      setQualidadeSelecionada((atual) => {
-        const novo = { ...atual };
-        for (const bp of lista) {
-          if (!novo[bp.id] && bp.variantes[0]) novo[bp.id] = bp.variantes[0].qualidade;
-        }
-        return novo;
-      });
+      setResumo(respResumo.data?.data?.categorias ?? []);
       const filaForja = respFila.data?.data?.fila?.Forja ?? null;
       setFila(filaForja);
       setContagem(filaForja?.segundos_restantes ?? 0);
@@ -221,8 +251,8 @@ export default function CraftingPanel({ onProgressoMudou }: { nivelForja: number
   }, [mostrarErro]);
 
   useEffect(() => {
-    carregar();
-  }, [carregar]);
+    carregarInicial();
+  }, [carregarInicial]);
 
   useEffect(() => {
     if (intervaloRef.current) clearInterval(intervaloRef.current);
@@ -234,13 +264,36 @@ export default function CraftingPanel({ onProgressoMudou }: { nivelForja: number
     };
   }, [fila]);
 
+  function alternarSecao(categoria: string) {
+    const abrindo = !secoesAbertas[categoria];
+    setSecoesAbertas((atual) => ({ ...atual, [categoria]: abrindo }));
+    if (abrindo && !blueprintsPorCategoria[categoria] && !carregandoCategoria[categoria]) {
+      carregarCategoria(categoria);
+    }
+  }
+
+  // Fila (mudou dinheiro/estoque/progresso) só invalida a categoria que
+  // o próprio blueprint pertence — as outras, se já carregadas, não
+  // precisam de outra busca no banco.
+  async function recarregarFilaECategoria(categoria: string) {
+    const respFila = await axiosInstance.get<{ data?: { fila?: { Forja?: EntradaFilaForja | null } } }>(
+      "/crafting/forge-queue",
+    );
+    const filaForja = respFila.data?.data?.fila?.Forja ?? null;
+    setFila(filaForja);
+    setContagem(filaForja?.segundos_restantes ?? 0);
+    if (blueprintsPorCategoria[categoria]) {
+      await carregarCategoria(categoria);
+    }
+  }
+
   async function forjar(blueprint: Blueprint, variante: VarianteBlueprint) {
     if (forjando || fila) return;
     setForjando(blueprint.id);
     try {
       await axiosInstance.post("/crafting/craft", { id_blueprint: blueprint.id, qualidade: variante.qualidade });
       mostrarSucesso(`Fabricação de ${blueprint.nome} iniciada! Fica pronta em ${formatarTempo(variante.tempo_segundos)}.`);
-      await carregar();
+      await recarregarFilaECategoria(blueprint.categoria_equipamento);
     } catch (error: unknown) {
       const msg =
         (error as { response?: { data?: { message?: string } } })?.response?.data?.message ??
@@ -254,6 +307,11 @@ export default function CraftingPanel({ onProgressoMudou }: { nivelForja: number
   async function coletar() {
     if (coletando) return;
     setColetando(true);
+    const categoriaDoTrabalho = fila?.referencia?.nome_blueprint
+      ? Object.values(blueprintsPorCategoria)
+          .flat()
+          .find((bp) => bp.nome === fila.referencia?.nome_blueprint)?.categoria_equipamento
+      : undefined;
     try {
       const resp = await axiosInstance.post<{ data?: { instancia?: { nome: string; raridade: string } } }>(
         "/crafting/forge-collect",
@@ -261,7 +319,15 @@ export default function CraftingPanel({ onProgressoMudou }: { nivelForja: number
       );
       const instancia = resp.data?.data?.instancia;
       mostrarSucesso(instancia ? `Você forjou: ${instancia.nome} (${instancia.raridade})!` : "Trabalho coletado!");
-      await Promise.all([carregar(), onProgressoMudou()]);
+      const tarefas: Promise<unknown>[] = [Promise.resolve(onProgressoMudou())];
+      if (categoriaDoTrabalho) tarefas.push(recarregarFilaECategoria(categoriaDoTrabalho));
+      else {
+        const respFila = await axiosInstance.get<{ data?: { fila?: { Forja?: EntradaFilaForja | null } } }>(
+          "/crafting/forge-queue",
+        );
+        setFila(respFila.data?.data?.fila?.Forja ?? null);
+      }
+      await Promise.all(tarefas);
     } catch (error: unknown) {
       const msg =
         (error as { response?: { data?: { message?: string } } })?.response?.data?.message ??
@@ -310,38 +376,43 @@ export default function CraftingPanel({ onProgressoMudou }: { nivelForja: number
         </div>
       )}
 
-      {blueprints.length === 0 ? (
+      {!resumo || resumo.length === 0 ? (
         <div className="rounded-2xl border-2 border-[#F3B43F] bg-[#292018]/90 p-5 text-white shadow-xl">
           <p className="text-sm text-white/60">Nenhum blueprint disponível ainda.</p>
         </div>
       ) : (
-        agruparPorCategoria(blueprints).map(([categoria, blueprintsDaCategoria]) => {
-          const fechada = secoesFechadas[categoria] ?? false;
+        ordenarCategorias(resumo).map(({ categoria_equipamento: categoria, total }) => {
+          const aberta = secoesAbertas[categoria] ?? false;
+          const carregandoEssa = carregandoCategoria[categoria] ?? false;
+          const blueprintsDaCategoria = blueprintsPorCategoria[categoria];
           return (
             <div key={categoria} className="flex flex-col gap-3">
               <button
                 type="button"
-                onClick={() => setSecoesFechadas((atual) => ({ ...atual, [categoria]: !fechada }))}
+                onClick={() => alternarSecao(categoria)}
                 className="flex items-center gap-2 rounded-xl border-2 border-[#F3B43F]/60 bg-[#292018]/90 px-4 py-2 text-left text-white shadow-xl transition hover:border-[#F3B43F]"
               >
-                <span className={`text-xs transition-transform ${fechada ? "-rotate-90" : ""}`}>▼</span>
+                <span className={`text-xs transition-transform ${aberta ? "" : "-rotate-90"}`}>▼</span>
                 <span className="font-imFeel text-lg uppercase tracking-wide text-[#F3B43F]">
                   {LABEL_CATEGORIA[categoria] ?? categoria}
                 </span>
-                <span className="ml-auto text-xs text-white/50">{blueprintsDaCategoria.length} receita(s)</span>
+                <span className="ml-auto text-xs text-white/50">{total} receita(s)</span>
               </button>
 
-              {!fechada && categoria === "Arma"
+              {aberta && carregandoEssa && (
+                <p className="pl-1 text-xs text-white/50">Carregando {LABEL_CATEGORIA[categoria] ?? categoria}...</p>
+              )}
+
+              {aberta && !carregandoEssa && blueprintsDaCategoria && categoria === "Arma"
                 ? agruparPorTipoArma(blueprintsDaCategoria).map(([tipoArma, blueprintsDoTipo]) => (
                     <div key={tipoArma} className="flex flex-col gap-3">
-                      <p className="pl-1 text-xs font-bold uppercase tracking-widest text-white/50">
-                        {tipoArma}
-                      </p>
+                      <p className="pl-1 text-xs font-bold uppercase tracking-widest text-white/50">{tipoArma}</p>
                       {blueprintsDoTipo.map((blueprint) => renderBlueprintCard(blueprint))}
                     </div>
                   ))
-                : !fechada &&
-                  blueprintsDaCategoria.map((blueprint) => renderBlueprintCard(blueprint))}
+                : aberta &&
+                  !carregandoEssa &&
+                  blueprintsDaCategoria?.map((blueprint) => renderBlueprintCard(blueprint))}
             </div>
           );
         })
