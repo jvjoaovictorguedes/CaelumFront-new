@@ -47,6 +47,11 @@ export default function NavMenu({
 
   const navItems: NavMenuItem[] = [
     {
+      name: "Aventura",
+      iconUrl: "/icons/aventura.png",
+      path: "/dashboard/adventure",
+    },
+    {
       name: "Guia do Aventureiro",
       iconUrl: "/icons/guia-aventureiro.png",
       path: "/dashboard/guide",
@@ -86,11 +91,6 @@ export default function NavMenu({
       name: "Ranking",
       iconUrl: "/icons/ranking.png",
       path: "/dashboard/ranking",
-    },
-    {
-      name: "Aventura",
-      iconUrl: "/icons/aventura.png",
-      path: "/dashboard/adventure",
     },
     {
       name: "Bestiário",
