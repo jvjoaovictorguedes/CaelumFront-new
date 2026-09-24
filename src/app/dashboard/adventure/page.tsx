@@ -18,13 +18,15 @@ export default async function AdventurePage() {
   if (!character) {
     return (
       <div className="flex h-full flex-col items-center justify-center">
-        <h1 className="mb-4 font-imFeel text-4xl">
-          Aventura
-        </h1>
+        <div className="rounded-2xl border border-[#F3B43F]/30 bg-[#292018]/80 p-6 text-center text-white shadow-xl">
+          <h1 className="mb-4 font-imFeel text-4xl">
+            Aventura
+          </h1>
 
-        <p className="text-lg text-gray-700">
-          Crie um personagem antes de partir para o combate.
-        </p>
+          <p className="text-lg text-white/80">
+            Crie um personagem antes de partir para o combate.
+          </p>
+        </div>
       </div>
     );
   }
@@ -107,11 +109,13 @@ export default async function AdventurePage() {
         <PartyAdventureSection zonas={zonas} />
         <DerrotadoGate>
           <div className="flex flex-1 flex-col items-center justify-center gap-2">
-            <h1 className="mb-4 font-imFeel text-4xl">Aventura</h1>
-            <p className="text-lg text-gray-700">
-              Seu personagem está derrotado e precisa se recuperar antes de
-              enfrentar outro inimigo.
-            </p>
+            <div className="rounded-2xl border border-[#F3B43F]/30 bg-[#292018]/80 p-6 text-center text-white shadow-xl">
+              <h1 className="mb-4 font-imFeel text-4xl">Aventura</h1>
+              <p className="text-lg text-white/80">
+                Seu personagem está derrotado e precisa se recuperar antes de
+                enfrentar outro inimigo.
+              </p>
+            </div>
           </div>
         </DerrotadoGate>
       </div>
@@ -208,10 +212,12 @@ export default async function AdventurePage() {
         <SoloCombatGate>
           <HuntingSessionHeader sessao={sessao} />
           <div className="flex flex-1 flex-col items-center justify-center gap-2">
-            <p className="text-lg text-gray-700">
-              Não foi possível encontrar uma criatura agora. Tente novamente em
-              instantes.
-            </p>
+            <div className="rounded-2xl border border-[#F3B43F]/30 bg-[#292018]/80 p-6 text-center text-white shadow-xl">
+              <p className="text-lg text-white/80">
+                Não foi possível encontrar uma criatura agora. Tente novamente em
+                instantes.
+              </p>
+            </div>
           </div>
         </SoloCombatGate>
       </div>

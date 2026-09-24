@@ -16,10 +16,12 @@ export default async function PvpPage() {
     return (
       <div className="flex flex-col items-center justify-center h-full">
         <PageMusic track={MUSIC.ANIMADA} />
-        <h1 className="font-imFeel text-4xl mb-4">Duelo</h1>
-        <p className="text-lg text-gray-700">
-          Crie um personagem antes de entrar na arena.
-        </p>
+        <div className="rounded-2xl border border-[#F3B43F]/30 bg-[#292018]/80 p-6 text-center text-white shadow-xl">
+          <h1 className="font-imFeel text-4xl mb-4">Duelo</h1>
+          <p className="text-lg text-white/80">
+            Crie um personagem antes de entrar na arena.
+          </p>
+        </div>
       </div>
     );
   }

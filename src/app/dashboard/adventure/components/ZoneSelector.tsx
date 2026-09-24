@@ -53,9 +53,11 @@ export default function ZoneSelector({ zonas }: { zonas: ZonaApi[] }) {
 
   if (zonas.length === 0) {
     return (
-      <p className="text-lg text-gray-700">
-        Nenhuma Área de Caça disponível no momento.
-      </p>
+      <div className="rounded-2xl border border-[#F3B43F]/30 bg-[#292018]/80 p-6 text-center text-white shadow-xl">
+        <p className="text-lg text-white/80">
+          Nenhuma Área de Caça disponível no momento.
+        </p>
+      </div>
     );
   }
 

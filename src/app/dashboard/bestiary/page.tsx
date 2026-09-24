@@ -38,8 +38,10 @@ export default async function BestiaryPage() {
     return (
       <div className="flex h-full flex-col items-center justify-center">
         <PageMusic track={MUSIC.BESTIARIO} />
-        <h1 className="mb-4 font-imFeel text-4xl">Bestiário</h1>
-        <p className="text-lg text-gray-700">Crie um personagem para consultar o Bestiário.</p>
+        <div className="rounded-2xl border border-[#F3B43F]/30 bg-[#292018]/80 p-6 text-center text-white shadow-xl">
+          <h1 className="mb-4 font-imFeel text-4xl">Bestiário</h1>
+          <p className="text-lg text-white/80">Crie um personagem para consultar o Bestiário.</p>
+        </div>
       </div>
     );
   }
