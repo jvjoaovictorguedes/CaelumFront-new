@@ -10,6 +10,8 @@ import EquipmentPanel from "./components/EquipmentPanel";
 import EquipmentPrivacyToggle from "./components/EquipmentPrivacyToggle";
 import EvolutionsPanel from "./components/EvolutionsPanel";
 import StatusPanel from "./components/StatusPanel";
+import PageMusic from "@/components/music/PageMusic";
+import { MUSIC } from "@/constants/music";
 
 export default async function CharacterPage() {
   const character = await getCurrentCharacter();
@@ -37,6 +39,7 @@ export default async function CharacterPage() {
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 p-2 sm:p-4">
+      <PageMusic track={MUSIC.AMBIENTE} />
       <CharacterTabs
         equipamentos={
           <EquipmentPanel classe={character.Class?.nome} />

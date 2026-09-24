@@ -2,6 +2,8 @@ import Link from "next/link";
 
 import axiosInstance from "@/utils/axiosIntance";
 import { getCurrentCharacter } from "@/utils/character-session";
+import PageMusic from "@/components/music/PageMusic";
+import { MUSIC } from "@/constants/music";
 
 interface RegiaoApi {
   id: number;
@@ -35,6 +37,7 @@ export default async function BestiaryPage() {
   if (!character) {
     return (
       <div className="flex h-full flex-col items-center justify-center">
+        <PageMusic track={MUSIC.BESTIARIO} />
         <h1 className="mb-4 font-imFeel text-4xl">Bestiário</h1>
         <p className="text-lg text-gray-700">Crie um personagem para consultar o Bestiário.</p>
       </div>
@@ -53,6 +56,7 @@ export default async function BestiaryPage() {
 
   return (
     <div className="flex h-full flex-col gap-4">
+      <PageMusic track={MUSIC.BESTIARIO} />
       <div>
         <h1 className="font-imFeel text-4xl">Bestiário de Caelum</h1>
         {resumo && (

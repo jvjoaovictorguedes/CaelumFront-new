@@ -6,6 +6,8 @@ import {
   type PvpStatusCasual,
 } from "@/lib/api/pvp";
 import PvpClient from "./components/PvpClient";
+import PageMusic from "@/components/music/PageMusic";
+import { MUSIC } from "@/constants/music";
 
 export default async function PvpPage() {
   const character = await getCurrentCharacter();
@@ -13,6 +15,7 @@ export default async function PvpPage() {
   if (!character) {
     return (
       <div className="flex flex-col items-center justify-center h-full">
+        <PageMusic track={MUSIC.ANIMADA} />
         <h1 className="font-imFeel text-4xl mb-4">Duelo</h1>
         <p className="text-lg text-gray-700">
           Crie um personagem antes de entrar na arena.
@@ -29,16 +32,19 @@ export default async function PvpPage() {
   ]);
 
   return (
-    <PvpClient
-      character={{
-        id: character.id,
-        nome: character.nome,
-        nivel: character.nivel,
-        genero: character.genero,
-        classe: character.Class?.nome,
-      }}
-      oponentesIniciais={oponentes}
-      statusInicial={status}
-    />
+    <>
+      <PageMusic track={MUSIC.ANIMADA} />
+      <PvpClient
+        character={{
+          id: character.id,
+          nome: character.nome,
+          nivel: character.nivel,
+          genero: character.genero,
+          classe: character.Class?.nome,
+        }}
+        oponentesIniciais={oponentes}
+        statusInicial={status}
+      />
+    </>
   );
 }

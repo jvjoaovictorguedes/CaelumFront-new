@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 
 import { usePvpSocket, type TurnoGrupoPayload } from "@/contexts/PvpSocketContext";
 import { useCharacter } from "@/contexts/CharacterContext";
+import { useMusic } from "@/contexts/MusicContext";
+import { MUSIC_PRIORITY, sortearFaixaCombate } from "@/constants/music";
 import CombatActionBar from "@/components/combat/CombatActionBar";
 import { spriteForClass, spriteFolderForClass } from "./sprites/spriteForClass";
 import { spriteForEnemy, spriteFolderForEnemy } from "./sprites/spriteForEnemy";
@@ -57,6 +59,20 @@ export default function PartyBattleArena() {
     agirGrupo,
     limparBatalhaGrupo,
   } = usePvpSocket();
+
+  // Sorteia uma das 4 faixas de combate a cada BATALHA nova (não só no
+  // mount do componente — diferente de CombatArena.tsx/combate solo,
+  // este componente continua montado entre uma batalha em grupo e
+  // outra, só alternando o que renderiza; battleId muda a cada
+  // batalha nova, então é o gatilho certo).
+  const { requestMusic, releaseMusic } = useMusic();
+  useEffect(() => {
+    if (!batalhaGrupo) return undefined;
+    const ownerId = "combat-grupo";
+    requestMusic({ ownerId, track: sortearFaixaCombate(), priority: MUSIC_PRIORITY.COMBAT });
+    return () => releaseMusic(ownerId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [batalhaGrupo?.battleId]);
 
   const [vidaInimigo, setVidaInimigo] = useState(0);
   const [vidaMaxInimigo, setVidaMaxInimigo] = useState(1);

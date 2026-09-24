@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 
 import axiosInstance from "@/utils/axiosIntance";
 import { useCharacter } from "@/contexts/CharacterContext";
+import { useMusic } from "@/contexts/MusicContext";
+import { MUSIC_PRIORITY, sortearFaixaCombate } from "@/constants/music";
 import CombatActionBar, {
   type ConsumivelAcao,
 } from "@/components/combat/CombatActionBar";
@@ -274,6 +276,19 @@ export default function CombatArena({
   // meio de um combate mostrava vida errada em qualquer outro lugar até
   // dar F5.
   const { atualizarCharacter } = useCharacter();
+
+  // Sorteia uma das 4 faixas de combate só na primeira renderização
+  // deste encontro (§ escolha do usuário: alternar aleatoriamente a
+  // cada combate novo) — CombatArena só existe montado enquanto o
+  // encontro está ativo, então um novo mount = um combate novo.
+  const { requestMusic, releaseMusic } = useMusic();
+  const [faixaCombate] = useState(sortearFaixaCombate);
+  useEffect(() => {
+    const ownerId = "combat-solo";
+    requestMusic({ ownerId, track: faixaCombate, priority: MUSIC_PRIORITY.COMBAT });
+    return () => releaseMusic(ownerId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [faixaCombate.key]);
 
   const vidaMaxima = character.vida_maxima ?? 30 + character.vitalidade * 6;
 
