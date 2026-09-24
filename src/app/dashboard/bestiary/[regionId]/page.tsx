@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import axiosInstance from "@/utils/axiosIntance";
 import { getCurrentCharacter } from "@/utils/character-session";
+import { resolveMediaUrl } from "@/utils/media-url";
 
 interface MonstroApi {
   descoberto: boolean;
@@ -112,6 +113,7 @@ export default async function BestiaryRegionPage({
             monstro.requisito_proximo_nivel != null
               ? Math.min(100, Math.round((monstro.abates / monstro.requisito_proximo_nivel) * 100))
               : null;
+          const imagemMonstro = resolveMediaUrl(monstro.imagem_url);
 
           return (
             <div
@@ -126,6 +128,14 @@ export default async function BestiaryRegionPage({
                   {monstro.raridade}
                 </span>
               </div>
+              {imagemMonstro && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={imagemMonstro}
+                  alt={monstro.nome}
+                  className="h-40 w-full rounded-xl border border-white/10 object-cover"
+                />
+              )}
               {monstro.descricao && <p className="text-sm text-white/70">{monstro.descricao}</p>}
               {monstro.nivel_min != null && (
                 <p className="text-xs text-white/50">
