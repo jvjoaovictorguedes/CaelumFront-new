@@ -3,6 +3,7 @@ import { Geist, Geist_Mono, IM_Fell_English_SC } from "next/font/google";
 import "./globals.css";
 import { getUserCookie } from "@/app/create/temp-character-data-action";
 import { MessagesSocketProvider } from "@/contexts/MessagesSocketContext";
+import { MusicProvider } from "@/contexts/MusicContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -38,9 +39,11 @@ export default async function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${imFellEnglish.variable} antialiased`}
       >
-        <MessagesSocketProvider currentUserId={currentUserId ?? undefined}>
-          {children}
-        </MessagesSocketProvider>
+        <MusicProvider>
+          <MessagesSocketProvider currentUserId={currentUserId ?? undefined}>
+            {children}
+          </MessagesSocketProvider>
+        </MusicProvider>
       </body>
     </html>
   );
