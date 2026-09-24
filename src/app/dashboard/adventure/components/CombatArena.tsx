@@ -10,6 +10,8 @@ import CombatActionBar, {
 } from "@/components/combat/CombatActionBar";
 
 import { spriteFolderForClass, spriteForClass } from "./sprites/spriteForClass";
+import { resolveMediaUrl } from "@/utils/media-url";
+import { bordaPorRaridade } from "@/components/equipment/BonecoDePapel";
 
 import { spriteFolderForEnemy, spriteForEnemy } from "./sprites/spriteForEnemy";
 
@@ -199,6 +201,17 @@ interface RespostaCombate {
       dinheiro?: number;
     } | null;
 
+    // Espólios de encontro de ZONA (Modo Aventura) — sempre um array
+    // (pode ter mais de um por vitória, ou nenhum); diferente de `drop`,
+    // que é o pool genérico antigo e vem sempre null nesses encontros.
+    espolios?: {
+      id_item: number;
+      nome: string;
+      quantidade: number;
+      imagem_url?: string | null;
+      raridade?: string;
+    }[];
+
     // Ausentes em respostas antigas (compatibilidade) — tratado como
     // vazio nesse caso, ver useState abaixo.
     statusEffects?: StatusEffectsState;
@@ -313,6 +326,10 @@ export default function CombatArena({
     item?: { id: number; nome: string; raridade: string };
     dinheiro?: number;
   } | null>(null);
+
+  const [espolios, setEspolios] = useState<
+    { id_item: number; nome: string; quantidade: number; imagem_url?: string | null; raridade?: string }[]
+  >([]);
 
   const [bestiarioCompletoAgora, setBestiarioCompletoAgora] = useState<
     RespostaCombate["data"]["bestiarioCompletoAgora"]
@@ -822,6 +839,7 @@ export default function CombatArena({
           setRecompensa(data.rewards);
         }
         setDrop(data.drop ?? null);
+        setEspolios(data.espolios ?? []);
         setBestiarioCompletoAgora(data.bestiarioCompletoAgora ?? null);
       }
     } catch (error: unknown) {
@@ -1099,6 +1117,37 @@ export default function CombatArena({
                   ? `Você encontrou: ${drop.item.nome}!`
                   : `+${drop.dinheiro} moedas extras encontradas!`}
               </p>
+            )}
+
+            {espolios.length > 0 && (
+              <div className="mb-3 flex flex-wrap items-center justify-center gap-2">
+                {espolios.map((espolio, indice) => {
+                  const imagem = resolveMediaUrl(espolio.imagem_url);
+                  return (
+                    <div
+                      key={`${espolio.id_item}-${indice}`}
+                      title={`${espolio.nome} x${espolio.quantidade}`}
+                      className={`flex items-center gap-2 rounded-lg border-2 bg-black/30 px-2 py-1 ${bordaPorRaridade(espolio.raridade)}`}
+                    >
+                      {imagem ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={imagem}
+                          alt={espolio.nome}
+                          className="h-8 w-8 object-contain transition-transform duration-150 hover:scale-125"
+                        />
+                      ) : (
+                        <span className="text-lg" aria-hidden="true">
+                          📦
+                        </span>
+                      )}
+                      <span className="text-xs font-bold text-white">
+                        {espolio.nome} <span className="text-[#F3B43F]">x{espolio.quantidade}</span>
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
             )}
 
             {bestiarioCompletoAgora && (
