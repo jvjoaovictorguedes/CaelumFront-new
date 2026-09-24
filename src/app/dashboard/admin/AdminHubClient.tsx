@@ -61,7 +61,7 @@ const CATEGORIAS: CategoriaAdmin[] = [
   {
     titulo: "Sistema",
     modulos: [
-      { titulo: "Patch Notes", descricao: "Publicar atualizações sem migration." },
+      { titulo: "Patch Notes", descricao: "Publicar atualizações sem migration.", href: "/dashboard/admin/patch-notes", permissao: "patchnotes.manage" },
       { titulo: "Administradores", descricao: "Perfis e permissões.", href: "/dashboard/admin/administrators", permissao: "admins.manage" },
       { titulo: "Auditoria", descricao: "Histórico de ações administrativas.", href: "/dashboard/admin/audit", permissao: "audit.view" },
     ],

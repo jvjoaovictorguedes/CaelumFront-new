@@ -167,3 +167,55 @@ export async function concederRoleAdmin(idUser: number, idRole: number): Promise
 export async function revogarRoleAdmin(idUser: number, idRole: number): Promise<void> {
   await axiosInstance.post("/admin/admins/revoke", { idUser, idRole });
 }
+
+// Painel Administrativo Fase 13 (§24) — Patch Notes sem migration.
+export interface PatchNoteApi {
+  id: number;
+  ordem: number;
+  feature: string;
+  versao: string;
+  titulo: string;
+  descricao: string;
+  resumo: string | null;
+  imagem_url: string | null;
+  destaque: boolean;
+  status: "Rascunho" | "Publicado" | "Agendado";
+  publicado_em: string;
+  created_by_admin_id: number | null;
+}
+
+export interface PayloadPatchNoteAdmin {
+  feature: string;
+  versao: string;
+  titulo: string;
+  descricao: string;
+  resumo?: string | null;
+  imagem_url?: string | null;
+  destaque?: boolean;
+  status?: "Rascunho" | "Publicado" | "Agendado";
+  publicado_em?: string;
+}
+
+export async function listarPatchNotesAdmin(
+  filtros: { pagina?: number; porPagina?: number; status?: string; feature?: string; nome?: string } = {},
+): Promise<PaginaApi<PatchNoteApi>> {
+  const resposta = await axiosInstance.get<{ data: PaginaApi<PatchNoteApi> }>("/admin/patch-notes", {
+    params: filtros,
+  });
+  return resposta.data.data;
+}
+
+export async function criarPatchNoteAdmin(payload: PayloadPatchNoteAdmin): Promise<PatchNoteApi> {
+  const resposta = await axiosInstance.post<{ data: { nota: PatchNoteApi } }>("/admin/patch-notes", payload);
+  return resposta.data.data.nota;
+}
+
+export async function atualizarPatchNoteAdmin(id: number, payload: Partial<PayloadPatchNoteAdmin>): Promise<PatchNoteApi> {
+  const resposta = await axiosInstance.patch<{ data: { nota: PatchNoteApi } }>(`/admin/patch-notes/${id}`, payload);
+  return resposta.data.data.nota;
+}
+
+export async function duplicarPatchNoteAdmin(id: number): Promise<PatchNoteApi> {
+  const resposta = await axiosInstance.post<{ data: { nota: PatchNoteApi } }>(`/admin/patch-notes/${id}/duplicate`);
+  return resposta.data.data.nota;
+}
