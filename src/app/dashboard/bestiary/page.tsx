@@ -61,6 +61,11 @@ export default async function BestiaryPage() {
       <PageMusic track={MUSIC.BESTIARIO} />
       <div>
         <h1 className="font-imFeel text-4xl">Bestiário de Caelum</h1>
+        <p className="mt-1 max-w-3xl text-sm text-white/60">
+          Derrotar um monstro pela primeira vez revela sua ficha aqui — descrição, drops e nível.
+          Continuar caçando os monstros de uma região sobe sua Maestria Regional (I a V), que dá
+          bônus permanentes de XP, ouro e chance de espólio só dentro daquela região.
+        </p>
         {resumo && (
           <p className="mt-1 text-sm text-white/70">
             Criaturas descobertas: {resumo.criaturas_descobertas} / {resumo.criaturas_totais} · Regiões

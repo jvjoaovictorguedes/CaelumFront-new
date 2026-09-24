@@ -176,6 +176,12 @@ export default function BalcaoDeEspoliosPanel() {
   return (
     <div className="rounded-2xl border-2 border-[#F3B43F] bg-[#292018]/90 p-5 text-white shadow-xl">
       <p className="mb-1 text-sm uppercase tracking-widest text-[#F3B43F]">Balcão de Espólios</p>
+      <p className="mb-4 text-xs text-white/60">
+        Venda os espólios que os monstros da Aventura derrubam por um preço fixo, e receba 5
+        encomendas pessoais a cada 4 horas — cumprir uma encomenda paga ouro e Reputação
+        Comercial, e completar as 5 de uma vez concede um bônus extra. A Reputação Comercial é
+        permanente e sobe o multiplicador de prêmio das próximas encomendas.
+      </p>
 
       {encomendas && (
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[#F3B43F]/30 bg-black/30 p-3">

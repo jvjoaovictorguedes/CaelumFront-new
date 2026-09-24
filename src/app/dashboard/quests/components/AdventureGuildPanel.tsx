@@ -316,6 +316,12 @@ export default function AdventureGuildPanel() {
       {!carregando && aba === "Rank" && quadro && (
         <div className="flex flex-col gap-4">
           <p className="text-xs text-white/60">
+            A cada 6 horas surgem novas ofertas de Missões de Rank — aceite até 2 contratos por
+            vez e entregue os itens pedidos pra concluir. Completar contratos suficientes libera
+            uma Provação; vencê-la promove seu Rank de Aventureiro (F até S), que decide quais
+            missões e recompensas ficam disponíveis daqui pra frente.
+          </p>
+          <p className="text-xs text-white/60">
             Nova rotação em: {formatarContagem(new Date(quadro.proxima_rotacao_em).getTime() - agora)}
           </p>
 

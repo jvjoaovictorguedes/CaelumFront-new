@@ -152,6 +152,14 @@ export default function MuralDeCacadasPanel() {
   return (
     <div className="rounded-2xl border-2 border-[#F3B43F] bg-[#292018]/90 p-5 text-white shadow-xl">
       <p className="mb-1 text-sm uppercase tracking-widest text-[#F3B43F]">Mural de Caçadas</p>
+      <p className="mb-4 text-xs text-white/60">
+        A cada 4 horas você recebe uma oferta de Caçada: eliminar uma certa quantidade de um
+        monstro específico da Aventura, que fica temporariamente mais forte (vida e dano
+        aumentados) só pra você enquanto a Caçada estiver ativa. Quanto mais perigosa a
+        dificuldade, menos mortes são exigidas e maior a recompensa em ouro e Reputação de
+        Caçador. Só uma Caçada ativa por vez — abandonar perde todo o progresso. A Reputação de
+        Caçador é permanente e libera dificuldades mais perigosas conforme sobe de nível.
+      </p>
 
       {estado && (
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[#F3B43F]/30 bg-black/30 p-3">
