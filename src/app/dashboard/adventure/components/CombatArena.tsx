@@ -1064,21 +1064,32 @@ export default function CombatArena({
               </p>
             )}
 
-            <button
-              onClick={() => {
-                if (resultado === "vitoria") {
-                  if (onVitoria) onVitoria();
-                  else router.refresh();
-                } else if (onDerrota) {
-                  onDerrota();
-                } else {
-                  router.push("/dashboard");
-                }
-              }}
-              className="rounded-lg bg-[#BC8418] px-4 py-2 font-bold text-black hover:bg-[#a5710f]"
-            >
-              {resultado === "vitoria" ? labelBotaoVitoria : "Voltar"}
-            </button>
+            <div className="flex flex-wrap items-center justify-center gap-3">
+              <button
+                onClick={() => {
+                  if (resultado === "vitoria") {
+                    if (onVitoria) onVitoria();
+                    else router.refresh();
+                  } else if (onDerrota) {
+                    onDerrota();
+                  } else {
+                    router.push("/dashboard");
+                  }
+                }}
+                className="rounded-lg bg-[#BC8418] px-4 py-2 font-bold text-black hover:bg-[#a5710f]"
+              >
+                {resultado === "vitoria" ? labelBotaoVitoria : "Voltar"}
+              </button>
+
+              {resultado === "vitoria" && (
+                <button
+                  onClick={() => router.push("/dashboard")}
+                  className="rounded-lg border border-white/30 px-4 py-2 font-bold text-white/80 transition hover:bg-white/10"
+                >
+                  Sair para a página principal
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}
