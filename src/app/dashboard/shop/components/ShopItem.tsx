@@ -151,17 +151,21 @@ function atributoPrincipalDaArmadura(armor: ArmorProperties): Atributo | null {
 
 function itemEhRecomendado(item: ShopItemData, atributoRecomendado: Atributo | null) {
   if (!atributoRecomendado) return false;
-  if (item.weaponProperties) {
+  if (item.tipo_item === "Arma" && item.weaponProperties) {
     return item.weaponProperties.bonus_atributo === atributoRecomendado;
   }
-  if (item.armorProperties) {
+  if (item.tipo_item !== "Arma" && item.tipo_item !== "Consumivel" && item.armorProperties) {
     return atributoPrincipalDaArmadura(item.armorProperties) === atributoRecomendado;
   }
   return false;
 }
 
 function ListaDeAtributos({ item }: { item: ShopItemData }) {
-  if (item.weaponProperties) {
+  // Bug real: um item Consumivel com uma linha órfã de WeaponProperties/
+  // ArmorProperties no banco (dado velho/corrompido) mostrava "Dano" e
+  // bônus de atributo de arma numa POÇÃO — `tipo_item` é a fonte da
+  // verdade de qual propriedade exibir, não só a presença do campo.
+  if (item.tipo_item === "Arma" && item.weaponProperties) {
     const arma = item.weaponProperties;
     return (
       <ul className="mt-3 space-y-1 text-sm">
@@ -177,7 +181,7 @@ function ListaDeAtributos({ item }: { item: ShopItemData }) {
     );
   }
 
-  if (item.armorProperties) {
+  if (item.tipo_item !== "Consumivel" && item.armorProperties) {
     const armor = item.armorProperties;
     const bonus: [Atributo, number][] = [
       ["Forca", armor.bonus_forca],

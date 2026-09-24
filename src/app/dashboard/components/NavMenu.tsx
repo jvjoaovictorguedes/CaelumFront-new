@@ -9,7 +9,6 @@ import OnlinePlayersBadge from "./OnlinePlayersBadge";
 import PatchNotesBell from "./PatchNotesBell";
 import SidebarHealthBar from "./SidebarHealthBar";
 import { useMessagesSocket } from "@/contexts/MessagesSocketContext";
-import MusicControls from "@/components/music/MusicControls";
 
 interface NavMenuItem {
   name: string;
@@ -206,7 +205,6 @@ export default function NavMenu({
           </ul>
         </div>
         <div className="mt-auto flex w-full flex-col border-t border-black/50 pt-2">
-          <MusicControls />
           <button
             type="button"
             onClick={handleLogout}
