@@ -9,6 +9,7 @@ import AvatarPickerModal from "./AvatarPickerModal";
 import CharacterAttributes from "./CharacterAttributes";
 import GenderToggleButton from "./GenderToggleButton";
 import PvpStatsCard from "./PvpStatsCard";
+import AdventureGuildProfileCard from "./AdventureGuildProfileCard";
 
 export default function StatusPanel({
   character: characterInicial,
@@ -118,28 +119,16 @@ export default function StatusPanel({
               Define as evoluções de habilidade disponíveis na aba Classe
             </p>
           </div>
-          {character.adventureGuildReputation && (
-            <div className="rounded-lg bg-[#F3B43F]/50 px-4 py-2">
-              <div className="flex items-center justify-between gap-3">
-                <span className="shrink-0 font-imFeel text-lg">Reputação</span>
-                <span className="min-w-0 truncate text-right font-bold">
-                  {character.adventureGuildReputation.name} {character.adventureGuildReputation.roman}
-                </span>
-              </div>
-              <p className="mt-1 text-[10px] text-black/50">
-                {character.adventureGuildReputation.points.toLocaleString("pt-BR")}
-                {character.adventureGuildReputation.nextLevelAt != null
-                  ? ` / ${character.adventureGuildReputation.nextLevelAt.toLocaleString("pt-BR")}`
-                  : " (nível máximo)"}
-                {" · Balcão de Espólios"}
-              </p>
-            </div>
-          )}
         </div>
       </div>
 
       <CharacterAttributes character={character} bonus={bonus} />
       </div>
+
+      {/* Card próprio da Guilda dos Aventureiros (Rank + Reputação
+          Comercial + Reputação de Caçador) — ver Caçadas §12, nunca
+          espalhado como mais linhas no bloco de identidade acima. */}
+      <AdventureGuildProfileCard character={character} />
 
       {/* Rodapé do Status: competitivo (Elo) + troféus de torneio. */}
       <PvpStatsCard characterId={character.id} />

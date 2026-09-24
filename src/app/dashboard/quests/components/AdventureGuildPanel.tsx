@@ -4,8 +4,9 @@ import { useCallback, useEffect, useState } from "react";
 import axiosInstance from "@/utils/axiosIntance";
 import { useCharacter } from "@/contexts/CharacterContext";
 import BalcaoDeEspoliosPanel from "./BalcaoDeEspoliosPanel";
+import MuralDeCacadasPanel from "./MuralDeCacadasPanel";
 
-type Aba = "Diaria" | "Semanal" | "Mensal" | "Rank" | "Marco" | "Balcao";
+type Aba = "Diaria" | "Semanal" | "Mensal" | "Rank" | "Marco" | "Balcao" | "Cacadas";
 
 interface MissaoLivreApi {
   id: number;
@@ -112,9 +113,10 @@ const ROTULO_ABA: Record<Aba, string> = {
   Rank: "Missões de Rank",
   Marco: "Marcos",
   Balcao: "Balcão de Espólios",
+  Cacadas: "Caçadas",
 };
 
-const ROTA_POR_ABA: Record<Exclude<Aba, "Rank" | "Balcao">, string> = {
+const ROTA_POR_ABA: Record<Exclude<Aba, "Rank" | "Balcao" | "Cacadas">, string> = {
   Diaria: "daily",
   Semanal: "weekly",
   Mensal: "monthly",
@@ -149,9 +151,9 @@ export default function AdventureGuildPanel() {
     if (abaAtual === "Rank") {
       const resp = await axiosInstance.get<{ data?: QuadroDeRankApi }>("/adventure-guild/rank");
       setQuadro(resp.data?.data ?? null);
-    } else if (abaAtual === "Balcao") {
-      // BalcaoDeEspoliosPanel carrega os próprios dados (espólios +
-      // encomendas) — nada a buscar aqui.
+    } else if (abaAtual === "Balcao" || abaAtual === "Cacadas") {
+      // BalcaoDeEspoliosPanel/MuralDeCacadasPanel carregam os próprios
+      // dados — nada a buscar aqui.
     } else {
       const resp = await axiosInstance.get<{ data?: { missoes?: MissaoLivreApi[] } }>(
         `/adventure-guild/${ROTA_POR_ABA[abaAtual]}`,
@@ -261,8 +263,9 @@ export default function AdventureGuildPanel() {
       {carregando && <p className="text-sm text-white/60">Carregando...</p>}
 
       {!carregando && aba === "Balcao" && <BalcaoDeEspoliosPanel />}
+      {!carregando && aba === "Cacadas" && <MuralDeCacadasPanel />}
 
-      {!carregando && aba !== "Rank" && aba !== "Balcao" && (
+      {!carregando && aba !== "Rank" && aba !== "Balcao" && aba !== "Cacadas" && (
         <div className="flex flex-col gap-2">
           {(missoesLivres ?? []).length === 0 && (
             <p className="text-sm text-white/60">Nenhuma missão disponível nesta categoria.</p>

@@ -66,6 +66,25 @@ export interface CurrentCharacter {
     nextLevelAt: number | null;
     rewardMultiplier: number;
   };
+  // Caçadas §18 — resumo consolidado (Rank + Reputação Comercial +
+  // Reputação de Caçador), sempre presente.
+  adventureGuildProfile?: {
+    adventurerRank: string;
+    commercialReputation: { points: number; level: number; title: string; ordersCompleted: number };
+    hunterReputation: {
+      points: number;
+      level: number;
+      title: string;
+      huntsCompleted: number;
+      byDifficulty: {
+        dangerous: number;
+        difficult: number;
+        deadly: number;
+        nightmare: number;
+        extermination: number;
+      };
+    };
+  };
 }
 
 interface CurrentCharacterResponse {

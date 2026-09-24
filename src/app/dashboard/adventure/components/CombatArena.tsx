@@ -122,6 +122,12 @@ interface EnemyState {
   // combate quando ainda não existe sprite_key dedicado (arte animada
   // ainda não entregue), em vez de cair direto no boneco genérico.
   imagem_url?: string | null;
+
+  // Caçadas §6.2 — badge "ALVO DE CAÇADA" quando este monstro é o alvo
+  // fortalecido da Caçada Ativa do personagem (vida/dano já vêm com o
+  // modificador aplicado pelo backend; aqui é só identificação visual).
+  huntTarget?: boolean;
+  huntDifficultyLabel?: string;
 }
 
 interface CombatArenaProps {
@@ -1071,6 +1077,11 @@ export default function CombatArena({
             ))}
           </div>
 
+          {enemy.huntTarget && (
+            <span className="mb-1 rounded-full border border-red-500 bg-red-900/80 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-red-200 shadow">
+              Alvo de Caçada{enemy.huntDifficultyLabel ? ` · ${enemy.huntDifficultyLabel}` : ""}
+            </span>
+          )}
           <BarraSobreCabeca
             nome={`${enemy.nome} (Nv. ${enemy.nivel})`}
             vidaAtual={enemy.vida_atual}
