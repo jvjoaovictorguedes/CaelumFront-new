@@ -5,12 +5,36 @@ import axios from "axios";
 import axiosInstance from "@/utils/axiosIntance";
 import { useCharacter } from "@/contexts/CharacterContext";
 
+// O que cada atributo FAZ de verdade em combate (mesmas regras de
+// src/services/combatFormulas.js no backend) — mostrado no tooltip
+// (hover/toque) de cada atributo, igual já existe pros status de
+// combate em StatusEffectIcons.tsx.
 const ATRIBUTOS = [
-  { label: "Força", campo: "forca" },
-  { label: "Vitalidade", campo: "vitalidade" },
-  { label: "Agilidade", campo: "agilidade" },
-  { label: "Inteligência", campo: "inteligencia" },
-  { label: "Velocidade", campo: "velocidade" },
+  {
+    label: "Força",
+    campo: "forca",
+    descricao: "Aumenta o dano do ataque básico e das habilidades que escalam com Força.",
+  },
+  {
+    label: "Vitalidade",
+    campo: "vitalidade",
+    descricao: "Aumenta sua vida máxima e as habilidades de cura/suporte que escalam com Vitalidade.",
+  },
+  {
+    label: "Agilidade",
+    campo: "agilidade",
+    descricao: "Aumenta sua chance de esquivar de ataques inimigos.",
+  },
+  {
+    label: "Inteligência",
+    campo: "inteligencia",
+    descricao: "Aumenta sua mana máxima e o dano/cura das habilidades mágicas (que escalam com Inteligência).",
+  },
+  {
+    label: "Velocidade",
+    campo: "velocidade",
+    descricao: "Decide quem ataca primeiro em duelos PvP — quem tiver mais Velocidade age antes.",
+  },
 ] as const;
 
 interface BonusAtributos {
@@ -157,19 +181,22 @@ export default function CharacterAttributes({
 
   return (
     <div className="grid grid-cols-1 gap-3 rounded-2xl border border-black/10 bg-[#3a2f24] p-5 shadow-lg sm:grid-cols-2">
-      {ATRIBUTOS.map(({ label, campo }) => (
+      {ATRIBUTOS.map(({ label, campo, descricao }) => (
         <div
           key={campo}
           className="flex items-center justify-between gap-3 rounded-lg bg-[#F3B43F]/50 p-3"
         >
           <div className="min-w-0">
-            <span className="font-imFeel text-xl">{label}</span>{" "}
+            <span className="font-imFeel text-xl cursor-help underline decoration-dotted underline-offset-4" title={descricao}>
+              {label}
+            </span>{" "}
             <span className="font-bold text-xl">{atributos[campo]}</span>
             {bonusAtual && bonusAtual[campo] > 0 && (
               <span className="ml-1 text-sm font-bold text-green-600">
                 (+{bonusAtual[campo]})
               </span>
             )}
+            <p className="mt-0.5 text-[10px] leading-tight text-black/60">{descricao}</p>
           </div>
 
           <button
