@@ -229,6 +229,9 @@ export interface BatalhaGrupoIniciadaPayload {
     // Expansão Aventura Beta §29/§39 — Party resolve sprite igual ao
     // combate solo, por sprite_key (null = EnemySprite genérico).
     sprite_key?: string | null;
+    // Foto estática do monstro — sprite de combate quando ainda não
+    // existe sprite_key dedicado (mesmo critério do combate solo).
+    imagem_url?: string | null;
   };
   membros: AliadoBatalhaGrupo[];
   ordem: string[];

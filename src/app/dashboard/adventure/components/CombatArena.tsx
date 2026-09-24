@@ -111,6 +111,10 @@ interface EnemyState {
   // Expansão Aventura Beta §29 — resolve o sprite por chave, nunca mais
   // por nome; null (monstro sem arte ainda) cai no EnemySprite genérico.
   sprite_key?: string | null;
+  // Foto estática do monstro (Bestiário/Mapa) — serve de sprite de
+  // combate quando ainda não existe sprite_key dedicado (arte animada
+  // ainda não entregue), em vez de cair direto no boneco genérico.
+  imagem_url?: string | null;
 }
 
 interface CombatArenaProps {
@@ -452,6 +456,11 @@ export default function CombatArena({
   const EnemySprite = spriteForEnemy(enemy.sprite_key, enemy.nome);
 
   const pastaSpriteInimigo = spriteFolderForEnemy(enemy.sprite_key, enemy.nome);
+
+  // Sem sprite animado dedicado (pastaSpriteInimigo null), usa a foto
+  // estática do monstro como sprite de combate — só cai no boneco
+  // genérico (EnemySprite) se nem isso existir ainda.
+  const fotoInimigoCombate = !pastaSpriteInimigo ? resolveMediaUrl(enemy.imagem_url) : undefined;
 
   // battle_background_url é o fundo de ARENA (Expansão Aventura Beta
   // §31) — imagem_url continua sendo só card/mapa. Hoje ainda sempre
@@ -1047,12 +1056,23 @@ export default function CombatArena({
           />
           <StatusIconsRow instancias={statusEffects.enemy} />
 
-          <EnemySprite
-            className={`battle-sprite h-32 w-32 sm:h-48 sm:w-48 ${
-              animInimigo !== "idle" ? animInimigo : ""
-            }`}
-            animState={animInimigo}
-          />
+          {fotoInimigoCombate ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={fotoInimigoCombate}
+              alt={enemy.nome}
+              className={`battle-sprite h-32 w-32 rounded-lg object-contain sm:h-48 sm:w-48 ${
+                animInimigo !== "idle" ? animInimigo : ""
+              }`}
+            />
+          ) : (
+            <EnemySprite
+              className={`battle-sprite h-32 w-32 sm:h-48 sm:w-48 ${
+                animInimigo !== "idle" ? animInimigo : ""
+              }`}
+              animState={animInimigo}
+            />
+          )}
         </div>
       </div>
 

@@ -10,6 +10,7 @@ import { spriteForClass, spriteFolderForClass } from "./sprites/spriteForClass";
 import { spriteForEnemy, spriteFolderForEnemy } from "./sprites/spriteForEnemy";
 import { getSpriteAnimationDurationMs, type EstadoSprite } from "./sprites/spriteSheets";
 import { fundoDeBatalha } from "./battleBackgrounds";
+import { resolveMediaUrl } from "@/utils/media-url";
 
 interface FloatingText {
   id: number;
@@ -109,6 +110,11 @@ export default function PartyBattleArena() {
   }, [turnosGrupo]);
 
   const pastaSpriteInimigo = spriteFolderForEnemy(batalhaGrupo?.inimigo.sprite_key, batalhaGrupo?.inimigo.nome);
+
+  // Mesmo critério do combate solo (CombatArena.tsx): sem sprite
+  // dedicado, usa a foto estática do monstro antes de cair no boneco
+  // genérico.
+  const fotoInimigoCombate = !pastaSpriteInimigo ? resolveMediaUrl(batalhaGrupo?.inimigo.imagem_url) : undefined;
 
   async function processarFila() {
     if (processandoRef.current) return;
@@ -377,10 +383,19 @@ export default function PartyBattleArena() {
             </div>
           </div>
 
-          <EnemySprite
-            className={`battle-sprite h-32 w-32 sm:h-48 sm:w-48 ${animInimigo !== "idle" ? animInimigo : ""}`}
-            animState={animInimigo}
-          />
+          {fotoInimigoCombate ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={fotoInimigoCombate}
+              alt={batalhaGrupo.inimigo.nome}
+              className={`battle-sprite h-32 w-32 rounded-lg object-contain sm:h-48 sm:w-48 ${animInimigo !== "idle" ? animInimigo : ""}`}
+            />
+          ) : (
+            <EnemySprite
+              className={`battle-sprite h-32 w-32 sm:h-48 sm:w-48 ${animInimigo !== "idle" ? animInimigo : ""}`}
+              animState={animInimigo}
+            />
+          )}
         </div>
       </div>
 
