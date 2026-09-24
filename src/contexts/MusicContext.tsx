@@ -174,6 +174,11 @@ export function MusicProvider({ children }: { children: React.ReactNode }) {
       novo.loop = track.loop ?? true;
       novo.volume = 0;
       novo.currentTime = 0;
+      // Com preload="none" (de propósito — nunca baixa nada sem pedido),
+      // só trocar o .src não faz o navegador começar a buscar sozinho;
+      // sem isso "canplay" nunca disparava e a música nunca tocava.
+      // load() força o início do carregamento agora.
+      novo.load();
 
       const iniciar = () => {
         if (fadeTokenRef.current !== meuToken) return;
@@ -203,25 +208,21 @@ export function MusicProvider({ children }: { children: React.ReactNode }) {
 
       setCurrentTrack(track);
 
-      if (novo.readyState >= 2) {
-        iniciar();
-      } else {
-        const aoCarregar = () => {
-          novo.removeEventListener("canplay", aoCarregar);
-          iniciar();
-        };
-        novo.addEventListener("canplay", aoCarregar);
-        novo.addEventListener(
-          "error",
-          () => {
-            // Arquivo ausente/corrompido não pode derrubar a navegação —
-            // só registra e segue sem música.
-            console.error(`[MusicProvider] Falha ao carregar a faixa "${track.key}" (${track.src}).`);
-            if (fadeTokenRef.current === meuToken) setIsPlaying(false);
-          },
-          { once: true },
-        );
-      }
+      // play() já espera internamente ter dados suficientes pra tocar —
+      // não precisa mais aguardar "canplay" manualmente antes de chamar
+      // (era esse o deadlock: com preload="none" o "canplay" às vezes
+      // nunca disparava sozinho).
+      iniciar();
+      novo.addEventListener(
+        "error",
+        () => {
+          // Arquivo ausente/corrompido não pode derrubar a navegação —
+          // só registra e segue sem música.
+          console.error(`[MusicProvider] Falha ao carregar a faixa "${track.key}" (${track.src}).`);
+          if (fadeTokenRef.current === meuToken) setIsPlaying(false);
+        },
+        { once: true },
+      );
     },
     [volumeEfetivo],
   );
