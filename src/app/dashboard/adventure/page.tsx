@@ -8,6 +8,7 @@ import CombatArena from "./components/CombatArena";
 import ZoneSelector, { type ZonaApi } from "./components/ZoneSelector";
 import HuntingSessionHeader, { type SessaoApi } from "./components/HuntingSessionHeader";
 import PartyAdventureSection from "./components/PartyAdventureSection";
+import SoloCombatGate from "./components/SoloCombatGate";
 
 export default async function AdventurePage() {
   const character =
@@ -198,13 +199,15 @@ export default async function AdventurePage() {
     return (
       <div className="flex h-full flex-col gap-2">
         <PartyAdventureSection zonas={zonas} />
-        <HuntingSessionHeader sessao={sessao} />
-        <div className="flex flex-1 flex-col items-center justify-center gap-2">
-          <p className="text-lg text-gray-700">
-            Não foi possível encontrar uma criatura agora. Tente novamente em
-            instantes.
-          </p>
-        </div>
+        <SoloCombatGate>
+          <HuntingSessionHeader sessao={sessao} />
+          <div className="flex flex-1 flex-col items-center justify-center gap-2">
+            <p className="text-lg text-gray-700">
+              Não foi possível encontrar uma criatura agora. Tente novamente em
+              instantes.
+            </p>
+          </div>
+        </SoloCombatGate>
       </div>
     );
   }
@@ -212,14 +215,16 @@ export default async function AdventurePage() {
   return (
     <div className="flex h-full flex-col gap-2">
       <PartyAdventureSection zonas={zonas} />
-      <HuntingSessionHeader sessao={sessao} />
-      <CombatArena
-        key={`${inimigoInicial.nome}-${character.vida_atual}-${Date.now()}`}
-        character={character}
-        abilities={habilidades}
-        initialEnemy={inimigoInicial}
-        zona={sessao.area}
-      />
+      <SoloCombatGate>
+        <HuntingSessionHeader sessao={sessao} />
+        <CombatArena
+          key={`${inimigoInicial.nome}-${character.vida_atual}-${Date.now()}`}
+          character={character}
+          abilities={habilidades}
+          initialEnemy={inimigoInicial}
+          zona={sessao.area}
+        />
+      </SoloCombatGate>
     </div>
   );
 }
