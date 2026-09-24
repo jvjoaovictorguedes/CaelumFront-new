@@ -205,7 +205,7 @@ export default function PvpClient({
       </div>
 
       {erroSocket && (
-        <p className="text-sm text-red-400">
+        <p className="rounded-lg bg-black/50 px-3 py-2 text-sm text-red-400">
           {erroSocket}{" "}
           <button onClick={limparErroSocket} className="underline">
             fechar
@@ -236,7 +236,7 @@ export default function PvpClient({
             <EstatisticaCard label="Melhor sequência" valor={status?.maximo_sequencia_vitorias ?? 0} />
           </div>
 
-          {erro && <p className="text-sm text-red-400">{erro}</p>}
+          {erro && <p className="rounded-lg bg-black/50 px-3 py-2 text-sm text-red-400">{erro}</p>}
 
           <div className="rounded-2xl border-2 border-[#F3B43F]/60 bg-[#292018]/90 p-4 text-white shadow-lg">
             <p className="mb-3 text-sm uppercase tracking-widest text-[#F3B43F]">

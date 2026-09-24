@@ -453,7 +453,7 @@ export default function CharacterCreation() {
         className="flex items-center justify-center min-h-screen bg-cover bg-center"
         style={{ backgroundImage: "url('/images/homeMedieval.png')" }}
       >
-        <div className="text-red-500 text-3xl text-center">
+        <div className="rounded-2xl bg-black/50 px-6 py-4 text-red-500 text-3xl text-center">
           {errorMessage}
           <p className="text-xl mt-4">Por favor, recarregue a página.</p>
         </div>

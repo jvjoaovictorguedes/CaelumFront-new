@@ -208,7 +208,7 @@ export default function AdminItemsClient() {
         </select>
       </div>
 
-      {erro && <p className="text-sm text-red-400">{erro}</p>}
+      {erro && <p className="rounded-lg bg-black/50 px-3 py-2 text-sm text-red-400">{erro}</p>}
 
       <div className="overflow-x-auto rounded-2xl border-2 border-[#F3B43F]/40 bg-[#292018]/80">
         <table className="w-full text-left text-sm text-white">

@@ -93,7 +93,7 @@ export default function GuildBenefitsTab({
         Benefícios pertencem à guilda — todo membro ativo (fora de carência) é elegível enquanto estiver nela.
         Comprar um nível gasta Gold do Tesouro.
       </p>
-      {mensagem && <p className="text-sm text-red-400">{mensagem}</p>}
+      {mensagem && <p className="rounded-lg bg-black/50 px-3 py-2 text-sm text-red-400">{mensagem}</p>}
 
       {beneficios.map((b) => {
         const tesouroInsuficiente = b.proximo_nivel ? b.tesouro_atual < b.proximo_nivel.custo : false;

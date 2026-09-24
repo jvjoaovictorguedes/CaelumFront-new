@@ -250,10 +250,10 @@ export default function LiveDuelArena({ meuCharacterId }: { meuCharacterId: numb
         </div>
       </div>
 
-      {erro && <p className="text-sm text-red-400">{erro}</p>}
+      {erro && <p className="rounded-lg bg-black/50 px-3 py-2 text-sm text-red-400">{erro}</p>}
 
       {duelo.ranked && oponenteDesconectadoRanked && !resultadoFinal && (
-        <p className="text-center text-sm text-yellow-400">
+        <p className="rounded-lg bg-black/50 px-3 py-2 text-center text-sm text-yellow-400">
           Seu oponente desconectou. Aguardando reconexão ({oponenteDesconectadoRanked.prazoSegundos}s) antes de
           declarar vitória por abandono...
         </p>

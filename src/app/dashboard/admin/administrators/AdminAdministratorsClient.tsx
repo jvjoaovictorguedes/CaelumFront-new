@@ -77,7 +77,7 @@ export default function AdminAdministratorsClient() {
         </p>
       </div>
 
-      {erro && <p className="text-sm text-red-400">{erro}</p>}
+      {erro && <p className="rounded-lg bg-black/50 px-3 py-2 text-sm text-red-400">{erro}</p>}
 
       {carregando ? (
         <p className="text-sm text-white/50">Carregando...</p>
