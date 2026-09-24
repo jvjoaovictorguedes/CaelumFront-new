@@ -111,15 +111,26 @@ export default async function AdventurePage() {
     console.error("Erro ao obter sessão de caça:", error);
   }
 
-  if (!sessao) {
-    let zonas: ZonaApi[] = [];
-    try {
-      const response = await axiosInstance.get<ZonasResponse>("/adventure/zones");
-      zonas = response.data?.data?.zonas ?? [];
-    } catch (error) {
-      console.error("Erro ao listar áreas de caça:", error);
-    }
+  // Lista de zonas é buscada sempre (não só quando não há sessão solo):
+  // PartyAdventureSection precisa dela pro anfitrião escolher a área do
+  // grupo, e essa seção agora é renderizada em toda entrada na página —
+  // ver comentário abaixo sobre o bug do convite de party.
+  let zonas: ZonaApi[] = [];
+  try {
+    const response = await axiosInstance.get<ZonasResponse>("/adventure/zones");
+    zonas = response.data?.data?.zonas ?? [];
+  } catch (error) {
+    console.error("Erro ao listar áreas de caça:", error);
+  }
 
+  // PartyAdventureSection ficava dentro do "if (!sessao)" — jogador que
+  // aceitava convite de party e JÁ tinha uma sessão de caça solo aberta
+  // caía direto no combate solo (CombatArena) e nunca chegava a montar
+  // a seção de grupo (bug reportado: "aceita o convite e entra na
+  // aventura solo, não na party"). Ela é client-side e lê o estado do
+  // grupo via socket (PvpSocketContext), então é segura de renderizar
+  // em qualquer branch — só precisa deixar de estar presa a "sem sessão".
+  if (!sessao) {
     return (
       <div className="flex h-full flex-col gap-4">
         <PartyAdventureSection zonas={zonas} />
@@ -186,6 +197,7 @@ export default async function AdventurePage() {
   if (!inimigoInicial) {
     return (
       <div className="flex h-full flex-col gap-2">
+        <PartyAdventureSection zonas={zonas} />
         <HuntingSessionHeader sessao={sessao} />
         <div className="flex flex-1 flex-col items-center justify-center gap-2">
           <p className="text-lg text-gray-700">
@@ -199,6 +211,7 @@ export default async function AdventurePage() {
 
   return (
     <div className="flex h-full flex-col gap-2">
+      <PartyAdventureSection zonas={zonas} />
       <HuntingSessionHeader sessao={sessao} />
       <CombatArena
         key={`${inimigoInicial.nome}-${character.vida_atual}-${Date.now()}`}
