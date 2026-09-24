@@ -35,6 +35,11 @@ const INTERVALO_ENTRE_FASES_MS = 50;
 
 const DURACAO_CAMINHADA_MS = 420;
 
+// Mesma numeração romana de Maestria Regional usada no Bestiário
+// (backend: numeralRomano em bestiaryConfig.js) — só pros níveis com
+// bônus (II-V; Maestria I não concede bônus, só a descoberta em si).
+const NUMERAL_ROMANO_MAESTRIA: Record<string, string> = { "2": "II", "3": "III", "4": "IV", "5": "V" };
+
 interface Power {
   id: number;
   nome: string;
@@ -192,6 +197,13 @@ interface RespostaCombate {
     // vazio nesse caso, ver useState abaixo.
     statusEffects?: StatusEffectsState;
     cooldowns?: { player?: Record<string, number> };
+
+    // Presente só na vitória que derrota o ÚLTIMO monstro que faltava
+    // descobrir na área (Bestiário) — null em qualquer outra vitória.
+    bestiarioCompletoAgora?: {
+      zona: { id: number; nome: string | null };
+      beneficiosPorNivel: Record<string, { xp: number; ouro: number; espolio: number }>;
+    } | null;
   };
 }
 
@@ -291,6 +303,10 @@ export default function CombatArena({
     item?: { id: number; nome: string; raridade: string };
     dinheiro?: number;
   } | null>(null);
+
+  const [bestiarioCompletoAgora, setBestiarioCompletoAgora] = useState<
+    RespostaCombate["data"]["bestiarioCompletoAgora"]
+  >(null);
 
   const [consumiveis, setConsumiveis] = useState<ConsumivelAcao[]>([]);
 
@@ -796,6 +812,7 @@ export default function CombatArena({
           setRecompensa(data.rewards);
         }
         setDrop(data.drop ?? null);
+        setBestiarioCompletoAgora(data.bestiarioCompletoAgora ?? null);
       }
     } catch (error: unknown) {
       const mensagem =
@@ -1062,6 +1079,31 @@ export default function CombatArena({
                   ? `Você encontrou: ${drop.item.nome}!`
                   : `+${drop.dinheiro} moedas extras encontradas!`}
               </p>
+            )}
+
+            {bestiarioCompletoAgora && (
+              <div className="mb-4 rounded-xl border border-[#F3B43F]/60 bg-black/30 p-3 text-left">
+                <p className="mb-1 text-center font-imFeel text-lg text-[#F3B43F]">
+                  Bestiário completo: {bestiarioCompletoAgora.zona.nome}!
+                </p>
+                <p className="mb-2 text-center text-xs text-white/70">
+                  Você descobriu todos os monstros desta área — a Maestria Regional começa
+                  agora. Continue caçando aqui pra desbloquear os bônus de cada nível:
+                </p>
+                <ul className="flex flex-col gap-1 text-xs text-white/80">
+                  {Object.entries(bestiarioCompletoAgora.beneficiosPorNivel)
+                    .filter(([nivel]) => Number(nivel) >= 2)
+                    .map(([nivel, beneficio]) => (
+                      <li key={nivel} className="flex justify-between gap-2">
+                        <span className="font-bold text-[#F3B43F]">Maestria {NUMERAL_ROMANO_MAESTRIA[nivel] ?? nivel}</span>
+                        <span>
+                          +{Math.round(beneficio.xp * 100)}% XP · +{Math.round(beneficio.ouro * 100)}% Ouro · +
+                          {Math.round(beneficio.espolio * 100)}% Espólio
+                        </span>
+                      </li>
+                    ))}
+                </ul>
+              </div>
             )}
 
             <div className="flex flex-wrap items-center justify-center gap-3">
