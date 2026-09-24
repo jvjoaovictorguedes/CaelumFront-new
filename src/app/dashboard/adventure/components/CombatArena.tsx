@@ -454,24 +454,32 @@ export default function CombatArena({
   const [mostrarConfirmarSaida, setMostrarConfirmarSaida] = useState(false);
   const [saindoDaAventura, setSaindoDaAventura] = useState(false);
 
-  async function confirmarSaida() {
+  // Encerra a sessão de caça no servidor (quando existe) antes de sair —
+  // usado tanto pelo "Sair mesmo assim" (durante o combate) quanto pelo
+  // "Sair para a página principal" da tela de vitória. Sem isso a sessão
+  // continuava ativa no servidor e o jogador caía direto de novo no
+  // mesmo monstro (já morto) ao voltar pra Aventura, em vez de ir pra
+  // seleção de área — bug reportado tanto durante o combate quanto logo
+  // depois de matar o monstro, quando o botão de vitória pulava direto
+  // pro router.push sem chamar aoSairEndpoint.
+  async function encerrarSessaoEIrPara(rota: string) {
     if (saindoDaAventura) return;
     setSaindoDaAventura(true);
     try {
-      // Sem isso a sessão de caça continuava ativa no servidor — ao
-      // voltar pra Aventura o jogador caía direto de novo neste mesmo
-      // combate em vez de ir pra seleção de área (bug reportado: "buga
-      // e me deixa travado no bosque que eu escolhi"). Chamador fora da
-      // Aventura (aoSairEndpoint=null, ver ExpeditionClient.tsx) não tem
-      // sessão nenhuma pra encerrar.
+      // Chamador fora da Aventura (aoSairEndpoint=null, ver
+      // ExpeditionClient.tsx) não tem sessão nenhuma pra encerrar.
       if (aoSairEndpoint) {
         await axiosInstance.post(aoSairEndpoint);
       }
     } catch (error) {
       console.error("Erro ao sair da área de caça:", error);
     } finally {
-      router.push(aoSairRota);
+      router.push(rota);
     }
+  }
+
+  async function confirmarSaida() {
+    await encerrarSessaoEIrPara(aoSairRota);
   }
 
   const [floatingTextsPlayer, setFloatingTextsPlayer] = useState<
@@ -1289,8 +1297,9 @@ export default function CombatArena({
 
               {resultado === "vitoria" && (
                 <button
-                  onClick={() => router.push("/dashboard")}
-                  className="rounded-lg border border-white/30 px-4 py-2 font-bold text-white/80 transition hover:bg-white/10"
+                  onClick={() => encerrarSessaoEIrPara("/dashboard")}
+                  disabled={saindoDaAventura}
+                  className="rounded-lg border border-white/30 px-4 py-2 font-bold text-white/80 transition hover:bg-white/10 disabled:opacity-50"
                 >
                   Sair para a página principal
                 </button>
