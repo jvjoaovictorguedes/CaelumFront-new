@@ -54,6 +54,7 @@ export default function StatusPanel({
     { label: "Level", valor: character.nivel },
     { label: "Rank", valor: character.rank ?? "F" },
     { label: "Resets", valor: character.reset ?? 0 },
+    { label: "Ouro", valor: (character.dinheiro ?? 0).toLocaleString("pt-BR") },
   ];
 
   return (
