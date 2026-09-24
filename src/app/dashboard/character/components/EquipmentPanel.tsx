@@ -11,6 +11,8 @@ import BonecoDePapel, {
   type Propriedades,
   type Slot,
 } from "@/components/equipment/BonecoDePapel";
+import EquipmentSetSummary from "@/components/equipment/EquipmentSetSummary";
+import type { EquipmentSetSummary as EquipmentSetSummaryType } from "@/types/equipmentSets";
 
 // Instância de equipamento (Inventário v2) — solta no inventário, ainda
 // não equipada nem anunciada.
@@ -44,6 +46,7 @@ export default function EquipmentPanel({ classe }: { classe?: string }) {
     mapaVazioDeSlots<EquipadoApi>(),
   );
   const [instancias, setInstancias] = useState<InstanciaApi[]>([]);
+  const [equipmentSets, setEquipmentSets] = useState<EquipmentSetSummaryType[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [mensagem, setMensagem] = useState("");
   const [itemSelecionado, setItemSelecionado] = useState<number | null>(null);
@@ -53,7 +56,11 @@ export default function EquipmentPanel({ classe }: { classe?: string }) {
   const carregarTudo = useCallback(async () => {
     try {
       const resp = await axiosInstance.get<{
-        data?: { equipmentInstances?: InstanciaApi[]; equipped?: EquipadoApi[] };
+        data?: {
+          equipmentInstances?: InstanciaApi[];
+          equipped?: EquipadoApi[];
+          equipmentSets?: EquipmentSetSummaryType[];
+        };
       }>("/inventory/v2");
 
       const mapaEquipado = mapaVazioDeSlots<EquipadoApi>();
@@ -62,6 +69,7 @@ export default function EquipmentPanel({ classe }: { classe?: string }) {
       }
       setEquipamentos(mapaEquipado);
       setInstancias(resp.data?.data?.equipmentInstances ?? []);
+      setEquipmentSets(resp.data?.data?.equipmentSets ?? []);
     } catch (error) {
       console.error("Erro ao carregar equipamento/inventário:", error);
       setMensagem("Não foi possível carregar seu equipamento.");
@@ -154,6 +162,8 @@ export default function EquipmentPanel({ classe }: { classe?: string }) {
         onClicarSlot={() => clicarSlot()}
         onDesequipar={desequipar}
       />
+
+      <EquipmentSetSummary sets={equipmentSets} />
 
       {itemSelecionado !== null && !mensagem && (
         <p className="mb-3 text-sm text-[#F3B43F]">
