@@ -44,6 +44,12 @@ const STORAGE_KEYS = {
 
 const VOLUME_PADRAO = 0.5;
 const FADE_PADRAO_MS = 800;
+// Folga entre "ninguém está pedindo música" e "para de verdade" — cobre
+// a navegação entre páginas que usam a mesma faixa (server component
+// assíncrono desmonta a página antiga antes da nova terminar de buscar
+// dados e pedir a faixa de volta). Curta o bastante pra não perceber
+// silêncio numa troca comum de página.
+const GRACA_TROCA_DE_PAGINA_MS = 600;
 
 function lerVolumeSalvo(): number {
   try {
@@ -121,6 +127,7 @@ export function MusicProvider({ children }: { children: React.ReactNode }) {
   const currentTrackKeyRef = useRef<string | null>(null);
   const volumeRef = useRef(volume);
   const mutedRef = useRef(muted);
+  const pararTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const volumeEfetivo = useCallback(() => (mutedRef.current ? 0 : volumeRef.current), []);
 
@@ -244,8 +251,40 @@ export function MusicProvider({ children }: { children: React.ReactNode }) {
     const fadeMs = melhor?.fadeMs ?? FADE_PADRAO_MS;
 
     // Mesma key -> não reinicia (mantém currentTime), mesmo que a
-    // solicitação vencedora tenha mudado de dono (§7.2/§13).
-    if ((trackAlvo?.key ?? null) === currentTrackKeyRef.current) return;
+    // solicitação vencedora tenha mudado de dono (§7.2/§13). Também
+    // cancela um "parar" agendado (abaixo) — a página nova já pediu a
+    // mesma faixa de volta antes da graça acabar.
+    if ((trackAlvo?.key ?? null) === currentTrackKeyRef.current) {
+      if (pararTimeoutRef.current) {
+        clearTimeout(pararTimeoutRef.current);
+        pararTimeoutRef.current = null;
+      }
+      return;
+    }
+
+    if (pararTimeoutRef.current) {
+      clearTimeout(pararTimeoutRef.current);
+      pararTimeoutRef.current = null;
+    }
+
+    // Bug real: navegar entre duas páginas que pedem a MESMA faixa
+    // (ex.: Bestiário -> região do Bestiário, ambos MUSIC.BESTIARIO)
+    // fazia a música parar e reiniciar do zero a cada clique — a
+    // página antiga desmonta e libera a solicitação ANTES da nova
+    // página (component de servidor assíncrono, com fetch) montar e
+    // pedir de novo, então por um instante ninguém está pedindo nada e
+    // recomputar() via pra silêncio. Em vez de parar na hora quando o
+    // alvo fica vazio, dá uma folga curta pra próxima solicitação
+    // chegar; só para de verdade se continuar vazio depois da folga.
+    if (!trackAlvo && currentTrackKeyRef.current) {
+      pararTimeoutRef.current = setTimeout(() => {
+        pararTimeoutRef.current = null;
+        currentTrackKeyRef.current = null;
+        trocarParaFaixa(null, fadeMs);
+      }, GRACA_TROCA_DE_PAGINA_MS);
+      return;
+    }
+
     currentTrackKeyRef.current = trackAlvo?.key ?? null;
     trocarParaFaixa(trackAlvo, fadeMs);
   }, [trocarParaFaixa]);

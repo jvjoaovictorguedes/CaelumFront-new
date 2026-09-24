@@ -177,7 +177,7 @@ function PropriedadesEquipamento({ item, instancia }: { item: ItemApi; instancia
   const efetivo = instancia.propriedades_efetivas;
   if (!efetivo) return null;
 
-  if (item.weaponProperties) {
+  if (item.tipo_item === "Arma" && item.weaponProperties) {
     return (
       <p className="mt-1 text-xs text-white/80">
         <span className="font-bold text-[#F3B43F]">Dano efetivo:</span> {efetivo.dano_min}–{efetivo.dano_max}{" "}
@@ -186,7 +186,7 @@ function PropriedadesEquipamento({ item, instancia }: { item: ItemApi; instancia
     );
   }
 
-  if (item.armorProperties) {
+  if (item.tipo_item !== "Consumivel" && item.armorProperties) {
     const bonusPositivos = (
       [
         ["Força", efetivo.bonus_forca],

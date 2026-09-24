@@ -18,12 +18,14 @@ export default async function CharacterPage() {
   if (!character) {
     return (
       <div className="flex flex-col items-center justify-center h-full">
-        <h1 className="font-imFeel text-4xl mb-4">
-          Nenhum personagem encontrado
-        </h1>
-        <p className="text-lg text-gray-700">
-          Crie um personagem para ver os detalhes dele aqui.
-        </p>
+        <div className="rounded-2xl border border-[#F3B43F]/30 bg-[#292018]/80 p-6 text-center text-white shadow-xl">
+          <h1 className="font-imFeel text-4xl mb-4">
+            Nenhum personagem encontrado
+          </h1>
+          <p className="text-lg text-white/80">
+            Crie um personagem para ver os detalhes dele aqui.
+          </p>
+        </div>
       </div>
     );
   }

@@ -1,9 +1,15 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { usePvpSocket, type ConsumivelDuelo, type RankedRatingUpdatePayload } from "@/contexts/PvpSocketContext";
+import {
+  usePvpSocket,
+  type ConsumivelDuelo,
+  type RankedRatingUpdatePayload,
+  type StatusInstanceDuelo,
+} from "@/contexts/PvpSocketContext";
 import { spriteForClass } from "../../adventure/components/sprites/spriteForClass";
 import CombatActionBar from "@/components/combat/CombatActionBar";
+import { StatusIconsRow } from "@/components/combat/StatusEffectIcons";
 import { fundoDeBatalhaPorSemente } from "@/utils/battleBackground";
 
 function esperar(ms: number) {
@@ -18,6 +24,7 @@ export default function LiveDuelArena({ meuCharacterId }: { meuCharacterId: numb
     agir,
     limparDuelo,
     erro,
+    limparErro,
     ratingUpdate,
     oponenteDesconectadoRanked,
   } = usePvpSocket();
@@ -34,6 +41,8 @@ export default function LiveDuelArena({ meuCharacterId }: { meuCharacterId: numb
   const [log, setLog] = useState<string[]>([]);
   const [enviando, setEnviando] = useState(false);
   const [consumiveis, setConsumiveis] = useState<ConsumivelDuelo[]>([]);
+  const [statusA, setStatusA] = useState<StatusInstanceDuelo[]>([]);
+  const [statusB, setStatusB] = useState<StatusInstanceDuelo[]>([]);
 
   const processadosRef = useRef(0);
   const processandoRef = useRef(false);
@@ -45,11 +54,22 @@ export default function LiveDuelArena({ meuCharacterId }: { meuCharacterId: numb
     setVidaB(duelo.vidaB);
     setManaA(duelo.manaA);
     setManaB(duelo.manaB);
+    setStatusA([]);
+    setStatusB([]);
     setTurnoAtual(duelo.turnoDe);
     setPrazo(duelo.prazoSegundos);
     setLog([`Duelo começou na ${duelo.arena}! Vez de ${duelo.turnoDe === "A" ? duelo.a.nome : duelo.b.nome}.`]);
     setEnviando(false);
     setConsumiveis(duelo.a.id === meuCharacterId ? duelo.consumiveisA : duelo.consumiveisB);
+    // Bug real: uma mensagem de erro de ANTES desse duelo (desafio
+    // recusado, ação rejeitada do duelo anterior, um clique perdido na
+    // transição...) ficava presa em `erro` e aparecia em cima da tela
+    // de combate já ativa e saudável — `erro` é estado compartilhado
+    // entre lobby/torneio/duelo em PvpSocketContext, então só o
+    // socket.io limpar no "duelo-iniciado" não basta pra cobrir todo
+    // caminho de entrada nesta tela (ex.: reload em cima de um duelo
+    // já em andamento).
+    limparErro();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [duelo?.duelId]);
 
@@ -85,11 +105,15 @@ export default function LiveDuelArena({ meuCharacterId }: { meuCharacterId: numb
         setVidaB(turno.vidaB);
         setManaA(turno.manaA);
         setManaB(turno.manaB);
+        if (turno.statusA) setStatusA(turno.statusA);
+        if (turno.statusB) setStatusB(turno.statusB);
         setAnimA("");
         setAnimB("");
 
         let linha: string;
-        if (turno.esquivou) {
+        if (turno.bloqueado) {
+          linha = `${nomeAtacante} não conseguiu agir neste turno.`;
+        } else if (turno.esquivou) {
           linha = `${nomeDefensor} esquivou de ${turno.nomeAcao} de ${nomeAtacante}!`;
         } else if (turno.dano > 0) {
           linha = `${nomeAtacante} usou ${turno.nomeAcao} e causou ${turno.dano} de dano em ${nomeDefensor}.`;
@@ -102,7 +126,7 @@ export default function LiveDuelArena({ meuCharacterId }: { meuCharacterId: numb
         } else {
           linha = `${nomeAtacante} usou ${turno.nomeAcao}.`;
         }
-        setLog((atual) => [...atual, linha]);
+        setLog((atual) => [...atual, linha, ...(turno.logStatus ?? [])]);
 
         if (turno.turnoDe) {
           setTurnoAtual(turno.turnoDe);
@@ -212,8 +236,8 @@ export default function LiveDuelArena({ meuCharacterId }: { meuCharacterId: numb
       </div>
 
       <div className="grid grid-cols-2 gap-4">
-        <BarraDeVida label={duelo.a.nome} atual={vidaA} maxima={duelo.vidaMaxA} mana={manaA} manaMax={duelo.manaMaxA} />
-        <BarraDeVida label={duelo.b.nome} atual={vidaB} maxima={duelo.vidaMaxB} mana={manaB} manaMax={duelo.manaMaxB} />
+        <BarraDeVida label={duelo.a.nome} atual={vidaA} maxima={duelo.vidaMaxA} mana={manaA} manaMax={duelo.manaMaxA} status={statusA} />
+        <BarraDeVida label={duelo.b.nome} atual={vidaB} maxima={duelo.vidaMaxB} mana={manaB} manaMax={duelo.manaMaxB} status={statusB} />
       </div>
 
       <div className="flex h-40 w-full flex-col-reverse overflow-y-auto rounded-2xl bg-black/85 p-4 text-sm text-white shadow-inner">
@@ -226,10 +250,10 @@ export default function LiveDuelArena({ meuCharacterId }: { meuCharacterId: numb
         </div>
       </div>
 
-      {erro && <p className="text-sm text-red-400">{erro}</p>}
+      {erro && <p className="rounded-lg bg-black/50 px-3 py-2 text-sm text-red-400">{erro}</p>}
 
       {duelo.ranked && oponenteDesconectadoRanked && !resultadoFinal && (
-        <p className="text-center text-sm text-yellow-400">
+        <p className="rounded-lg bg-black/50 px-3 py-2 text-center text-sm text-yellow-400">
           Seu oponente desconectou. Aguardando reconexão ({oponenteDesconectadoRanked.prazoSegundos}s) antes de
           declarar vitória por abandono...
         </p>
@@ -334,12 +358,14 @@ function BarraDeVida({
   maxima,
   mana,
   manaMax,
+  status,
 }: {
   label: string;
   atual: number;
   maxima: number;
   mana: number;
   manaMax: number;
+  status?: StatusInstanceDuelo[];
 }) {
   return (
     <div className="rounded-xl border border-white/10 bg-[#292018]/90 p-3">
@@ -355,12 +381,23 @@ function BarraDeVida({
           style={{ width: `${Math.max(0, Math.min(100, (atual / maxima) * 100))}%` }}
         />
       </div>
+      <div className="mb-1 flex justify-between text-[10px] font-bold text-blue-300">
+        <span>Mana</span>
+        <span>
+          {Math.max(0, mana)} / {manaMax}
+        </span>
+      </div>
       <div className="h-2 w-full overflow-hidden rounded-full bg-black/30">
         <div
           className="h-full bg-blue-500 transition-all duration-500"
           style={{ width: `${Math.max(0, Math.min(100, (mana / manaMax) * 100))}%` }}
         />
       </div>
+      {status && status.length > 0 && (
+        <div className="mt-2">
+          <StatusIconsRow instancias={status} />
+        </div>
+      )}
     </div>
   );
 }

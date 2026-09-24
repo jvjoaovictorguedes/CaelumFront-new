@@ -354,9 +354,15 @@ export default function PartyBattleArena() {
                 <div className="h-1.5 w-16 overflow-hidden rounded-full border border-black/50 bg-black/60 sm:w-20">
                   <div className="h-full bg-red-600 transition-[width] duration-300" style={{ width: `${Math.max(0, Math.min(100, (vida / membro.vidaMax) * 100))}%` }} />
                 </div>
+                <span className="whitespace-nowrap text-[8px] font-bold text-red-300">
+                  {Math.max(0, Math.round(vida))}/{membro.vidaMax}
+                </span>
                 <div className="h-1 w-16 overflow-hidden rounded-full border border-black/50 bg-black/60 sm:w-20">
                   <div className="h-full bg-blue-500 transition-[width] duration-300" style={{ width: `${Math.max(0, Math.min(100, (mana / membro.manaMax) * 100))}%` }} />
                 </div>
+                <span className="whitespace-nowrap text-[8px] font-bold text-blue-300">
+                  {Math.max(0, Math.round(mana))}/{membro.manaMax}
+                </span>
               </div>
 
               <div className={daVez && vivo ? "turno-ativo" : ""}>
@@ -397,6 +403,9 @@ export default function PartyBattleArena() {
             <div className="h-1.5 w-24 overflow-hidden rounded-full border border-black/50 bg-black/60 sm:w-32">
               <div className="h-full bg-red-600 transition-[width] duration-300" style={{ width: `${Math.max(0, Math.min(100, (vidaInimigo / vidaMaxInimigo) * 100))}%` }} />
             </div>
+            <span className="whitespace-nowrap text-[9px] font-bold text-red-300">
+              {Math.max(0, Math.round(vidaInimigo))}/{vidaMaxInimigo}
+            </span>
           </div>
 
           {fotoInimigoCombate ? (

@@ -55,6 +55,14 @@ export default function SidebarHealthBar() {
           />
         </div>
       </div>
+      {/* Ouro sempre visível perto do avatar (mesmo motivo de Vida/Mana
+          acima) — antes só dava pra ver na aba Status. */}
+      <div className="flex items-center justify-center gap-1 rounded-full bg-black/20 px-2 py-1">
+        <span aria-hidden className="text-xs">🪙</span>
+        <span className="text-[11px] font-bold text-black/80">
+          {(character.dinheiro ?? 0).toLocaleString("pt-BR")}
+        </span>
+      </div>
     </div>
   );
 }

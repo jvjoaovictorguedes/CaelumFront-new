@@ -3,8 +3,10 @@
 import { useCallback, useEffect, useState } from "react";
 import axiosInstance from "@/utils/axiosIntance";
 import { useCharacter } from "@/contexts/CharacterContext";
+import BalcaoDeEspoliosPanel from "./BalcaoDeEspoliosPanel";
+import MuralDeCacadasPanel from "./MuralDeCacadasPanel";
 
-type Aba = "Diaria" | "Semanal" | "Mensal" | "Rank" | "Marco";
+type Aba = "Diaria" | "Semanal" | "Mensal" | "Rank" | "Marco" | "Balcao" | "Cacadas";
 
 interface MissaoLivreApi {
   id: number;
@@ -110,9 +112,11 @@ const ROTULO_ABA: Record<Aba, string> = {
   Mensal: "Mensais",
   Rank: "Missões de Rank",
   Marco: "Marcos",
+  Balcao: "Balcão de Espólios",
+  Cacadas: "Caçadas",
 };
 
-const ROTA_POR_ABA: Record<Exclude<Aba, "Rank">, string> = {
+const ROTA_POR_ABA: Record<Exclude<Aba, "Rank" | "Balcao" | "Cacadas">, string> = {
   Diaria: "daily",
   Semanal: "weekly",
   Mensal: "monthly",
@@ -147,6 +151,9 @@ export default function AdventureGuildPanel() {
     if (abaAtual === "Rank") {
       const resp = await axiosInstance.get<{ data?: QuadroDeRankApi }>("/adventure-guild/rank");
       setQuadro(resp.data?.data ?? null);
+    } else if (abaAtual === "Balcao" || abaAtual === "Cacadas") {
+      // BalcaoDeEspoliosPanel/MuralDeCacadasPanel carregam os próprios
+      // dados — nada a buscar aqui.
     } else {
       const resp = await axiosInstance.get<{ data?: { missoes?: MissaoLivreApi[] } }>(
         `/adventure-guild/${ROTA_POR_ABA[abaAtual]}`,
@@ -255,7 +262,10 @@ export default function AdventureGuildPanel() {
 
       {carregando && <p className="text-sm text-white/60">Carregando...</p>}
 
-      {!carregando && aba !== "Rank" && (
+      {!carregando && aba === "Balcao" && <BalcaoDeEspoliosPanel />}
+      {!carregando && aba === "Cacadas" && <MuralDeCacadasPanel />}
+
+      {!carregando && aba !== "Rank" && aba !== "Balcao" && aba !== "Cacadas" && (
         <div className="flex flex-col gap-2">
           {(missoesLivres ?? []).length === 0 && (
             <p className="text-sm text-white/60">Nenhuma missão disponível nesta categoria.</p>
@@ -305,6 +315,12 @@ export default function AdventureGuildPanel() {
 
       {!carregando && aba === "Rank" && quadro && (
         <div className="flex flex-col gap-4">
+          <p className="text-xs text-white/60">
+            A cada 6 horas surgem novas ofertas de Missões de Rank — aceite até 2 contratos por
+            vez e entregue os itens pedidos pra concluir. Completar contratos suficientes libera
+            uma Provação; vencê-la promove seu Rank de Aventureiro (F até S), que decide quais
+            missões e recompensas ficam disponíveis daqui pra frente.
+          </p>
           <p className="text-xs text-white/60">
             Nova rotação em: {formatarContagem(new Date(quadro.proxima_rotacao_em).getTime() - agora)}
           </p>

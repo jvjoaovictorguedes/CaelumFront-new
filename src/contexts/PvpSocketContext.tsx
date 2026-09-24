@@ -111,6 +111,15 @@ export interface RankedOponenteDesconectadoPayload {
   prazoSegundos: number;
 }
 
+// Motor de Status (mesmo formato de src/config/statusEffectConfig.js no
+// backend) — `stacks` só é > 1 pra BLEED/POISON (STACK_CAP), o resto
+// fica sempre em 1.
+export interface StatusInstanceDuelo {
+  key: "BURN" | "BLEED" | "POISON" | "SILENCE" | "WEAKEN" | "FREEZE" | "STUN" | "PARALYZE" | "BLIND";
+  remainingTurns: number;
+  stacks: number;
+}
+
 export interface TurnoResultadoPayload {
   duelId: number;
   atacante: "A" | "B";
@@ -119,6 +128,10 @@ export interface TurnoResultadoPayload {
   cura: number;
   manaCurada?: number;
   esquivou: boolean;
+  bloqueado?: boolean;
+  logStatus?: string[];
+  statusA?: StatusInstanceDuelo[];
+  statusB?: StatusInstanceDuelo[];
   vidaA: number;
   vidaB: number;
   manaA: number;
@@ -529,6 +542,12 @@ export function PvpSocketProvider({
       setResultadoFinal(null);
       setTurnos([]);
       setDuelo(payload);
+      // Bug real: uma mensagem de erro de ANTES desse duelo começar
+      // (desafio recusado, ação rejeitada do duelo anterior...) ficava
+      // presa em `erro` e continuava aparecendo em cima da tela de
+      // combate já ativa e saudável, porque nada aqui limpava esse
+      // estado — LiveDuelArena só lê `erro`, não sabe se é antigo.
+      setErro("");
       router.push("/dashboard/pvp");
     });
 
@@ -564,6 +583,7 @@ export function PvpSocketProvider({
       setFilaRanked(null);
       setTurnos([]);
       setDuelo(payload);
+      setErro(""); // mesmo motivo do handler pvp:duelo-iniciado acima.
       router.push("/dashboard/pvp");
     });
 

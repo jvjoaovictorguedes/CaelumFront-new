@@ -11,8 +11,6 @@ interface ItemsResponse {
   };
 }
 
-const MOSTRAR_ITENS_RAROS = false;
-
 /**
  * Busca todos os itens cadastrados na API
  */
@@ -39,16 +37,13 @@ export default async function ShopPage() {
   const itensDaLoja = itens.filter((item) => {
     // O backend é a autoridade sobre o que está à venda
     // (Items.disponivel_loja) — raridade/valor_venda aqui são só pra
-    // exibição, não decidem mais disponibilidade.
-    if (!item.disponivel_loja) {
-      return false;
-    }
-
-    if (!MOSTRAR_ITENS_RAROS && item.raridade?.toLowerCase() === "raro") {
-      return false;
-    }
-
-    return true;
+    // exibição, não decidem mais disponibilidade. Havia um filtro fixo
+    // que escondia todo item raridade "Raro" mesmo com disponivel_loja
+    // true — contradizia esse comentário e fazia item editado no Painel
+    // Administrativo (que deixa escolher raridade Raro livremente)
+    // sumir da loja sem nenhum aviso. Removido: quem decide o que
+    // vende é só o botão "disponível na loja".
+    return item.disponivel_loja;
   });
 
   return (

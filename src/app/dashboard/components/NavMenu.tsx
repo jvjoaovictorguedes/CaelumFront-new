@@ -9,7 +9,6 @@ import OnlinePlayersBadge from "./OnlinePlayersBadge";
 import PatchNotesBell from "./PatchNotesBell";
 import SidebarHealthBar from "./SidebarHealthBar";
 import { useMessagesSocket } from "@/contexts/MessagesSocketContext";
-import MusicControls from "@/components/music/MusicControls";
 import { useCharacter } from "@/contexts/CharacterContext";
 import AvatarXpRing from "./AvatarXpRing";
 
@@ -51,6 +50,11 @@ export default function NavMenu({
 
   const navItems: NavMenuItem[] = [
     {
+      name: "Aventura",
+      iconUrl: "/icons/aventura.png",
+      path: "/dashboard/adventure",
+    },
+    {
       name: "Guia do Aventureiro",
       iconUrl: "/icons/guia-aventureiro.png",
       path: "/dashboard/guide",
@@ -90,11 +94,6 @@ export default function NavMenu({
       name: "Ranking",
       iconUrl: "/icons/ranking.png",
       path: "/dashboard/ranking",
-    },
-    {
-      name: "Aventura",
-      iconUrl: "/icons/aventura.png",
-      path: "/dashboard/adventure",
     },
     {
       name: "Bestiário",
@@ -214,7 +213,6 @@ export default function NavMenu({
           </ul>
         </div>
         <div className="mt-auto flex w-full flex-col border-t border-black/50 pt-2">
-          <MusicControls />
           <button
             type="button"
             onClick={handleLogout}

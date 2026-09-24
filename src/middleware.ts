@@ -71,17 +71,13 @@ export async function middleware(request: NextRequest) {
   const estaLogado = Boolean(token) && sessao.tokenValido;
   const hasCharacter = sessao.hasCharacter;
 
-  const hasTempCharacter = Boolean(
-    request.cookies.get("tempCharacterData")?.value,
-  );
   const publicRoutes = ["/login", "/register", "/"];
 
   const pathname = request.nextUrl.pathname;
 
   const isPublicRoute = publicRoutes.includes(pathname);
   const isDashboardRoute = pathname.startsWith("/dashboard");
-  const isCreationRoute =
-    pathname.startsWith("/create") || pathname.startsWith("/classselection");
+  const isCreationRoute = pathname.startsWith("/create");
 
   if (isPublicRoute && estaLogado) {
     return NextResponse.redirect(
@@ -103,10 +99,6 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
-  if (pathname.startsWith("/classselection") && !hasTempCharacter) {
-    return NextResponse.redirect(new URL("/create", request.url));
-  }
-
   if (sessaoExpirou) {
     // Sessão caiu mas a rota atual não exige login (ex.: "/") — ainda
     // assim limpa os cookies velhos pra não arrastar esse estado
@@ -124,6 +116,5 @@ export const config = {
     "/register",
     "/dashboard/:path*",
     "/create/:path*",
-    "/classselection/:path*",
   ],
 };

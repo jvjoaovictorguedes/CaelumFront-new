@@ -10,6 +10,11 @@ import { MUSIC_PRIORITY, sortearFaixaCombate } from "@/constants/music";
 import CombatActionBar, {
   type ConsumivelAcao,
 } from "@/components/combat/CombatActionBar";
+import {
+  StatusIconsRow,
+  NOME_POR_STATUS,
+  type StatusKey,
+} from "@/components/combat/StatusEffectIcons";
 
 import { spriteFolderForClass, spriteForClass } from "./sprites/spriteForClass";
 import { resolveMediaUrl } from "@/utils/media-url";
@@ -117,6 +122,12 @@ interface EnemyState {
   // combate quando ainda não existe sprite_key dedicado (arte animada
   // ainda não entregue), em vez de cair direto no boneco genérico.
   imagem_url?: string | null;
+
+  // Caçadas §6.2 — badge "ALVO DE CAÇADA" quando este monstro é o alvo
+  // fortalecido da Caçada Ativa do personagem (vida/dano já vêm com o
+  // modificador aplicado pelo backend; aqui é só identificação visual).
+  huntTarget?: boolean;
+  huntDifficultyLabel?: string;
 }
 
 interface CombatArenaProps {
@@ -156,7 +167,7 @@ interface FloatingText {
 // Cooldown/Balanceamento, §24/§37) — mesmo formato que o backend guarda
 // em encontro_pve.statusEffects e devolve em toda resposta de turno.
 interface StatusInstance {
-  key: "BURN" | "BLEED" | "POISON" | "SILENCE" | "WEAKEN" | "FREEZE" | "STUN" | "PARALYZE" | "BLIND";
+  key: StatusKey;
   remainingTurns: number;
   stacks: number;
   potency: number;
@@ -418,6 +429,11 @@ export default function CombatArena({
   });
 
   const [isShieldActive, setIsShieldActive] = useState(false);
+  // Efeito visual separado da cura de vida — poção de mana também deve
+  // ficar parada no lugar em vez de avançar e atacar (ver comentário em
+  // tocarAnimacaoDoTurno), mas com cor/borda próprias pra não parecer
+  // que curou vida quando só recarregou mana.
+  const [isManaGlowActive, setIsManaGlowActive] = useState(false);
 
   // Controlam a "caminhada" até a distância de combate corpo-a-corpo —
   // true desloca a coluna (via translateX no wrapper) em direção ao
@@ -438,24 +454,32 @@ export default function CombatArena({
   const [mostrarConfirmarSaida, setMostrarConfirmarSaida] = useState(false);
   const [saindoDaAventura, setSaindoDaAventura] = useState(false);
 
-  async function confirmarSaida() {
+  // Encerra a sessão de caça no servidor (quando existe) antes de sair —
+  // usado tanto pelo "Sair mesmo assim" (durante o combate) quanto pelo
+  // "Sair para a página principal" da tela de vitória. Sem isso a sessão
+  // continuava ativa no servidor e o jogador caía direto de novo no
+  // mesmo monstro (já morto) ao voltar pra Aventura, em vez de ir pra
+  // seleção de área — bug reportado tanto durante o combate quanto logo
+  // depois de matar o monstro, quando o botão de vitória pulava direto
+  // pro router.push sem chamar aoSairEndpoint.
+  async function encerrarSessaoEIrPara(rota: string) {
     if (saindoDaAventura) return;
     setSaindoDaAventura(true);
     try {
-      // Sem isso a sessão de caça continuava ativa no servidor — ao
-      // voltar pra Aventura o jogador caía direto de novo neste mesmo
-      // combate em vez de ir pra seleção de área (bug reportado: "buga
-      // e me deixa travado no bosque que eu escolhi"). Chamador fora da
-      // Aventura (aoSairEndpoint=null, ver ExpeditionClient.tsx) não tem
-      // sessão nenhuma pra encerrar.
+      // Chamador fora da Aventura (aoSairEndpoint=null, ver
+      // ExpeditionClient.tsx) não tem sessão nenhuma pra encerrar.
       if (aoSairEndpoint) {
         await axiosInstance.post(aoSairEndpoint);
       }
     } catch (error) {
       console.error("Erro ao sair da área de caça:", error);
     } finally {
-      router.push(aoSairRota);
+      router.push(rota);
     }
+  }
+
+  async function confirmarSaida() {
+    await encerrarSessaoEIrPara(aoSairRota);
   }
 
   const [floatingTextsPlayer, setFloatingTextsPlayer] = useState<
@@ -537,6 +561,8 @@ export default function CombatArena({
     vidaAposAcaoJogador,
 
     usouCura,
+    usouManaPotion,
+    manaRecebida,
     usouPoder,
     usouPoderDeFogo,
 
@@ -557,12 +583,22 @@ export default function CombatArena({
     vidaAposAcaoJogador: number;
 
     usouCura: boolean;
+    // Poção de mana também não avança pra golpear (é um efeito sobre si
+    // mesmo, igual cura de vida), mas usa cor/texto próprios — nunca
+    // deve parecer que curou vida quando só recarregou mana.
+    usouManaPotion: boolean;
+    manaRecebida: number;
     usouPoder: boolean;
     usouPoderDeFogo: boolean;
 
     novoEnemy: EnemyState;
     novaVidaJogador: number;
   }) {
+    // Qualquer ação "sobre si mesmo" (cura ou mana) fica parada no
+    // lugar — só ações que atingem o inimigo (ataque, poder ofensivo)
+    // avançam até a distância de combate.
+    const ficaParado = usouCura || usouManaPotion;
+
     // Cura de verdade (poder ou item) desse turno — independente do que
     // o inimigo faz em seguida. Antes disso, a cura só aparecia na tela
     // quando o SALDO do turno inteiro (cura menos o contra-ataque) desse
@@ -593,7 +629,15 @@ export default function CombatArena({
       await espera(400);
     }
 
-    const estadoAcaoJogador: EstadoSprite = usouCura
+    if (usouManaPotion && manaRecebida > 0) {
+      // Mesma ideia da cura de vida acima, mas azul e com texto/valor
+      // próprios — poção de mana não é cura, não pode parecer uma.
+      setIsManaGlowActive(true);
+      triggerFloatingText("player", `+${manaRecebida} MANA`, "#3fa9f5");
+      await espera(400);
+    }
+
+    const estadoAcaoJogador: EstadoSprite = ficaParado
       ? "idle"
       : usouPoder
         ? "poder"
@@ -606,15 +650,15 @@ export default function CombatArena({
       });
     }
 
-    // Cura fica parado no lugar (é um efeito sobre si mesmo, não faz
-    // sentido andar até o inimigo pra isso) — qualquer outra ação anda
-    // até a distância de combate antes de golpear.
-    if (!usouCura) {
+    // Cura/poção de mana ficam paradas no lugar (são efeitos sobre si
+    // mesmo, não faz sentido andar até o inimigo pra isso) — qualquer
+    // outra ação anda até a distância de combate antes de golpear.
+    if (!ficaParado) {
       setAvancoJogador(true);
       await espera(DURACAO_CAMINHADA_MS);
     }
 
-    setAnimJogador(usouCura ? "idle" : "anim-atacando-direita");
+    setAnimJogador(ficaParado ? "idle" : "anim-atacando-direita");
 
     setAnimInimigo(
       inimigoLevouDano ? "anim-atingido" : "anim-esquivando-direita",
@@ -642,6 +686,7 @@ export default function CombatArena({
 
     if (acabouNaVitoria) {
       setIsShieldActive(false);
+      setIsManaGlowActive(false);
 
       setPoseJogador({
         pose: undefined,
@@ -667,8 +712,8 @@ export default function CombatArena({
     setAnimJogador("idle");
 
     // Volta caminhando pra posição de origem antes do contra-ataque do
-    // inimigo (só quando de fato avançou — cura nunca avançou).
-    if (!usouCura) {
+    // inimigo (só quando de fato avançou — cura/mana nunca avançam).
+    if (!ficaParado) {
       setAvancoJogador(false);
       await espera(DURACAO_CAMINHADA_MS);
     }
@@ -708,6 +753,7 @@ export default function CombatArena({
     await espera(Math.max(duracaoAtaqueInimigo, duracaoReacaoJogador));
 
     setIsShieldActive(false);
+    setIsManaGlowActive(false);
 
     setAnimInimigo("idle");
 
@@ -759,6 +805,11 @@ export default function CombatArena({
           poderUsado.nome.toLowerCase().includes("cura"))) ||
       (itemUsado && itemUsado.efeito_vida),
     );
+
+    // Poção de mana pura (sem efeito de vida) — nunca deve avançar e
+    // atacar como um golpe: é um efeito sobre si mesmo, igual cura.
+    const usouManaPotion = Boolean(itemUsado && itemUsado.efeito_mana && !itemUsado.efeito_vida);
+    const manaAntesDaAcao = manaAtual;
 
     const usouPoder = action.type === "power";
 
@@ -849,6 +900,8 @@ export default function CombatArena({
         vidaAposAcaoJogador: data.character.vida_apos_sua_acao ?? data.character.vida_atual,
 
         usouCura,
+        usouManaPotion,
+        manaRecebida: Math.max(0, data.character.mana_atual - manaAntesDaAcao),
         usouPoder,
         usouPoderDeFogo,
 
@@ -961,7 +1014,11 @@ export default function CombatArena({
       {/* Barra superior flutuando sobre o fundo — some com XP e o botão
           de sair, mas não interrompe a leitura da tela como campo de
           batalha único. */}
-      <div className="absolute inset-x-0 top-0 z-20 flex items-start justify-between gap-3 p-3 sm:p-4">
+      {/* pr-14/pr-16 reserva o espaço do FloatingMusicWidget (fixed
+          right-3/4 top-3/4, z-[200]) — sem isso o botão "i" de registro
+          de combate ficava embaixo do ícone de volume, impossível de
+          clicar. */}
+      <div className="absolute inset-x-0 top-0 z-20 flex items-start justify-between gap-3 p-3 pr-14 sm:p-4 sm:pr-16">
         {!resultado ? (
           <button
             type="button"
@@ -1014,7 +1071,9 @@ export default function CombatArena({
         <div
           className={`relative flex flex-col items-center transition-transform duration-[420ms] ease-in-out ${
             avancoJogador ? "translate-x-[30vw]" : "translate-x-0"
-          } ${isShieldActive ? "shield-active border border-cyan-400/50" : ""}`}
+          } ${isShieldActive ? "shield-active border border-cyan-400/50" : ""} ${
+            isManaGlowActive ? "shield-active border border-blue-400/50" : ""
+          }`}
         >
           <div className="pointer-events-none absolute -top-20 left-1/2 z-20 flex -translate-x-1/2 flex-col items-center">
             {floatingTextsPlayer.map((ft) => (
@@ -1035,7 +1094,9 @@ export default function CombatArena({
             manaAtual={manaAtual}
             manaMaxima={manaMaxima}
           />
-          <StatusIconsRow instancias={statusEffects.player} />
+          <div className="pointer-events-none absolute -top-5 left-1/2 z-10 flex -translate-x-1/2 gap-1">
+            <StatusIconsRow instancias={statusEffects.player} />
+          </div>
 
           <PlayerSprite
             className={`battle-sprite h-32 w-32 sm:h-48 sm:w-48 ${
@@ -1064,12 +1125,19 @@ export default function CombatArena({
             ))}
           </div>
 
+          {enemy.huntTarget && (
+            <span className="mb-1 rounded-full border border-red-500 bg-red-900/80 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-red-200 shadow">
+              Alvo de Caçada{enemy.huntDifficultyLabel ? ` · ${enemy.huntDifficultyLabel}` : ""}
+            </span>
+          )}
           <BarraSobreCabeca
             nome={`${enemy.nome} (Nv. ${enemy.nivel})`}
             vidaAtual={enemy.vida_atual}
             vidaMaxima={enemy.vida_maxima}
           />
-          <StatusIconsRow instancias={statusEffects.enemy} />
+          <div className="pointer-events-none absolute -top-5 left-1/2 z-10 flex -translate-x-1/2 gap-1">
+            <StatusIconsRow instancias={statusEffects.enemy} />
+          </div>
 
           {fotoInimigoCombate ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -1229,8 +1297,9 @@ export default function CombatArena({
 
               {resultado === "vitoria" && (
                 <button
-                  onClick={() => router.push("/dashboard")}
-                  className="rounded-lg border border-white/30 px-4 py-2 font-bold text-white/80 transition hover:bg-white/10"
+                  onClick={() => encerrarSessaoEIrPara("/dashboard")}
+                  disabled={saindoDaAventura}
+                  className="rounded-lg border border-white/30 px-4 py-2 font-bold text-white/80 transition hover:bg-white/10 disabled:opacity-50"
                 >
                   Sair para a página principal
                 </button>
@@ -1357,64 +1426,24 @@ function BarraSobreCabeca({
           style={{ width: `${percentVida}%` }}
         />
       </div>
+      <span className="whitespace-nowrap text-[8px] font-bold text-red-300 sm:text-[9px]">
+        {Math.max(0, Math.round(vidaAtual))}/{vidaMaxima}
+      </span>
 
       {percentMana !== null && (
-        <div className="h-1 w-20 overflow-hidden rounded-full border border-black/50 bg-black/60 sm:w-24">
-          <div
-            className="h-full bg-blue-500 transition-[width] duration-300"
-            style={{ width: `${percentMana}%` }}
-          />
-        </div>
+        <>
+          <div className="h-1 w-20 overflow-hidden rounded-full border border-black/50 bg-black/60 sm:w-24">
+            <div
+              className="h-full bg-blue-500 transition-[width] duration-300"
+              style={{ width: `${percentMana}%` }}
+            />
+          </div>
+          <span className="whitespace-nowrap text-[8px] font-bold text-blue-300 sm:text-[9px]">
+            {Math.max(0, Math.round(manaAtual ?? 0))}/{manaMaxima}
+          </span>
+        </>
       )}
     </div>
   );
 }
 
-// Ícones de status (§41 — Especificação Consolidada Poder/Status/
-// Cooldown/Balanceamento): pequenos, com stacks e turnos restantes,
-// tooltip explica o efeito. Deliberadamente sem card pesado sobre a
-// arena.
-const ICONE_POR_STATUS: Record<StatusInstance["key"], string> = {
-  BURN: "🔥",
-  BLEED: "🩸",
-  POISON: "☠️",
-  SILENCE: "🔇",
-  WEAKEN: "🔻",
-  FREEZE: "🧊",
-  STUN: "💫",
-  PARALYZE: "⚡",
-  BLIND: "🌫️",
-};
-
-const NOME_POR_STATUS: Record<StatusInstance["key"], string> = {
-  BURN: "Queimadura",
-  BLEED: "Sangramento",
-  POISON: "Veneno",
-  SILENCE: "Silêncio",
-  WEAKEN: "Enfraquecimento",
-  FREEZE: "Congelamento",
-  STUN: "Atordoamento",
-  PARALYZE: "Paralisia",
-  BLIND: "Cegueira",
-};
-
-function StatusIconsRow({ instancias }: { instancias: StatusInstance[] }) {
-  if (instancias.length === 0) return null;
-  return (
-    <div className="pointer-events-none absolute -top-3 left-1/2 z-10 flex -translate-x-1/2 gap-1">
-      {instancias.map((instancia) => (
-        <span
-          key={instancia.key}
-          title={`${NOME_POR_STATUS[instancia.key]}${
-            instancia.stacks > 1 ? ` ×${instancia.stacks}` : ""
-          } — ${instancia.remainingTurns} turno(s) restante(s)`}
-          className="flex items-center gap-0.5 rounded-full bg-black/70 px-1 py-0.5 text-[9px] font-bold text-white shadow"
-        >
-          <span>{ICONE_POR_STATUS[instancia.key] ?? "•"}</span>
-          {instancia.stacks > 1 && <span>×{instancia.stacks}</span>}
-          <span className="text-[#F3B43F]">{instancia.remainingTurns}T</span>
-        </span>
-      ))}
-    </div>
-  );
-}

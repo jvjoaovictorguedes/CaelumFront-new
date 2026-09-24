@@ -7,6 +7,7 @@ import { ToastProvider } from "@/contexts/ToastContext";
 import SessionKeepAlive from "@/components/SessionKeepAlive/SessionKeepAlive";
 import PartyBattleArena from "./adventure/components/PartyBattleArena";
 import GuildBossLiveArena from "./guilds/components/GuildBossLiveArena";
+import FloatingMusicWidget from "@/components/music/FloatingMusicWidget";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -36,6 +37,7 @@ export default async function DashboardLayout({
           </div>
           <PartyBattleArena />
           <GuildBossLiveArena />
+          <FloatingMusicWidget />
         </PvpSocketProvider>
       </CharacterProvider>
     </ToastProvider>

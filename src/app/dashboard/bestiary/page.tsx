@@ -38,8 +38,10 @@ export default async function BestiaryPage() {
     return (
       <div className="flex h-full flex-col items-center justify-center">
         <PageMusic track={MUSIC.BESTIARIO} />
-        <h1 className="mb-4 font-imFeel text-4xl">Bestiário</h1>
-        <p className="text-lg text-gray-700">Crie um personagem para consultar o Bestiário.</p>
+        <div className="rounded-2xl border border-[#F3B43F]/30 bg-[#292018]/80 p-6 text-center text-white shadow-xl">
+          <h1 className="mb-4 font-imFeel text-4xl">Bestiário</h1>
+          <p className="text-lg text-white/80">Crie um personagem para consultar o Bestiário.</p>
+        </div>
       </div>
     );
   }
@@ -59,6 +61,11 @@ export default async function BestiaryPage() {
       <PageMusic track={MUSIC.BESTIARIO} />
       <div>
         <h1 className="font-imFeel text-4xl">Bestiário de Caelum</h1>
+        <p className="mt-1 max-w-3xl text-sm text-white/60">
+          Derrotar um monstro pela primeira vez revela sua ficha aqui — descrição, drops e nível.
+          Continuar caçando os monstros de uma região sobe sua Maestria Regional (I a V), que dá
+          bônus permanentes de XP, ouro e chance de espólio só dentro daquela região.
+        </p>
         {resumo && (
           <p className="mt-1 text-sm text-white/70">
             Criaturas descobertas: {resumo.criaturas_descobertas} / {resumo.criaturas_totais} · Regiões

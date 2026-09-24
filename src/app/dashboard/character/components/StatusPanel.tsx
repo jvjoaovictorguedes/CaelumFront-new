@@ -9,6 +9,7 @@ import AvatarPickerModal from "./AvatarPickerModal";
 import CharacterAttributes from "./CharacterAttributes";
 import GenderToggleButton from "./GenderToggleButton";
 import PvpStatsCard from "./PvpStatsCard";
+import AdventureGuildProfileCard from "./AdventureGuildProfileCard";
 
 export default function StatusPanel({
   character: characterInicial,
@@ -53,6 +54,7 @@ export default function StatusPanel({
     { label: "Level", valor: character.nivel },
     { label: "Rank", valor: character.rank ?? "F" },
     { label: "Resets", valor: character.reset ?? 0 },
+    { label: "Ouro", valor: (character.dinheiro ?? 0).toLocaleString("pt-BR") },
   ];
 
   return (
@@ -123,6 +125,11 @@ export default function StatusPanel({
 
       <CharacterAttributes character={character} bonus={bonus} />
       </div>
+
+      {/* Card próprio da Guilda dos Aventureiros (Rank + Reputação
+          Comercial + Reputação de Caçador) — ver Caçadas §12, nunca
+          espalhado como mais linhas no bloco de identidade acima. */}
+      <AdventureGuildProfileCard character={character} />
 
       {/* Rodapé do Status: competitivo (Elo) + troféus de torneio. */}
       <PvpStatsCard characterId={character.id} />
