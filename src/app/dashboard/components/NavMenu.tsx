@@ -10,6 +10,8 @@ import PatchNotesBell from "./PatchNotesBell";
 import SidebarHealthBar from "./SidebarHealthBar";
 import { useMessagesSocket } from "@/contexts/MessagesSocketContext";
 import MusicControls from "@/components/music/MusicControls";
+import { useCharacter } from "@/contexts/CharacterContext";
+import AvatarXpRing from "./AvatarXpRing";
 
 interface NavMenuItem {
   name: string;
@@ -34,6 +36,7 @@ export default function NavMenu({
   // — atualizado por socket (inbox:update/message:read), sem polling
   // (spec Mensagens v2 §17).
   const { totalNaoLidas: mensagensNaoLidas } = useMessagesSocket();
+  const { character } = useCharacter();
 
   const handleLogout = async () => {
     if (saindo) return;
@@ -149,14 +152,19 @@ export default function NavMenu({
             <CaelumBrand tamanho="sm" variante="escuro" />
             <PatchNotesBell />
           </div>
-          <div
-            className="h-40 w-40 cursor-pointer rounded-full border-4 border-[#F3B43F] bg-[#292018]"
-            style={{
-              backgroundImage: `url('${getAvatarUrl(avatarKey) ?? getClassPortrait(classe)}')`,
-              backgroundSize: "cover",
-              backgroundPosition: "center",
-            }}
-          ></div>
+          <div className="relative flex items-center justify-center">
+            {character && (
+              <AvatarXpRing nivel={character.nivel} experiencia={character.experiencia ?? 0} />
+            )}
+            <div
+              className="h-40 w-40 cursor-pointer rounded-full border-4 border-[#F3B43F] bg-[#292018]"
+              style={{
+                backgroundImage: `url('${getAvatarUrl(avatarKey) ?? getClassPortrait(classe)}')`,
+                backgroundSize: "cover",
+                backgroundPosition: "center",
+              }}
+            ></div>
+          </div>
           <SidebarHealthBar />
           <OnlinePlayersBadge />
         </div>
