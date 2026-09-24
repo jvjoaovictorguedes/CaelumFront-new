@@ -972,7 +972,11 @@ export default function CombatArena({
       {/* Barra superior flutuando sobre o fundo — some com XP e o botão
           de sair, mas não interrompe a leitura da tela como campo de
           batalha único. */}
-      <div className="absolute inset-x-0 top-0 z-20 flex items-start justify-between gap-3 p-3 sm:p-4">
+      {/* pr-14/pr-16 reserva o espaço do FloatingMusicWidget (fixed
+          right-3/4 top-3/4, z-[200]) — sem isso o botão "i" de registro
+          de combate ficava embaixo do ícone de volume, impossível de
+          clicar. */}
+      <div className="absolute inset-x-0 top-0 z-20 flex items-start justify-between gap-3 p-3 pr-14 sm:p-4 sm:pr-16">
         {!resultado ? (
           <button
             type="button"
