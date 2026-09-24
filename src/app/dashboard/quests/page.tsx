@@ -19,9 +19,6 @@ export default async function QuestsPage() {
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 p-2 sm:p-4">
       <h1 className="font-imFeel text-4xl sm:text-5xl text-center">Guilda dos Aventureiros</h1>
       <AdventureGuildPanel />
-      <p className="rounded-xl border border-white/10 bg-[#292018]/80 p-3 text-center text-sm text-white/70">
-        Sua guilda tem seu próprio Portal de Ranque — veja na aba &quot;Portal&quot; da sua guilda.
-      </p>
     </div>
   );
 }
