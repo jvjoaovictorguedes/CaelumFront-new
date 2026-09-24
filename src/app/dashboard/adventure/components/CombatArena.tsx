@@ -148,11 +148,17 @@ interface FloatingText {
 // Cooldown/Balanceamento, §24/§37) — mesmo formato que o backend guarda
 // em encontro_pve.statusEffects e devolve em toda resposta de turno.
 interface StatusInstance {
-  key: "BURN" | "BLEED" | "POISON" | "SILENCE" | "SLOW" | "WEAKEN";
+  key: "BURN" | "BLEED" | "POISON" | "SILENCE" | "WEAKEN" | "FREEZE" | "STUN" | "PARALYZE" | "BLIND";
   remainingTurns: number;
   stacks: number;
   potency: number;
 }
+
+// Hard controls (Evolução do Motor de Status §6) — enquanto ativos, o
+// servidor consome a ação do jogador sozinho (nunca gasta mana/
+// cooldown/item); o frontend só evita a chamada inútil desabilitando os
+// botões, nunca decide isso por conta própria.
+const CONTROLES_DUROS: StatusInstance["key"][] = ["FREEZE", "STUN"];
 
 interface StatusEffectsState {
   player: StatusInstance[];
@@ -268,6 +274,10 @@ export default function CombatArena({
   // /combat/action; vazio até o primeiro turno (ou pra sempre, num
   // combate sem nenhum status/cooldown envolvido).
   const [statusEffects, setStatusEffects] = useState<StatusEffectsState>({ player: [], enemy: [] });
+  // Hard control ativo no jogador — só pra evitar a chamada inútil
+  // desabilitando os botões; quem decide de verdade que o turno foi
+  // perdido é sempre o servidor (statusEffects vem da resposta dele).
+  const statusControleDuro = statusEffects.player.find((s) => CONTROLES_DUROS.includes(s.key))?.key ?? null;
 
   const [cooldownsPorPoder, setCooldownsPorPoder] = useState<Record<number, number>>({});
 
@@ -1036,8 +1046,18 @@ export default function CombatArena({
 
       {!resultado && (
         <div className="absolute inset-x-0 bottom-0 z-30 bg-gradient-to-t from-black/90 via-black/70 to-transparent px-3 pb-3 pt-10 sm:px-6">
+          {statusControleDuro && (
+            <p className="mb-2 text-center text-xs font-bold text-[#F3B43F]">
+              Você está {NOME_POR_STATUS[statusControleDuro]} — sua ação será perdida neste turno.
+            </p>
+          )}
+          {!statusControleDuro && statusEffects.player.some((s) => s.key === "PARALYZE") && (
+            <p className="mb-2 text-center text-xs text-[#F3B43F]/80">
+              Você está Paralisado — há chance de perder a ação neste turno.
+            </p>
+          )}
           <CombatActionBar
-            podeAgir={!resultado}
+            podeAgir={!resultado && !statusControleDuro}
             ocupado={carregando}
             manaAtual={manaAtual}
             onAtaqueBasico={() => executarAcao({ type: "attack" })}
@@ -1275,8 +1295,11 @@ const ICONE_POR_STATUS: Record<StatusInstance["key"], string> = {
   BLEED: "🩸",
   POISON: "☠️",
   SILENCE: "🔇",
-  SLOW: "🐌",
   WEAKEN: "🔻",
+  FREEZE: "🧊",
+  STUN: "💫",
+  PARALYZE: "⚡",
+  BLIND: "🌫️",
 };
 
 const NOME_POR_STATUS: Record<StatusInstance["key"], string> = {
@@ -1284,8 +1307,11 @@ const NOME_POR_STATUS: Record<StatusInstance["key"], string> = {
   BLEED: "Sangramento",
   POISON: "Veneno",
   SILENCE: "Silêncio",
-  SLOW: "Lentidão",
   WEAKEN: "Enfraquecimento",
+  FREEZE: "Congelamento",
+  STUN: "Atordoamento",
+  PARALYZE: "Paralisia",
+  BLIND: "Cegueira",
 };
 
 function StatusIconsRow({ instancias }: { instancias: StatusInstance[] }) {
