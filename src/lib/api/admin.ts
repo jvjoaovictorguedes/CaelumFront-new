@@ -117,6 +117,16 @@ export async function desativarItemAdmin(id: number, motivo: string): Promise<Ad
   return resposta.data.data.item;
 }
 
+export async function reativarItemAdmin(id: number): Promise<AdminItemApi> {
+  const resposta = await axiosInstance.post<{ data: { item: AdminItemApi } }>(`/admin/items/${id}/reactivate`);
+  return resposta.data.data.item;
+}
+
+export async function duplicarItemAdmin(id: number): Promise<AdminItemApi> {
+  const resposta = await axiosInstance.post<{ data: { item: AdminItemApi } }>(`/admin/items/${id}/duplicate`);
+  return resposta.data.data.item;
+}
+
 export interface LogAuditoriaApi {
   id: number;
   id_admin: number;

@@ -6,8 +6,10 @@ import {
   atualizarItemAdmin,
   criarItemAdmin,
   desativarItemAdmin,
+  duplicarItemAdmin,
   listarItensAdmin,
   mensagemDeErroAdmin,
+  reativarItemAdmin,
   type AdminItemApi,
   type PayloadItemAdmin,
 } from "@/lib/api/admin";
@@ -67,6 +69,8 @@ export default function AdminItemsClient() {
 
   const [filtroNome, setFiltroNome] = useState("");
   const [filtroTipo, setFiltroTipo] = useState("");
+  const [filtroRaridade, setFiltroRaridade] = useState("");
+  const [filtroStatus, setFiltroStatus] = useState<"" | "ativos" | "desativados">("");
 
   const [editandoId, setEditandoId] = useState<number | null>(null);
   const [form, setForm] = useState<PayloadItemAdmin>(formularioVazio());
@@ -82,6 +86,8 @@ export default function AdminItemsClient() {
         porPagina,
         nome: filtroNome || undefined,
         tipo_item: filtroTipo || undefined,
+        raridade: filtroRaridade || undefined,
+        apenasAtivos: filtroStatus === "" ? undefined : filtroStatus === "ativos",
       });
       setItens(resultado.itens);
       setTotal(resultado.total);
@@ -90,7 +96,7 @@ export default function AdminItemsClient() {
     } finally {
       setCarregando(false);
     }
-  }, [pagina, filtroNome, filtroTipo]);
+  }, [pagina, filtroNome, filtroTipo, filtroRaridade, filtroStatus]);
 
   useEffect(() => {
     carregar();
@@ -159,6 +165,25 @@ export default function AdminItemsClient() {
     }
   }
 
+  async function reativar(item: AdminItemApi) {
+    try {
+      await reativarItemAdmin(item.id);
+      await carregar();
+    } catch (error) {
+      setErro(mensagemDeErroAdmin(error, "Não foi possível reativar o item."));
+    }
+  }
+
+  async function duplicar(item: AdminItemApi) {
+    try {
+      const copia = await duplicarItemAdmin(item.id);
+      setMensagem(`"${item.nome}" duplicado como "${copia.nome}" (inativo, revise antes de ativar).`);
+      await carregar();
+    } catch (error) {
+      setErro(mensagemDeErroAdmin(error, "Não foi possível duplicar o item."));
+    }
+  }
+
   const tipoAtual = form.item.tipo_item;
   const totalPaginas = Math.max(1, Math.ceil(total / porPagina));
 
@@ -206,14 +231,45 @@ export default function AdminItemsClient() {
             </option>
           ))}
         </select>
+        <select
+          value={filtroRaridade}
+          onChange={(e) => {
+            setPagina(1);
+            setFiltroRaridade(e.target.value);
+          }}
+          className="rounded-lg border border-white/20 bg-black/30 px-3 py-1.5 text-sm text-white"
+        >
+          <option value="">Todas as raridades</option>
+          {RARIDADES.map((raridade) => (
+            <option key={raridade} value={raridade}>
+              {raridade}
+            </option>
+          ))}
+        </select>
+        <select
+          value={filtroStatus}
+          onChange={(e) => {
+            setPagina(1);
+            setFiltroStatus(e.target.value as "" | "ativos" | "desativados");
+          }}
+          className="rounded-lg border border-white/20 bg-black/30 px-3 py-1.5 text-sm text-white"
+        >
+          <option value="">Todos</option>
+          <option value="ativos">Ativos</option>
+          <option value="desativados">Desativados</option>
+        </select>
       </div>
 
       {erro && <p className="rounded-lg bg-black/50 px-3 py-2 text-sm text-red-400">{erro}</p>}
+      {!mostrarForm && mensagem && (
+        <p className="rounded-lg bg-black/50 px-3 py-2 text-sm text-[#F3B43F]">{mensagem}</p>
+      )}
 
       <div className="overflow-x-auto rounded-2xl border-2 border-[#F3B43F]/40 bg-[#292018]/80">
         <table className="w-full text-left text-sm text-white">
           <thead>
             <tr className="border-b border-white/10 text-xs uppercase text-white/50">
+              <th className="px-3 py-2">Imagem</th>
               <th className="px-3 py-2">Nome</th>
               <th className="px-3 py-2">Tipo</th>
               <th className="px-3 py-2">Raridade</th>
@@ -226,19 +282,31 @@ export default function AdminItemsClient() {
           <tbody>
             {carregando ? (
               <tr>
-                <td colSpan={7} className="px-3 py-4 text-center text-white/50">
+                <td colSpan={8} className="px-3 py-4 text-center text-white/50">
                   Carregando...
                 </td>
               </tr>
             ) : itens.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-3 py-4 text-center text-white/50">
+                <td colSpan={8} className="px-3 py-4 text-center text-white/50">
                   Nenhum item encontrado.
                 </td>
               </tr>
             ) : (
               itens.map((item) => (
                 <tr key={item.id} className={`border-b border-white/5 ${!item.ativo ? "opacity-50" : ""}`}>
+                  <td className="px-3 py-2">
+                    {item.imagem_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={item.imagem_url}
+                        alt={item.nome}
+                        className="h-10 w-10 rounded-lg border border-white/10 bg-black/30 object-contain"
+                      />
+                    ) : (
+                      <div className="h-10 w-10 rounded-lg border border-white/10 bg-black/30" />
+                    )}
+                  </td>
                   <td className="px-3 py-2 font-bold">{item.nome}</td>
                   <td className="px-3 py-2">{item.tipo_item}</td>
                   <td className="px-3 py-2">{item.raridade}</td>
@@ -254,13 +322,20 @@ export default function AdminItemsClient() {
                     </span>
                   </td>
                   <td className="px-3 py-2">
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-2">
                       <button type="button" onClick={() => abrirEdicao(item)} className="text-[#F3B43F] hover:underline">
                         Editar
                       </button>
-                      {item.ativo && (
+                      <button type="button" onClick={() => duplicar(item)} className="text-white/70 hover:underline">
+                        Duplicar
+                      </button>
+                      {item.ativo ? (
                         <button type="button" onClick={() => desativar(item)} className="text-red-400 hover:underline">
                           Desativar
+                        </button>
+                      ) : (
+                        <button type="button" onClick={() => reativar(item)} className="text-green-400 hover:underline">
+                          Reativar
                         </button>
                       )}
                     </div>
