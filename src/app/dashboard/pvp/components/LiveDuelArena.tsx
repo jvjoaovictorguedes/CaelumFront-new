@@ -18,6 +18,7 @@ export default function LiveDuelArena({ meuCharacterId }: { meuCharacterId: numb
     agir,
     limparDuelo,
     erro,
+    limparErro,
     ratingUpdate,
     oponenteDesconectadoRanked,
   } = usePvpSocket();
@@ -50,6 +51,15 @@ export default function LiveDuelArena({ meuCharacterId }: { meuCharacterId: numb
     setLog([`Duelo começou na ${duelo.arena}! Vez de ${duelo.turnoDe === "A" ? duelo.a.nome : duelo.b.nome}.`]);
     setEnviando(false);
     setConsumiveis(duelo.a.id === meuCharacterId ? duelo.consumiveisA : duelo.consumiveisB);
+    // Bug real: uma mensagem de erro de ANTES desse duelo (desafio
+    // recusado, ação rejeitada do duelo anterior, um clique perdido na
+    // transição...) ficava presa em `erro` e aparecia em cima da tela
+    // de combate já ativa e saudável — `erro` é estado compartilhado
+    // entre lobby/torneio/duelo em PvpSocketContext, então só o
+    // socket.io limpar no "duelo-iniciado" não basta pra cobrir todo
+    // caminho de entrada nesta tela (ex.: reload em cima de um duelo
+    // já em andamento).
+    limparErro();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [duelo?.duelId]);
 
