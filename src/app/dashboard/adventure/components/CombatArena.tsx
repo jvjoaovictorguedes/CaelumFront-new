@@ -429,6 +429,11 @@ export default function CombatArena({
   });
 
   const [isShieldActive, setIsShieldActive] = useState(false);
+  // Efeito visual separado da cura de vida — poção de mana também deve
+  // ficar parada no lugar em vez de avançar e atacar (ver comentário em
+  // tocarAnimacaoDoTurno), mas com cor/borda próprias pra não parecer
+  // que curou vida quando só recarregou mana.
+  const [isManaGlowActive, setIsManaGlowActive] = useState(false);
 
   // Controlam a "caminhada" até a distância de combate corpo-a-corpo —
   // true desloca a coluna (via translateX no wrapper) em direção ao
@@ -548,6 +553,8 @@ export default function CombatArena({
     vidaAposAcaoJogador,
 
     usouCura,
+    usouManaPotion,
+    manaRecebida,
     usouPoder,
     usouPoderDeFogo,
 
@@ -568,12 +575,22 @@ export default function CombatArena({
     vidaAposAcaoJogador: number;
 
     usouCura: boolean;
+    // Poção de mana também não avança pra golpear (é um efeito sobre si
+    // mesmo, igual cura de vida), mas usa cor/texto próprios — nunca
+    // deve parecer que curou vida quando só recarregou mana.
+    usouManaPotion: boolean;
+    manaRecebida: number;
     usouPoder: boolean;
     usouPoderDeFogo: boolean;
 
     novoEnemy: EnemyState;
     novaVidaJogador: number;
   }) {
+    // Qualquer ação "sobre si mesmo" (cura ou mana) fica parada no
+    // lugar — só ações que atingem o inimigo (ataque, poder ofensivo)
+    // avançam até a distância de combate.
+    const ficaParado = usouCura || usouManaPotion;
+
     // Cura de verdade (poder ou item) desse turno — independente do que
     // o inimigo faz em seguida. Antes disso, a cura só aparecia na tela
     // quando o SALDO do turno inteiro (cura menos o contra-ataque) desse
@@ -604,7 +621,15 @@ export default function CombatArena({
       await espera(400);
     }
 
-    const estadoAcaoJogador: EstadoSprite = usouCura
+    if (usouManaPotion && manaRecebida > 0) {
+      // Mesma ideia da cura de vida acima, mas azul e com texto/valor
+      // próprios — poção de mana não é cura, não pode parecer uma.
+      setIsManaGlowActive(true);
+      triggerFloatingText("player", `+${manaRecebida} MANA`, "#3fa9f5");
+      await espera(400);
+    }
+
+    const estadoAcaoJogador: EstadoSprite = ficaParado
       ? "idle"
       : usouPoder
         ? "poder"
@@ -617,15 +642,15 @@ export default function CombatArena({
       });
     }
 
-    // Cura fica parado no lugar (é um efeito sobre si mesmo, não faz
-    // sentido andar até o inimigo pra isso) — qualquer outra ação anda
-    // até a distância de combate antes de golpear.
-    if (!usouCura) {
+    // Cura/poção de mana ficam paradas no lugar (são efeitos sobre si
+    // mesmo, não faz sentido andar até o inimigo pra isso) — qualquer
+    // outra ação anda até a distância de combate antes de golpear.
+    if (!ficaParado) {
       setAvancoJogador(true);
       await espera(DURACAO_CAMINHADA_MS);
     }
 
-    setAnimJogador(usouCura ? "idle" : "anim-atacando-direita");
+    setAnimJogador(ficaParado ? "idle" : "anim-atacando-direita");
 
     setAnimInimigo(
       inimigoLevouDano ? "anim-atingido" : "anim-esquivando-direita",
@@ -653,6 +678,7 @@ export default function CombatArena({
 
     if (acabouNaVitoria) {
       setIsShieldActive(false);
+      setIsManaGlowActive(false);
 
       setPoseJogador({
         pose: undefined,
@@ -678,8 +704,8 @@ export default function CombatArena({
     setAnimJogador("idle");
 
     // Volta caminhando pra posição de origem antes do contra-ataque do
-    // inimigo (só quando de fato avançou — cura nunca avançou).
-    if (!usouCura) {
+    // inimigo (só quando de fato avançou — cura/mana nunca avançam).
+    if (!ficaParado) {
       setAvancoJogador(false);
       await espera(DURACAO_CAMINHADA_MS);
     }
@@ -719,6 +745,7 @@ export default function CombatArena({
     await espera(Math.max(duracaoAtaqueInimigo, duracaoReacaoJogador));
 
     setIsShieldActive(false);
+    setIsManaGlowActive(false);
 
     setAnimInimigo("idle");
 
@@ -770,6 +797,11 @@ export default function CombatArena({
           poderUsado.nome.toLowerCase().includes("cura"))) ||
       (itemUsado && itemUsado.efeito_vida),
     );
+
+    // Poção de mana pura (sem efeito de vida) — nunca deve avançar e
+    // atacar como um golpe: é um efeito sobre si mesmo, igual cura.
+    const usouManaPotion = Boolean(itemUsado && itemUsado.efeito_mana && !itemUsado.efeito_vida);
+    const manaAntesDaAcao = manaAtual;
 
     const usouPoder = action.type === "power";
 
@@ -860,6 +892,8 @@ export default function CombatArena({
         vidaAposAcaoJogador: data.character.vida_apos_sua_acao ?? data.character.vida_atual,
 
         usouCura,
+        usouManaPotion,
+        manaRecebida: Math.max(0, data.character.mana_atual - manaAntesDaAcao),
         usouPoder,
         usouPoderDeFogo,
 
@@ -1029,7 +1063,9 @@ export default function CombatArena({
         <div
           className={`relative flex flex-col items-center transition-transform duration-[420ms] ease-in-out ${
             avancoJogador ? "translate-x-[30vw]" : "translate-x-0"
-          } ${isShieldActive ? "shield-active border border-cyan-400/50" : ""}`}
+          } ${isShieldActive ? "shield-active border border-cyan-400/50" : ""} ${
+            isManaGlowActive ? "shield-active border border-blue-400/50" : ""
+          }`}
         >
           <div className="pointer-events-none absolute -top-20 left-1/2 z-20 flex -translate-x-1/2 flex-col items-center">
             {floatingTextsPlayer.map((ft) => (
