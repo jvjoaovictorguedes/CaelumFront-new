@@ -13,6 +13,7 @@ import BonecoDePapel, {
 } from "@/components/equipment/BonecoDePapel";
 import EquipmentSetSummary from "@/components/equipment/EquipmentSetSummary";
 import type { EquipmentSetSummary as EquipmentSetSummaryType } from "@/types/equipmentSets";
+import { agruparInstancias } from "@/utils/agruparInstancias";
 
 // Instância de equipamento (Inventário v2) — solta no inventário, ainda
 // não equipada nem anunciada.
@@ -183,18 +184,20 @@ export default function EquipmentPanel({ classe }: { classe?: string }) {
         </p>
       ) : (
         <div className="flex flex-wrap gap-3">
-          {instancias.map((instancia) => {
-            const selecionado = itemSelecionado === instancia.id;
+          {agruparInstancias(instancias).map((grupo) => {
+            const instancia = grupo.representante;
+            const idAcao = grupo.ids[0];
+            const selecionado = itemSelecionado === idAcao;
             return (
               <div
-                key={instancia.id}
+                key={idAcao}
                 role="button"
                 tabIndex={0}
-                onClick={() => clicarItemInventario(instancia.id)}
+                onClick={() => clicarItemInventario(idAcao)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ") {
                     e.preventDefault();
-                    clicarItemInventario(instancia.id);
+                    clicarItemInventario(idAcao);
                   }
                 }}
                 className={`group relative z-10 h-16 w-16 cursor-pointer select-none rounded-lg border-2 bg-[#3a2f24] transition hover:z-20 hover:scale-110 ${
@@ -205,8 +208,13 @@ export default function EquipmentPanel({ classe }: { classe?: string }) {
               >
                 <ItemThumb item={instancia} className="h-full w-full p-2" />
                 {instancia.refinamento > 0 && (
-                  <span className="pointer-events-none absolute -bottom-1 -right-1 rounded bg-black/80 px-1 text-[9px] font-bold text-[#F3B43F]">
+                  <span className="pointer-events-none absolute -bottom-1 -left-1 rounded bg-black/80 px-1 text-[9px] font-bold text-[#F3B43F]">
                     +{instancia.refinamento}
+                  </span>
+                )}
+                {grupo.quantidade > 1 && (
+                  <span className="pointer-events-none absolute -bottom-1 -right-1 rounded bg-black/80 px-1 text-[9px] font-bold text-white">
+                    x{grupo.quantidade}
                   </span>
                 )}
 
@@ -216,6 +224,7 @@ export default function EquipmentPanel({ classe }: { classe?: string }) {
                   <span className="block text-[10px] font-bold leading-tight text-white">
                     {instancia.nome}
                     {instancia.refinamento > 0 && ` +${instancia.refinamento}`}
+                    {grupo.quantidade > 1 && ` (x${grupo.quantidade})`}
                   </span>
                   <span className="block text-[9px] text-white/50">
                     {instancia.tipo_item}
