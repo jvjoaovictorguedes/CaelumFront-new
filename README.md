@@ -1,36 +1,89 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Caelum — Frontend
 
-## Getting Started
+Cliente web do RPG Caelum. Next.js 15 (App Router) + React 19 +
+Tailwind, comunicando com o backend via REST (proxy same-origin) e
+Socket.IO (combate em grupo, PvP ao vivo, chat).
 
-First, run the development server:
+## Requisitos
+
+- Node.js 22+
+- O backend (`caelumback-new`) rodando — local ou apontando pra um
+  ambiente remoto via `NEXT_PUBLIC_API_URL`.
+
+## Setup local
 
 ```bash
+npm install
+cp .env.local.example .env.local   # e preencha as variáveis (ver abaixo)
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Abre em `http://localhost:3000`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Variáveis de ambiente
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Arquivo `.env.local` (não versionado — use `.env.local.example` como
+modelo).
 
-## Learn More
+| Variável | Obrigatória | Descrição |
+| --- | --- | --- |
+| `NEXT_PUBLIC_API_URL` | Sim | URL do backend, ex. `http://localhost:3001/api` em desenvolvimento. |
+| `NEXT_PUBLIC_GOOGLE_CLIENT_ID` | Não | Client ID OAuth 2.0 (tipo "Web application") do Google Cloud Console. Sem ela, o botão "Entrar com Google" simplesmente não aparece na tela de login. Precisa ser o **mesmo** Client ID configurado no `GOOGLE_CLIENT_ID` do backend. |
 
-To learn more about Next.js, take a look at the following resources:
+Como o próprio nome indica, tudo que começa com `NEXT_PUBLIC_` fica
+visível no navegador (Next.js embute no bundle) — nunca coloque
+segredo nenhum aqui.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Como as chamadas pro backend funcionam
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+No navegador, o app nunca chama o backend direto: ele chama
+`/api/backend/...` (uma rota da própria aplicação Next.js, ver
+`src/app/api/backend/[...path]`), que funciona como proxy same-origin
+e anexa o token JWT guardado num cookie `httpOnly` — assim o token
+nunca fica acessível a JavaScript do navegador. Em Server
+Components/Actions (rodando no servidor), o backend é chamado direto
+via `NEXT_PUBLIC_API_URL`.
 
-## Deploy on Vercel
+## Scripts
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+| Comando | O que faz |
+| --- | --- |
+| `npm run dev` | Sobe o servidor de desenvolvimento (Turbopack). |
+| `npm run build` | Build de produção. |
+| `npm start` | Serve o build de produção (rode `build` antes). |
+| `npm run lint` | ESLint (regras do Next.js). |
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Existe também CI (GitHub Actions, `.github/workflows/ci.yml`): a cada
+push/PR na `main`, roda `lint` e `build` automaticamente.
+
+## Arquitetura
+
+```
+src/
+  app/              — rotas (App Router). Cada pasta com page.tsx é uma tela.
+    login/register/create/classselection/  — fluxo antes do dashboard
+    dashboard/      — jogo em si, uma subpasta por sistema (ver abaixo)
+    api/backend/    — proxy same-origin pro backend (anexa o cookie de sessão)
+  components/       — componentes compartilhados entre várias telas
+  contexts/         — estado global via React Context (personagem, sockets, música...)
+  lib/api/          — chamadas HTTP organizadas por domínio
+  utils/            — helpers (axios configurado, sessão, URLs de mídia...)
+  constants/        — constantes compartilhadas (ex. faixas de música)
+middleware.ts       — protege rotas (redireciona quem não está logado/sem personagem)
+public/             — imagens, sprites, sons e ícones estáticos
+```
+
+### Telas do dashboard (`src/app/dashboard/*`)
+
+`adventure` (aventura PvE solo/grupo), `character` (ficha), `inventory`,
+`forge` (forja/refino), `market` (mercado entre jogadores), `shop`
+(loja), `expedition`, `guilds`, `pvp`, `ranking`, `quests` (missões),
+`map` (mapa do mundo), `bestiary`, `messages`, `profile`, `guide`,
+`admin` (painel administrativo).
+
+### Tempo real
+
+`contexts/PvpSocketContext.tsx` e `contexts/MessagesSocketContext.tsx`
+mantêm as conexões Socket.IO com o backend (combate em grupo, PvP ao
+vivo, boss de guilda, chat) e expõem o estado via hooks (`usePvpSocket`,
+etc.) pros componentes de cada tela.
