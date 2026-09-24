@@ -61,6 +61,7 @@ interface CurrentCharacterResponse {
   data?: {
     character?: CurrentCharacter;
     isAdmin?: boolean;
+    adminPermissions?: string[];
   };
 }
 
@@ -103,5 +104,21 @@ export async function isCurrentUserAdmin() {
     return Boolean(response.data?.data?.isAdmin);
   } catch {
     return false;
+  }
+}
+
+/**
+ * Permissões granulares do Painel Administrativo (só uma pista de UI —
+ * a autorização de verdade é sempre requireAdminPermission no backend,
+ * que relê o banco a cada request). Vazio pra quem não é isAdmin.
+ */
+export async function getCurrentAdminPermissions(): Promise<string[]> {
+  try {
+    const response = await axiosInstance.get<CurrentCharacterResponse>(
+      "/characters/me",
+    );
+    return response.data?.data?.adminPermissions ?? [];
+  } catch {
+    return [];
   }
 }

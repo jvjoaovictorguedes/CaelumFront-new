@@ -102,12 +102,15 @@ export default function NavMenu({
     // PvP), só o texto já diferencia. Só entra na lista pra quem é
     // admin de verdade (isAdmin vem de /characters/me); a rota em si
     // também é protegida (ver page.tsx), isso aqui é só visibilidade.
+    // Painel Administrativo consolidado — Torneios continua acessível a
+    // partir do hub (/dashboard/admin), não precisa de entrada própria
+    // no menu lateral.
     ...(isAdmin
       ? [
           {
-            name: "Admin: Torneios",
+            name: "Painel Administrativo",
             iconUrl: "/icons/duelo.png",
-            path: "/dashboard/admin/tournaments",
+            path: "/dashboard/admin",
           },
         ]
       : []),
