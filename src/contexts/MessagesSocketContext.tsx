@@ -155,8 +155,7 @@ export function MessagesSocketProvider({
   }, []);
 
   useEffect(() => {
-    const usaMocks = process.env.NEXT_PUBLIC_USE_MOCKS === "true";
-    if (!currentUserId || usaMocks) return;
+    if (!currentUserId) return;
 
     const baseUrl = socketUrlFromApiUrl(process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api");
     const socket = io(baseUrl, { transports: ["websocket", "polling"] });

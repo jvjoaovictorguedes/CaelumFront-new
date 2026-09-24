@@ -455,8 +455,7 @@ export function PvpSocketProvider({
   const [resultadoBossGuilda, setResultadoBossGuilda] = useState<BatalhaBossGuildaFimPayload | null>(null);
 
   useEffect(() => {
-    const usaMocks = process.env.NEXT_PUBLIC_USE_MOCKS === "true";
-    if (!characterId || usaMocks) return;
+    if (!characterId) return;
 
     const baseUrl = socketUrlFromApiUrl(
       process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api",

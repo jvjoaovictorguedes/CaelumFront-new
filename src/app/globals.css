@@ -197,8 +197,8 @@ body {
   animation: none;
 }
 
-/* Folhas de sprite 2D (Knight_1, Fire Wizard, Lightning Mage, Wanderer
-   Magican): cada frame é mostrado avançando background-position em passos
+/* Folhas de sprite 2D (Knight_1, Wanderer Magican, etc.): cada frame é
+   mostrado avançando background-position em passos
    discretos — duração e número de passos vêm inline por instância, ver
    AnimatedSpriteSheet.tsx.
    O "to" usa --sprite-end (setado por instância) em vez de 100% fixo: com

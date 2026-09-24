@@ -58,13 +58,10 @@ async function verificarSessao(request: NextRequest, token: string) {
 
 export async function middleware(request: NextRequest) {
   const token = request.cookies.get(TOKEN_KEY)?.value;
-  const useMocks = process.env.NEXT_PUBLIC_USE_MOCKS === "true";
 
-  const sessao = useMocks
-    ? { tokenValido: Boolean(token), hasCharacter: request.cookies.get("notCharacter")?.value === "false" }
-    : token
-      ? await verificarSessao(request, token)
-      : { tokenValido: false, hasCharacter: false };
+  const sessao = token
+    ? await verificarSessao(request, token)
+    : { tokenValido: false, hasCharacter: false };
 
   // Cookie presente mas o backend não aceita mais o token: trata como
   // deslogado (igual a não ter token nenhum) e limpa os cookies de

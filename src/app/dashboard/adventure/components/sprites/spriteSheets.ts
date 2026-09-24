@@ -25,10 +25,10 @@ export type SpriteSet = Record<EstadoSprite, SpriteFrame>;
 
 export interface SpriteCharacterConfig extends SpriteVisualConfig {
   animations: SpriteSet;
-  // false pra arte pintada/de alta resolução (ex.: "Mago Aventureiro",
-  // recortada de uma folha custom do jogador) — usa upscale suavizado
-  // em vez de "imageRendering: pixelated". Default true (mantém o
-  // visual blocado original dos packs de pixel art como Knight_1).
+  // false pra arte pintada/de alta resolução (recortada de uma folha
+  // custom) — usa upscale suavizado em vez de "imageRendering:
+  // pixelated". Default true (mantém o visual blocado original dos
+  // packs de pixel art como Knight_1).
   pixelArt?: boolean;
 }
 
@@ -112,122 +112,6 @@ export const SPRITE_CONFIGS: Record<string, SpriteCharacterConfig> = {
     },
   },
 
-  "Fire Wizard": {
-    scale: 1.55,
-    originX: "50%",
-    originY: "85%",
-    offsetX: 0,
-    offsetY: 0,
-
-    animations: {
-      idle: {
-        file: "Idle.png",
-        frames: 7,
-        fps: 7,
-      },
-
-      attack: {
-        file: "Attack_1.png",
-        frames: 4,
-        fps: 10,
-        scale: 1.58,
-        originX: "47%",
-        originY: "85%",
-      },
-
-      poder: {
-        file: "Fireball.png",
-        frames: 8,
-        fps: 10,
-        scale: 1.45,
-        originX: "50%",
-        originY: "82%",
-      },
-
-      hurt: {
-        file: "Hurt.png",
-        frames: 3,
-        fps: 8,
-      },
-
-      dead: {
-        file: "Dead.png",
-        frames: 6,
-        fps: 8,
-        loop: false,
-        scale: 1.48,
-        originX: "50%",
-        originY: "88%",
-        offsetY: 4,
-      },
-
-      victory: {
-        file: "Idle.png",
-        frames: 7,
-        fps: 7,
-        scale: 1.58,
-      },
-    },
-  },
-
-  "Lightning Mage": {
-    scale: 1.55,
-    originX: "50%",
-    originY: "85%",
-    offsetX: 0,
-    offsetY: 0,
-
-    animations: {
-      idle: {
-        file: "Idle.png",
-        frames: 7,
-        fps: 7,
-      },
-
-      attack: {
-        file: "Attack_2.png",
-        frames: 4,
-        fps: 10,
-        scale: 1.58,
-        originX: "48%",
-        originY: "85%",
-      },
-
-      poder: {
-        file: "Light_ball.png",
-        frames: 7,
-        fps: 10,
-        scale: 1.46,
-        originX: "50%",
-        originY: "82%",
-      },
-
-      hurt: {
-        file: "Hurt.png",
-        frames: 3,
-        fps: 8,
-      },
-
-      dead: {
-        file: "Dead.png",
-        frames: 5,
-        fps: 8,
-        loop: false,
-        scale: 1.48,
-        originX: "50%",
-        originY: "88%",
-        offsetY: 4,
-      },
-
-      victory: {
-        file: "Idle.png",
-        frames: 7,
-        fps: 7,
-        scale: 1.58,
-      },
-    },
-  },
-
   "Wanderer Magican": {
     scale: 1.6,
     originX: "50%",
@@ -283,59 +167,6 @@ export const SPRITE_CONFIGS: Record<string, SpriteCharacterConfig> = {
         frames: 8,
         fps: 7,
         scale: 1.62,
-      },
-    },
-  },
-
-  "Mago Aventureiro": {
-    // Arte pintada em alta resolução (recorte já vem justo, sem a
-    // sobra de fundo que os packs de pixel art costumam ter) — nada do
-    // scale 1.6 usado nos outros personagens, senão estoura pra fora
-    // da caixa. pixelArt:false troca o upscale "chapado" (nearest-
-    // neighbor) por suavizado, senão a ampliação vira bloco visível.
-    scale: 1.0,
-    originX: "50%",
-    originY: "88%",
-    offsetX: 0,
-    offsetY: 0,
-    pixelArt: false,
-
-    animations: {
-      idle: {
-        file: "Idle.png",
-        frames: 4,
-        fps: 6,
-      },
-
-      attack: {
-        file: "Attack_1.png",
-        frames: 5,
-        fps: 9,
-      },
-
-      poder: {
-        file: "Magic_arrow.png",
-        frames: 4,
-        fps: 8,
-      },
-
-      hurt: {
-        file: "Hurt.png",
-        frames: 3,
-        fps: 7,
-      },
-
-      dead: {
-        file: "Dead.png",
-        frames: 5,
-        fps: 6,
-        loop: false,
-      },
-
-      victory: {
-        file: "Victory.png",
-        frames: 1,
-        fps: 1,
       },
     },
   },

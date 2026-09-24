@@ -1,7 +1,5 @@
 import axios, { type AxiosInstance } from "axios";
-import { MockApiClient } from "./mock-api";
 
-const useMocks = process.env.NEXT_PUBLIC_USE_MOCKS === "true";
 const isServer = typeof window === "undefined";
 
 // No navegador, chama o proxy same-origin (/api/backend/...) em vez do
@@ -63,6 +61,6 @@ function criarInstanciaReal(): AxiosInstance {
   return instancia;
 }
 
-const axiosInstance = useMocks ? new MockApiClient() : criarInstanciaReal();
+const axiosInstance = criarInstanciaReal();
 
 export default axiosInstance;
