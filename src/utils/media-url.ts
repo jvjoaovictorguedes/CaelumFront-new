@@ -27,7 +27,11 @@ function normalize(value: string) {
 
 export function resolveMediaUrl(value?: string | null) {
   if (!value) return undefined;
-  if (value.startsWith("/images/") || value.startsWith("/icons/")) {
+  if (
+    value.startsWith("/images/") ||
+    value.startsWith("/icons/") ||
+    value.startsWith("/monstros_aventura/")
+  ) {
     return value;
   }
 
