@@ -10,6 +10,11 @@ import { MUSIC_PRIORITY, sortearFaixaCombate } from "@/constants/music";
 import CombatActionBar, {
   type ConsumivelAcao,
 } from "@/components/combat/CombatActionBar";
+import {
+  StatusIconsRow,
+  NOME_POR_STATUS,
+  type StatusKey,
+} from "@/components/combat/StatusEffectIcons";
 
 import { spriteFolderForClass, spriteForClass } from "./sprites/spriteForClass";
 import { resolveMediaUrl } from "@/utils/media-url";
@@ -156,7 +161,7 @@ interface FloatingText {
 // Cooldown/Balanceamento, §24/§37) — mesmo formato que o backend guarda
 // em encontro_pve.statusEffects e devolve em toda resposta de turno.
 interface StatusInstance {
-  key: "BURN" | "BLEED" | "POISON" | "SILENCE" | "WEAKEN" | "FREEZE" | "STUN" | "PARALYZE" | "BLIND";
+  key: StatusKey;
   remainingTurns: number;
   stacks: number;
   potency: number;
@@ -1035,7 +1040,9 @@ export default function CombatArena({
             manaAtual={manaAtual}
             manaMaxima={manaMaxima}
           />
-          <StatusIconsRow instancias={statusEffects.player} />
+          <div className="pointer-events-none absolute -top-5 left-1/2 z-10 flex -translate-x-1/2 gap-1">
+            <StatusIconsRow instancias={statusEffects.player} />
+          </div>
 
           <PlayerSprite
             className={`battle-sprite h-32 w-32 sm:h-48 sm:w-48 ${
@@ -1069,7 +1076,9 @@ export default function CombatArena({
             vidaAtual={enemy.vida_atual}
             vidaMaxima={enemy.vida_maxima}
           />
-          <StatusIconsRow instancias={statusEffects.enemy} />
+          <div className="pointer-events-none absolute -top-5 left-1/2 z-10 flex -translate-x-1/2 gap-1">
+            <StatusIconsRow instancias={statusEffects.enemy} />
+          </div>
 
           {fotoInimigoCombate ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -1357,64 +1366,24 @@ function BarraSobreCabeca({
           style={{ width: `${percentVida}%` }}
         />
       </div>
+      <span className="whitespace-nowrap text-[8px] font-bold text-red-300 sm:text-[9px]">
+        {Math.max(0, Math.round(vidaAtual))}/{vidaMaxima}
+      </span>
 
       {percentMana !== null && (
-        <div className="h-1 w-20 overflow-hidden rounded-full border border-black/50 bg-black/60 sm:w-24">
-          <div
-            className="h-full bg-blue-500 transition-[width] duration-300"
-            style={{ width: `${percentMana}%` }}
-          />
-        </div>
+        <>
+          <div className="h-1 w-20 overflow-hidden rounded-full border border-black/50 bg-black/60 sm:w-24">
+            <div
+              className="h-full bg-blue-500 transition-[width] duration-300"
+              style={{ width: `${percentMana}%` }}
+            />
+          </div>
+          <span className="whitespace-nowrap text-[8px] font-bold text-blue-300 sm:text-[9px]">
+            {Math.max(0, Math.round(manaAtual ?? 0))}/{manaMaxima}
+          </span>
+        </>
       )}
     </div>
   );
 }
 
-// Ícones de status (§41 — Especificação Consolidada Poder/Status/
-// Cooldown/Balanceamento): pequenos, com stacks e turnos restantes,
-// tooltip explica o efeito. Deliberadamente sem card pesado sobre a
-// arena.
-const ICONE_POR_STATUS: Record<StatusInstance["key"], string> = {
-  BURN: "🔥",
-  BLEED: "🩸",
-  POISON: "☠️",
-  SILENCE: "🔇",
-  WEAKEN: "🔻",
-  FREEZE: "🧊",
-  STUN: "💫",
-  PARALYZE: "⚡",
-  BLIND: "🌫️",
-};
-
-const NOME_POR_STATUS: Record<StatusInstance["key"], string> = {
-  BURN: "Queimadura",
-  BLEED: "Sangramento",
-  POISON: "Veneno",
-  SILENCE: "Silêncio",
-  WEAKEN: "Enfraquecimento",
-  FREEZE: "Congelamento",
-  STUN: "Atordoamento",
-  PARALYZE: "Paralisia",
-  BLIND: "Cegueira",
-};
-
-function StatusIconsRow({ instancias }: { instancias: StatusInstance[] }) {
-  if (instancias.length === 0) return null;
-  return (
-    <div className="pointer-events-none absolute -top-3 left-1/2 z-10 flex -translate-x-1/2 gap-1">
-      {instancias.map((instancia) => (
-        <span
-          key={instancia.key}
-          title={`${NOME_POR_STATUS[instancia.key]}${
-            instancia.stacks > 1 ? ` ×${instancia.stacks}` : ""
-          } — ${instancia.remainingTurns} turno(s) restante(s)`}
-          className="flex items-center gap-0.5 rounded-full bg-black/70 px-1 py-0.5 text-[9px] font-bold text-white shadow"
-        >
-          <span>{ICONE_POR_STATUS[instancia.key] ?? "•"}</span>
-          {instancia.stacks > 1 && <span>×{instancia.stacks}</span>}
-          <span className="text-[#F3B43F]">{instancia.remainingTurns}T</span>
-        </span>
-      ))}
-    </div>
-  );
-}

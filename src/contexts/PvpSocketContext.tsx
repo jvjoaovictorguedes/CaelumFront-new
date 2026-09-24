@@ -111,6 +111,15 @@ export interface RankedOponenteDesconectadoPayload {
   prazoSegundos: number;
 }
 
+// Motor de Status (mesmo formato de src/config/statusEffectConfig.js no
+// backend) — `stacks` só é > 1 pra BLEED/POISON (STACK_CAP), o resto
+// fica sempre em 1.
+export interface StatusInstanceDuelo {
+  key: "BURN" | "BLEED" | "POISON" | "SILENCE" | "WEAKEN" | "FREEZE" | "STUN" | "PARALYZE" | "BLIND";
+  remainingTurns: number;
+  stacks: number;
+}
+
 export interface TurnoResultadoPayload {
   duelId: number;
   atacante: "A" | "B";
@@ -119,6 +128,10 @@ export interface TurnoResultadoPayload {
   cura: number;
   manaCurada?: number;
   esquivou: boolean;
+  bloqueado?: boolean;
+  logStatus?: string[];
+  statusA?: StatusInstanceDuelo[];
+  statusB?: StatusInstanceDuelo[];
   vidaA: number;
   vidaB: number;
   manaA: number;
