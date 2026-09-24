@@ -137,7 +137,7 @@ export default function MarketClient({ characterId }: { characterId: number }) {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-end">
+      <div className="flex items-center justify-end rounded-2xl border border-white/10 bg-[#292018]/80 px-4 py-2">
         <p className="text-lg font-bold text-[#F3B43F]">
           Moedas: {character?.dinheiro ?? 0}
         </p>
