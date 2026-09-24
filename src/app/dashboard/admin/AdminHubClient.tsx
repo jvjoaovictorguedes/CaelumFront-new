@@ -15,18 +15,23 @@ interface CategoriaAdmin {
 }
 
 // Estrutura consolidada do Painel (Especificação Painel Administrativo
-// §4/§59). Módulo sem `href` ainda não tem tela própria — aparece como
-// "em breve" em vez de link quebrado; nenhum deles concede acesso por
-// si só, a permissão real é sempre checada de novo no backend quando a
-// tela existir.
+// §2/§4/§59, reorganizada na Fase 1 pra bater com as 5 categorias da
+// §2: Conteúdo/Jogadores/Economia/Eventos/Sistema — Torneios saiu de
+// Sistema e foi pra Eventos, junto do novo Buff Global). Módulo sem
+// `href` ainda não tem tela própria — aparece como "em breve" em vez de
+// link quebrado; nenhum deles concede acesso por si só, a permissão
+// real é sempre checada de novo no backend quando a tela existir.
 const CATEGORIAS: CategoriaAdmin[] = [
   {
     titulo: "Conteúdo",
     modulos: [
       { titulo: "Itens", descricao: "Criar, editar e desativar itens e propriedades.", href: "/dashboard/admin/items", permissao: "items.manage" },
-      { titulo: "Loja", descricao: "Disponibilidade e preços da Loja NPC." },
+      { titulo: "Conjuntos de Equipamentos", descricao: "Peças, thresholds e bônus de conjunto." },
+      { titulo: "Habilidades", descricao: "Catálogo de Habilidades (Power), vínculos e evolução 1-10." },
       { titulo: "Missões", descricao: "Missões livres, Guilda dos Aventureiros e Missões de Guilda." },
-      { titulo: "Aventura", descricao: "Monstros, zonas, aparição e loot." },
+      { titulo: "Aventura", descricao: "Zonas, monstros, aparição e loot." },
+      { titulo: "Balcão de Espólios", descricao: "Templates de Encomenda e Reputação Comercial." },
+      { titulo: "Caçadas", descricao: "Templates, dificuldades e Reputação de Caçador." },
       { titulo: "Mídia", descricao: "Upload e versionamento de assets." },
     ],
   },
@@ -47,9 +52,15 @@ const CATEGORIAS: CategoriaAdmin[] = [
     ],
   },
   {
+    titulo: "Eventos",
+    modulos: [
+      { titulo: "Buff Global", descricao: "XP/Ouro/Drop de Aventura e XP de Expedição, por tempo limitado." },
+      { titulo: "Torneios", descricao: "Criar, iniciar e encerrar torneios.", href: "/dashboard/admin/tournaments", permissao: "tournaments.manage" },
+    ],
+  },
+  {
     titulo: "Sistema",
     modulos: [
-      { titulo: "Torneios", descricao: "Criar, iniciar e encerrar torneios.", href: "/dashboard/admin/tournaments", permissao: "tournaments.manage" },
       { titulo: "Patch Notes", descricao: "Publicar atualizações sem migration." },
       { titulo: "Administradores", descricao: "Perfis e permissões.", href: "/dashboard/admin/administrators", permissao: "admins.manage" },
       { titulo: "Auditoria", descricao: "Histórico de ações administrativas.", href: "/dashboard/admin/audit", permissao: "audit.view" },

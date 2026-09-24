@@ -1287,7 +1287,11 @@ export default function CombatArena({
                   } else if (onDerrota) {
                     onDerrota();
                   } else {
-                    router.push("/dashboard");
+                    // Mesmo bug do botão de vitória (ver encerrarSessaoEIrPara
+                    // acima): sem encerrar a sessão no servidor, a próxima
+                    // vez que o jogador entrasse em Aventura caía direto no
+                    // mesmo encontro (já derrotado) em vez da seleção de zona.
+                    encerrarSessaoEIrPara("/dashboard");
                   }
                 }}
                 className="rounded-lg bg-[#BC8418] px-4 py-2 font-bold text-black hover:bg-[#a5710f]"
