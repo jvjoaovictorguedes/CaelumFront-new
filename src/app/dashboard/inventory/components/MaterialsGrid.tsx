@@ -54,8 +54,13 @@ export default function MaterialsGrid({ characterId }: { characterId: number }) 
       })
       .then((resp) => {
         if (cancelado) return;
+        // "Espolio" é o drop de monstro da Aventura (ver AdventureMonsterLoot)
+        // — sem essa categoria aqui, o item ficava só no banco: comprado no
+        // Mercado ou ganho em combate, mas invisível pro jogador no
+        // Inventário, já que só existe a aba "Materiais" pra tudo que é
+        // stackável e não-consumível.
         const materiais = (resp.data?.data?.inventory ?? []).filter(
-          (entrada) => entrada.Item.tipo_item === "Material",
+          (entrada) => entrada.Item.tipo_item === "Material" || entrada.Item.tipo_item === "Espolio",
         );
         setItens(materiais);
       })
@@ -78,13 +83,13 @@ export default function MaterialsGrid({ characterId }: { characterId: number }) 
     <div className="rounded-2xl border-2 border-[#F3B43F] bg-[#292018]/90 p-5 text-white shadow-xl">
       <div className="mb-3 flex justify-center">
         <p className="rounded-full border border-[#F3B43F]/50 bg-black/30 px-4 py-1 text-xs font-bold uppercase tracking-widest text-[#F3B43F]">
-          Materiais
+          Materiais e Espólios
         </p>
       </div>
 
       {itens.length === 0 ? (
         <p className="text-center text-sm text-white/50">
-          Você ainda não tem nenhum material — vença batalhas pra conseguir.
+          Você ainda não tem nenhum material ou espólio — vença batalhas pra conseguir.
         </p>
       ) : (
         <div className="grid grid-cols-4 gap-2 sm:grid-cols-7">

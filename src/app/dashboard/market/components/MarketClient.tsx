@@ -133,9 +133,16 @@ type Aba = "comprar" | "vender" | "meus-anuncios";
 
 export default function MarketClient({ characterId }: { characterId: number }) {
   const [aba, setAba] = useState<Aba>("comprar");
+  const { character } = useCharacter();
 
   return (
     <div className="flex flex-col gap-4">
+      <div className="flex items-center justify-end">
+        <p className="text-lg font-bold text-[#F3B43F]">
+          Moedas: {character?.dinheiro ?? 0}
+        </p>
+      </div>
+
       <div className="flex gap-2 overflow-x-auto rounded-2xl border border-white/10 bg-[#292018]/60 p-2">
         {(
           [
