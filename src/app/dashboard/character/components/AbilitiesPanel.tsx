@@ -97,7 +97,7 @@ function GradeDePoderes({
             type="button"
             onClick={() => onSelecionar(poder)}
             title={poder.nome}
-            className={`relative h-16 w-16 overflow-hidden rounded-lg border-2 bg-[#3a2f24] transition ${
+            className={`relative z-10 h-16 w-16 overflow-hidden rounded-lg border-2 bg-[#3a2f24] transition duration-150 hover:z-20 hover:scale-110 ${
               selecionadoId === poder.id_power
                 ? "border-[#F3B43F] ring-2 ring-[#F3B43F]/70"
                 : bloqueada

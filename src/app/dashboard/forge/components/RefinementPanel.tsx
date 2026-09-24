@@ -296,7 +296,7 @@ export default function RefinementPanel({ nivelForja, onProgressoMudou }: { nive
                     selecionadaAtual ? "border-[#F3B43F]" : `${bordaPorQualidade(instancia.raridade)} hover:border-[#F3B43F]/70`
                   } ${marcoVisual(instancia.refinamento)}`}
                 >
-                  <div className="h-12 w-12 shrink-0 overflow-hidden rounded-lg border border-white/10 bg-[#1c150f]">
+                  <div className="h-12 w-12 shrink-0 overflow-hidden rounded-lg border border-white/10 bg-[#1c150f] transition duration-150 hover:scale-125">
                     {src ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={src} alt={instancia.nome} className="h-full w-full object-contain p-1" />

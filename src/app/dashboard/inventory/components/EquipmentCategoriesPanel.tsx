@@ -297,7 +297,7 @@ export default function EquipmentCategoriesPanel() {
             {equipadoNoSlot && (
               <div className="mb-3 flex items-center justify-center gap-2">
                 <div
-                  className={`h-10 w-10 shrink-0 overflow-hidden rounded-lg border-2 bg-[#3a2f24] ${bordaPorRaridade(equipadoNoSlot.raridade)}`}
+                  className={`h-10 w-10 shrink-0 overflow-hidden rounded-lg border-2 bg-[#3a2f24] transition duration-150 hover:scale-125 ${bordaPorRaridade(equipadoNoSlot.raridade)}`}
                 >
                   <ItemThumb item={equipadoNoSlot} />
                 </div>
@@ -349,7 +349,7 @@ export default function EquipmentCategoriesPanel() {
                           : `${bordaPorRaridade(instancia.raridade)} hover:border-[#F3B43F]`
                       }`}
                     >
-                      <div className="h-full w-full overflow-hidden rounded-lg">
+                      <div className="h-full w-full overflow-hidden rounded-lg transition duration-150 group-hover:scale-110">
                         <ItemThumb item={instancia} />
                       </div>
                       {grupo.quantidade > 1 && (

@@ -97,7 +97,7 @@ export default function MaterialsGrid({ characterId }: { characterId: number }) 
             <div
               key={entrada.id_personagem_inventario}
               title={entrada.Item.nome}
-              className={`group relative h-16 w-16 overflow-hidden rounded-lg border-2 bg-[#3a2f24] ${
+              className={`group relative z-10 h-16 w-16 overflow-hidden rounded-lg border-2 bg-[#3a2f24] transition duration-150 hover:z-20 hover:scale-110 ${
                 CORES_RARIDADE[entrada.Item.raridade] ?? "border-white/20"
               }`}
             >

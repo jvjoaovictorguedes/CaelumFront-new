@@ -197,7 +197,7 @@ export default function EquipmentPanel({ classe }: { classe?: string }) {
                     clicarItemInventario(instancia.id);
                   }
                 }}
-                className={`group relative z-10 h-16 w-16 cursor-pointer select-none rounded-lg border-2 bg-[#3a2f24] transition-colors hover:z-20 ${
+                className={`group relative z-10 h-16 w-16 cursor-pointer select-none rounded-lg border-2 bg-[#3a2f24] transition hover:z-20 hover:scale-110 ${
                   selecionado
                     ? "border-[#F3B43F] ring-2 ring-[#F3B43F]/70"
                     : `${bordaPorRaridade(instancia.raridade)} hover:border-[#F3B43F]`

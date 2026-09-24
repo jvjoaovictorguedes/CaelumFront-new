@@ -411,7 +411,7 @@ export default function ExpeditionClient() {
         >
           {resultado.item_ganho ? (
             <div className="flex items-center gap-3">
-              <div className={`h-14 w-14 shrink-0 overflow-hidden rounded-lg border-2 bg-[#3a2f24] ${bordaPorRaridade(resultado.item_ganho.raridade)}`}>
+              <div className={`h-14 w-14 shrink-0 overflow-hidden rounded-lg border-2 bg-[#3a2f24] transition duration-150 hover:scale-125 ${bordaPorRaridade(resultado.item_ganho.raridade)}`}>
                 <ImagemItem
                   nome={resultado.item_ganho.nome}
                   imagem_url={resultado.item_ganho.imagem_url}
@@ -462,7 +462,7 @@ export default function ExpeditionClient() {
                     }`}
                   >
                     <div className="flex items-center gap-3">
-                      <div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg border border-white/10 bg-[#1c150f]">
+                      <div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg border border-white/10 bg-[#1c150f] transition duration-150 hover:scale-125">
                         <ImagemItem nome={regiao.nome} imagem_url={regiao.imagem_url} className="h-full w-full p-1.5" />
                       </div>
                       <div className="min-w-0">

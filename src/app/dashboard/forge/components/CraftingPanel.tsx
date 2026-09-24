@@ -361,7 +361,7 @@ export default function CraftingPanel({ onProgressoMudou }: { nivelForja: number
         className="rounded-2xl border-2 border-[#F3B43F] bg-[#292018]/90 p-5 text-white shadow-xl"
       >
         <div className="group relative mb-3 flex items-center gap-3">
-          <div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg border-2 border-[#F3B43F]/60 bg-[#3a2f24]">
+          <div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg border-2 border-[#F3B43F]/60 bg-[#3a2f24] transition duration-150 group-hover:scale-110">
             {src ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={src} alt={blueprint.nome} className="h-full w-full object-contain p-1.5" />

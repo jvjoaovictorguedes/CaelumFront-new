@@ -199,13 +199,13 @@ export default function BonecoDePapel({
             } ${aguardandoEscolha ? "cursor-pointer" : ""}`}
           >
             <div
-              className={`relative h-full w-full overflow-hidden rounded-lg border-2 transition-colors ${
+              className={`relative h-full w-full overflow-hidden rounded-lg border-2 transition duration-150 ${
                 aguardandoEscolha
                   ? "border-[#F3B43F] bg-[#3a2f24]"
                   : itemNoSlot
                     ? `${bordaPorRaridade(itemNoSlot.raridade)} bg-[#1c150f]`
                     : "border-dashed border-white/40 bg-black/60"
-              }`}
+              } ${itemNoSlot ? "hover:scale-110" : ""}`}
             >
               {itemNoSlot && <ItemThumb item={itemNoSlot} className="h-full w-full p-2" />}
               {itemNoSlot && itemNoSlot.refinamento > 0 && (

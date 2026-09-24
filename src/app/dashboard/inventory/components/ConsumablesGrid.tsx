@@ -122,7 +122,7 @@ export default function ConsumablesGrid({ characterId }: { characterId: number }
                     atual === entrada.id_personagem_inventario ? null : entrada.id_personagem_inventario,
                   )
                 }
-                className={`relative h-16 w-16 overflow-hidden rounded-lg border-2 bg-[#3a2f24] transition ${
+                className={`relative z-10 h-16 w-16 overflow-hidden rounded-lg border-2 bg-[#3a2f24] transition duration-150 hover:z-20 hover:scale-110 ${
                   selecionado === entrada.id_personagem_inventario
                     ? "border-[#F3B43F] ring-2 ring-[#F3B43F]/70"
                     : "border-[#F3B43F]/60 hover:border-[#F3B43F]"

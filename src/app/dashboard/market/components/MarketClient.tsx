@@ -117,7 +117,7 @@ const ICONE_POR_TIPO: Record<string, string> = {
 function IconeItem({ item }: { item: ItemApi }) {
   const imagemResolvida = resolveMediaUrl(item.imagem_url);
   return (
-    <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-black/30">
+    <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-black/30 transition duration-150 hover:scale-125">
       {imagemResolvida ? (
         <img src={imagemResolvida} alt={item.nome} className="h-full w-full object-contain p-1" />
       ) : (

@@ -155,7 +155,7 @@ export default function SmeltingPanel({
                         }`}
                       >
                         <div className="flex items-center gap-3">
-                          <div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg border border-white/10 bg-[#1c150f]">
+                          <div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg border border-white/10 bg-[#1c150f] transition duration-150 hover:scale-125">
                             {src ? (
                               // eslint-disable-next-line @next/next/no-img-element
                               <img src={src} alt={opcao.nome_barra} className="h-full w-full object-contain p-1.5" />
