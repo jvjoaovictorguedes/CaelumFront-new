@@ -108,6 +108,10 @@ export default function FishingClient() {
       mostrarInfo("Escolha uma zona de pesca primeiro.");
       return;
     }
+    if (!varaSelecionada) {
+      mostrarInfo("Você precisa de uma vara de pesca no inventário para pescar.");
+      return;
+    }
     setOcupado(true);
     try {
       const nova = await fishingApi.startSession(zonaSelecionada, varaSelecionada, iscaSelecionada);
@@ -229,13 +233,18 @@ export default function FishingClient() {
                 value={varaSelecionada ?? ""}
                 onChange={(e) => setVaraSelecionada(Number(e.target.value) || null)}
               >
-                <option value="">Sem vara (mãos livres)</option>
+                <option value="">Selecione uma vara…</option>
                 {varas.map((v) => (
                   <option key={v.id_instancia} value={v.id_instancia}>
                     {v.nome} +{v.refinamento}
                   </option>
                 ))}
               </select>
+              {varas.length === 0 && (
+                <p className="mt-1 text-xs text-amber-400">
+                  Você não tem nenhuma vara de pesca. Consegue uma na Forja.
+                </p>
+              )}
             </div>
             <div>
               <p className="mb-1 text-xs uppercase text-white/50">Isca</p>
@@ -255,7 +264,7 @@ export default function FishingClient() {
           </div>
           <button
             className="mt-4 rounded-lg bg-sky-700 px-4 py-2 font-semibold hover:bg-sky-600 disabled:opacity-50"
-            disabled={ocupado || !zonaSelecionada || zonaAtualId !== zonaSelecionada}
+            disabled={ocupado || !zonaSelecionada || zonaAtualId !== zonaSelecionada || !varaSelecionada}
             onClick={iniciarPesca}
           >
             Lançar sessão de pesca
