@@ -160,6 +160,7 @@ const TIPOS_ITEM = [
   "QuestItem",
   "Currencia",
   "Espolio",
+  "Ferramenta",
 ];
 const RARIDADES = ["Comum", "Incomum", "Raro", "Epico", "Lendario", "Mitico"];
 const TIPOS_DANO = ["Fisico", "Magico"];
