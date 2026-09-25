@@ -229,3 +229,26 @@ export async function duplicarPatchNoteAdmin(id: number): Promise<PatchNoteApi> 
   const resposta = await axiosInstance.post<{ data: { nota: PatchNoteApi } }>(`/admin/patch-notes/${id}/duplicate`);
   return resposta.data.data.nota;
 }
+
+// Painel Administrativo Fase 14 (§25) — Configurações do jogo (GameSetting).
+export interface GameSettingApi {
+  chave: string;
+  valor: unknown;
+  descricao: string | null;
+  tipo: "number" | "boolean" | "string" | "json";
+  editavel_admin: boolean;
+  updated_by_admin_id: number | null;
+}
+
+export async function listarGameSettingsAdmin(): Promise<GameSettingApi[]> {
+  const resposta = await axiosInstance.get<{ data: { settings: GameSettingApi[] } }>("/admin/settings");
+  return resposta.data.data.settings;
+}
+
+export async function salvarGameSettingAdmin(
+  chave: string,
+  payload: { valor: unknown; tipo: GameSettingApi["tipo"]; descricao?: string | null },
+): Promise<GameSettingApi> {
+  const resposta = await axiosInstance.put<{ data: { setting: GameSettingApi } }>(`/admin/settings/${chave}`, payload);
+  return resposta.data.data.setting;
+}

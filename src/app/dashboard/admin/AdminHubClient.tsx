@@ -48,7 +48,7 @@ const CATEGORIAS: CategoriaAdmin[] = [
     modulos: [
       { titulo: "Loja NPC", descricao: "Preços e disponibilidade." },
       { titulo: "Mercado P2P", descricao: "Moderar anúncios e ver histórico." },
-      { titulo: "Configurações", descricao: "Parâmetros econômicos (GameSetting)." },
+      { titulo: "Configurações", descricao: "Parâmetros econômicos (GameSetting).", href: "/dashboard/admin/settings", permissao: "economy.manage" },
     ],
   },
   {
