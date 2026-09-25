@@ -1175,3 +1175,172 @@ export async function obterTavernMetricasAdmin(): Promise<TavernMetricsApi> {
   const resposta = await axiosInstance.get<{ data: TavernMetricsApi }>("/admin/tavern/metrics");
   return resposta.data.data;
 }
+
+// Boss Global / Ameaça Mundial — Painel Administrativo (catálogo,
+// worldboss.manage) + operação do ciclo atual (events.manage).
+export interface WorldBossPhaseApi {
+  id?: number;
+  ordem: number;
+  nome_fase: string;
+  hp_percentual_max: number;
+  modificador_dano_percentual?: number;
+  texto_alerta?: string | null;
+}
+
+export interface WorldBossConfigApi {
+  id: number;
+  nome: string;
+  descricao: string;
+  lore: string | null;
+  imagem_url: string | null;
+  ativo: boolean;
+  peso_selecao: number;
+  vida_base: string;
+  defesa: number;
+  mensagem_descoberta: string;
+  mensagem_convocacao: string;
+  mensagem_fase_final: string | null;
+  mensagem_derrota: string | null;
+  id_item_golpe_final: number;
+  gold_descoberta: number;
+  gold_participacao: number;
+  xp_participacao: number;
+  min_dano_participacao: number | null;
+  fases: WorldBossPhaseApi[];
+  zonas: number[];
+}
+
+// A listagem (GET /configs) nunca carrega fases/zonas completas — só
+// a contagem, pra evitar N+1 no backend. GET /configs/:id (usado ao
+// abrir "Editar") é que devolve o WorldBossConfigApi completo.
+export interface WorldBossConfigListItemApi extends Omit<WorldBossConfigApi, "fases" | "zonas"> {
+  fases_count: number;
+  zonas_count: number;
+}
+
+export interface PayloadWorldBossConfigAdmin {
+  nome: string;
+  descricao: string;
+  lore?: string | null;
+  imagem_url?: string | null;
+  peso_selecao?: number;
+  vida_base: number;
+  defesa?: number;
+  mensagem_descoberta: string;
+  mensagem_convocacao: string;
+  mensagem_fase_final?: string | null;
+  mensagem_derrota?: string | null;
+  id_item_golpe_final: number;
+  gold_descoberta?: number;
+  gold_participacao?: number;
+  xp_participacao?: number;
+  min_dano_participacao?: number | null;
+  fases?: WorldBossPhaseApi[];
+  zonas?: number[];
+  ativo?: boolean;
+}
+
+export async function listarWorldBossConfigsAdmin(
+  filtros: { pagina?: number; porPagina?: number; ativo?: boolean; nome?: string } = {},
+): Promise<PaginaApi<WorldBossConfigListItemApi>> {
+  const resposta = await axiosInstance.get<{ data: PaginaApi<WorldBossConfigListItemApi> }>("/admin/world-boss/configs", { params: filtros });
+  return resposta.data.data;
+}
+export async function obterWorldBossConfigAdmin(id: number): Promise<WorldBossConfigApi> {
+  const resposta = await axiosInstance.get<{ data: { config: WorldBossConfigApi } }>(`/admin/world-boss/configs/${id}`);
+  return resposta.data.data.config;
+}
+export async function criarWorldBossConfigAdmin(payload: PayloadWorldBossConfigAdmin): Promise<WorldBossConfigApi> {
+  const resposta = await axiosInstance.post<{ data: { config: WorldBossConfigApi } }>("/admin/world-boss/configs", payload);
+  return resposta.data.data.config;
+}
+export async function atualizarWorldBossConfigAdmin(id: number, payload: Partial<PayloadWorldBossConfigAdmin>): Promise<WorldBossConfigApi> {
+  const resposta = await axiosInstance.patch<{ data: { config: WorldBossConfigApi } }>(`/admin/world-boss/configs/${id}`, payload);
+  return resposta.data.data.config;
+}
+export async function duplicarWorldBossConfigAdmin(id: number): Promise<WorldBossConfigApi> {
+  const resposta = await axiosInstance.post<{ data: { config: WorldBossConfigApi } }>(`/admin/world-boss/configs/${id}/duplicate`);
+  return resposta.data.data.config;
+}
+export async function desativarWorldBossConfigAdmin(id: number): Promise<WorldBossConfigApi> {
+  const resposta = await axiosInstance.post<{ data: { config: WorldBossConfigApi } }>(`/admin/world-boss/configs/${id}/deactivate`);
+  return resposta.data.data.config;
+}
+export async function reativarWorldBossConfigAdmin(id: number): Promise<WorldBossConfigApi> {
+  const resposta = await axiosInstance.post<{ data: { config: WorldBossConfigApi } }>(`/admin/world-boss/configs/${id}/reactivate`);
+  return resposta.data.data.config;
+}
+
+export interface WorldBossSettingsApi {
+  "worldboss.enabled": boolean;
+  "worldboss.cooldown_hours": number;
+  "worldboss.discovery_threshold_min": number;
+  "worldboss.discovery_threshold_max": number;
+  "worldboss.discovery_auto_awaken_seconds": number;
+  "worldboss.hp_broadcast_interval_ms": number;
+  "worldboss.leaderboard_limit": number;
+  "worldboss.participation_rewards_enabled": boolean;
+}
+
+export async function obterWorldBossSettingsAdmin(): Promise<WorldBossSettingsApi> {
+  const resposta = await axiosInstance.get<{ data: { settings: WorldBossSettingsApi } }>("/admin/world-boss/settings");
+  return resposta.data.data.settings;
+}
+export async function atualizarWorldBossSettingsAdmin(payload: Partial<WorldBossSettingsApi>): Promise<WorldBossSettingsApi> {
+  const resposta = await axiosInstance.patch<{ data: { settings: WorldBossSettingsApi } }>("/admin/world-boss/settings", payload);
+  return resposta.data.data.settings;
+}
+
+export interface WorldBossMetricsApi {
+  encontrosElegiveisPorHora: { window_start: string; encontros_elegiveis: number }[];
+  historico: {
+    id: number;
+    status: string;
+    nome: string | null;
+    discovered_at: string | null;
+    activated_at: string | null;
+    defeated_at: string | null;
+    discoverer_character_id: number | null;
+    final_blow_character_id: number | null;
+    participation_rewards_status: string;
+  }[];
+}
+
+export async function obterWorldBossMetricasAdmin(): Promise<WorldBossMetricsApi> {
+  const resposta = await axiosInstance.get<{ data: WorldBossMetricsApi }>("/admin/world-boss/metrics");
+  return resposta.data.data;
+}
+
+export interface WorldBossStatusOperacionalApi {
+  status: string;
+  id?: number;
+  id_world_boss_config?: number;
+  nome?: string | null;
+  hp_max?: number;
+  hp_current?: number;
+  discovery_threshold?: number | null;
+  discovery_progress?: number;
+  discoverer_character_id?: number | null;
+  discovery_zone_id?: number | null;
+  discovered_at?: string | null;
+  auto_awaken_at?: string | null;
+  activated_at?: string | null;
+  final_blow_character_id?: number | null;
+  defeated_at?: string | null;
+  next_eligible_at?: string | null;
+  participation_rewards_status?: string;
+}
+
+export async function obterWorldBossStatusOperacionalAdmin(): Promise<WorldBossStatusOperacionalApi> {
+  const resposta = await axiosInstance.get<{ data: WorldBossStatusOperacionalApi }>("/admin/world-boss/current/status");
+  return resposta.data.data;
+}
+export async function forcarDescobertaWorldBossAdmin(payload: { motivo: string; characterId?: number }): Promise<void> {
+  await axiosInstance.post("/admin/world-boss/current/force-discovery", payload);
+}
+export async function despertarWorldBossAdmin(payload: { motivo: string }): Promise<void> {
+  await axiosInstance.post("/admin/world-boss/current/awaken", payload);
+}
+export async function cancelarCicloWorldBossAdmin(payload: { motivo: string }): Promise<void> {
+  await axiosInstance.post("/admin/world-boss/current/cancel", payload);
+}
