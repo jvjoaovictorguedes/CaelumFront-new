@@ -748,11 +748,14 @@ export async function listarRacasPublicas(): Promise<RacePublicaApi[]> {
 // (multipart) NÃO passa por aqui — vai por uma Server Action própria
 // (ver uploadMediaAction.ts), porque o proxy genérico /api/backend
 // corrompe bytes binários lendo o corpo como texto. Tudo aqui é JSON.
+export type MediaAssetTipoApi = "imagem" | "audio";
+
 export interface MediaAssetApi {
   id: number;
   grupo: string;
   versao: number;
-  categoria: "Item" | "Power" | "Monster" | "EquipmentSet" | "Outro";
+  categoria: "Item" | "Power" | "Monster" | "EquipmentSet" | "Musica" | "Outro";
+  tipo: MediaAssetTipoApi;
   nome_arquivo_original: string | null;
   mime: string;
   tamanho_bytes: number;
@@ -766,7 +769,7 @@ export interface MediaAssetApi {
 }
 
 export async function listarMediaGruposAdmin(
-  filtros: { categoria?: string; nome?: string; pagina?: number; porPagina?: number } = {},
+  filtros: { categoria?: string; tipo?: MediaAssetTipoApi; nome?: string; pagina?: number; porPagina?: number } = {},
 ): Promise<{ total: number; pagina: number; porPagina: number; itens: MediaAssetApi[] }> {
   const resposta = await axiosInstance.get<{ data: { total: number; pagina: number; porPagina: number; itens: MediaAssetApi[] } }>(
     "/admin/media",
