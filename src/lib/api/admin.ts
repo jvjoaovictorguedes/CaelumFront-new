@@ -1813,3 +1813,66 @@ export async function atualizarFishingTournamentAdmin(id: number, payload: Parti
   const resposta = await axiosInstance.patch<{ data: { torneio: FishingTournamentAdminApi } }>(`/admin/fishing/tournaments/${id}`, payload);
   return resposta.data.data.torneio;
 }
+
+// Painel Administrativo — "Mercado P2P": moderar anúncios ativos e
+// consultar histórico de vendas.
+interface PessoaResumoApi {
+  id: number;
+  nome: string;
+}
+
+export interface MarketListingAdminApi {
+  id: number;
+  id_personagem_vendedor: number;
+  id_personagem_comprador: number | null;
+  id_item: number;
+  id_instancia: number | null;
+  quantidade_total: number;
+  quantidade_restante: number;
+  preco_unitario: number;
+  status: "Ativo" | "Vendido" | "Cancelado";
+  vendido_em: string | null;
+  cancelado_em: string | null;
+  createdAt: string;
+  item?: { id: number; nome: string; raridade: string; imagem_url: string | null };
+  vendedor?: PessoaResumoApi;
+  comprador?: PessoaResumoApi | null;
+}
+
+export async function listarMarketListingsAdmin(
+  filtros: { pagina?: number; porPagina?: number; status?: string; idItem?: number; vendedorId?: number } = {},
+): Promise<PaginaApi<MarketListingAdminApi>> {
+  const resposta = await axiosInstance.get<{ data: PaginaApi<MarketListingAdminApi> }>("/admin/market/listings", {
+    params: filtros,
+  });
+  return resposta.data.data;
+}
+
+export async function cancelarMarketListingAdmin(id: number, motivo: string): Promise<MarketListingAdminApi> {
+  const resposta = await axiosInstance.post<{ data: { listing: MarketListingAdminApi } }>(`/admin/market/listings/${id}/cancel`, { motivo });
+  return resposta.data.data.listing;
+}
+
+export interface MarketTransactionAdminApi {
+  id: number;
+  id_listing: number;
+  id_item: number;
+  quantidade: number;
+  preco_unitario: number;
+  preco_total: number;
+  taxa: number;
+  valor_liquido_vendedor: number;
+  createdAt: string;
+  item?: { id: number; nome: string; raridade: string; imagem_url: string | null };
+  vendedor?: PessoaResumoApi;
+  comprador?: PessoaResumoApi;
+}
+
+export async function listarMarketTransactionsAdmin(
+  filtros: { pagina?: number; porPagina?: number; idItem?: number; vendedorId?: number; compradorId?: number } = {},
+): Promise<PaginaApi<MarketTransactionAdminApi>> {
+  const resposta = await axiosInstance.get<{ data: PaginaApi<MarketTransactionAdminApi> }>("/admin/market/transactions", {
+    params: filtros,
+  });
+  return resposta.data.data;
+}
