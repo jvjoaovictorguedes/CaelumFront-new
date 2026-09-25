@@ -22,6 +22,14 @@ export default function ProgressionSummary({ progression }: { progression: Perfi
         label="Rank de Aventureiro"
         valor={`${progression.rank_aventureiro.rank} (${progression.rank_aventureiro.contratos_concluidos} contratos)`}
       />
+      <LinhaDeProgresso
+        label="Reputação Comercial"
+        valor={`${progression.reputacao_comercial.titulo} (${progression.reputacao_comercial.encomendas_concluidas} encomendas)`}
+      />
+      <LinhaDeProgresso
+        label="Reputação de Caçador"
+        valor={`${progression.reputacao_cacador.titulo} (${progression.reputacao_cacador.cacadas_concluidas} caçadas)`}
+      />
       <LinhaDeProgresso label="Forja" valor={`Nv. ${progression.forja.nivel}`} />
       <LinhaDeProgresso label="Mineração" valor={`Nv. ${progression.expedicao.mineracao}`} />
       <LinhaDeProgresso label="Silvicultura" valor={`Nv. ${progression.expedicao.silvicultura}`} />

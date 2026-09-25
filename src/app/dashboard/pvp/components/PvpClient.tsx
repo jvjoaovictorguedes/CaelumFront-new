@@ -258,7 +258,7 @@ export default function PvpClient({
                   return (
                     <div
                       key={oponente.id}
-                      className="flex items-center justify-between rounded-xl border border-white/10 bg-[#3a2f24] px-4 py-3"
+                      className="flex min-w-0 flex-col gap-2 rounded-xl border border-white/10 bg-[#3a2f24] px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
                     >
                       <div className="min-w-0 flex-1">
                         <p className="truncate font-bold text-[#F3B43F]">

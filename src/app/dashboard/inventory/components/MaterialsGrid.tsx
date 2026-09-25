@@ -94,29 +94,43 @@ export default function MaterialsGrid({ characterId }: { characterId: number }) 
       ) : (
         <div className="grid grid-cols-4 gap-2 sm:grid-cols-7">
           {itens.map((entrada) => (
-            <div
-              key={entrada.id_personagem_inventario}
-              title={entrada.Item.nome}
-              className={`group relative z-10 h-16 w-16 rounded-lg border-2 bg-[#3a2f24] transition duration-150 hover:z-20 hover:scale-110 ${
-                CORES_RARIDADE[entrada.Item.raridade] ?? "border-white/20"
-              }`}
-            >
-              <div className="h-full w-full overflow-hidden rounded-lg">
-                <ItemThumb item={entrada.Item} />
-              </div>
-              {/* Badge fora do wrapper com overflow-hidden acima — senão o
-                  offset negativo (-bottom-1/-right-1) fica cortado pelo
-                  próprio quadrado do item. */}
-              <span className="pointer-events-none absolute -bottom-1 -right-1 rounded bg-black/80 px-1 text-[9px] font-bold text-white">
-                x{entrada.quantidade}
-              </span>
-              <div className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-lg bg-black/85 p-1 text-center text-[10px] font-bold leading-tight opacity-0 transition-opacity group-hover:opacity-100">
-                {entrada.Item.nome}
-              </div>
-            </div>
+            <MaterialCard key={entrada.id_personagem_inventario} entrada={entrada} />
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+// Sem :hover no mobile o nome do material nunca aparecia por toque —
+// agora tocar no item também alterna ele (mesma ideia do tooltip de
+// atributos de equipamento, ver BonecoDePapel.tsx).
+function MaterialCard({ entrada }: { entrada: InventarioEntry }) {
+  const [aberto, setAberto] = useState(false);
+  return (
+    <div
+      onClick={() => setAberto((atual) => !atual)}
+      title={entrada.Item.nome}
+      className={`group relative z-10 h-16 w-16 cursor-pointer rounded-lg border-2 bg-[#3a2f24] transition duration-150 hover:z-20 hover:scale-110 ${
+        CORES_RARIDADE[entrada.Item.raridade] ?? "border-white/20"
+      }`}
+    >
+      <div className="h-full w-full overflow-hidden rounded-lg">
+        <ItemThumb item={entrada.Item} />
+      </div>
+      {/* Badge fora do wrapper com overflow-hidden acima — senão o
+          offset negativo (-bottom-1/-right-1) fica cortado pelo
+          próprio quadrado do item. */}
+      <span className="pointer-events-none absolute -bottom-1 -right-1 rounded bg-black/80 px-1 text-[9px] font-bold text-white">
+        x{entrada.quantidade}
+      </span>
+      <div
+        className={`pointer-events-none absolute inset-0 flex items-center justify-center rounded-lg bg-black/85 p-1 text-center text-[10px] font-bold leading-tight transition-opacity group-hover:opacity-100 ${
+          aberto ? "opacity-100" : "opacity-0"
+        }`}
+      >
+        {entrada.Item.nome}
+      </div>
     </div>
   );
 }

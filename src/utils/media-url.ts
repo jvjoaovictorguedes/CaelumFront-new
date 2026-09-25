@@ -30,7 +30,8 @@ export function resolveMediaUrl(value?: string | null) {
   if (
     value.startsWith("/images/") ||
     value.startsWith("/icons/") ||
-    value.startsWith("/monstros_aventura/")
+    value.startsWith("/monstros_aventura/") ||
+    value.startsWith("/habilidades_game/")
   ) {
     return value;
   }

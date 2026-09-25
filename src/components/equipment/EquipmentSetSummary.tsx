@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import type { EquipmentSetSummary as EquipmentSetSummaryType } from "@/types/equipmentSets";
 import EquipmentSetTooltip from "./EquipmentSetTooltip";
 
@@ -5,6 +8,10 @@ import EquipmentSetTooltip from "./EquipmentSetTooltip";
 // renderiza nada se o personagem não tiver nenhuma peça de conjunto
 // equipada — não é uma seção fixa da tela.
 export default function EquipmentSetSummary({ sets }: { sets: EquipmentSetSummaryType[] }) {
+  // Sem :hover no mobile o tooltip de bônus do conjunto nunca aparecia
+  // por toque — agora tocar no card também alterna ele.
+  const [aberto, setAberto] = useState<number | null>(null);
+
   if (sets.length === 0) return null;
 
   return (
@@ -16,7 +23,8 @@ export default function EquipmentSetSummary({ sets }: { sets: EquipmentSetSummar
           return (
             <div
               key={set.id}
-              className={`group relative rounded-lg border px-3 py-2 text-xs ${
+              onClick={() => setAberto((atual) => (atual === set.id ? null : set.id))}
+              className={`group relative cursor-pointer rounded-lg border px-3 py-2 text-xs ${
                 algumBonusAtivo ? "border-[#F3B43F]/70 bg-[#3a2c14]/60" : "border-white/15 bg-[#292018]/60"
               }`}
             >
@@ -27,7 +35,11 @@ export default function EquipmentSetSummary({ sets }: { sets: EquipmentSetSummar
                 {set.equippedPieces}/{set.totalPieces}
               </span>
 
-              <div className="pointer-events-none absolute bottom-full left-0 z-30 mb-2 opacity-0 transition-opacity group-hover:opacity-100">
+              <div
+                className={`pointer-events-none absolute bottom-full left-0 z-30 mb-2 transition-opacity group-hover:opacity-100 ${
+                  aberto === set.id ? "opacity-100" : "opacity-0"
+                }`}
+              >
                 <EquipmentSetTooltip set={set} />
               </div>
             </div>

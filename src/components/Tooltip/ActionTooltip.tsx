@@ -30,6 +30,10 @@ export default function ActionTooltip({
       className="relative inline-block"
       onMouseEnter={() => setVisivel(true)}
       onMouseLeave={() => setVisivel(false)}
+      // Sem mouse (celular) o hover nunca dispara — um toque rápido antes
+      // do clique de verdade (que continua executando a ação normalmente)
+      // já é suficiente pra mostrar o tooltip com custo/efeito do poder.
+      onTouchStart={() => setVisivel(true)}
     >
       {children}
       {visivel && (
