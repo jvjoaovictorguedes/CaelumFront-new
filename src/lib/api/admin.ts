@@ -1623,3 +1623,87 @@ export async function atualizarFishingAffinityAdmin(id: number, payload: Partial
   const resposta = await axiosInstance.patch<{ data: { afinidade: FishingAffinityAdminApi } }>(`/admin/fishing/affinities/${id}`, payload);
   return resposta.data.data.afinidade;
 }
+
+// Painel Administrativo — "Busca" (players.view) e "Inventário"
+// (players.manage). Busca é somente leitura; Inventário reaproveita o
+// mesmo fluxo de correção do backend (motivo obrigatório, auditado).
+export interface PlayerSearchResultApi {
+  id: number;
+  nome: string;
+  nivel: number;
+  dinheiro: number;
+  classe: string | null;
+  raca: string | null;
+  username: string | null;
+}
+
+export interface PlayerDetailApi {
+  id: number;
+  nome: string;
+  nivel: number;
+  experiencia: number;
+  dinheiro: number;
+  vida_atual: number;
+  mana_atual: number;
+  classe: string | null;
+  raca: string | null;
+  guilda: { id: number; nome: string; sigla: string } | null;
+  usuario: { id: number; username: string; email: string; criado_em: string } | null;
+}
+
+export async function buscarJogadoresAdmin(termo: string): Promise<PlayerSearchResultApi[]> {
+  const resposta = await axiosInstance.get<{ data: { personagens: PlayerSearchResultApi[] } }>("/admin/players/search", {
+    params: { termo },
+  });
+  return resposta.data.data.personagens;
+}
+
+export async function obterJogadorAdmin(id: number): Promise<PlayerDetailApi> {
+  const resposta = await axiosInstance.get<{ data: { personagem: PlayerDetailApi } }>(`/admin/players/${id}`);
+  return resposta.data.data.personagem;
+}
+
+export interface InventoryStackApi {
+  id_personagem_inventario: number;
+  id_item: number;
+  quantidade: number;
+  equipado: boolean;
+  itemEspolio?: { id: number; nome: string; tipo_item: string; raridade: string; imagem_url: string | null };
+}
+
+export interface InventoryEquipmentApi {
+  id: number;
+  id_item: number;
+  refinamento: number;
+  equipada: boolean;
+  estado: "Inventario" | "Equipada" | "Mercado";
+  item?: { id: number; nome: string; tipo_item: string; raridade: string; imagem_url: string | null };
+}
+
+export interface CharacterInventoryAdminApi {
+  personagem: { id: number; nome: string };
+  stacks: InventoryStackApi[];
+  equipamentos: InventoryEquipmentApi[];
+}
+
+export async function obterInventarioAdmin(idPersonagem: number): Promise<CharacterInventoryAdminApi> {
+  const resposta = await axiosInstance.get<{ data: CharacterInventoryAdminApi }>(`/admin/inventory/${idPersonagem}`);
+  return resposta.data.data;
+}
+
+export async function corrigirStackInventarioAdmin(
+  idPersonagem: number,
+  idItem: number,
+  quantidade: number,
+  motivo: string,
+): Promise<{ id_item: number; quantidade_antes: number; quantidade_depois: number }> {
+  const resposta = await axiosInstance.patch<{ data: { id_item: number; quantidade_antes: number; quantidade_depois: number } }>(
+    `/admin/inventory/${idPersonagem}/stack/${idItem}`,
+    { quantidade, motivo },
+  );
+  return resposta.data.data;
+}
+
+export async function removerEquipamentoInventarioAdmin(idInstancia: number, motivo: string): Promise<void> {
+  await axiosInstance.delete(`/admin/inventory/equipment/${idInstancia}`, { data: { motivo } });
+}
