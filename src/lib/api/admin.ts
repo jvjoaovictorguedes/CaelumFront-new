@@ -857,3 +857,61 @@ export async function duplicarMissaoGuildaAdmin(id: number): Promise<GuildMissio
   const resposta = await axiosInstance.post<{ data: { missao: GuildMissionApi } }>(`/admin/missions/guild/${id}/duplicate`);
   return resposta.data.data.missao;
 }
+
+// Painel Administrativo Fases 10/11 — Balcão de Espólios e Caçadas não
+// têm tabela de catálogo (conteúdo gerado em cima de Item/
+// AdventureMonster/AdventureZone já existentes). O que é administrável
+// é a config de dificuldade/reputação, guardada em GameSetting sob
+// rotas próprias (spoils.manage/hunts.manage).
+export interface SpoilReputationLevelApi {
+  nivel: number;
+  roman: string;
+  nome: string;
+  minimo: number;
+  multiplicador: number;
+  bonusFaixa: [number, number];
+}
+export interface SpoilConfigApi {
+  reputationLevels: SpoilReputationLevelApi[];
+  orderQuantityRanges: Record<string, [number, number]>;
+  orderReputationReward: number;
+  setBonusReputationReward: number;
+}
+export async function obterSpoilConfigAdmin(): Promise<SpoilConfigApi> {
+  const resposta = await axiosInstance.get<{ data: { config: SpoilConfigApi } }>("/admin/spoils/config");
+  return resposta.data.data.config;
+}
+export async function salvarSpoilConfigAdmin(payload: Partial<SpoilConfigApi>): Promise<SpoilConfigApi> {
+  const resposta = await axiosInstance.put<{ data: { config: SpoilConfigApi } }>("/admin/spoils/config", payload);
+  return resposta.data.data.config;
+}
+
+export interface HuntDifficultyApi {
+  nome: string;
+  ordem: number;
+  hpMultiplier: number;
+  damageMultiplier: number;
+  quantityRange: [number, number];
+  rewardMultiplier: number;
+  reputationReward: number;
+}
+export interface HuntReputationLevelApi {
+  nivel: number;
+  roman: string;
+  titulo: string;
+  minimo: number;
+  pool: string[];
+}
+export interface HuntConfigApi {
+  difficulties: Record<string, HuntDifficultyApi>;
+  reputationLevels: HuntReputationLevelApi[];
+  difficultyWeightsByReputation: Record<string, Record<string, number>>;
+}
+export async function obterHuntConfigAdmin(): Promise<HuntConfigApi> {
+  const resposta = await axiosInstance.get<{ data: { config: HuntConfigApi } }>("/admin/hunts/config");
+  return resposta.data.data.config;
+}
+export async function salvarHuntConfigAdmin(payload: Partial<HuntConfigApi>): Promise<HuntConfigApi> {
+  const resposta = await axiosInstance.put<{ data: { config: HuntConfigApi } }>("/admin/hunts/config", payload);
+  return resposta.data.data.config;
+}
