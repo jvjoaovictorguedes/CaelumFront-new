@@ -190,6 +190,59 @@ export async function revogarRoleAdmin(idUser: number, idRole: number): Promise<
   await axiosInstance.post("/admin/admins/revoke", { idUser, idRole });
 }
 
+// Painel Administrativo — Excluir Contas de Usuário (destrutivo,
+// permissão "users.delete" só SuperAdmin). Contas admin nunca aparecem
+// como excluíveis: o backend as protege incondicionalmente mesmo que o
+// id venha selecionado.
+export interface UsuarioAdminApi {
+  id: number;
+  username: string;
+  email: string;
+  isAdmin: boolean;
+  adminRoles: string[];
+  dataCriacao: string;
+  ultimoLogin: string | null;
+  personagens: { id: number; nome: string; nivel: number }[];
+}
+
+export interface PaginaUsuariosAdminApi {
+  total: number;
+  pagina: number;
+  porPagina: number;
+  totalPaginas: number;
+  usuarios: UsuarioAdminApi[];
+}
+
+export async function listarUsuariosAdmin(params: { busca?: string; pagina?: number; porPagina?: number }): Promise<PaginaUsuariosAdminApi> {
+  const resposta = await axiosInstance.get<{ data: PaginaUsuariosAdminApi }>("/admin/users", { params });
+  return resposta.data.data;
+}
+
+export async function listarIdsElegiveisUsuariosAdmin(busca?: string): Promise<number[]> {
+  const resposta = await axiosInstance.get<{ data: { ids: number[] } }>("/admin/users/eligible-ids", {
+    params: busca ? { busca } : undefined,
+  });
+  return resposta.data.data.ids;
+}
+
+export interface ResultadoExclusaoUsuarioApi {
+  id: number;
+  username?: string;
+  excluido: boolean;
+  motivo?: string;
+}
+
+export interface ResultadoExclusaoEmLoteApi {
+  total: number;
+  excluidos: number;
+  resultados: ResultadoExclusaoUsuarioApi[];
+}
+
+export async function excluirUsuariosEmLoteAdmin(ids: number[]): Promise<ResultadoExclusaoEmLoteApi> {
+  const resposta = await axiosInstance.post<{ data: ResultadoExclusaoEmLoteApi }>("/admin/users/bulk-delete", { ids });
+  return resposta.data.data;
+}
+
 // Painel Administrativo Fase 13 (§24) — Patch Notes sem migration.
 export interface PatchNoteApi {
   id: number;
@@ -1874,5 +1927,269 @@ export async function listarMarketTransactionsAdmin(
   const resposta = await axiosInstance.get<{ data: PaginaApi<MarketTransactionAdminApi> }>("/admin/market/transactions", {
     params: filtros,
   });
+  return resposta.data.data;
+}
+
+// ---------------------------------------------------------------------
+// Forja — Painel Administrativo (Especificacao_Painel_Admin_Forja).
+// forge.manage: blueprints/barras/pergaminhos. forge.balance: fundição/
+// fabricação/refinamento/progressão + métricas. Toda rota já é
+// protegida no backend; nada aqui concede acesso por si só.
+// ---------------------------------------------------------------------
+
+export const FORGE_CATEGORIAS = ["Arma", "Armadura", "Capacete", "Escudo", "Acessorio1", "Acessorio2", "Ferramenta"] as const;
+export type ForgeCategoria = (typeof FORGE_CATEGORIAS)[number];
+export const FORGE_QUALIDADES = ["Comum", "Incomum", "Raro", "Epico", "Lendario", "Mitico"] as const;
+export type ForgeQualidade = (typeof FORGE_QUALIDADES)[number];
+
+export interface ForgeIngredienteApi {
+  tipo_insumo: "Barra" | "RecursoExpedicao";
+  id_recurso: number;
+  quantidade_base: number;
+  recurso?: { id: number; nome: string; profissao: string };
+}
+
+export interface ForgeResultadoApi {
+  id_blueprint: number;
+  qualidade: ForgeQualidade;
+  id_item: number;
+  item?: { id: number; nome: string; imagem_url: string | null; raridade: string; tier_equipamento: number | null };
+}
+
+export interface ForgeBlueprintApi {
+  id: number;
+  nome: string;
+  categoria_equipamento: ForgeCategoria;
+  tier_equipamento: number | null;
+  multiplicador_tempo: number;
+  nivel_forja_minimo: number;
+  ativo: boolean;
+  ingredientes: ForgeIngredienteApi[];
+  resultados: ForgeResultadoApi[];
+}
+
+export interface ForgeBlueprintLinhaApi {
+  id: number;
+  nome: string;
+  categoria_equipamento: ForgeCategoria;
+  tier_equipamento: number | null;
+  nivel_forja_minimo: number;
+  multiplicador_tempo: number;
+  ativo: boolean;
+  resultados_count: number;
+  resultados_completos: boolean;
+  ingredientes_ok: boolean;
+}
+
+export interface ForgeAlertaValidacaoApi {
+  nivel: "ERRO" | "AVISO" | "INFORMACAO";
+  qualidade?: string;
+  mensagem: string;
+}
+
+export interface ForgeRelatorioValidacaoApi {
+  matrizIngredientes: Array<{
+    tipo_insumo: string;
+    id_recurso: number;
+    quantidade_base: number;
+    resolucao: Record<string, { id_item: number | null; nome?: string | null; imagem_url?: string | null; status: "OK" | "Ausente" }>;
+  }>;
+  resultadosValidacao: { completo: boolean; alertas: ForgeAlertaValidacaoApi[] };
+  podeAtivar: boolean;
+  motivos: string[];
+}
+
+export interface PayloadForgeBlueprintAdmin {
+  nome?: string;
+  categoria_equipamento?: ForgeCategoria;
+  tier_equipamento?: number;
+  multiplicador_tempo?: number;
+  nivel_forja_minimo?: number;
+  ingredientes?: { tipo_insumo: "Barra" | "RecursoExpedicao"; id_recurso: number; quantidade_base: number }[];
+  resultados?: Partial<Record<ForgeQualidade, number>>;
+}
+
+export async function listarForgeBlueprintsAdmin(
+  filtros: { pagina?: number; porPagina?: number; nome?: string; categoria?: string; tier?: number; nivelMinimo?: number; ativo?: boolean; incompletos?: boolean; ingredienteNaoResolvivel?: boolean } = {},
+): Promise<PaginaApi<ForgeBlueprintLinhaApi>> {
+  const resposta = await axiosInstance.get<{ data: PaginaApi<ForgeBlueprintLinhaApi> }>("/admin/forge/blueprints", { params: filtros });
+  return resposta.data.data;
+}
+export async function obterForgeBlueprintAdmin(id: number): Promise<{ blueprint: ForgeBlueprintApi } & ForgeRelatorioValidacaoApi> {
+  const resposta = await axiosInstance.get<{ data: { blueprint: ForgeBlueprintApi } & ForgeRelatorioValidacaoApi }>(`/admin/forge/blueprints/${id}`);
+  return resposta.data.data;
+}
+export async function criarForgeBlueprintAdmin(payload: PayloadForgeBlueprintAdmin): Promise<ForgeBlueprintApi> {
+  const resposta = await axiosInstance.post<{ data: { blueprint: ForgeBlueprintApi } }>("/admin/forge/blueprints", payload);
+  return resposta.data.data.blueprint;
+}
+export async function atualizarForgeBlueprintAdmin(id: number, payload: PayloadForgeBlueprintAdmin): Promise<ForgeBlueprintApi> {
+  const resposta = await axiosInstance.put<{ data: { blueprint: ForgeBlueprintApi } }>(`/admin/forge/blueprints/${id}`, payload);
+  return resposta.data.data.blueprint;
+}
+export async function duplicarForgeBlueprintAdmin(id: number): Promise<ForgeBlueprintApi> {
+  const resposta = await axiosInstance.post<{ data: { blueprint: ForgeBlueprintApi } }>(`/admin/forge/blueprints/${id}/duplicate`);
+  return resposta.data.data.blueprint;
+}
+export async function validarForgeBlueprintAdmin(id: number): Promise<ForgeRelatorioValidacaoApi> {
+  const resposta = await axiosInstance.post<{ data: ForgeRelatorioValidacaoApi }>(`/admin/forge/blueprints/${id}/validate`);
+  return resposta.data.data;
+}
+export async function ativarForgeBlueprintAdmin(id: number, motivo?: string): Promise<ForgeBlueprintApi> {
+  const resposta = await axiosInstance.post<{ data: { blueprint: ForgeBlueprintApi } }>(`/admin/forge/blueprints/${id}/activate`, { motivo });
+  return resposta.data.data.blueprint;
+}
+export async function desativarForgeBlueprintAdmin(id: number, motivo?: string): Promise<ForgeBlueprintApi> {
+  const resposta = await axiosInstance.post<{ data: { blueprint: ForgeBlueprintApi } }>(`/admin/forge/blueprints/${id}/deactivate`, { motivo });
+  return resposta.data.data.blueprint;
+}
+
+export interface ForgePreviewBlueprintApi {
+  blueprint: { id: number; nome: string; categoria_equipamento: string; tier_equipamento: number | null };
+  nivel_forja_simulado: number;
+  qualidade_base: string;
+  ingredientes: Array<{ tipo_insumo: string; nome_recurso?: string; quantidade_necessaria: number; id_item: number | null; nome_item: string | null; imagem_url: string | null }>;
+  chances_percentual_por_qualidade_final: Record<string, number>;
+  tempo_segundos: number;
+  item_resultado_qualidade_base: { id: number; nome: string; imagem_url: string | null; raridade: string } | null;
+}
+export async function previewForgeBlueprintAdmin(id: number, params: { nivelForja: number; qualidadeBase: string }): Promise<ForgePreviewBlueprintApi> {
+  const resposta = await axiosInstance.get<{ data: ForgePreviewBlueprintApi }>(`/admin/forge/blueprints/${id}/preview`, { params });
+  return resposta.data.data;
+}
+
+export interface ForgeRecursoApi {
+  id: number;
+  nome: string;
+  profissao: string;
+  ativo: boolean;
+}
+export async function listarForgeRecursosAdmin(profissao?: string): Promise<ForgeRecursoApi[]> {
+  const resposta = await axiosInstance.get<{ data: { recursos: ForgeRecursoApi[] } }>("/admin/forge/resources", { params: { profissao } });
+  return resposta.data.data.recursos;
+}
+
+export interface ForgeBarraLinhaApi {
+  id_recurso: number;
+  nome_recurso: string;
+  qualidades: Array<{ qualidade: ForgeQualidade; item: { id: number; nome: string; imagem_url: string | null; raridade: string } | null }>;
+}
+export async function listarForgeBarrasAdmin(): Promise<ForgeBarraLinhaApi[]> {
+  const resposta = await axiosInstance.get<{ data: { recursos: ForgeBarraLinhaApi[] } }>("/admin/forge/bars");
+  return resposta.data.data.recursos;
+}
+export async function salvarForgeBarraAdmin(idRecurso: number, qualidade: string, idItem: number) {
+  await axiosInstance.put(`/admin/forge/bars/${idRecurso}/${qualidade}`, { id_item: idItem });
+}
+export async function removerForgeBarraAdmin(idRecurso: number, qualidade: string) {
+  await axiosInstance.delete(`/admin/forge/bars/${idRecurso}/${qualidade}`, { data: { confirmar: true } });
+}
+
+export interface ForgeScrollApi {
+  id_item: number;
+  bonus_percentual: number;
+  nivel_forja_minimo: number;
+  tempo_segundos: number;
+  ativo: boolean;
+  excede_cap_sozinho?: boolean;
+  item?: { id: number; nome: string; imagem_url: string | null; raridade: string };
+  ingredientes: Array<{ id_item_material: number; quantidade: number; material?: { id: number; nome: string; imagem_url: string | null } }>;
+}
+export interface PayloadForgeScrollAdmin {
+  id_item?: number;
+  bonus_percentual: number;
+  nivel_forja_minimo: number;
+  tempo_segundos: number;
+  ingredientes?: { id_item_material: number; quantidade: number }[];
+}
+export async function listarForgeScrollsAdmin(ativo?: boolean): Promise<ForgeScrollApi[]> {
+  const resposta = await axiosInstance.get<{ data: { itens: ForgeScrollApi[] } }>("/admin/forge/scrolls", { params: { ativo } });
+  return resposta.data.data.itens;
+}
+export async function criarForgeScrollAdmin(payload: PayloadForgeScrollAdmin): Promise<ForgeScrollApi> {
+  const resposta = await axiosInstance.post<{ data: { scroll: ForgeScrollApi } }>("/admin/forge/scrolls", payload);
+  return resposta.data.data.scroll;
+}
+export async function atualizarForgeScrollAdmin(idItem: number, payload: Partial<PayloadForgeScrollAdmin>): Promise<ForgeScrollApi> {
+  const resposta = await axiosInstance.put<{ data: { scroll: ForgeScrollApi } }>(`/admin/forge/scrolls/${idItem}`, payload);
+  return resposta.data.data.scroll;
+}
+export async function duplicarForgeScrollAdmin(idItem: number, novoIdItem: number): Promise<ForgeScrollApi> {
+  const resposta = await axiosInstance.post<{ data: { scroll: ForgeScrollApi } }>(`/admin/forge/scrolls/${idItem}/duplicate`, { novo_id_item: novoIdItem });
+  return resposta.data.data.scroll;
+}
+export async function desativarForgeScrollAdmin(idItem: number): Promise<ForgeScrollApi> {
+  const resposta = await axiosInstance.post<{ data: { scroll: ForgeScrollApi } }>(`/admin/forge/scrolls/${idItem}/deactivate`);
+  return resposta.data.data.scroll;
+}
+export async function reativarForgeScrollAdmin(idItem: number): Promise<ForgeScrollApi> {
+  const resposta = await axiosInstance.post<{ data: { scroll: ForgeScrollApi } }>(`/admin/forge/scrolls/${idItem}/reactivate`);
+  return resposta.data.data.scroll;
+}
+
+export interface ForgeBalanceGrupoApi<T = Record<string, unknown>> {
+  atual: T;
+  padrao: T;
+}
+export interface ForgeBalanceCompletoApi {
+  "forge.smelting": ForgeBalanceGrupoApi;
+  "forge.crafting": ForgeBalanceGrupoApi;
+  "forge.refinement": ForgeBalanceGrupoApi;
+  "forge.progression": ForgeBalanceGrupoApi;
+}
+export async function obterForgeBalanceAdmin(): Promise<ForgeBalanceCompletoApi> {
+  const resposta = await axiosInstance.get<{ data: ForgeBalanceCompletoApi }>("/admin/forge/balance");
+  return resposta.data.data;
+}
+export async function atualizarForgeBalanceAdmin(grupo: string, valores: Record<string, unknown>): Promise<ForgeBalanceGrupoApi> {
+  const resposta = await axiosInstance.put<{ data: ForgeBalanceGrupoApi }>(`/admin/forge/balance/${grupo}`, valores);
+  return resposta.data.data;
+}
+
+export interface ForgeSimulacaoRefinamentoApi {
+  alvo: number;
+  garantido: boolean;
+  chance_base_percentual: number;
+  bonus_forja_percentual: number;
+  bonus_pergaminho_percentual: number;
+  chance_final_percentual: number;
+  cap_percentual: number;
+  custo_gold: number;
+  materiais: Array<{ papel: string; quantidade: number; nome: string | null; imagem_url: string | null }>;
+  xp_sucesso: number;
+  xp_falha: number;
+  bonus_atributo_apos_sucesso_percentual: number | null;
+  pergaminho_aplicado: { id_item: number; nome: string; bonus_percentual: number } | null;
+}
+export async function previewForgeRefinamentoAdmin(payload: { categoria: string; qualidade: string; refinamentoAtual: number; nivelForja: number; idItemPergaminho?: number | null; tierEquipamento?: number }): Promise<ForgeSimulacaoRefinamentoApi> {
+  const resposta = await axiosInstance.post<{ data: ForgeSimulacaoRefinamentoApi }>("/admin/forge/balance/preview-refinement", payload);
+  return resposta.data.data;
+}
+
+export interface ForgeImpactoProgressaoApi {
+  total_personagens: number;
+  personagens_sobem: number;
+  personagens_descem: number;
+  distribuicao_antes: Record<string, number>;
+  distribuicao_depois: Record<string, number>;
+  blueprints_potencialmente_afetados: Array<{ id: number; nome: string; nivel_forja_minimo: number }>;
+  curva_xp_total_nova: Record<string, number>;
+}
+export async function previewForgeImpactoProgressaoAdmin(XP_NECESSARIO_POR_ETAPA: Record<string, number>): Promise<ForgeImpactoProgressaoApi> {
+  const resposta = await axiosInstance.post<{ data: ForgeImpactoProgressaoApi }>("/admin/forge/balance/preview-progression-impact", { XP_NECESSARIO_POR_ETAPA });
+  return resposta.data.data;
+}
+
+export interface ForgeMetricasApi {
+  porTipo24h: Array<{ tipo_acao: string; total: number }>;
+  porTipo7d: Array<{ tipo_acao: string; total: number }>;
+  fabricacoesPorBlueprint: Array<{ id_blueprint: number | null; nome: string | null; total: number; com_upgrade_qualidade: number }>;
+  fundicaoPorRecursoQualidade: Array<{ id_recurso: number; qualidade_base: string; total: number }>;
+  refinoPorAlvo: Array<{ alvo: number; tentativas: number; taxa_sucesso_observada: number }>;
+  pergaminhosUsados: Array<{ id_item_pergaminho: number; nome: string | null; total: number }>;
+  goldRemovido: { gold_removido_24h: number; gold_removido_7d: number; gold_removido_total: number };
+}
+export async function obterForgeMetricasAdmin(): Promise<ForgeMetricasApi> {
+  const resposta = await axiosInstance.get<{ data: ForgeMetricasApi }>("/admin/forge/metrics");
   return resposta.data.data;
 }

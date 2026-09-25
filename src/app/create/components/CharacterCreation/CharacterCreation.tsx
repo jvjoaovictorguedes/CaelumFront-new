@@ -377,7 +377,7 @@ export default function CharacterCreation() {
       id_classe: selectedClasses,
       nivel: 1,
       experiencia: 0,
-      dinheiro: 15,
+      dinheiro: 500,
       // Só relevante se a classe escolhida for a rara sorteada — o
       // backend ignora este campo pra qualquer classe comum.
       ticket_classe_rara: classeEscolhida?.raro ? (rareClassTicket ?? undefined) : undefined,
