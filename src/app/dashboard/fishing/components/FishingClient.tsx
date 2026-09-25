@@ -152,7 +152,8 @@ export default function FishingClient() {
       setSessao(atualizada);
       if (atualizada.fase === "CAUGHT" && atualizada.resultado) {
         const r = atualizada.resultado;
-        mostrarSucesso(`Capturou um peixe de ${r.weight_g}g! +${r.xp} XP de Pesca.${r.primeira_descoberta ? " Nova espécie descoberta!" : ""}`);
+        const nomePeixe = r.nome_especie ?? "peixe";
+        mostrarSucesso(`Você capturou: ${nomePeixe} (${r.weight_g}g)! +${r.xp} XP de Pesca.${r.primeira_descoberta ? " Nova espécie descoberta!" : ""}`);
       } else if (atualizada.fase === "WAITING_BITE" && sessao?.fase !== "WAITING_BITE") {
         mostrarInfo("Linha lançada! Fique de olho e continue clicando em \"Fisgar!\" até o peixe morder.");
       } else if (FASES_TERMINAIS.has(atualizada.fase) && atualizada.fase !== "CAUGHT") {
@@ -448,7 +449,7 @@ function FishingArena({
         <div>
           {sessao.fase === "CAUGHT" ? (
             <p className="text-green-400">
-              Peixe capturado! Peso: {sessao.resultado?.weight_g}g · Qualidade:{" "}
+              Você capturou: <span className="font-bold">{sessao.resultado?.nome_especie ?? "peixe"}</span> · Peso: {sessao.resultado?.weight_g}g · Qualidade:{" "}
               {sessao.resultado?.quality != null ? `${Math.round(sessao.resultado.quality * 100)}%` : "-"} · +{sessao.resultado?.xp} XP
             </p>
           ) : (

@@ -73,6 +73,7 @@ export interface SessaoPesca {
   resultado?: {
     resultado?: string;
     motivo?: string;
+    nome_especie?: string;
     weight_g?: number;
     quality?: number;
     xp?: number;
