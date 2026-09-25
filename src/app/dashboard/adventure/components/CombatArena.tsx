@@ -487,7 +487,20 @@ export default function CombatArena({
     } catch (error) {
       console.error("Erro ao sair da área de caça:", error);
     } finally {
+      // `rota` costuma ser a MESMA /dashboard/adventure que já está
+      // montada (CombatArena vive dentro dela) — o App Router trata
+      // push pra URL atual como no-op e não re-executa o Server
+      // Component, então a tela ficava presa na luta mesmo depois do
+      // servidor já ter zerado encontro_pve/sessão (bug reportado:
+      // "Sair mesmo assim" não voltava pra lista de zonas, e só ao
+      // clicar Atacar — que aí sim batia num 404 "Nenhum combate
+      // ativo" e forçava o router.refresh() do catch abaixo — a tela
+      // finalmente atualizava). router.refresh() força o Server
+      // Component da rota atual a buscar os dados de novo sempre,
+      // então cobre tanto o caso de push pra mesma rota quanto pra uma
+      // rota diferente (ex.: "Sair para a página principal" → /dashboard).
       router.push(rota);
+      router.refresh();
     }
   }
 
