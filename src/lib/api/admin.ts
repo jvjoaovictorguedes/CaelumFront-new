@@ -36,6 +36,15 @@ export interface ConsumablePropertiesApi {
   duracao_efeito?: number | null;
 }
 
+export interface FishingRodPropertiesApi {
+  forca_linha: number;
+  controle: number;
+  recolhimento: number;
+  precisao: number;
+  estabilidade: number;
+  nivel_pesca_minimo: number;
+}
+
 export interface AdminItemApi {
   id: number;
   nome: string;
@@ -53,6 +62,7 @@ export interface AdminItemApi {
   weaponProperties?: WeaponPropertiesApi | null;
   armorProperties?: ArmorPropertiesApi | null;
   consumableProperties?: ConsumablePropertiesApi | null;
+  fishingRodProperties?: FishingRodPropertiesApi | null;
 }
 
 interface PaginaApi<T> {
@@ -95,6 +105,7 @@ export interface PayloadItemAdmin {
   weapon?: Partial<WeaponPropertiesApi>;
   armor?: Partial<ArmorPropertiesApi>;
   consumable?: Partial<ConsumablePropertiesApi>;
+  fishingRod?: Partial<FishingRodPropertiesApi>;
 }
 
 export async function criarItemAdmin(payload: PayloadItemAdmin): Promise<AdminItemApi> {
