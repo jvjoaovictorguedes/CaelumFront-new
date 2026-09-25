@@ -3,16 +3,150 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import {
+  adicionarWeaponStatusEffectAdmin,
   atualizarItemAdmin,
+  atualizarWeaponStatusEffectAdmin,
+  catalogoStatusAdmin,
   criarItemAdmin,
   desativarItemAdmin,
   duplicarItemAdmin,
   listarItensAdmin,
+  listarWeaponStatusEffectsAdmin,
   mensagemDeErroAdmin,
   reativarItemAdmin,
+  removerWeaponStatusEffectAdmin,
   type AdminItemApi,
   type PayloadItemAdmin,
+  type StatusCatalogEntryApi,
+  type WeaponStatusEffectApi,
 } from "@/lib/api/admin";
+
+// Painel Administrativo Fase 6 — WeaponStatusEffect (Evolução do Motor de
+// Status §12.1): status que armas aplicam ao acertar. v1 do motor só
+// dispara em BASIC_ATTACK_HIT (nenhuma outra opção deve aparecer aqui).
+function WeaponStatusEffectsEditor({ idItem, catalogo }: { idItem: number; catalogo: StatusCatalogEntryApi[] }) {
+  const [efeitos, setEfeitos] = useState<WeaponStatusEffectApi[]>([]);
+  const [carregando, setCarregando] = useState(true);
+  const [erro, setErro] = useState("");
+
+  const [statusKey, setStatusKey] = useState(catalogo[0]?.status_key ?? "");
+  const [chancePct, setChancePct] = useState(10);
+  const [duracao, setDuracao] = useState(1);
+  const [potenciaBase, setPotenciaBase] = useState(0);
+  const [adicionando, setAdicionando] = useState(false);
+
+  const carregar = useCallback(async () => {
+    setCarregando(true);
+    setErro("");
+    try {
+      setEfeitos(await listarWeaponStatusEffectsAdmin(idItem));
+    } catch (error) {
+      setErro(mensagemDeErroAdmin(error, "Não foi possível carregar os efeitos da arma."));
+    } finally {
+      setCarregando(false);
+    }
+  }, [idItem]);
+
+  useEffect(() => {
+    carregar();
+  }, [carregar]);
+
+  async function adicionar() {
+    setAdicionando(true);
+    setErro("");
+    try {
+      await adicionarWeaponStatusEffectAdmin(idItem, {
+        status_key: statusKey,
+        trigger: "BASIC_ATTACK_HIT",
+        chance_ppm: Math.round((chancePct / 100) * 1_000_000),
+        duration_turns: duracao,
+        potency_base: potenciaBase,
+      });
+      setPotenciaBase(0);
+      await carregar();
+    } catch (error) {
+      setErro(mensagemDeErroAdmin(error, "Não foi possível adicionar o efeito."));
+    } finally {
+      setAdicionando(false);
+    }
+  }
+
+  async function alternarAtivo(efeito: WeaponStatusEffectApi) {
+    setErro("");
+    try {
+      await atualizarWeaponStatusEffectAdmin(idItem, efeito.id, { ativo: !efeito.ativo });
+      await carregar();
+    } catch (error) {
+      setErro(mensagemDeErroAdmin(error, "Não foi possível atualizar o efeito."));
+    }
+  }
+
+  async function remover(idEfeito: number) {
+    setErro("");
+    try {
+      await removerWeaponStatusEffectAdmin(idItem, idEfeito);
+      await carregar();
+    } catch (error) {
+      setErro(mensagemDeErroAdmin(error, "Não foi possível remover o efeito."));
+    }
+  }
+
+  return (
+    <fieldset className="flex flex-col gap-2 rounded-lg border border-white/10 p-3">
+      <legend className="px-1 text-xs font-bold uppercase text-[#F3B43F]">Efeitos ao acertar (status de arma)</legend>
+      {erro && <p className="rounded-lg bg-black/50 px-2 py-1 text-xs text-red-400">{erro}</p>}
+      {carregando ? (
+        <p className="text-xs text-white/50">Carregando...</p>
+      ) : (
+        efeitos.map((efeito) => (
+          <div key={efeito.id} className="flex items-center justify-between rounded-lg bg-black/20 px-2 py-1 text-xs">
+            <span className={efeito.ativo ? "" : "text-white/40"}>
+              {catalogo.find((c) => c.status_key === efeito.status_key)?.nomeUi ?? efeito.status_key} · {(efeito.chance_ppm / 10000).toFixed(1)}% · {efeito.duration_turns} turno(s)
+              {efeito.potency_base ? ` · potência ${efeito.potency_base}` : ""}
+            </span>
+            <div className="flex gap-2">
+              <button type="button" onClick={() => alternarAtivo(efeito)} className="text-white/70 hover:underline">
+                {efeito.ativo ? "Desativar" : "Ativar"}
+              </button>
+              <button type="button" onClick={() => remover(efeito.id)} className="text-red-400 hover:underline">
+                Remover
+              </button>
+            </div>
+          </div>
+        ))
+      )}
+      {/* <form> não pode aninhar dentro do <form> de edição do item (HTML
+          inválido — o navegador descarta a tag e o botão "+ Efeito"
+          acaba enviando o form externo, fechando o modal). Por isso é um
+          <div> com botão type="button" chamando adicionar() direto. */}
+      <div className="flex flex-wrap items-end gap-2 pt-1">
+        <select value={statusKey} onChange={(e) => setStatusKey(e.target.value)} className="rounded-lg border border-white/20 bg-black/30 px-2 py-1 text-xs">
+          {catalogo.map((c) => (
+            <option key={c.status_key} value={c.status_key}>
+              {c.nomeUi}
+            </option>
+          ))}
+        </select>
+        <label className="flex flex-col gap-1 text-[10px] text-white/60">
+          Chance (%)
+          <input type="number" min={0.1} max={100} step="0.1" value={chancePct} onChange={(e) => setChancePct(Number(e.target.value))} className="w-20 rounded-lg border border-white/20 bg-black/30 px-2 py-1 text-xs" />
+        </label>
+        <label className="flex flex-col gap-1 text-[10px] text-white/60">
+          Duração (turnos)
+          <input type="number" min={1} value={duracao} onChange={(e) => setDuracao(Number(e.target.value))} className="w-16 rounded-lg border border-white/20 bg-black/30 px-2 py-1 text-xs" />
+        </label>
+        <label className="flex flex-col gap-1 text-[10px] text-white/60">
+          Potência base
+          <input type="number" step="0.1" value={potenciaBase} onChange={(e) => setPotenciaBase(Number(e.target.value))} className="w-20 rounded-lg border border-white/20 bg-black/30 px-2 py-1 text-xs" />
+        </label>
+        <button type="button" onClick={adicionar} disabled={adicionando} className="rounded-lg bg-[#BC8418] px-3 py-1 text-xs font-bold text-black hover:bg-[#a5710f] disabled:opacity-50">
+          + Efeito
+        </button>
+      </div>
+      <p className="text-[10px] text-white/40">Dispara só em ataque básico (trigger fixo — motor de combate hoje não suporta outro gatilho).</p>
+    </fieldset>
+  );
+}
 
 const TIPOS_ITEM = [
   "Consumivel",
@@ -76,6 +210,13 @@ export default function AdminItemsClient() {
   const [form, setForm] = useState<PayloadItemAdmin>(formularioVazio());
   const [salvando, setSalvando] = useState(false);
   const [mostrarForm, setMostrarForm] = useState(false);
+  const [catalogoStatus, setCatalogoStatus] = useState<StatusCatalogEntryApi[]>([]);
+
+  useEffect(() => {
+    catalogoStatusAdmin()
+      .then(setCatalogoStatus)
+      .catch(() => {});
+  }, []);
 
   const carregar = useCallback(async () => {
     setCarregando(true);
@@ -578,6 +719,10 @@ export default function AdminItemsClient() {
                   </label>
                 </div>
               </fieldset>
+            )}
+
+            {TIPOS_COM_ARMA.includes(tipoAtual) && editandoId && (
+              <WeaponStatusEffectsEditor idItem={editandoId} catalogo={catalogoStatus} />
             )}
 
             {TIPOS_COM_ARMADURA.includes(tipoAtual) && (

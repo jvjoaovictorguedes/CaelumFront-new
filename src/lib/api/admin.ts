@@ -437,3 +437,241 @@ export async function listarEfeitosEquipmentSetAdmin(): Promise<string[]> {
   const resposta = await axiosInstance.get<{ data: { efeitos: string[] } }>("/admin/equipment-sets/effects");
   return resposta.data.data.efeitos;
 }
+
+// Painel Administrativo Fases 5/6/7 — Habilidades (Power), vínculos
+// Classe/Raça, PowerStatusEffect/WeaponStatusEffect e previews.
+export interface PowerStatusEffectApi {
+  id: number;
+  id_power: number;
+  status_key: string;
+  chance_ppm: number;
+  duration_turns: number;
+  potency_base: number;
+  potency_scale_attribute: "Forca" | "Vitalidade" | "Agilidade" | "Inteligencia" | "Velocidade" | null;
+  potency_scale_value: number;
+  target: "Self" | "Enemy";
+  ativo: boolean;
+}
+
+export interface PowerApi {
+  id: number;
+  nome: string;
+  descricao: string;
+  tipo_poder: "Ativo" | "Passivo";
+  custo_mana: number;
+  dano_base: number | null;
+  cura_base: number | null;
+  cooldown: number | null;
+  escala_atributo: "Forca" | "Vitalidade" | "Agilidade" | "Inteligencia" | "Velocidade";
+  valor_escala: number;
+  imagem_url: string | null;
+  efeitosDeStatus?: PowerStatusEffectApi[];
+}
+
+export interface PayloadPowerAdmin {
+  nome: string;
+  descricao: string;
+  tipo_poder: "Ativo" | "Passivo";
+  custo_mana?: number;
+  dano_base?: number | null;
+  cura_base?: number | null;
+  cooldown?: number | null;
+  escala_atributo: "Forca" | "Vitalidade" | "Agilidade" | "Inteligencia" | "Velocidade";
+  valor_escala?: number;
+  imagem_url?: string | null;
+}
+
+export async function listarPowersAdmin(
+  filtros: { nome?: string; tipo_poder?: string; escala_atributo?: string } = {},
+): Promise<PowerApi[]> {
+  const resposta = await axiosInstance.get<{ data: { powers: PowerApi[] } }>("/admin/powers", { params: filtros });
+  return resposta.data.data.powers;
+}
+export async function criarPowerAdmin(payload: PayloadPowerAdmin): Promise<PowerApi> {
+  const resposta = await axiosInstance.post<{ data: { power: PowerApi } }>("/admin/powers", payload);
+  return resposta.data.data.power;
+}
+export async function atualizarPowerAdmin(id: number, payload: Partial<PayloadPowerAdmin>): Promise<PowerApi> {
+  const resposta = await axiosInstance.patch<{ data: { power: PowerApi } }>(`/admin/powers/${id}`, payload);
+  return resposta.data.data.power;
+}
+export async function duplicarPowerAdmin(id: number): Promise<PowerApi> {
+  const resposta = await axiosInstance.post<{ data: { power: PowerApi } }>(`/admin/powers/${id}/duplicate`);
+  return resposta.data.data.power;
+}
+export async function jogadoresAfetadosPowerAdmin(id: number): Promise<number> {
+  const resposta = await axiosInstance.get<{ data: { total: number } }>(`/admin/powers/${id}/affected-players`);
+  return resposta.data.data.total;
+}
+
+export interface ClassAbilityApi {
+  id_classe: number;
+  id_poder: number;
+  nivel_aprendizagem: number;
+  custo_ouro: number | null;
+  Class?: { id: number; nome: string };
+}
+export interface RaceAbilityApi {
+  id_raca: number;
+  id_power: number;
+  nivel_aprendizado: number;
+  custo_ouro: number | null;
+  Race?: { id: number; nome_masculino: string; nome_feminino: string };
+}
+
+export async function listarVinculosPowerAdmin(idPower: number): Promise<{ classes: ClassAbilityApi[]; racas: RaceAbilityApi[] }> {
+  const resposta = await axiosInstance.get<{ data: { classes: ClassAbilityApi[]; racas: RaceAbilityApi[] } }>(`/admin/powers/${idPower}/links`);
+  return resposta.data.data;
+}
+export async function vincularClassePowerAdmin(idPower: number, payload: { id_classe: number; nivel_aprendizagem: number; custo_ouro?: number | null }): Promise<ClassAbilityApi> {
+  const resposta = await axiosInstance.put<{ data: { vinculo: ClassAbilityApi } }>(`/admin/powers/${idPower}/links/class`, payload);
+  return resposta.data.data.vinculo;
+}
+export async function desvincularClassePowerAdmin(idPower: number, idClasse: number): Promise<void> {
+  await axiosInstance.delete(`/admin/powers/${idPower}/links/class/${idClasse}`);
+}
+export async function vincularRacaPowerAdmin(idPower: number, payload: { id_raca: number; nivel_aprendizado: number; custo_ouro?: number | null }): Promise<RaceAbilityApi> {
+  const resposta = await axiosInstance.put<{ data: { vinculo: RaceAbilityApi } }>(`/admin/powers/${idPower}/links/race`, payload);
+  return resposta.data.data.vinculo;
+}
+export async function desvincularRacaPowerAdmin(idPower: number, idRaca: number): Promise<void> {
+  await axiosInstance.delete(`/admin/powers/${idPower}/links/race/${idRaca}`);
+}
+
+export interface PayloadStatusEffectAdmin {
+  status_key: string;
+  chance_ppm?: number;
+  duration_turns: number;
+  potency_base?: number;
+  potency_scale_attribute?: "Forca" | "Vitalidade" | "Agilidade" | "Inteligencia" | "Velocidade" | null;
+  potency_scale_value?: number;
+  target?: "Self" | "Enemy";
+  ativo?: boolean;
+}
+
+export async function adicionarStatusEffectPowerAdmin(idPower: number, payload: PayloadStatusEffectAdmin): Promise<PowerStatusEffectApi> {
+  const resposta = await axiosInstance.post<{ data: { efeito: PowerStatusEffectApi } }>(`/admin/powers/${idPower}/status-effects`, payload);
+  return resposta.data.data.efeito;
+}
+export async function atualizarStatusEffectPowerAdmin(idEfeito: number, payload: Partial<PayloadStatusEffectAdmin>): Promise<PowerStatusEffectApi> {
+  const resposta = await axiosInstance.patch<{ data: { efeito: PowerStatusEffectApi } }>(`/admin/powers/status-effects/${idEfeito}`, payload);
+  return resposta.data.data.efeito;
+}
+export async function removerStatusEffectPowerAdmin(idEfeito: number): Promise<void> {
+  await axiosInstance.delete(`/admin/powers/status-effects/${idEfeito}`);
+}
+
+export interface StatusCatalogEntryApi {
+  status_key: string;
+  nomeUi: string;
+  ehDot: boolean;
+  stack: string;
+  mitigacao: string;
+  stack_maximo: number | null;
+  bloqueiaAcoes?: string[];
+  quebraPorDanoDireto?: boolean;
+  controleProbabilistico?: boolean;
+  afetaAcerto?: boolean;
+  modificaSaidaDeDano?: boolean;
+}
+
+export async function catalogoStatusAdmin(): Promise<StatusCatalogEntryApi[]> {
+  const resposta = await axiosInstance.get<{ data: { catalogo: StatusCatalogEntryApi[] } }>("/admin/status-effects/catalog");
+  return resposta.data.data.catalogo;
+}
+
+export interface PreviewEvolucaoPowerApi {
+  power_id: number;
+  nome: string;
+  niveis: {
+    nivel: number;
+    marco: string | null;
+    dano: number | null;
+    cura: number | null;
+    custo_mana: number;
+    custo_para_proximo_nivel: { ouro: number; fragmentos: number } | null;
+  }[];
+}
+export async function previewEvolucaoPowerAdmin(id: number): Promise<PreviewEvolucaoPowerApi> {
+  const resposta = await axiosInstance.get<{ data: PreviewEvolucaoPowerApi }>(`/admin/powers/${id}/preview-evolution`);
+  return resposta.data.data;
+}
+
+export interface PreviewStatusPowerApi {
+  power_id: number;
+  nome: string;
+  dano_base: number | null;
+  valor_atributo_exemplo: number;
+  efeitos: {
+    status_key: string;
+    nome_ui: string;
+    chance_percentual: number;
+    duration_turns: number;
+    potencia_estimada: number;
+    target: string;
+  }[];
+}
+export async function previewStatusPowerAdmin(id: number, atributo: number): Promise<PreviewStatusPowerApi> {
+  const resposta = await axiosInstance.get<{ data: PreviewStatusPowerApi }>(`/admin/powers/${id}/preview-status`, { params: { atributo } });
+  return resposta.data.data;
+}
+
+// WeaponStatusEffect — montado sob /admin/items/:idItem/weapon-status-effects.
+export interface WeaponStatusEffectApi {
+  id: number;
+  id_item: number;
+  status_key: string;
+  chance_ppm: number;
+  duration_turns: number;
+  potency_base: number;
+  potency_scale_attribute: "Forca" | "Vitalidade" | "Agilidade" | "Inteligencia" | "Velocidade" | null;
+  potency_scale_value: number;
+  trigger: string;
+  ativo: boolean;
+}
+export interface PayloadWeaponStatusEffectAdmin {
+  status_key: string;
+  chance_ppm?: number;
+  duration_turns?: number;
+  potency_base?: number;
+  potency_scale_attribute?: "Forca" | "Vitalidade" | "Agilidade" | "Inteligencia" | "Velocidade" | null;
+  potency_scale_value?: number;
+  trigger?: string;
+  ativo?: boolean;
+}
+
+export async function listarWeaponStatusEffectsAdmin(idItem: number): Promise<WeaponStatusEffectApi[]> {
+  const resposta = await axiosInstance.get<{ data: { efeitos: WeaponStatusEffectApi[] } }>(`/admin/items/${idItem}/weapon-status-effects`);
+  return resposta.data.data.efeitos;
+}
+export async function adicionarWeaponStatusEffectAdmin(idItem: number, payload: PayloadWeaponStatusEffectAdmin): Promise<WeaponStatusEffectApi> {
+  const resposta = await axiosInstance.post<{ data: { efeito: WeaponStatusEffectApi } }>(`/admin/items/${idItem}/weapon-status-effects`, payload);
+  return resposta.data.data.efeito;
+}
+export async function atualizarWeaponStatusEffectAdmin(idItem: number, idEfeito: number, payload: Partial<PayloadWeaponStatusEffectAdmin>): Promise<WeaponStatusEffectApi> {
+  const resposta = await axiosInstance.patch<{ data: { efeito: WeaponStatusEffectApi } }>(`/admin/items/${idItem}/weapon-status-effects/${idEfeito}`, payload);
+  return resposta.data.data.efeito;
+}
+export async function removerWeaponStatusEffectAdmin(idItem: number, idEfeito: number): Promise<void> {
+  await axiosInstance.delete(`/admin/items/${idItem}/weapon-status-effects/${idEfeito}`);
+}
+
+// Classes/Raças — leitura pública, reaproveitada aqui só pra popular os
+// selects de vínculo (nenhuma escrita nova).
+export interface ClassPublicaApi {
+  id: number;
+  nome: string;
+}
+export interface RacePublicaApi {
+  id: number;
+  nome_masculino: string;
+  nome_feminino: string;
+}
+export async function listarClassesPublicas(): Promise<ClassPublicaApi[]> {
+  const resposta = await axiosInstance.get<{ data: { classes: ClassPublicaApi[] } }>("/classes");
+  return resposta.data.data.classes;
+}
+export async function listarRacasPublicas(): Promise<RacePublicaApi[]> {
+  const resposta = await axiosInstance.get<{ data: { races: RacePublicaApi[] } }>("/races");
+  return resposta.data.data.races;
+}

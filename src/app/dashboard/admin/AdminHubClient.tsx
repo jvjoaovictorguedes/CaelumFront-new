@@ -27,7 +27,7 @@ const CATEGORIAS: CategoriaAdmin[] = [
     modulos: [
       { titulo: "Itens", descricao: "Criar, editar e desativar itens e propriedades.", href: "/dashboard/admin/items", permissao: "items.manage" },
       { titulo: "Conjuntos de Equipamentos", descricao: "Peças, thresholds e bônus de conjunto.", href: "/dashboard/admin/equipment-sets", permissao: "equipmentsets.manage" },
-      { titulo: "Habilidades", descricao: "Catálogo de Habilidades (Power), vínculos e evolução 1-10." },
+      { titulo: "Habilidades", descricao: "Catálogo de Habilidades (Power), vínculos e evolução 1-10.", href: "/dashboard/admin/powers", permissao: "powers.manage" },
       { titulo: "Missões", descricao: "Missões livres, Guilda dos Aventureiros e Missões de Guilda." },
       { titulo: "Aventura", descricao: "Zonas, monstros, aparição e loot.", href: "/dashboard/admin/adventure", permissao: "adventure.manage" },
       { titulo: "Balcão de Espólios", descricao: "Templates de Encomenda e Reputação Comercial." },
