@@ -40,6 +40,7 @@ const Tooltip: React.FC<TooltipProps> = ({
       className="relative inline-block"
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
+      onClick={() => setIsVisible((v) => !v)}
     >
       {children}
       {isVisible && (

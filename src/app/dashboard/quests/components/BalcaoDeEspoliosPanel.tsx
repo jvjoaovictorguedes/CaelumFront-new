@@ -239,78 +239,82 @@ export default function BalcaoDeEspoliosPanel() {
             return (
               <div
                 key={item.id}
-                className={`flex flex-wrap items-center gap-3 rounded-xl border bg-[#3a2f24] p-3 ${
+                className={`flex flex-col gap-3 rounded-xl border bg-[#3a2f24] p-3 sm:flex-row sm:flex-wrap sm:items-center ${
                   CORES_RARIDADE[item.raridade] ?? "border-white/20"
                 }`}
               >
-                <div className="h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-black/20">
-                  <ItemThumb item={item} />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate font-bold">{item.nome}</p>
-                  <p className="text-[11px] text-white/50">
-                    {entrada.quantidade_inventario} no inventário
-                    {entrada.quantidade_reservada > 0 && ` · Reservado: ${entrada.quantidade_reservada}`}
-                    {` · Vendável: ${entrada.quantidade_vendavel}`}
-                  </p>
-                  <p className="text-[11px] text-[#F3B43F]">{item.valor_venda} ouro/unid.</p>
-                </div>
-
-                <div className="flex items-center gap-1">
-                  <input
-                    type="number"
-                    min={1}
-                    max={Math.max(1, entrada.quantidade_vendavel)}
-                    value={quantidadePedida}
-                    disabled={entrada.protegido_venda || entrada.quantidade_vendavel === 0}
-                    onChange={(e) =>
-                      setQuantidades((prev) => ({ ...prev, [item.id]: Number.parseInt(e.target.value, 10) || 1 }))
-                    }
-                    className="w-16 rounded-lg bg-black/30 px-2 py-1 text-center text-sm text-white disabled:opacity-40"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => venderUm(item.id, quantidadePedida)}
-                    disabled={
-                      processando === chaveVender || entrada.protegido_venda || entrada.quantidade_vendavel === 0
-                    }
-                    className="rounded-lg bg-[#F3B43F] px-3 py-1.5 text-xs font-bold text-black transition hover:bg-[#e0a52f] disabled:opacity-50"
-                  >
-                    {processando === chaveVender ? "Vendendo..." : "Vender"}
-                  </button>
+                <div className="flex min-w-0 items-center gap-3">
+                  <div className="h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-black/20">
+                    <ItemThumb item={item} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-bold">{item.nome}</p>
+                    <p className="text-[11px] text-white/50">
+                      {entrada.quantidade_inventario} no inventário
+                      {entrada.quantidade_reservada > 0 && ` · Reservado: ${entrada.quantidade_reservada}`}
+                      {` · Vendável: ${entrada.quantidade_vendavel}`}
+                    </p>
+                    <p className="text-[11px] text-[#F3B43F]">{item.valor_venda} ouro/unid.</p>
+                  </div>
                 </div>
 
-                <div className="flex items-center gap-1">
-                  <button
-                    type="button"
-                    title="Manter unidades (reserva)"
-                    onClick={() => {
-                      const valor = window.prompt(
-                        `Manter quantas unidades de ${item.nome} fora da venda?`,
-                        String(entrada.quantidade_reservada),
-                      );
-                      if (valor == null) return;
-                      const numero = Number.parseInt(valor, 10);
-                      if (Number.isNaN(numero)) return;
-                      definirReserva(item.id, numero);
-                    }}
-                    disabled={processando === chaveReservar}
-                    className="rounded-lg border border-[#F3B43F]/50 px-2 py-1.5 text-[11px] font-bold text-[#F3B43F] transition hover:bg-[#F3B43F]/10 disabled:opacity-50"
-                  >
-                    Manter X
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => alternarProtecao(item.id, entrada.protegido_venda)}
-                    disabled={processando === chaveProteger}
-                    className={`rounded-lg border px-2 py-1.5 text-[11px] font-bold transition disabled:opacity-50 ${
-                      entrada.protegido_venda
-                        ? "border-red-500 text-red-400 hover:bg-red-900/30"
-                        : "border-white/30 text-white/70 hover:bg-white/10"
-                    }`}
-                  >
-                    {entrada.protegido_venda ? "Protegido" : "Proteger"}
-                  </button>
+                <div className="flex shrink-0 flex-wrap items-center gap-2 sm:ml-auto">
+                  <div className="flex shrink-0 items-center gap-1">
+                    <input
+                      type="number"
+                      min={1}
+                      max={Math.max(1, entrada.quantidade_vendavel)}
+                      value={quantidadePedida}
+                      disabled={entrada.protegido_venda || entrada.quantidade_vendavel === 0}
+                      onChange={(e) =>
+                        setQuantidades((prev) => ({ ...prev, [item.id]: Number.parseInt(e.target.value, 10) || 1 }))
+                      }
+                      className="w-16 rounded-lg bg-black/30 px-2 py-1 text-center text-sm text-white disabled:opacity-40"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => venderUm(item.id, quantidadePedida)}
+                      disabled={
+                        processando === chaveVender || entrada.protegido_venda || entrada.quantidade_vendavel === 0
+                      }
+                      className="shrink-0 whitespace-nowrap rounded-lg bg-[#F3B43F] px-3 py-1.5 text-xs font-bold text-black transition hover:bg-[#e0a52f] disabled:opacity-50"
+                    >
+                      {processando === chaveVender ? "Vendendo..." : "Vender"}
+                    </button>
+                  </div>
+
+                  <div className="flex shrink-0 items-center gap-1">
+                    <button
+                      type="button"
+                      title="Manter unidades (reserva)"
+                      onClick={() => {
+                        const valor = window.prompt(
+                          `Manter quantas unidades de ${item.nome} fora da venda?`,
+                          String(entrada.quantidade_reservada),
+                        );
+                        if (valor == null) return;
+                        const numero = Number.parseInt(valor, 10);
+                        if (Number.isNaN(numero)) return;
+                        definirReserva(item.id, numero);
+                      }}
+                      disabled={processando === chaveReservar}
+                      className="shrink-0 whitespace-nowrap rounded-lg border border-[#F3B43F]/50 px-2 py-1.5 text-[11px] font-bold text-[#F3B43F] transition hover:bg-[#F3B43F]/10 disabled:opacity-50"
+                    >
+                      Manter X
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => alternarProtecao(item.id, entrada.protegido_venda)}
+                      disabled={processando === chaveProteger}
+                      className={`shrink-0 whitespace-nowrap rounded-lg border px-2 py-1.5 text-[11px] font-bold transition disabled:opacity-50 ${
+                        entrada.protegido_venda
+                          ? "border-red-500 text-red-400 hover:bg-red-900/30"
+                          : "border-white/30 text-white/70 hover:bg-white/10"
+                      }`}
+                    >
+                      {entrada.protegido_venda ? "Protegido" : "Proteger"}
+                    </button>
+                  </div>
                 </div>
               </div>
             );

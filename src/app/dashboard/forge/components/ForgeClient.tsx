@@ -67,13 +67,13 @@ export default function ForgeClient() {
         </div>
       </div>
 
-      <div className="flex gap-2 overflow-x-auto">
+      <div className="flex flex-wrap gap-2">
         {ABAS.map((item) => (
           <button
             key={item.chave}
             type="button"
             onClick={() => setAba(item.chave)}
-            className={`shrink-0 rounded-lg border-2 px-4 py-2 text-sm font-bold uppercase tracking-wide transition ${
+            className={`shrink-0 rounded-lg border-2 px-3 py-2 text-xs sm:px-4 sm:text-sm font-bold uppercase tracking-wide transition ${
               aba === item.chave
                 ? "border-[#F3B43F] bg-[#F3B43F] text-black"
                 : "border-[#F3B43F]/40 bg-[#292018]/90 text-[#F3B43F] hover:border-[#F3B43F]/70"
