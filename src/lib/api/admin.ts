@@ -675,3 +675,48 @@ export async function listarRacasPublicas(): Promise<RacePublicaApi[]> {
   const resposta = await axiosInstance.get<{ data: { races: RacePublicaApi[] } }>("/races");
   return resposta.data.data.races;
 }
+
+// Painel Administrativo Fase 3 — Biblioteca de Mídia. O upload em si
+// (multipart) NÃO passa por aqui — vai por uma Server Action própria
+// (ver uploadMediaAction.ts), porque o proxy genérico /api/backend
+// corrompe bytes binários lendo o corpo como texto. Tudo aqui é JSON.
+export interface MediaAssetApi {
+  id: number;
+  grupo: string;
+  versao: number;
+  categoria: "Item" | "Power" | "Monster" | "EquipmentSet" | "Outro";
+  nome_arquivo_original: string | null;
+  mime: string;
+  tamanho_bytes: number;
+  largura_px: number | null;
+  altura_px: number | null;
+  descricao: string | null;
+  ativo: boolean;
+  id_admin_criador: number | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export async function listarMediaGruposAdmin(
+  filtros: { categoria?: string; nome?: string; pagina?: number; porPagina?: number } = {},
+): Promise<{ total: number; pagina: number; porPagina: number; itens: MediaAssetApi[] }> {
+  const resposta = await axiosInstance.get<{ data: { total: number; pagina: number; porPagina: number; itens: MediaAssetApi[] } }>(
+    "/admin/media",
+    { params: filtros },
+  );
+  return resposta.data.data;
+}
+
+export async function listarMediaVersoesAdmin(grupo: string): Promise<MediaAssetApi[]> {
+  const resposta = await axiosInstance.get<{ data: { versoes: MediaAssetApi[] } }>(`/admin/media/${grupo}/versions`);
+  return resposta.data.data.versoes;
+}
+
+export async function reverterMediaVersaoAdmin(grupo: string, versao: number): Promise<MediaAssetApi> {
+  const resposta = await axiosInstance.post<{ data: { asset: MediaAssetApi } }>(`/admin/media/${grupo}/revert/${versao}`);
+  return resposta.data.data.asset;
+}
+
+export async function desativarMediaGrupoAdmin(grupo: string): Promise<void> {
+  await axiosInstance.delete(`/admin/media/${grupo}`);
+}

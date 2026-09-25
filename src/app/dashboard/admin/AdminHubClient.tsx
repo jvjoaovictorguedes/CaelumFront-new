@@ -32,7 +32,7 @@ const CATEGORIAS: CategoriaAdmin[] = [
       { titulo: "Aventura", descricao: "Zonas, monstros, aparição e loot.", href: "/dashboard/admin/adventure", permissao: "adventure.manage" },
       { titulo: "Balcão de Espólios", descricao: "Templates de Encomenda e Reputação Comercial." },
       { titulo: "Caçadas", descricao: "Templates, dificuldades e Reputação de Caçador." },
-      { titulo: "Mídia", descricao: "Upload e versionamento de assets." },
+      { titulo: "Mídia", descricao: "Upload e versionamento de assets.", href: "/dashboard/admin/media", permissao: "media.manage" },
     ],
   },
   {
