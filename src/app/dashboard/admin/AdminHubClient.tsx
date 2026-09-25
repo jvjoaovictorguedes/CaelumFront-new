@@ -54,7 +54,7 @@ const CATEGORIAS: CategoriaAdmin[] = [
   {
     titulo: "Eventos",
     modulos: [
-      { titulo: "Buff Global", descricao: "XP/Ouro/Drop de Aventura e XP de Expedição, por tempo limitado." },
+      { titulo: "Buff Global", descricao: "XP/Ouro/Drop de Aventura e XP de Expedição, por tempo limitado.", href: "/dashboard/admin/buffs", permissao: "events.manage" },
       { titulo: "Torneios", descricao: "Criar, iniciar e encerrar torneios.", href: "/dashboard/admin/tournaments", permissao: "tournaments.manage" },
     ],
   },

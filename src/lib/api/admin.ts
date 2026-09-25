@@ -952,3 +952,52 @@ export async function concederPremiacaoAdmin(idPersonagem: number, payload: Payl
   const resposta = await axiosInstance.post<{ data: GrantResultApi }>(`/admin/grants/${idPersonagem}`, payload);
   return resposta.data.data;
 }
+
+// Painel Administrativo Fase 15 — Buff Global (evento temporal server-wide).
+export type TipoGlobalBuff = "Xp" | "Ouro" | "DropAventura" | "XpExpedicao";
+
+export interface GlobalBuffApi {
+  id: number;
+  nome: string;
+  tipo: TipoGlobalBuff;
+  multiplicador_percentual: number;
+  inicio: string;
+  fim: string;
+  ativo: boolean;
+  descricao: string | null;
+  id_admin_criador: number | null;
+}
+
+export interface PayloadGlobalBuffAdmin {
+  nome: string;
+  tipo: TipoGlobalBuff;
+  multiplicador_percentual: number;
+  inicio: string;
+  fim: string;
+  ativo?: boolean;
+  descricao?: string | null;
+}
+
+export async function listarGlobalBuffsAdmin(
+  filtros: { pagina?: number; porPagina?: number; tipo?: string; ativo?: boolean; nome?: string } = {},
+): Promise<PaginaApi<GlobalBuffApi>> {
+  const resposta = await axiosInstance.get<{ data: PaginaApi<GlobalBuffApi> }>("/admin/global-buffs", {
+    params: filtros,
+  });
+  return resposta.data.data;
+}
+
+export async function criarGlobalBuffAdmin(payload: PayloadGlobalBuffAdmin): Promise<GlobalBuffApi> {
+  const resposta = await axiosInstance.post<{ data: { buff: GlobalBuffApi } }>("/admin/global-buffs", payload);
+  return resposta.data.data.buff;
+}
+
+export async function atualizarGlobalBuffAdmin(id: number, payload: Partial<PayloadGlobalBuffAdmin>): Promise<GlobalBuffApi> {
+  const resposta = await axiosInstance.patch<{ data: { buff: GlobalBuffApi } }>(`/admin/global-buffs/${id}`, payload);
+  return resposta.data.data.buff;
+}
+
+export async function desativarGlobalBuffAdmin(id: number): Promise<GlobalBuffApi> {
+  const resposta = await axiosInstance.post<{ data: { buff: GlobalBuffApi } }>(`/admin/global-buffs/${id}/deactivate`);
+  return resposta.data.data.buff;
+}
