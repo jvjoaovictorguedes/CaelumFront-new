@@ -368,9 +368,15 @@ export default function EquipmentCategoriesPanel() {
                         </span>
                       )}
 
-                      {/* Nome/tier/atributos só aparecem no hover,
-                          flutuando acima do item. */}
-                      <div className="pointer-events-none absolute bottom-full left-1/2 mb-2 w-40 -translate-x-1/2 rounded-md bg-black/90 p-2 text-center opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+                      {/* Nome/tier/atributos aparecem no hover
+                          (desktop) — sem :hover no mobile, reaproveita
+                          o próprio "marcado" (já ativa ao tocar) pra
+                          mostrar o tooltip também por toque. */}
+                      <div
+                        className={`pointer-events-none absolute bottom-full left-1/2 mb-2 w-40 -translate-x-1/2 rounded-md bg-black/90 p-2 text-center shadow-lg transition-opacity group-hover:opacity-100 ${
+                          marcado ? "opacity-100" : "opacity-0"
+                        }`}
+                      >
                         <span className="block text-[10px] font-bold leading-tight text-white">
                           {instancia.nome}
                           {instancia.refinamento > 0 && ` +${instancia.refinamento}`}

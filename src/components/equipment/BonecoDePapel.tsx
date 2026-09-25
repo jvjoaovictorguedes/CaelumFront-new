@@ -2,6 +2,7 @@
 
 // Boneco de papel compartilhado entre "Meu Personagem > Equipamentos"
 // (com ações de equipar/desequipar) e o Perfil de Jogador (só leitura).
+import { useState } from "react";
 import { getClassBackground, resolveMediaUrl } from "@/utils/media-url";
 
 export type Slot =
@@ -180,23 +181,35 @@ export default function BonecoDePapel({
   // Ausente = modo só leitura (sem link "desequipar" no tooltip).
   onDesequipar?: (slot: Slot) => void;
 }) {
+  // No mobile não existe :hover — sem isso o tooltip de atributos do
+  // slot nunca aparecia pra quem usa touch (só desktop com mouse via
+  // group-hover). Agora o toque também alterna o tooltip: tocar num
+  // slot mostra/esconde ele, e tocar fora do boneco (no fundo) fecha.
+  const [slotAberto, setSlotAberto] = useState<Slot | null>(null);
+
   return (
     <div
       className="relative mx-auto mb-5 aspect-square w-full max-w-sm rounded-2xl border border-white/10 bg-[#3a2f24] bg-contain bg-center bg-no-repeat"
       style={{ backgroundImage: `url(${getClassBackground(classe ?? undefined)})` }}
+      onClick={() => setSlotAberto(null)}
     >
       {SLOTS.map(({ slot, label, top, left, pequeno }) => {
         const itemNoSlot = equipados[slot];
         // Tooltip abre pra cima na metade de baixo do boneco, senão ficaria cortado.
         const tooltipEmCima = parseFloat(top) >= 50;
+        const aberto = slotAberto === slot;
         return (
           <div
             key={slot}
-            onClick={() => onClicarSlot?.(slot)}
+            onClick={(e) => {
+              e.stopPropagation();
+              onClicarSlot?.(slot);
+              setSlotAberto((atual) => (atual === slot ? null : slot));
+            }}
             style={{ top, left }}
             className={`group absolute z-10 -translate-x-1/2 -translate-y-1/2 hover:z-20 ${
-              pequeno ? "h-12 w-12" : "h-16 w-16"
-            } ${aguardandoEscolha ? "cursor-pointer" : ""}`}
+              aberto ? "z-20" : ""
+            } ${pequeno ? "h-12 w-12" : "h-16 w-16"} ${aguardandoEscolha ? "cursor-pointer" : ""}`}
           >
             <div
               className={`relative h-full w-full overflow-hidden rounded-lg border-2 transition duration-150 ${
@@ -216,9 +229,9 @@ export default function BonecoDePapel({
             </div>
 
             <div
-              className={`pointer-events-none absolute left-1/2 w-36 -translate-x-1/2 rounded-md bg-black/90 p-2 text-center opacity-0 shadow-lg transition-opacity group-hover:opacity-100 ${
-                tooltipEmCima ? "bottom-full mb-2" : "top-full mt-2"
-              }`}
+              className={`pointer-events-none absolute left-1/2 w-36 -translate-x-1/2 rounded-md bg-black/90 p-2 text-center shadow-lg transition-opacity group-hover:opacity-100 ${
+                aberto ? "opacity-100" : "opacity-0"
+              } ${tooltipEmCima ? "bottom-full mb-2" : "top-full mt-2"}`}
             >
               <span className="block text-[9px] uppercase tracking-wide text-white/60">{label}</span>
               {itemNoSlot ? (
