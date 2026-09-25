@@ -30,8 +30,8 @@ const CATEGORIAS: CategoriaAdmin[] = [
       { titulo: "Habilidades", descricao: "Catálogo de Habilidades (Power), vínculos e evolução 1-10.", href: "/dashboard/admin/powers", permissao: "powers.manage" },
       { titulo: "Missões", descricao: "Missões livres, Guilda dos Aventureiros e Missões de Guilda.", href: "/dashboard/admin/missions", permissao: "missions.manage" },
       { titulo: "Aventura", descricao: "Zonas, monstros, aparição e loot.", href: "/dashboard/admin/adventure", permissao: "adventure.manage" },
-      { titulo: "Balcão de Espólios", descricao: "Templates de Encomenda e Reputação Comercial." },
-      { titulo: "Caçadas", descricao: "Templates, dificuldades e Reputação de Caçador." },
+      { titulo: "Balcão de Espólios", descricao: "Reputação Comercial e faixas de quantidade das encomendas.", href: "/dashboard/admin/spoils", permissao: "spoils.manage" },
+      { titulo: "Caçadas", descricao: "Dificuldades e Reputação de Caçador.", href: "/dashboard/admin/hunts", permissao: "hunts.manage" },
       { titulo: "Mídia", descricao: "Upload e versionamento de assets.", href: "/dashboard/admin/media", permissao: "media.manage" },
     ],
   },
@@ -40,7 +40,7 @@ const CATEGORIAS: CategoriaAdmin[] = [
     modulos: [
       { titulo: "Busca", descricao: "Consultar jogador por nome/ID." },
       { titulo: "Inventário", descricao: "Correções administrativas de inventário." },
-      { titulo: "Premiações", descricao: "Conceder itens/equipamentos a um jogador." },
+      { titulo: "Premiações", descricao: "Conceder itens/equipamentos a um jogador.", href: "/dashboard/admin/grants", permissao: "players.reward" },
     ],
   },
   {
