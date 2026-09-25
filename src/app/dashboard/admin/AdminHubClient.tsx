@@ -29,7 +29,7 @@ const CATEGORIAS: CategoriaAdmin[] = [
       { titulo: "Conjuntos de Equipamentos", descricao: "Peças, thresholds e bônus de conjunto." },
       { titulo: "Habilidades", descricao: "Catálogo de Habilidades (Power), vínculos e evolução 1-10." },
       { titulo: "Missões", descricao: "Missões livres, Guilda dos Aventureiros e Missões de Guilda." },
-      { titulo: "Aventura", descricao: "Zonas, monstros, aparição e loot." },
+      { titulo: "Aventura", descricao: "Zonas, monstros, aparição e loot.", href: "/dashboard/admin/adventure", permissao: "adventure.manage" },
       { titulo: "Balcão de Espólios", descricao: "Templates de Encomenda e Reputação Comercial." },
       { titulo: "Caçadas", descricao: "Templates, dificuldades e Reputação de Caçador." },
       { titulo: "Mídia", descricao: "Upload e versionamento de assets." },

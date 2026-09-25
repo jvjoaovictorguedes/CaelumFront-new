@@ -252,3 +252,113 @@ export async function salvarGameSettingAdmin(
   const resposta = await axiosInstance.put<{ data: { setting: GameSettingApi } }>(`/admin/settings/${chave}`, payload);
   return resposta.data.data.setting;
 }
+
+// Painel Administrativo Fase 8 (§19) — Aventura: Zonas/Monstros/Aparições/Drops.
+export interface AdventureZoneApi {
+  id: number;
+  nome: string;
+  descricao: string | null;
+  nivel_monstro_min: number;
+  nivel_monstro_max: number;
+  imagem_url: string | null;
+  ordem: number;
+  ativa: boolean;
+}
+
+export interface AdventureMonsterApi {
+  id: number;
+  nome: string;
+  descricao: string | null;
+  imagem_url: string | null;
+  multiplicador_vida: number;
+  multiplicador_dano: number;
+  multiplicador_agilidade: number;
+  multiplicador_velocidade: number;
+  ativo: boolean;
+}
+
+export interface AdventureZoneMonsterApi {
+  id: number;
+  id_area: number;
+  id_monstro: number;
+  peso_aparicao: number;
+  tipo_aparicao: "Comum" | "Raro";
+  nivel_min_override: number | null;
+  nivel_max_override: number | null;
+  ativo: boolean;
+  AdventureZone?: { id: number; nome: string };
+  monstro?: { id: number; nome: string; imagem_url: string | null };
+}
+
+export interface AdventureMonsterLootApi {
+  id: number;
+  id_monstro: number;
+  id_item: number;
+  chance_ppm: number;
+  quantidade_min: number;
+  quantidade_max: number;
+  categoria: "Principal" | "Secundario" | "Especial";
+  ativo: boolean;
+  AdventureMonster?: { id: number; nome: string };
+  item?: { id: number; nome: string; raridade: string; imagem_url: string | null };
+}
+
+export async function listarZonasAdmin(): Promise<AdventureZoneApi[]> {
+  const resposta = await axiosInstance.get<{ data: { zonas: AdventureZoneApi[] } }>("/admin/adventure/zones");
+  return resposta.data.data.zonas;
+}
+export async function criarZonaAdmin(payload: Partial<AdventureZoneApi>): Promise<AdventureZoneApi> {
+  const resposta = await axiosInstance.post<{ data: { zona: AdventureZoneApi } }>("/admin/adventure/zones", payload);
+  return resposta.data.data.zona;
+}
+export async function atualizarZonaAdmin(id: number, payload: Partial<AdventureZoneApi>): Promise<AdventureZoneApi> {
+  const resposta = await axiosInstance.patch<{ data: { zona: AdventureZoneApi } }>(`/admin/adventure/zones/${id}`, payload);
+  return resposta.data.data.zona;
+}
+
+export async function listarMonstrosAdmin(): Promise<AdventureMonsterApi[]> {
+  const resposta = await axiosInstance.get<{ data: { monstros: AdventureMonsterApi[] } }>("/admin/adventure/monsters");
+  return resposta.data.data.monstros;
+}
+export async function criarMonstroAdmin(payload: Partial<AdventureMonsterApi>): Promise<AdventureMonsterApi> {
+  const resposta = await axiosInstance.post<{ data: { monstro: AdventureMonsterApi } }>("/admin/adventure/monsters", payload);
+  return resposta.data.data.monstro;
+}
+export async function atualizarMonstroAdmin(id: number, payload: Partial<AdventureMonsterApi>): Promise<AdventureMonsterApi> {
+  const resposta = await axiosInstance.patch<{ data: { monstro: AdventureMonsterApi } }>(`/admin/adventure/monsters/${id}`, payload);
+  return resposta.data.data.monstro;
+}
+export async function duplicarMonstroAdmin(id: number): Promise<AdventureMonsterApi> {
+  const resposta = await axiosInstance.post<{ data: { monstro: AdventureMonsterApi } }>(`/admin/adventure/monsters/${id}/duplicate`);
+  return resposta.data.data.monstro;
+}
+
+export async function listarAparicoesAdmin(idArea?: number): Promise<AdventureZoneMonsterApi[]> {
+  const resposta = await axiosInstance.get<{ data: { aparicoes: AdventureZoneMonsterApi[] } }>("/admin/adventure/zone-monsters", {
+    params: idArea ? { idArea } : undefined,
+  });
+  return resposta.data.data.aparicoes;
+}
+export async function criarAparicaoAdmin(payload: Partial<AdventureZoneMonsterApi>): Promise<AdventureZoneMonsterApi> {
+  const resposta = await axiosInstance.post<{ data: { aparicao: AdventureZoneMonsterApi } }>("/admin/adventure/zone-monsters", payload);
+  return resposta.data.data.aparicao;
+}
+export async function atualizarAparicaoAdmin(id: number, payload: Partial<AdventureZoneMonsterApi>): Promise<AdventureZoneMonsterApi> {
+  const resposta = await axiosInstance.patch<{ data: { aparicao: AdventureZoneMonsterApi } }>(`/admin/adventure/zone-monsters/${id}`, payload);
+  return resposta.data.data.aparicao;
+}
+
+export async function listarLootAdmin(idMonstro?: number): Promise<AdventureMonsterLootApi[]> {
+  const resposta = await axiosInstance.get<{ data: { loot: AdventureMonsterLootApi[] } }>("/admin/adventure/loot", {
+    params: idMonstro ? { idMonstro } : undefined,
+  });
+  return resposta.data.data.loot;
+}
+export async function criarLootAdmin(payload: Partial<AdventureMonsterLootApi>): Promise<AdventureMonsterLootApi> {
+  const resposta = await axiosInstance.post<{ data: { loot: AdventureMonsterLootApi } }>("/admin/adventure/loot", payload);
+  return resposta.data.data.loot;
+}
+export async function atualizarLootAdmin(id: number, payload: Partial<AdventureMonsterLootApi>): Promise<AdventureMonsterLootApi> {
+  const resposta = await axiosInstance.patch<{ data: { loot: AdventureMonsterLootApi } }>(`/admin/adventure/loot/${id}`, payload);
+  return resposta.data.data.loot;
+}
