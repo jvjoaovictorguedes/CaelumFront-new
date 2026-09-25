@@ -963,3 +963,215 @@ export async function concederPremiacaoAdmin(idPersonagem: number, payload: Payl
   const resposta = await axiosInstance.post<{ data: GrantResultApi }>(`/admin/grants/${idPersonagem}`, payload);
   return resposta.data.data;
 }
+
+// Painel Administrativo Fase 15 — Buff Global (evento temporal server-wide).
+export type TipoGlobalBuff = "Xp" | "Ouro" | "DropAventura" | "XpExpedicao";
+
+export interface GlobalBuffApi {
+  id: number;
+  nome: string;
+  tipo: TipoGlobalBuff;
+  multiplicador_percentual: number;
+  inicio: string;
+  fim: string;
+  ativo: boolean;
+  descricao: string | null;
+  id_admin_criador: number | null;
+}
+
+export interface PayloadGlobalBuffAdmin {
+  nome: string;
+  tipo: TipoGlobalBuff;
+  multiplicador_percentual: number;
+  inicio: string;
+  fim: string;
+  ativo?: boolean;
+  descricao?: string | null;
+}
+
+export async function listarGlobalBuffsAdmin(
+  filtros: { pagina?: number; porPagina?: number; tipo?: string; ativo?: boolean; nome?: string } = {},
+): Promise<PaginaApi<GlobalBuffApi>> {
+  const resposta = await axiosInstance.get<{ data: PaginaApi<GlobalBuffApi> }>("/admin/global-buffs", {
+    params: filtros,
+  });
+  return resposta.data.data;
+}
+
+export async function criarGlobalBuffAdmin(payload: PayloadGlobalBuffAdmin): Promise<GlobalBuffApi> {
+  const resposta = await axiosInstance.post<{ data: { buff: GlobalBuffApi } }>("/admin/global-buffs", payload);
+  return resposta.data.data.buff;
+}
+
+export async function atualizarGlobalBuffAdmin(id: number, payload: Partial<PayloadGlobalBuffAdmin>): Promise<GlobalBuffApi> {
+  const resposta = await axiosInstance.patch<{ data: { buff: GlobalBuffApi } }>(`/admin/global-buffs/${id}`, payload);
+  return resposta.data.data.buff;
+}
+
+export async function desativarGlobalBuffAdmin(id: number): Promise<GlobalBuffApi> {
+  const resposta = await axiosInstance.post<{ data: { buff: GlobalBuffApi } }>(`/admin/global-buffs/${id}/deactivate`);
+  return resposta.data.data.buff;
+}
+
+// Sistema de Taverna — Painel Administrativo (Cardápio/Jogos/Config/Métricas).
+export type TavernBuffKey =
+  | "MAX_HP_PCT"
+  | "MAX_MANA_PCT"
+  | "PVE_DAMAGE_PCT"
+  | "PVE_DEFENSE_PCT"
+  | "ADVENTURE_XP_PCT"
+  | "EXPEDITION_XP_PCT"
+  | "FORGE_XP_PCT"
+  | "ALCHEMY_XP_PCT"
+  | "FISHING_CONTROL_PCT";
+
+export interface TavernMenuItemApi {
+  id: number;
+  nome: string;
+  descricao: string;
+  categoria: "Refeicao" | "Bebida";
+  preco_gold: number;
+  buff_key: TavernBuffKey;
+  magnitude: number;
+  duracao_segundos: number;
+  imagem_url: string | null;
+  ordem: number;
+  ativo: boolean;
+}
+
+export interface PayloadTavernMenuItemAdmin {
+  nome: string;
+  descricao: string;
+  categoria: "Refeicao" | "Bebida";
+  preco_gold: number;
+  buff_key: TavernBuffKey;
+  magnitude: number;
+  duracao_segundos: number;
+  imagem_url?: string | null;
+  ordem?: number;
+  ativo?: boolean;
+}
+
+export async function listarTavernMenuAdmin(
+  filtros: { pagina?: number; porPagina?: number; categoria?: string; ativo?: boolean; nome?: string } = {},
+): Promise<PaginaApi<TavernMenuItemApi>> {
+  const resposta = await axiosInstance.get<{ data: PaginaApi<TavernMenuItemApi> }>("/admin/tavern/menu", { params: filtros });
+  return resposta.data.data;
+}
+export async function criarTavernMenuItemAdmin(payload: PayloadTavernMenuItemAdmin): Promise<TavernMenuItemApi> {
+  const resposta = await axiosInstance.post<{ data: { item: TavernMenuItemApi } }>("/admin/tavern/menu", payload);
+  return resposta.data.data.item;
+}
+export async function atualizarTavernMenuItemAdmin(id: number, payload: Partial<PayloadTavernMenuItemAdmin>): Promise<TavernMenuItemApi> {
+  const resposta = await axiosInstance.patch<{ data: { item: TavernMenuItemApi } }>(`/admin/tavern/menu/${id}`, payload);
+  return resposta.data.data.item;
+}
+export async function duplicarTavernMenuItemAdmin(id: number): Promise<TavernMenuItemApi> {
+  const resposta = await axiosInstance.post<{ data: { item: TavernMenuItemApi } }>(`/admin/tavern/menu/${id}/duplicate`);
+  return resposta.data.data.item;
+}
+export async function desativarTavernMenuItemAdmin(id: number): Promise<TavernMenuItemApi> {
+  const resposta = await axiosInstance.post<{ data: { item: TavernMenuItemApi } }>(`/admin/tavern/menu/${id}/deactivate`);
+  return resposta.data.data.item;
+}
+export async function reativarTavernMenuItemAdmin(id: number): Promise<TavernMenuItemApi> {
+  const resposta = await axiosInstance.post<{ data: { item: TavernMenuItemApi } }>(`/admin/tavern/menu/${id}/reactivate`);
+  return resposta.data.data.item;
+}
+
+export interface TavernGameApi {
+  id: number;
+  key: string;
+  nome: string;
+  descricao: string;
+  presentation_key: "COIN" | "RUNES" | "DICE_PARITY" | "CARD_SIDE";
+  win_chance_ppm: number;
+  payout_multiplier: number;
+  min_bet: number;
+  max_bet: number;
+  ordem: number;
+  ativo: boolean;
+  houseEdgeAlerta?: string | null;
+}
+
+export interface PayloadTavernGameAdmin {
+  key: string;
+  nome: string;
+  descricao: string;
+  presentation_key: "COIN" | "RUNES" | "DICE_PARITY" | "CARD_SIDE";
+  payout_multiplier: number;
+  min_bet: number;
+  max_bet: number;
+  ordem?: number;
+  ativo?: boolean;
+}
+
+export async function listarTavernGamesAdmin(
+  filtros: { pagina?: number; porPagina?: number; ativo?: boolean } = {},
+): Promise<PaginaApi<TavernGameApi>> {
+  const resposta = await axiosInstance.get<{ data: PaginaApi<TavernGameApi> }>("/admin/tavern/games", { params: filtros });
+  return resposta.data.data;
+}
+export async function criarTavernGameAdmin(payload: PayloadTavernGameAdmin): Promise<TavernGameApi> {
+  const resposta = await axiosInstance.post<{ data: { jogo: TavernGameApi } }>("/admin/tavern/games", payload);
+  return resposta.data.data.jogo;
+}
+export async function atualizarTavernGameAdmin(id: number, payload: Partial<PayloadTavernGameAdmin>): Promise<TavernGameApi> {
+  const resposta = await axiosInstance.patch<{ data: { jogo: TavernGameApi } }>(`/admin/tavern/games/${id}`, payload);
+  return resposta.data.data.jogo;
+}
+export async function duplicarTavernGameAdmin(id: number): Promise<TavernGameApi> {
+  const resposta = await axiosInstance.post<{ data: { jogo: TavernGameApi } }>(`/admin/tavern/games/${id}/duplicate`);
+  return resposta.data.data.jogo;
+}
+export async function desativarTavernGameAdmin(id: number): Promise<TavernGameApi> {
+  const resposta = await axiosInstance.post<{ data: { jogo: TavernGameApi } }>(`/admin/tavern/games/${id}/deactivate`);
+  return resposta.data.data.jogo;
+}
+export async function reativarTavernGameAdmin(id: number): Promise<TavernGameApi> {
+  const resposta = await axiosInstance.post<{ data: { jogo: TavernGameApi } }>(`/admin/tavern/games/${id}/reactivate`);
+  return resposta.data.data.jogo;
+}
+
+export interface TavernSettingsApi {
+  "tavern.rest.base_gold": number;
+  "tavern.rest.level_factor": number;
+  "tavern.rest.missing_resource_factor": number;
+  "tavern.rest.minimum_gold": number;
+  "tavern.games.max_bet_global": number;
+  "tavern.games.daily_wager_limit": number;
+  "tavern.enabled": boolean;
+}
+
+export async function obterTavernSettingsAdmin(): Promise<TavernSettingsApi> {
+  const resposta = await axiosInstance.get<{ data: { configuracoes: TavernSettingsApi } }>("/admin/tavern/settings");
+  return resposta.data.data.configuracoes;
+}
+export async function atualizarTavernSettingsAdmin(payload: Partial<TavernSettingsApi>): Promise<TavernSettingsApi> {
+  const resposta = await axiosInstance.patch<{ data: { configuracoes: TavernSettingsApi } }>("/admin/tavern/settings", payload);
+  return resposta.data.data.configuracoes;
+}
+
+export interface TavernMetricsApi {
+  apostas24h: {
+    apostas: number;
+    gold_apostado: string;
+    gold_pago: string;
+    gold_liquido_removido: string;
+    aposta_media: number;
+    maior_aposta: number;
+    taxa_vitoria: number;
+  };
+  apostas7d: {
+    apostas: number;
+    gold_apostado: string;
+    gold_pago: string;
+    gold_liquido_removido: string;
+  };
+  comprasPorOferta: { nome: string; total: number }[];
+}
+
+export async function obterTavernMetricasAdmin(): Promise<TavernMetricsApi> {
+  const resposta = await axiosInstance.get<{ data: TavernMetricsApi }>("/admin/tavern/metrics");
+  return resposta.data.data;
+}

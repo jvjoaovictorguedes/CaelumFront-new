@@ -33,6 +33,7 @@ const CATEGORIAS: CategoriaAdmin[] = [
       { titulo: "Balcão de Espólios", descricao: "Reputação Comercial e faixas de quantidade das encomendas.", href: "/dashboard/admin/spoils", permissao: "spoils.manage" },
       { titulo: "Caçadas", descricao: "Dificuldades e Reputação de Caçador.", href: "/dashboard/admin/hunts", permissao: "hunts.manage" },
       { titulo: "Mídia", descricao: "Upload e versionamento de assets.", href: "/dashboard/admin/media", permissao: "media.manage" },
+      { titulo: "Taverna", descricao: "Cardápio, jogos de azar, descanso e métricas.", href: "/dashboard/admin/tavern", permissao: "tavern.manage" },
     ],
   },
   {
@@ -54,7 +55,7 @@ const CATEGORIAS: CategoriaAdmin[] = [
   {
     titulo: "Eventos",
     modulos: [
-      { titulo: "Buff Global", descricao: "XP/Ouro/Drop de Aventura e XP de Expedição, por tempo limitado." },
+      { titulo: "Buff Global", descricao: "XP/Ouro/Drop de Aventura e XP de Expedição, por tempo limitado.", href: "/dashboard/admin/buffs", permissao: "events.manage" },
       { titulo: "Torneios", descricao: "Criar, iniciar e encerrar torneios.", href: "/dashboard/admin/tournaments", permissao: "tournaments.manage" },
     ],
   },

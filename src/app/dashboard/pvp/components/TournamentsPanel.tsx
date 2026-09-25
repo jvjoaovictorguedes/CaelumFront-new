@@ -16,6 +16,7 @@ import {
   type ResumoTorneio,
 } from "@/lib/api/pvp";
 import { usePvpSocket } from "@/contexts/PvpSocketContext";
+import CharacterProfileLink from "@/components/profile/CharacterProfileLink";
 
 const STATUS_ABERTOS = ["inscricoes", "aguardando", "em_andamento"];
 
@@ -248,13 +249,19 @@ function CardTorneio({
   );
 }
 
-function Podio({ posicao, nome, cor }: { posicao: string; nome?: string | null; cor: string }) {
+function Podio({ posicao, nome, id, cor }: { posicao: string; nome?: string | null; id?: number | null; cor: string }) {
   return (
     <div className="rounded-lg border border-white/10 bg-black/25 p-2">
       <p className="font-imFeel text-base" style={{ color: cor }}>
         {posicao}
       </p>
-      <p className="truncate text-white/80">{nome ?? "—"}</p>
+      {nome && id ? (
+        <CharacterProfileLink characterId={id} className="truncate text-white/80">
+          {nome}
+        </CharacterProfileLink>
+      ) : (
+        <p className="truncate text-white/80">{nome ?? "—"}</p>
+      )}
     </div>
   );
 }
@@ -357,9 +364,9 @@ function DetalheTorneioView({
 
         {(detalhe.campeao || detalhe.vice || detalhe.terceiro) && (
           <div className="mt-3 grid grid-cols-3 gap-2 text-center text-xs">
-            <Podio posicao="1º" nome={detalhe.campeao?.nome} cor="#F3B43F" />
-            <Podio posicao="2º" nome={detalhe.vice?.nome} cor="#d7dde3" />
-            <Podio posicao="3º" nome={detalhe.terceiro?.nome} cor="#c08a4a" />
+            <Podio posicao="1º" nome={detalhe.campeao?.nome} id={detalhe.campeao?.id} cor="#F3B43F" />
+            <Podio posicao="2º" nome={detalhe.vice?.nome} id={detalhe.vice?.id} cor="#d7dde3" />
+            <Podio posicao="3º" nome={detalhe.terceiro?.nome} id={detalhe.terceiro?.id} cor="#c08a4a" />
           </div>
         )}
 
@@ -412,13 +419,14 @@ function DetalheTorneioView({
                   participante.eliminado ? "opacity-50" : ""
                 }`}
               >
-                <span
+                <CharacterProfileLink
+                  characterId={participante.id}
                   className={
                     participante.id === meuCharacterId ? "font-bold text-[#F3B43F]" : "text-white/85"
                   }
                 >
                   {participante.nome ?? `#${participante.id}`}
-                </span>
+                </CharacterProfileLink>
                 <span className="text-xs text-white/50">
                   {participante.eliminado
                     ? "Eliminado"
@@ -597,13 +605,18 @@ function LadoDaPartida({
         vencedor ? "bg-[#F3B43F]/15" : ""
       }`}
     >
-      <span
-        className={`min-w-0 truncate ${
-          eu ? "font-bold text-[#F3B43F]" : vencedor ? "text-white" : "text-white/70"
-        }`}
-      >
-        {participante?.nome ?? "A definir"}
-      </span>
+      {participante ? (
+        <CharacterProfileLink
+          characterId={participante.id}
+          className={`min-w-0 truncate ${
+            eu ? "font-bold text-[#F3B43F]" : vencedor ? "text-white" : "text-white/70"
+          }`}
+        >
+          {participante.nome ?? "A definir"}
+        </CharacterProfileLink>
+      ) : (
+        <span className="min-w-0 truncate text-white/70">A definir</span>
+      )}
       <span className="ml-2 shrink-0 font-bold text-white/85">{placar ?? 0}</span>
     </div>
   );
