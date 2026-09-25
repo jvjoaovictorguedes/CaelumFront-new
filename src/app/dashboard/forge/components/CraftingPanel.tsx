@@ -143,7 +143,7 @@ function bordaPorQualidade(qualidade: string) {
   return BORDA_RARIDADE[qualidade.toLowerCase()] ?? BORDA_RARIDADE.comum;
 }
 
-const ORDEM_CATEGORIA = ["Arma", "Armadura", "Capacete", "Escudo", "Acessorio1", "Acessorio2"];
+const ORDEM_CATEGORIA = ["Arma", "Armadura", "Capacete", "Escudo", "Acessorio1", "Acessorio2", "Ferramenta"];
 const LABEL_CATEGORIA: Record<string, string> = {
   Arma: "Armas",
   Armadura: "Armaduras",
@@ -151,6 +151,7 @@ const LABEL_CATEGORIA: Record<string, string> = {
   Escudo: "Escudos",
   Acessorio1: "Acessórios",
   Acessorio2: "Acessórios",
+  Ferramenta: "Varas de Pesca",
 };
 
 function ordenarCategorias(resumo: CategoriaResumo[]) {

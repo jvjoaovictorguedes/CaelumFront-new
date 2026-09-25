@@ -22,6 +22,7 @@ import {
   type AdventureZoneApi,
   type AdventureZoneMonsterApi,
 } from "@/lib/api/admin";
+import { ItemSelect, formatarItemComId, useItensParaSelecaoAdmin } from "@/components/admin/ItemPicker";
 
 type Aba = "zonas" | "monstros" | "aparicoes" | "drops";
 
@@ -510,6 +511,7 @@ function DropsTab() {
   const [mostrarForm, setMostrarForm] = useState(false);
   const [form, setForm] = useState<Partial<AdventureMonsterLootApi> & { chance_percentual?: number }>({});
   const [salvando, setSalvando] = useState(false);
+  const { itens: itensDisponiveis } = useItensParaSelecaoAdmin();
 
   const carregar = useCallback(async () => {
     setCarregando(true);
@@ -584,7 +586,7 @@ function DropsTab() {
             <div key={entrada.id} className={`flex items-center justify-between gap-3 rounded-xl border border-[#F3B43F]/30 bg-[#292018]/80 p-3 text-white ${!entrada.ativo ? "opacity-50" : ""}`}>
               <div className="min-w-0">
                 <p className="font-bold">
-                  {entrada.item?.nome} <span className="text-xs text-white/50">de {entrada.AdventureMonster?.nome}</span>
+                  {entrada.item ? formatarItemComId(entrada.item.nome, entrada.id_item) : `Item #${entrada.id_item}`} <span className="text-xs text-white/50">de {entrada.AdventureMonster?.nome}</span>
                 </p>
                 <p className="text-xs text-[#F3B43F]">
                   {(entrada.chance_ppm / 10000).toFixed(2)}% · x{entrada.quantidade_min}-{entrada.quantidade_max} · {entrada.categoria}
@@ -614,8 +616,12 @@ function DropsTab() {
               </select>
             </label>
             <label className="flex flex-col gap-1 text-xs">
-              ID do item
-              <input type="number" required value={form.id_item ?? ""} onChange={(e) => setForm((f) => ({ ...f, id_item: Number(e.target.value) }))} placeholder="Veja o id na tela de Itens" className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm" />
+              Item
+              <ItemSelect
+                itens={itensDisponiveis}
+                value={form.id_item ?? ""}
+                onChange={(id) => setForm((f) => ({ ...f, id_item: id === "" ? undefined : id }))}
+              />
             </label>
             <div className="flex gap-2">
               <label className="flex flex-1 flex-col gap-1 text-xs">

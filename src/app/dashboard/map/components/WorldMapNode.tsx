@@ -63,6 +63,15 @@ export default function WorldMapNodePin({
         <span className={`pointer-events-none absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full ${corPerigo}`} />
       )}
 
+      {node.pesca && (
+        <span
+          title={node.pesca.tipo === "porto" ? "Porto de pesca" : "Zona de pesca"}
+          className="pointer-events-none absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full border border-sky-300 bg-sky-600 text-[9px] shadow"
+        >
+          🐟
+        </span>
+      )}
+
       {ativoAgora && (
         <span className="pointer-events-none absolute inset-0 animate-ping rounded-full border-2 border-[#F3B43F]" />
       )}

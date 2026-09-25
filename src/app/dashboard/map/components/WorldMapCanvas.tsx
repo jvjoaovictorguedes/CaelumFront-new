@@ -6,7 +6,13 @@ import WorldMapTerritoryLayer from "./WorldMapTerritoryLayer";
 import WorldMapConnectionLayer from "./WorldMapConnectionLayer";
 import WorldMapNodePin from "./WorldMapNode";
 
-const ZOOM_MIN = 0.8;
+// ZOOM_MIN = 1 (não 0.8 como antes): o container do mapa já nasce do
+// tamanho exato que cabe no viewport (w-full/max-h-full + aspect-ratio,
+// efeito "contain"), então zoom=1 É o limite da imagem na tela. Deixar
+// zoom < 1 encolhia o mapa pra dentro do próprio viewport, expondo o
+// fundo preto ao redor (bug reportado) — não tem "mais mapa" pra
+// mostrar zoomando pra trás além disso.
+const ZOOM_MIN = 1;
 const ZOOM_MAX = 2.5;
 
 export default function WorldMapCanvas({
@@ -26,8 +32,10 @@ export default function WorldMapCanvas({
 }) {
   const [scale, setScale] = useState(1);
   const [position, setPosition] = useState({ x: 0, y: 0 });
+  const scaleRef = useRef(1);
 
   const viewportRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<HTMLDivElement>(null);
 
   // Estado para controlar o arrasto (Pan)
   const isDraggingRef = useRef(false);
@@ -46,6 +54,27 @@ export default function WorldMapCanvas({
     []
   );
 
+  // Mesma lógica de "não deixar aparecer preto fora do mapa", mas pro
+  // arrastar (pan): sem isso, dava pra arrastar o mapa já ajustado ao
+  // tamanho da tela (zoom=1) pra fora do viewport e expor o fundo preto
+  // do lado oposto, mesmo sem "zoom pra trás" — mesmo sintoma, outra
+  // causa. offsetWidth/offsetHeight (não getBoundingClientRect) porque
+  // CSS transform não afeta o box de layout, só a pintura — é o tamanho
+  // "natural" (sem escala) do mapa já ajustado ao viewport.
+  const clamparPosicao = useCallback((pos: { x: number; y: number }, escalaAtual: number) => {
+    const mapa = mapRef.current;
+    const viewport = viewportRef.current;
+    if (!mapa || !viewport) return pos;
+
+    const maxX = Math.max(0, (mapa.offsetWidth * escalaAtual - viewport.clientWidth) / 2);
+    const maxY = Math.max(0, (mapa.offsetHeight * escalaAtual - viewport.clientHeight) / 2);
+
+    return {
+      x: Math.min(maxX, Math.max(-maxX, pos.x)),
+      y: Math.min(maxY, Math.max(-maxY, pos.y)),
+    };
+  }, []);
+
   // Registra o evento de roda de forma não-passiva para permitir o preventDefault()
   useEffect(() => {
     const elemento = viewportRef.current;
@@ -53,7 +82,12 @@ export default function WorldMapCanvas({
 
     const tratarRoda = (evento: WheelEvent) => {
       evento.preventDefault();
-      setScale((atual) => clamparEscala(atual - evento.deltaY * 0.001));
+      const novaEscala = clamparEscala(scaleRef.current - evento.deltaY * 0.001);
+      scaleRef.current = novaEscala;
+      setScale(novaEscala);
+      const novaPos = clamparPosicao(positionRef.current, novaEscala);
+      positionRef.current = novaPos;
+      setPosition(novaPos);
     };
 
     elemento.addEventListener("wheel", tratarRoda, { passive: false });
@@ -61,7 +95,7 @@ export default function WorldMapCanvas({
     return () => {
       elemento.removeEventListener("wheel", tratarRoda);
     };
-  }, [clamparEscala]);
+  }, [clamparEscala, clamparPosicao]);
 
   function aoPressionarPonteiro(evento: React.PointerEvent) {
     // Clicar num pino de local (<button>, WorldMapNodePin) não pode virar
@@ -124,7 +158,12 @@ export default function WorldMapCanvas({
       const [a, b] = Array.from(ponteirosRef.current.values());
       const distanciaAtual = Math.hypot(a.x - b.x, a.y - b.y);
       const fator = distanciaAtual / distanciaPinchInicialRef.current;
-      setScale(clamparEscala(escalaPinchInicialRef.current * fator));
+      const novaEscala = clamparEscala(escalaPinchInicialRef.current * fator);
+      scaleRef.current = novaEscala;
+      setScale(novaEscala);
+      const novaPos = clamparPosicao(positionRef.current, novaEscala);
+      positionRef.current = novaPos;
+      setPosition(novaPos);
       return;
     }
 
@@ -140,7 +179,7 @@ export default function WorldMapCanvas({
       const newX = evento.clientX - dragStartRef.current.x;
       const newY = evento.clientY - dragStartRef.current.y;
 
-      const newPos = { x: newX, y: newY };
+      const newPos = clamparPosicao({ x: newX, y: newY }, scaleRef.current);
       positionRef.current = newPos;
       setPosition(newPos);
     }
@@ -157,9 +196,10 @@ export default function WorldMapCanvas({
   }
 
   function centralizar() {
+    scaleRef.current = 1;
     setScale(1);
-    setPosition({ x: 0, y: 0 });
     positionRef.current = { x: 0, y: 0 };
+    setPosition({ x: 0, y: 0 });
   }
 
   return (
@@ -175,6 +215,7 @@ export default function WorldMapCanvas({
       >
         {/* Container do Mapa escalável e arrastável */}
         <div
+          ref={mapRef}
           className="relative aspect-[16/10] w-full max-h-full max-w-full origin-center select-none"
           style={{
             transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,

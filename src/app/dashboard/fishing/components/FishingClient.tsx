@@ -6,6 +6,7 @@
 // envia intenção (cast/hook/reel ON-OFF/abandon) e mostra exatamente o
 // que o servidor devolve, nunca decide espécie/peso/tensão sozinho.
 import { useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useToast } from "@/contexts/ToastContext";
 import {
   fishingApi,
@@ -17,6 +18,9 @@ import {
   type VaraPesca,
   type Vessel,
 } from "@/lib/api/fishing";
+import FishingAlmanaque from "./FishingAlmanaque";
+import FishingRanking from "./FishingRanking";
+import FishingTorneio, { TorneioBanner } from "./FishingTorneio";
 
 function extrairMensagemErro(error: unknown, padrao: string) {
   return (error as { response?: { data?: { message?: string } } })?.response?.data?.message ?? padrao;
@@ -24,9 +28,19 @@ function extrairMensagemErro(error: unknown, padrao: string) {
 
 const FASES_TERMINAIS = new Set(["CAUGHT", "ESCAPED", "BROKEN_LINE", "EXPIRED", "ABORTED"]);
 
+type AbaPesca = "PESCAR" | "ALMANAQUE" | "RANKING" | "TORNEIO";
+const ABAS_PESCA: { valor: AbaPesca; label: string }[] = [
+  { valor: "PESCAR", label: "Pescar" },
+  { valor: "ALMANAQUE", label: "Almanaque Marinho" },
+  { valor: "RANKING", label: "Ranking" },
+  { valor: "TORNEIO", label: "Torneio" },
+];
+
 export default function FishingClient() {
   const { mostrarErro, mostrarSucesso, mostrarInfo } = useToast();
+  const searchParams = useSearchParams();
   const [carregando, setCarregando] = useState(true);
+  const [aba, setAba] = useState<AbaPesca>("PESCAR");
 
   const [progresso, setProgresso] = useState<ProgressoPesca | null>(null);
   const [zonas, setZonas] = useState<FishingZone[]>([]);
@@ -63,13 +77,21 @@ export default function FishingClient() {
       setRotas(rs);
       setZonaAtualId(nav.id_zone_atual);
       setSessao(ativa);
-      if (nav.id_zone_atual) setZonaSelecionada(nav.id_zone_atual);
+      // Deep-link opcional a partir do Mapa de Caelum (?zona=<id>) — só
+      // pré-seleciona no seletor, nunca navega/viaja sozinho (a viagem
+      // continua exigindo uma rota marítima real, spec §18.3).
+      const zonaQuery = Number(searchParams.get("zona"));
+      if (zonaQuery && z.some((zona) => zona.id === zonaQuery)) {
+        setZonaSelecionada(zonaQuery);
+      } else if (nav.id_zone_atual) {
+        setZonaSelecionada(nav.id_zone_atual);
+      }
     } catch (error) {
       mostrarErro(extrairMensagemErro(error, "Não foi possível carregar a tela de Pesca."));
     } finally {
       setCarregando(false);
     }
-  }, [mostrarErro]);
+  }, [mostrarErro, searchParams]);
 
   useEffect(() => {
     carregarTudo();
@@ -131,6 +153,8 @@ export default function FishingClient() {
       if (atualizada.fase === "CAUGHT" && atualizada.resultado) {
         const r = atualizada.resultado;
         mostrarSucesso(`Capturou um peixe de ${r.weight_g}g! +${r.xp} XP de Pesca.${r.primeira_descoberta ? " Nova espécie descoberta!" : ""}`);
+      } else if (atualizada.fase === "WAITING_BITE" && sessao?.fase !== "WAITING_BITE") {
+        mostrarInfo("Linha lançada! Fique de olho e continue clicando em \"Fisgar!\" até o peixe morder.");
       } else if (FASES_TERMINAIS.has(atualizada.fase) && atualizada.fase !== "CAUGHT") {
         mostrarInfo(`Sessão encerrada: ${atualizada.resultado?.motivo ?? atualizada.fase}.`);
       }
@@ -153,6 +177,33 @@ export default function FishingClient() {
 
   return (
     <div className="flex flex-col gap-6">
+      {/* Banner do Torneio da Pesca — sempre visível, qualquer aba */}
+      <TorneioBanner onVerTorneio={() => setAba("TORNEIO")} />
+
+      {/* Abas */}
+      <div className="flex flex-wrap gap-2">
+        {ABAS_PESCA.map(({ valor, label }) => (
+          <button
+            key={valor}
+            type="button"
+            onClick={() => setAba(valor)}
+            className={`rounded-full border px-3 py-1.5 text-xs font-bold uppercase tracking-wide transition ${
+              aba === valor
+                ? "border-sky-400 bg-sky-500 text-[#0b1b2b]"
+                : "border-sky-500/40 bg-black/30 text-sky-300 hover:bg-black/50"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {aba === "ALMANAQUE" && <FishingAlmanaque />}
+      {aba === "RANKING" && <FishingRanking />}
+      {aba === "TORNEIO" && <FishingTorneio />}
+
+      {aba === "PESCAR" && (
+        <>
       {/* Progresso */}
       <div className="rounded-xl border border-white/10 bg-black/30 p-4 text-white">
         <p className="text-sm uppercase tracking-widest text-sky-300">Nível de Pesca</p>
@@ -211,13 +262,13 @@ export default function FishingClient() {
             <div>
               <p className="mb-1 text-xs uppercase text-white/50">Zona</p>
               <select
-                className="w-full rounded bg-white/10 p-2 text-sm"
+                className="w-full rounded bg-white/10 p-2 text-sm text-white [color-scheme:dark]"
                 value={zonaSelecionada ?? ""}
                 onChange={(e) => setZonaSelecionada(Number(e.target.value) || null)}
               >
-                <option value="">Selecione…</option>
+                <option value="" className="bg-[#1a1410] text-white">Selecione…</option>
                 {zonas.map((z) => (
-                  <option key={z.id} value={z.id}>
+                  <option key={z.id} value={z.id} className="bg-[#1a1410] text-white">
                     {z.nome} (Nv. {z.nivel_pesca_minimo}+)
                   </option>
                 ))}
@@ -229,13 +280,13 @@ export default function FishingClient() {
             <div>
               <p className="mb-1 text-xs uppercase text-white/50">Vara</p>
               <select
-                className="w-full rounded bg-white/10 p-2 text-sm"
+                className="w-full rounded bg-white/10 p-2 text-sm text-white [color-scheme:dark]"
                 value={varaSelecionada ?? ""}
                 onChange={(e) => setVaraSelecionada(Number(e.target.value) || null)}
               >
-                <option value="">Selecione uma vara…</option>
+                <option value="" className="bg-[#1a1410] text-white">Selecione uma vara…</option>
                 {varas.map((v) => (
-                  <option key={v.id_instancia} value={v.id_instancia}>
+                  <option key={v.id_instancia} value={v.id_instancia} className="bg-[#1a1410] text-white">
                     {v.nome} +{v.refinamento}
                   </option>
                 ))}
@@ -249,13 +300,18 @@ export default function FishingClient() {
             <div>
               <p className="mb-1 text-xs uppercase text-white/50">Isca</p>
               <select
-                className="w-full rounded bg-white/10 p-2 text-sm"
+                className="w-full rounded bg-white/10 p-2 text-sm text-white [color-scheme:dark]"
                 value={iscaSelecionada ?? ""}
                 onChange={(e) => setIscaSelecionada(Number(e.target.value) || null)}
               >
-                <option value="">Sem isca</option>
+                <option value="" className="bg-[#1a1410] text-white">Sem isca</option>
                 {iscas.map((i) => (
-                  <option key={i.id_item} value={i.id_item} disabled={i.quantidade_disponivel <= 0}>
+                  <option
+                    key={i.id_item}
+                    value={i.id_item}
+                    disabled={i.quantidade_disponivel <= 0}
+                    className="bg-[#1a1410] text-white"
+                  >
                     {i.nome} ({i.quantidade_disponivel})
                   </option>
                 ))}
@@ -283,6 +339,8 @@ export default function FishingClient() {
           onAbandon={() => acao(() => fishingApi.abandon(sessao.id))}
           onNovaSessao={() => setSessao(null)}
         />
+      )}
+        </>
       )}
     </div>
   );
@@ -323,12 +381,24 @@ function FishingArena({
                 style={{ width: `${tensaoPct}%` }}
               />
             </div>
+            {sessao.fase === "FIGHTING" && (
+              <p className="mt-1 text-xs text-white/50">
+                A tensão sobe quando você recolhe a linha (ON) e desce quando você solta (OFF). Se a tensão encher
+                (barra fica vermelha), a linha arrebenta e o peixe escapa — alterne entre Recolher e Soltar pra manter
+                a tensão controlada enquanto avança.
+              </p>
+            )}
           </div>
           <div className="mb-4">
             <p className="mb-1 text-xs uppercase text-white/50">Progresso de captura</p>
             <div className="h-4 w-full overflow-hidden rounded-full bg-white/10">
               <div className="h-full bg-green-500 transition-all" style={{ width: `${progressoPct}%` }} />
             </div>
+            {sessao.fase === "FIGHTING" && (
+              <p className="mt-1 text-xs text-white/50">
+                Só avança enquanto você está recolhendo a linha (ON). Encha essa barra até o fim pra capturar o peixe.
+              </p>
+            )}
           </div>
 
           <div className="flex flex-wrap gap-2">
@@ -364,6 +434,13 @@ function FishingArena({
               Abandonar
             </button>
           </div>
+          {sessao.fase === "WAITING_BITE" && (
+            <p className="mt-3 text-xs text-amber-300/90">
+              Fique de olho na água: o peixe pode morder a qualquer momento e você só tem uma janela curta pra fisgar.
+              Continue clicando em <span className="font-bold">Fisgar!</span> até o peixe morder — clicar cedo demais
+              não tem problema, só não pode demorar depois que ele morder.
+            </p>
+          )}
         </>
       )}
 

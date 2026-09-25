@@ -1,26 +1,35 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   atualizarFishingAffinityAdmin,
   atualizarFishingBaitAdmin,
   atualizarFishingPoolAdmin,
   atualizarFishingPortAdmin,
   atualizarFishingSpeciesAdmin,
+  atualizarFishingTournamentAdmin,
   atualizarFishingZoneAdmin,
+  atualizarMarineRouteAdmin,
+  atualizarVesselAdmin,
   criarFishingAffinityAdmin,
   criarFishingBaitAdmin,
   criarFishingPoolAdmin,
   criarFishingPortAdmin,
   criarFishingSpeciesAdmin,
+  criarFishingTournamentAdmin,
   criarFishingZoneAdmin,
+  criarMarineRouteAdmin,
+  criarVesselAdmin,
   listarFishingAffinitiesAdmin,
   listarFishingBaitsAdmin,
   listarFishingPoolAdmin,
   listarFishingPortsAdmin,
   listarFishingSpeciesAdmin,
+  listarFishingTournamentsAdmin,
   listarFishingZonesAdmin,
+  listarMarineRoutesAdmin,
+  listarVesselsAdmin,
   mensagemDeErroAdmin,
   type ComportamentoEspecie,
   type FishingAffinityAdminApi,
@@ -28,18 +37,25 @@ import {
   type FishingPoolAdminApi,
   type FishingPortAdminApi,
   type FishingSpeciesAdminApi,
+  type FishingTournamentAdminApi,
   type FishingZoneAdminApi,
+  type MarineRouteAdminApi,
   type PayloadFishingAffinityAdmin,
   type PayloadFishingBaitAdmin,
   type PayloadFishingPoolAdmin,
   type PayloadFishingPortAdmin,
   type PayloadFishingSpeciesAdmin,
+  type PayloadFishingTournamentAdmin,
   type PayloadFishingZoneAdmin,
+  type PayloadMarineRouteAdmin,
+  type PayloadVesselAdmin,
   type PerfilPeso,
+  type VesselAdminApi,
 } from "@/lib/api/admin";
+import { ItemSelect, formatarItemComId, useItensParaSelecaoAdmin } from "@/components/admin/ItemPicker";
 
-type Aba = "Zonas" | "Especies" | "Pool" | "Portos" | "Iscas" | "Afinidades";
-const ABAS: Aba[] = ["Zonas", "Especies", "Pool", "Portos", "Iscas", "Afinidades"];
+type Aba = "Zonas" | "Especies" | "Pool" | "Portos" | "Iscas" | "Afinidades" | "Embarcacoes" | "Rotas" | "Torneios";
+const ABAS: Aba[] = ["Zonas", "Especies", "Pool", "Portos", "Iscas", "Afinidades", "Embarcacoes", "Rotas", "Torneios"];
 const ROTULO_ABA: Record<Aba, string> = {
   Zonas: "Zonas",
   Especies: "Espécies",
@@ -47,6 +63,9 @@ const ROTULO_ABA: Record<Aba, string> = {
   Portos: "Portos",
   Iscas: "Iscas",
   Afinidades: "Afinidades (Isca × Espécie)",
+  Embarcacoes: "Embarcações",
+  Rotas: "Rotas Marítimas",
+  Torneios: "Torneios",
 };
 
 const COMPORTAMENTOS: ComportamentoEspecie[] = ["CALM", "BURST", "ERRATIC", "ENDURANCE", "DEEP_DIVE"];
@@ -121,6 +140,9 @@ export default function AdminFishingClient() {
       {aba === "Portos" && <AbaPortos onErro={setErro} />}
       {aba === "Iscas" && <AbaIscas onErro={setErro} />}
       {aba === "Afinidades" && <AbaAfinidades onErro={setErro} />}
+      {aba === "Embarcacoes" && <AbaEmbarcacoes onErro={setErro} />}
+      {aba === "Rotas" && <AbaRotas onErro={setErro} />}
+      {aba === "Torneios" && <AbaTorneios onErro={setErro} />}
     </div>
   );
 }
@@ -293,6 +315,7 @@ function AbaEspecies({ onErro }: { onErro: (m: string) => void }) {
   const [form, setForm] = useState<PayloadFishingSpeciesAdmin>({
     key: "", id_item: undefined, comportamento_key: "CALM", dificuldade_base: 100, peso_min_g: 100, peso_max_g: 500, perfil_peso: "NORMAL",
   });
+  const { itens: itensDisponiveis } = useItensParaSelecaoAdmin();
 
   const carregar = useCallback(async () => {
     setCarregando(true);
@@ -374,7 +397,7 @@ function AbaEspecies({ onErro }: { onErro: (m: string) => void }) {
             ) : (
               especies.map((e) => (
                 <tr key={e.id} className="border-b border-white/5">
-                  <td className="px-3 py-2 font-bold">{e.item?.nome ?? `#${e.id_item}`}</td>
+                  <td className="px-3 py-2 font-bold">{e.item ? formatarItemComId(e.item.nome, e.id_item) : `#${e.id_item}`}</td>
                   <td className="px-3 py-2 text-white/60">{e.key}</td>
                   <td className="px-3 py-2">{e.comportamento_key}</td>
                   <td className="px-3 py-2">{e.dificuldade_base}</td>
@@ -404,8 +427,12 @@ function AbaEspecies({ onErro }: { onErro: (m: string) => void }) {
                 <label className="flex flex-col gap-1 text-xs">key (identificador único)
                   <Input required value={form.key ?? ""} onChange={(e) => setForm((f) => ({ ...f, key: e.target.value }))} />
                 </label>
-                <label className="flex flex-col gap-1 text-xs">id_item (Item já cadastrado em Itens)
-                  <Input required type="number" value={form.id_item ?? ""} onChange={(e) => setForm((f) => ({ ...f, id_item: Number(e.target.value) }))} />
+                <label className="flex flex-col gap-1 text-xs">Item (já cadastrado em Itens)
+                  <ItemSelect
+                    itens={itensDisponiveis}
+                    value={form.id_item ?? ""}
+                    onChange={(id) => setForm((f) => ({ ...f, id_item: id === "" ? undefined : id }))}
+                  />
                 </label>
               </>
             )}
@@ -488,6 +515,28 @@ function AbaPool({ onErro }: { onErro: (m: string) => void }) {
     setMostrarForm(true);
   }
 
+  // % de chance de cada espécie DENTRO da zona — espelha exatamente a
+  // fórmula de sorteio do backend (fishingEncounterService.sortearPonderado):
+  // peso / soma dos pesos ATIVOS da mesma zona, sem considerar afinidade
+  // de isca (isso é só um multiplicador que entra na hora da pescaria, a
+  // % aqui é a base "sem isca" — ver AbaAfinidades pro efeito da isca).
+  // Puramente derivado do que já foi carregado — nunca persistido.
+  const totalAtivoPorZona = useMemo(() => {
+    const totais = new Map<number, number>();
+    for (const item of pool) {
+      if (!item.ativo) continue;
+      totais.set(item.id_zone, (totais.get(item.id_zone) ?? 0) + item.encounter_weight);
+    }
+    return totais;
+  }, [pool]);
+
+  function chancePercentual(item: FishingPoolAdminApi): string | null {
+    if (!item.ativo) return null;
+    const total = totalAtivoPorZona.get(item.id_zone) ?? 0;
+    if (total <= 0) return null;
+    return `≈${((item.encounter_weight / total) * 100).toFixed(1)}%`;
+  }
+
   async function salvar(e: React.FormEvent) {
     e.preventDefault();
     setSalvando(true);
@@ -536,8 +585,15 @@ function AbaPool({ onErro }: { onErro: (m: string) => void }) {
               pool.map((item) => (
                 <tr key={item.id} className="border-b border-white/5">
                   <td className="px-3 py-2 font-bold">{item.FishingZone?.nome ?? `#${item.id_zone}`}</td>
-                  <td className="px-3 py-2">{item.species?.item?.nome ?? `#${item.id_species}`}</td>
-                  <td className="px-3 py-2">{item.encounter_weight}</td>
+                  <td className="px-3 py-2">{item.species?.item ? formatarItemComId(item.species.item.nome, item.species.id) : `#${item.id_species}`}</td>
+                  <td className="px-3 py-2">
+                    {item.encounter_weight}
+                    {chancePercentual(item) && (
+                      <span className="ml-2 text-xs font-bold text-sky-300" title="Chance aproximada de aparição dentro da zona (peso ÷ soma dos pesos ativos da zona), sem contar afinidade de isca.">
+                        {chancePercentual(item)} de chance nessa zona
+                      </span>
+                    )}
+                  </td>
                   <td className="px-3 py-2">
                     <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${item.ativo ? "bg-green-500/20 text-green-300" : "bg-white/10 text-white/60"}`}>
                       {item.ativo ? "Ativo" : "Inativo"}
@@ -564,7 +620,7 @@ function AbaPool({ onErro }: { onErro: (m: string) => void }) {
             </label>
             <label className="flex flex-col gap-1 text-xs">Espécie
               <Select required value={form.id_species ?? ""} onChange={(e) => setForm((f) => ({ ...f, id_species: Number(e.target.value) }))}>
-                {especies.map((e) => <option key={e.id} value={e.id}>{e.item?.nome ?? e.key}</option>)}
+                {especies.map((e) => <option key={e.id} value={e.id}>{e.item ? formatarItemComId(e.item.nome, e.id) : e.key}</option>)}
               </Select>
             </label>
             <label className="flex flex-col gap-1 text-xs">Peso do encontro (relativo, {'>'} 0)
@@ -711,6 +767,7 @@ function AbaIscas({ onErro }: { onErro: (m: string) => void }) {
   const [mostrarForm, setMostrarForm] = useState(false);
   const [salvando, setSalvando] = useState(false);
   const [form, setForm] = useState<PayloadFishingBaitAdmin>({ key: "", id_item: undefined, nivel_pesca_minimo: 1 });
+  const { itens: itensDisponiveis } = useItensParaSelecaoAdmin();
 
   const carregar = useCallback(async () => {
     setCarregando(true);
@@ -778,7 +835,7 @@ function AbaIscas({ onErro }: { onErro: (m: string) => void }) {
             ) : (
               iscas.map((i) => (
                 <tr key={i.id_item} className="border-b border-white/5">
-                  <td className="px-3 py-2 font-bold">{i.item?.nome ?? `#${i.id_item}`}</td>
+                  <td className="px-3 py-2 font-bold">{i.item ? formatarItemComId(i.item.nome, i.id_item) : `#${i.id_item}`}</td>
                   <td className="px-3 py-2 text-white/60">{i.key}</td>
                   <td className="px-3 py-2">{i.nivel_pesca_minimo}</td>
                   <td className="px-3 py-2">
@@ -805,8 +862,12 @@ function AbaIscas({ onErro }: { onErro: (m: string) => void }) {
                 <label className="flex flex-col gap-1 text-xs">key (identificador único)
                   <Input required value={form.key ?? ""} onChange={(e) => setForm((f) => ({ ...f, key: e.target.value }))} />
                 </label>
-                <label className="flex flex-col gap-1 text-xs">id_item (Item já cadastrado em Itens)
-                  <Input required type="number" value={form.id_item ?? ""} onChange={(e) => setForm((f) => ({ ...f, id_item: Number(e.target.value) }))} />
+                <label className="flex flex-col gap-1 text-xs">Item (já cadastrado em Itens)
+                  <ItemSelect
+                    itens={itensDisponiveis}
+                    value={form.id_item ?? ""}
+                    onChange={(id) => setForm((f) => ({ ...f, id_item: id === "" ? undefined : id }))}
+                  />
                 </label>
               </>
             )}
@@ -906,8 +967,8 @@ function AbaAfinidades({ onErro }: { onErro: (m: string) => void }) {
             ) : (
               afinidades.map((a) => (
                 <tr key={a.id} className="border-b border-white/5">
-                  <td className="px-3 py-2 font-bold">{a.FishingBait?.item?.nome ?? `#${a.id_bait_item}`}</td>
-                  <td className="px-3 py-2">{a.species?.item?.nome ?? `#${a.id_species}`}</td>
+                  <td className="px-3 py-2 font-bold">{a.FishingBait?.item ? formatarItemComId(a.FishingBait.item.nome, a.id_bait_item) : `#${a.id_bait_item}`}</td>
+                  <td className="px-3 py-2">{a.species?.item ? formatarItemComId(a.species.item.nome, a.species.id) : `#${a.id_species}`}</td>
                   <td className="px-3 py-2">{a.multiplicador_peso_ppm.toLocaleString("pt-BR")}</td>
                   <td className="px-3 py-2">
                     <button type="button" onClick={() => abrirEdicao(a)} className="text-[#F3B43F] hover:underline">Editar</button>
@@ -927,18 +988,477 @@ function AbaAfinidades({ onErro }: { onErro: (m: string) => void }) {
               <>
                 <label className="flex flex-col gap-1 text-xs">Isca
                   <Select required value={form.id_bait_item ?? ""} onChange={(e) => setForm((f) => ({ ...f, id_bait_item: Number(e.target.value) }))}>
-                    {iscas.map((i) => <option key={i.id_item} value={i.id_item}>{i.item?.nome ?? i.key}</option>)}
+                    {iscas.map((i) => <option key={i.id_item} value={i.id_item}>{i.item ? formatarItemComId(i.item.nome, i.id_item) : i.key}</option>)}
                   </Select>
                 </label>
                 <label className="flex flex-col gap-1 text-xs">Espécie
                   <Select required value={form.id_species ?? ""} onChange={(e) => setForm((f) => ({ ...f, id_species: Number(e.target.value) }))}>
-                    {especies.map((e) => <option key={e.id} value={e.id}>{e.item?.nome ?? e.key}</option>)}
+                    {especies.map((e) => <option key={e.id} value={e.id}>{e.item ? formatarItemComId(e.item.nome, e.id) : e.key}</option>)}
                   </Select>
                 </label>
               </>
             )}
             <label className="flex flex-col gap-1 text-xs">Multiplicador (PPM, 1.000.000 = neutro)
               <Input type="number" min={0} value={form.multiplicador_peso_ppm ?? 1_000_000} onChange={(e) => setForm((f) => ({ ...f, multiplicador_peso_ppm: Number(e.target.value) }))} />
+            </label>
+            <div className="mt-2 flex justify-end gap-2">
+              <button type="button" onClick={() => setMostrarForm(false)} className="rounded-lg border border-white/20 px-4 py-2 text-sm text-white/70 hover:bg-white/10">Cancelar</button>
+              <BotaoSalvar disabled={salvando} />
+            </div>
+          </form>
+        </div>
+      )}
+    </Secao>
+  );
+}
+
+// ----------------------------------------------------------- EMBARCAÇÕES
+function AbaEmbarcacoes({ onErro }: { onErro: (m: string) => void }) {
+  const [vessels, setVessels] = useState<VesselAdminApi[]>([]);
+  const [carregando, setCarregando] = useState(true);
+  const [editando, setEditando] = useState<VesselAdminApi | null>(null);
+  const [mostrarForm, setMostrarForm] = useState(false);
+  const [salvando, setSalvando] = useState(false);
+  const [form, setForm] = useState<PayloadVesselAdmin>({ key: "", nome: "", tier: 1, nivel_pesca_minimo: 1, preco: 0 });
+
+  const carregar = useCallback(async () => {
+    setCarregando(true);
+    try {
+      setVessels(await listarVesselsAdmin());
+    } catch (error) {
+      onErro(mensagemDeErroAdmin(error, "Não foi possível carregar as embarcações."));
+    } finally {
+      setCarregando(false);
+    }
+  }, [onErro]);
+
+  useEffect(() => {
+    carregar();
+  }, [carregar]);
+
+  function abrirCriacao() {
+    setEditando(null);
+    setForm({ key: "", nome: "", tier: 1, nivel_pesca_minimo: 1, preco: 0 });
+    setMostrarForm(true);
+  }
+
+  function abrirEdicao(vessel: VesselAdminApi) {
+    setEditando(vessel);
+    setForm({
+      nome: vessel.nome,
+      tier: vessel.tier,
+      nivel_pesca_minimo: vessel.nivel_pesca_minimo,
+      preco: vessel.preco,
+      descricao: vessel.descricao ?? "",
+      ativo: vessel.ativo,
+    });
+    setMostrarForm(true);
+  }
+
+  async function salvar(e: React.FormEvent) {
+    e.preventDefault();
+    setSalvando(true);
+    try {
+      if (editando) await atualizarVesselAdmin(editando.id, form);
+      else await criarVesselAdmin(form);
+      setMostrarForm(false);
+      await carregar();
+    } catch (error) {
+      onErro(mensagemDeErroAdmin(error, "Não foi possível salvar a embarcação."));
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  async function alternarAtivo(vessel: VesselAdminApi) {
+    try {
+      await atualizarVesselAdmin(vessel.id, { nome: vessel.nome, ativo: !vessel.ativo });
+      await carregar();
+    } catch (error) {
+      onErro(mensagemDeErroAdmin(error, "Não foi possível mudar o status."));
+    }
+  }
+
+  return (
+    <Secao titulo="Embarcações (catálogo de Vessel — spec §18.2/§18.4)">
+      <button type="button" onClick={abrirCriacao} className="mb-3 rounded-lg bg-[#BC8418] px-4 py-2 text-sm font-bold text-black hover:bg-[#a5710f]">
+        + Nova embarcação
+      </button>
+      <div className="overflow-x-auto rounded-xl border border-white/10">
+        <table className="w-full text-left text-sm text-white">
+          <thead>
+            <tr className="border-b border-white/10 text-xs uppercase text-white/50">
+              <th className="px-3 py-2">Nome</th>
+              <th className="px-3 py-2">Key</th>
+              <th className="px-3 py-2">Tier</th>
+              <th className="px-3 py-2">Nível mín.</th>
+              <th className="px-3 py-2">Preço</th>
+              <th className="px-3 py-2">Status</th>
+              <th className="px-3 py-2">Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            {carregando ? (
+              <tr><td colSpan={7} className="px-3 py-4 text-center text-white/50">Carregando...</td></tr>
+            ) : vessels.length === 0 ? (
+              <tr><td colSpan={7} className="px-3 py-4 text-center text-white/50">Nenhuma embarcação cadastrada.</td></tr>
+            ) : (
+              vessels.map((v) => (
+                <tr key={v.id} className="border-b border-white/5">
+                  <td className="px-3 py-2 font-bold">{v.nome}</td>
+                  <td className="px-3 py-2 text-white/60">{v.key}</td>
+                  <td className="px-3 py-2">{v.tier}</td>
+                  <td className="px-3 py-2">{v.nivel_pesca_minimo}</td>
+                  <td className="px-3 py-2">{v.preco > 0 ? v.preco : "Grátis"}</td>
+                  <td className="px-3 py-2">
+                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${v.ativo ? "bg-green-500/20 text-green-300" : "bg-white/10 text-white/60"}`}>
+                      {v.ativo ? "Ativa" : "Inativa"}
+                    </span>
+                  </td>
+                  <td className="px-3 py-2">
+                    <div className="flex gap-2">
+                      <button type="button" onClick={() => abrirEdicao(v)} className="text-[#F3B43F] hover:underline">Editar</button>
+                      <button type="button" onClick={() => alternarAtivo(v)} className="text-white/70 hover:underline">{v.ativo ? "Desativar" : "Ativar"}</button>
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {mostrarForm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={() => setMostrarForm(false)}>
+          <form onSubmit={salvar} onClick={(e) => e.stopPropagation()} className="flex max-h-[85vh] w-full max-w-md flex-col gap-3 overflow-y-auto rounded-2xl border-2 border-[#F3B43F] bg-[#292018] p-5 text-white shadow-2xl">
+            <p className="font-imFeel text-xl text-[#F3B43F]">{editando ? "Editar embarcação" : "Nova embarcação"}</p>
+            {!editando && (
+              <label className="flex flex-col gap-1 text-xs">key (identificador único)
+                <Input required value={form.key ?? ""} onChange={(e) => setForm((f) => ({ ...f, key: e.target.value }))} />
+              </label>
+            )}
+            <label className="flex flex-col gap-1 text-xs">Nome
+              <Input required value={form.nome} onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))} />
+            </label>
+            <div className="flex gap-2">
+              <label className="flex flex-1 flex-col gap-1 text-xs">Tier
+                <Input type="number" min={1} value={form.tier ?? 1} onChange={(e) => setForm((f) => ({ ...f, tier: Number(e.target.value) }))} />
+              </label>
+              <label className="flex flex-1 flex-col gap-1 text-xs">Nível de pesca mín.
+                <Input type="number" min={1} value={form.nivel_pesca_minimo ?? 1} onChange={(e) => setForm((f) => ({ ...f, nivel_pesca_minimo: Number(e.target.value) }))} />
+              </label>
+              <label className="flex flex-1 flex-col gap-1 text-xs">Preço (0 = grátis)
+                <Input type="number" min={0} value={form.preco ?? 0} onChange={(e) => setForm((f) => ({ ...f, preco: Number(e.target.value) }))} />
+              </label>
+            </div>
+            <label className="flex flex-col gap-1 text-xs">Descrição
+              <Input value={form.descricao ?? ""} onChange={(e) => setForm((f) => ({ ...f, descricao: e.target.value }))} />
+            </label>
+            <div className="mt-2 flex justify-end gap-2">
+              <button type="button" onClick={() => setMostrarForm(false)} className="rounded-lg border border-white/20 px-4 py-2 text-sm text-white/70 hover:bg-white/10">Cancelar</button>
+              <BotaoSalvar disabled={salvando} />
+            </div>
+          </form>
+        </div>
+      )}
+    </Secao>
+  );
+}
+
+// --------------------------------------------------------- ROTAS MARÍTIMAS
+function AbaRotas({ onErro }: { onErro: (m: string) => void }) {
+  const [rotas, setRotas] = useState<MarineRouteAdminApi[]>([]);
+  const [zonas, setZonas] = useState<FishingZoneAdminApi[]>([]);
+  const [portos, setPortos] = useState<FishingPortAdminApi[]>([]);
+  const [carregando, setCarregando] = useState(true);
+  const [mostrarForm, setMostrarForm] = useState(false);
+  const [salvando, setSalvando] = useState(false);
+  const [form, setForm] = useState<PayloadMarineRouteAdmin>({ min_vessel_tier: 1, distance: 1 });
+
+  const carregar = useCallback(async () => {
+    setCarregando(true);
+    try {
+      const [r, z, p] = await Promise.all([listarMarineRoutesAdmin(), listarFishingZonesAdmin(), listarFishingPortsAdmin()]);
+      setRotas(r);
+      setZonas(z);
+      setPortos(p);
+    } catch (error) {
+      onErro(mensagemDeErroAdmin(error, "Não foi possível carregar as rotas marítimas."));
+    } finally {
+      setCarregando(false);
+    }
+  }, [onErro]);
+
+  useEffect(() => {
+    carregar();
+  }, [carregar]);
+
+  function abrirCriacao() {
+    setForm({ id_port_origem: portos[0]?.id, id_zone_destino: zonas[0]?.id, min_vessel_tier: 1, distance: 1 });
+    setMostrarForm(true);
+  }
+
+  async function salvar(e: React.FormEvent) {
+    e.preventDefault();
+    setSalvando(true);
+    try {
+      await criarMarineRouteAdmin(form);
+      setMostrarForm(false);
+      await carregar();
+    } catch (error) {
+      onErro(mensagemDeErroAdmin(error, "Não foi possível criar a rota marítima."));
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  async function alternarAtivo(rota: MarineRouteAdminApi) {
+    try {
+      await atualizarMarineRouteAdmin(rota.id, { ativo: !rota.ativo });
+      await carregar();
+    } catch (error) {
+      onErro(mensagemDeErroAdmin(error, "Não foi possível mudar o status."));
+    }
+  }
+
+  return (
+    <Secao titulo="Rotas marítimas (Porto de origem → Zona de destino)">
+      <p className="mb-3 text-xs text-white/50">
+        id_world_connection precisa de uma conexão já criada no Mapa Mundial (WorldMapConnection) — crie a estrada/rota
+        visual no schema do mapa primeiro e informe o id dela aqui.
+      </p>
+      <button type="button" onClick={abrirCriacao} className="mb-3 rounded-lg bg-[#BC8418] px-4 py-2 text-sm font-bold text-black hover:bg-[#a5710f]">
+        + Nova rota
+      </button>
+      <div className="overflow-x-auto rounded-xl border border-white/10">
+        <table className="w-full text-left text-sm text-white">
+          <thead>
+            <tr className="border-b border-white/10 text-xs uppercase text-white/50">
+              <th className="px-3 py-2">Origem</th>
+              <th className="px-3 py-2">Destino</th>
+              <th className="px-3 py-2">Tier mín.</th>
+              <th className="px-3 py-2">Distância</th>
+              <th className="px-3 py-2">Status</th>
+              <th className="px-3 py-2">Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            {carregando ? (
+              <tr><td colSpan={6} className="px-3 py-4 text-center text-white/50">Carregando...</td></tr>
+            ) : rotas.length === 0 ? (
+              <tr><td colSpan={6} className="px-3 py-4 text-center text-white/50">Nenhuma rota cadastrada.</td></tr>
+            ) : (
+              rotas.map((r) => (
+                <tr key={r.id} className="border-b border-white/5">
+                  <td className="px-3 py-2 font-bold">{r.portoOrigem?.nome ?? `#${r.id_port_origem}`}</td>
+                  <td className="px-3 py-2">{r.zonaDestino?.nome ?? `#${r.id_zone_destino}`}</td>
+                  <td className="px-3 py-2">{r.min_vessel_tier}</td>
+                  <td className="px-3 py-2">{r.distance}</td>
+                  <td className="px-3 py-2">
+                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${r.ativo ? "bg-green-500/20 text-green-300" : "bg-white/10 text-white/60"}`}>
+                      {r.ativo ? "Ativa" : "Inativa"}
+                    </span>
+                  </td>
+                  <td className="px-3 py-2">
+                    <button type="button" onClick={() => alternarAtivo(r)} className="text-white/70 hover:underline">{r.ativo ? "Desativar" : "Ativar"}</button>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {mostrarForm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={() => setMostrarForm(false)}>
+          <form onSubmit={salvar} onClick={(e) => e.stopPropagation()} className="flex w-full max-w-md flex-col gap-3 rounded-2xl border-2 border-[#F3B43F] bg-[#292018] p-5 text-white shadow-2xl">
+            <p className="font-imFeel text-xl text-[#F3B43F]">Nova rota marítima</p>
+            <label className="flex flex-col gap-1 text-xs">id_world_connection
+              <Input required type="number" value={form.id_world_connection ?? ""} onChange={(e) => setForm((f) => ({ ...f, id_world_connection: Number(e.target.value) }))} />
+            </label>
+            <label className="flex flex-col gap-1 text-xs">Porto de origem
+              <Select required value={form.id_port_origem ?? ""} onChange={(e) => setForm((f) => ({ ...f, id_port_origem: Number(e.target.value) }))}>
+                {portos.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
+              </Select>
+            </label>
+            <label className="flex flex-col gap-1 text-xs">Zona de destino
+              <Select required value={form.id_zone_destino ?? ""} onChange={(e) => setForm((f) => ({ ...f, id_zone_destino: Number(e.target.value) }))}>
+                {zonas.map((z) => <option key={z.id} value={z.id}>{z.nome}</option>)}
+              </Select>
+            </label>
+            <div className="flex gap-2">
+              <label className="flex flex-1 flex-col gap-1 text-xs">Tier mín. da embarcação
+                <Input type="number" min={1} value={form.min_vessel_tier ?? 1} onChange={(e) => setForm((f) => ({ ...f, min_vessel_tier: Number(e.target.value) }))} />
+              </label>
+              <label className="flex flex-1 flex-col gap-1 text-xs">Distância
+                <Input type="number" min={1} value={form.distance ?? 1} onChange={(e) => setForm((f) => ({ ...f, distance: Number(e.target.value) }))} />
+              </label>
+            </div>
+            <div className="mt-2 flex justify-end gap-2">
+              <button type="button" onClick={() => setMostrarForm(false)} className="rounded-lg border border-white/20 px-4 py-2 text-sm text-white/70 hover:bg-white/10">Cancelar</button>
+              <BotaoSalvar disabled={salvando} />
+            </div>
+          </form>
+        </div>
+      )}
+    </Secao>
+  );
+}
+
+// ------------------------------------------------------------- TORNEIOS
+function AbaTorneios({ onErro }: { onErro: (m: string) => void }) {
+  const [torneios, setTorneios] = useState<FishingTournamentAdminApi[]>([]);
+  const [zonas, setZonas] = useState<FishingZoneAdminApi[]>([]);
+  const [carregando, setCarregando] = useState(true);
+  const [editando, setEditando] = useState<FishingTournamentAdminApi | null>(null);
+  const [mostrarForm, setMostrarForm] = useState(false);
+  const [salvando, setSalvando] = useState(false);
+  const [form, setForm] = useState<PayloadFishingTournamentAdmin>({ nome: "" });
+
+  const carregar = useCallback(async () => {
+    setCarregando(true);
+    try {
+      const [t, z] = await Promise.all([listarFishingTournamentsAdmin(), listarFishingZonesAdmin()]);
+      setTorneios(t);
+      setZonas(z);
+    } catch (error) {
+      onErro(mensagemDeErroAdmin(error, "Não foi possível carregar os torneios."));
+    } finally {
+      setCarregando(false);
+    }
+  }, [onErro]);
+
+  useEffect(() => {
+    carregar();
+  }, [carregar]);
+
+  function paraInputLocal(iso?: string) {
+    if (!iso) return "";
+    return new Date(iso).toISOString().slice(0, 16);
+  }
+
+  function abrirCriacao() {
+    setEditando(null);
+    const agora = new Date();
+    const amanha = new Date(Date.now() + 86_400_000);
+    setForm({ nome: "", inicia_em: agora.toISOString(), termina_em: amanha.toISOString() });
+    setMostrarForm(true);
+  }
+
+  function abrirEdicao(torneio: FishingTournamentAdminApi) {
+    setEditando(torneio);
+    setForm({
+      nome: torneio.nome,
+      id_zone: torneio.id_zone,
+      inicia_em: torneio.inicia_em,
+      termina_em: torneio.termina_em,
+      ativo: torneio.ativo,
+    });
+    setMostrarForm(true);
+  }
+
+  async function salvar(e: React.FormEvent) {
+    e.preventDefault();
+    setSalvando(true);
+    try {
+      if (editando) await atualizarFishingTournamentAdmin(editando.id, form);
+      else await criarFishingTournamentAdmin(form);
+      setMostrarForm(false);
+      await carregar();
+    } catch (error) {
+      onErro(mensagemDeErroAdmin(error, "Não foi possível salvar o torneio."));
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  async function alternarAtivo(torneio: FishingTournamentAdminApi) {
+    try {
+      await atualizarFishingTournamentAdmin(torneio.id, { nome: torneio.nome, ativo: !torneio.ativo });
+      await carregar();
+    } catch (error) {
+      onErro(mensagemDeErroAdmin(error, "Não foi possível mudar o status."));
+    }
+  }
+
+  return (
+    <Secao titulo="Torneios da Pesca (janela de tempo + escopo de zona opcional — pontuação sempre calculada na leitura)">
+      <button type="button" onClick={abrirCriacao} className="mb-3 rounded-lg bg-[#BC8418] px-4 py-2 text-sm font-bold text-black hover:bg-[#a5710f]">
+        + Novo torneio
+      </button>
+      <div className="overflow-x-auto rounded-xl border border-white/10">
+        <table className="w-full text-left text-sm text-white">
+          <thead>
+            <tr className="border-b border-white/10 text-xs uppercase text-white/50">
+              <th className="px-3 py-2">Nome</th>
+              <th className="px-3 py-2">Zona</th>
+              <th className="px-3 py-2">Início</th>
+              <th className="px-3 py-2">Fim</th>
+              <th className="px-3 py-2">Status</th>
+              <th className="px-3 py-2">Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            {carregando ? (
+              <tr><td colSpan={6} className="px-3 py-4 text-center text-white/50">Carregando...</td></tr>
+            ) : torneios.length === 0 ? (
+              <tr><td colSpan={6} className="px-3 py-4 text-center text-white/50">Nenhum torneio cadastrado.</td></tr>
+            ) : (
+              torneios.map((t) => (
+                <tr key={t.id} className="border-b border-white/5">
+                  <td className="px-3 py-2 font-bold">{t.nome}</td>
+                  <td className="px-3 py-2 text-white/60">{t.zona?.nome ?? "Global (todas as zonas)"}</td>
+                  <td className="px-3 py-2 text-white/60">{new Date(t.inicia_em).toLocaleString("pt-BR")}</td>
+                  <td className="px-3 py-2 text-white/60">{new Date(t.termina_em).toLocaleString("pt-BR")}</td>
+                  <td className="px-3 py-2">
+                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${t.ativo ? "bg-green-500/20 text-green-300" : "bg-white/10 text-white/60"}`}>
+                      {t.ativo ? "Ativo" : "Inativo"}
+                    </span>
+                  </td>
+                  <td className="px-3 py-2">
+                    <div className="flex gap-2">
+                      <button type="button" onClick={() => abrirEdicao(t)} className="text-[#F3B43F] hover:underline">Editar</button>
+                      <button type="button" onClick={() => alternarAtivo(t)} className="text-white/70 hover:underline">{t.ativo ? "Desativar" : "Ativar"}</button>
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {mostrarForm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={() => setMostrarForm(false)}>
+          <form onSubmit={salvar} onClick={(e) => e.stopPropagation()} className="flex w-full max-w-md flex-col gap-3 rounded-2xl border-2 border-[#F3B43F] bg-[#292018] p-5 text-white shadow-2xl">
+            <p className="font-imFeel text-xl text-[#F3B43F]">{editando ? "Editar torneio" : "Novo torneio"}</p>
+            <label className="flex flex-col gap-1 text-xs">Nome
+              <Input required value={form.nome} onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))} />
+            </label>
+            <label className="flex flex-col gap-1 text-xs">Zona (vazio = torneio global, todas as zonas)
+              <Select
+                value={form.id_zone ?? ""}
+                onChange={(e) => setForm((f) => ({ ...f, id_zone: e.target.value ? Number(e.target.value) : null }))}
+              >
+                <option value="">Global (todas as zonas)</option>
+                {zonas.map((z) => <option key={z.id} value={z.id}>{z.nome}</option>)}
+              </Select>
+            </label>
+            <label className="flex flex-col gap-1 text-xs">Início
+              <Input
+                required
+                type="datetime-local"
+                value={paraInputLocal(form.inicia_em)}
+                onChange={(e) => setForm((f) => ({ ...f, inicia_em: new Date(e.target.value).toISOString() }))}
+              />
+            </label>
+            <label className="flex flex-col gap-1 text-xs">Fim
+              <Input
+                required
+                type="datetime-local"
+                value={paraInputLocal(form.termina_em)}
+                onChange={(e) => setForm((f) => ({ ...f, termina_em: new Date(e.target.value).toISOString() }))}
+              />
             </label>
             <div className="mt-2 flex justify-end gap-2">
               <button type="button" onClick={() => setMostrarForm(false)} className="rounded-lg border border-white/20 px-4 py-2 text-sm text-white/70 hover:bg-white/10">Cancelar</button>

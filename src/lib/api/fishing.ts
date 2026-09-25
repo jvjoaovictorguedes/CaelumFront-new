@@ -103,6 +103,82 @@ export interface NavigationState {
   id_zone_atual: number | null;
 }
 
+export interface AlmanacEspecie {
+  id: number;
+  key: string;
+  nome: string | null;
+  descoberto: boolean;
+  total_capturado: number;
+  maior_peso_g: number;
+  lendario: boolean;
+}
+
+export interface RankingPescaItemTotal {
+  posicao: number;
+  id: number;
+  nome: string;
+  nivel_pesca: number;
+  total_capturado: number;
+}
+
+export interface RankingPescaItemMaiorPeixe {
+  posicao: number;
+  id: number;
+  nome: string;
+  weight_g: number;
+  especie_nome: string | null;
+  caught_at: string;
+}
+
+export interface RankingPescaMinhaPosicao {
+  elegivel: boolean;
+  motivo?: string;
+  posicao?: number;
+  total_capturado?: number;
+  weight_g?: number;
+}
+
+export interface RankingPescaResposta<T> {
+  itens: T[];
+  pagina: number;
+  totalPaginas: number;
+  totalItens: number;
+  minhaPosicao: RankingPescaMinhaPosicao;
+}
+
+export interface TorneioPescaItem {
+  posicao: number;
+  id: number;
+  nome: string;
+  pontuacao: number;
+  capturas: number;
+}
+
+export interface TorneioPesca {
+  id: number;
+  nome: string;
+  id_zone: number | null;
+  inicia_em: string;
+  termina_em: string;
+  ativo: boolean;
+  zona?: { id: number; nome: string } | null;
+}
+
+export interface TorneioPescaMinhaPosicao {
+  elegivel: boolean;
+  motivo?: string;
+  posicao?: number;
+  pontuacao: number;
+  capturas: number;
+}
+
+export interface TorneioPescaResposta {
+  torneio: TorneioPesca | null;
+  statusTorneio: "EM_ANDAMENTO" | "AGENDADO" | "NENHUM";
+  leaderboard: { itens: TorneioPescaItem[]; pagina: number; totalPaginas: number; totalItens: number } | null;
+  minhaPosicao: TorneioPescaMinhaPosicao | null;
+}
+
 export const fishingApi = {
   getProgresso: () => axiosInstance.get("/fishing/progress").then((r) => r.data.data.progresso as ProgressoPesca),
   getZonas: () => axiosInstance.get("/fishing/zones").then((r) => r.data.data.zonas as FishingZone[]),
@@ -111,7 +187,13 @@ export const fishingApi = {
   setLoadoutRod: (idInstanciaVara: number | null) =>
     axiosInstance.put("/fishing/loadout/rod", { id_instancia_vara: idInstanciaVara }).then((r) => r.data.data),
   getBaits: () => axiosInstance.get("/fishing/baits").then((r) => r.data.data.iscas as IscaPesca[]),
-  getAlmanac: () => axiosInstance.get("/fishing/almanac").then((r) => r.data.data.especies),
+  getAlmanac: () => axiosInstance.get("/fishing/almanac").then((r) => r.data.data.especies as AlmanacEspecie[]),
+
+  getRanking: (type: "total" | "biggest", page = 1) =>
+    axiosInstance
+      .get("/fishing/ranking", { params: { type, page } })
+      .then((r) => r.data.data as RankingPescaResposta<RankingPescaItemTotal | RankingPescaItemMaiorPeixe>),
+  getTournament: () => axiosInstance.get("/fishing/tournament").then((r) => r.data.data as TorneioPescaResposta),
 
   getSessaoAtiva: () => axiosInstance.get("/fishing/sessions/active").then((r) => r.data.data.sessao as SessaoPesca | null),
   startSession: (zoneId: number, rodInstanceId: number | null, baitItemId: number | null) =>
