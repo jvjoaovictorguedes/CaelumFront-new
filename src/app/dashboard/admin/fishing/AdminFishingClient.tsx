@@ -52,6 +52,7 @@ import {
   type PerfilPeso,
   type VesselAdminApi,
 } from "@/lib/api/admin";
+import { ItemSelect, formatarItemComId, useItensParaSelecaoAdmin } from "@/components/admin/ItemPicker";
 
 type Aba = "Zonas" | "Especies" | "Pool" | "Portos" | "Iscas" | "Afinidades" | "Embarcacoes" | "Rotas" | "Torneios";
 const ABAS: Aba[] = ["Zonas", "Especies", "Pool", "Portos", "Iscas", "Afinidades", "Embarcacoes", "Rotas", "Torneios"];
@@ -314,6 +315,7 @@ function AbaEspecies({ onErro }: { onErro: (m: string) => void }) {
   const [form, setForm] = useState<PayloadFishingSpeciesAdmin>({
     key: "", id_item: undefined, comportamento_key: "CALM", dificuldade_base: 100, peso_min_g: 100, peso_max_g: 500, perfil_peso: "NORMAL",
   });
+  const { itens: itensDisponiveis } = useItensParaSelecaoAdmin();
 
   const carregar = useCallback(async () => {
     setCarregando(true);
@@ -395,7 +397,7 @@ function AbaEspecies({ onErro }: { onErro: (m: string) => void }) {
             ) : (
               especies.map((e) => (
                 <tr key={e.id} className="border-b border-white/5">
-                  <td className="px-3 py-2 font-bold">{e.item?.nome ?? `#${e.id_item}`}</td>
+                  <td className="px-3 py-2 font-bold">{e.item ? formatarItemComId(e.item.nome, e.id_item) : `#${e.id_item}`}</td>
                   <td className="px-3 py-2 text-white/60">{e.key}</td>
                   <td className="px-3 py-2">{e.comportamento_key}</td>
                   <td className="px-3 py-2">{e.dificuldade_base}</td>
@@ -425,8 +427,12 @@ function AbaEspecies({ onErro }: { onErro: (m: string) => void }) {
                 <label className="flex flex-col gap-1 text-xs">key (identificador único)
                   <Input required value={form.key ?? ""} onChange={(e) => setForm((f) => ({ ...f, key: e.target.value }))} />
                 </label>
-                <label className="flex flex-col gap-1 text-xs">id_item (Item já cadastrado em Itens)
-                  <Input required type="number" value={form.id_item ?? ""} onChange={(e) => setForm((f) => ({ ...f, id_item: Number(e.target.value) }))} />
+                <label className="flex flex-col gap-1 text-xs">Item (já cadastrado em Itens)
+                  <ItemSelect
+                    itens={itensDisponiveis}
+                    value={form.id_item ?? ""}
+                    onChange={(id) => setForm((f) => ({ ...f, id_item: id === "" ? undefined : id }))}
+                  />
                 </label>
               </>
             )}
@@ -557,7 +563,7 @@ function AbaPool({ onErro }: { onErro: (m: string) => void }) {
               pool.map((item) => (
                 <tr key={item.id} className="border-b border-white/5">
                   <td className="px-3 py-2 font-bold">{item.FishingZone?.nome ?? `#${item.id_zone}`}</td>
-                  <td className="px-3 py-2">{item.species?.item?.nome ?? `#${item.id_species}`}</td>
+                  <td className="px-3 py-2">{item.species?.item ? formatarItemComId(item.species.item.nome, item.species.id) : `#${item.id_species}`}</td>
                   <td className="px-3 py-2">{item.encounter_weight}</td>
                   <td className="px-3 py-2">
                     <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${item.ativo ? "bg-green-500/20 text-green-300" : "bg-white/10 text-white/60"}`}>
@@ -585,7 +591,7 @@ function AbaPool({ onErro }: { onErro: (m: string) => void }) {
             </label>
             <label className="flex flex-col gap-1 text-xs">Espécie
               <Select required value={form.id_species ?? ""} onChange={(e) => setForm((f) => ({ ...f, id_species: Number(e.target.value) }))}>
-                {especies.map((e) => <option key={e.id} value={e.id}>{e.item?.nome ?? e.key}</option>)}
+                {especies.map((e) => <option key={e.id} value={e.id}>{e.item ? formatarItemComId(e.item.nome, e.id) : e.key}</option>)}
               </Select>
             </label>
             <label className="flex flex-col gap-1 text-xs">Peso do encontro (relativo, {'>'} 0)
@@ -732,6 +738,7 @@ function AbaIscas({ onErro }: { onErro: (m: string) => void }) {
   const [mostrarForm, setMostrarForm] = useState(false);
   const [salvando, setSalvando] = useState(false);
   const [form, setForm] = useState<PayloadFishingBaitAdmin>({ key: "", id_item: undefined, nivel_pesca_minimo: 1 });
+  const { itens: itensDisponiveis } = useItensParaSelecaoAdmin();
 
   const carregar = useCallback(async () => {
     setCarregando(true);
@@ -799,7 +806,7 @@ function AbaIscas({ onErro }: { onErro: (m: string) => void }) {
             ) : (
               iscas.map((i) => (
                 <tr key={i.id_item} className="border-b border-white/5">
-                  <td className="px-3 py-2 font-bold">{i.item?.nome ?? `#${i.id_item}`}</td>
+                  <td className="px-3 py-2 font-bold">{i.item ? formatarItemComId(i.item.nome, i.id_item) : `#${i.id_item}`}</td>
                   <td className="px-3 py-2 text-white/60">{i.key}</td>
                   <td className="px-3 py-2">{i.nivel_pesca_minimo}</td>
                   <td className="px-3 py-2">
@@ -826,8 +833,12 @@ function AbaIscas({ onErro }: { onErro: (m: string) => void }) {
                 <label className="flex flex-col gap-1 text-xs">key (identificador único)
                   <Input required value={form.key ?? ""} onChange={(e) => setForm((f) => ({ ...f, key: e.target.value }))} />
                 </label>
-                <label className="flex flex-col gap-1 text-xs">id_item (Item já cadastrado em Itens)
-                  <Input required type="number" value={form.id_item ?? ""} onChange={(e) => setForm((f) => ({ ...f, id_item: Number(e.target.value) }))} />
+                <label className="flex flex-col gap-1 text-xs">Item (já cadastrado em Itens)
+                  <ItemSelect
+                    itens={itensDisponiveis}
+                    value={form.id_item ?? ""}
+                    onChange={(id) => setForm((f) => ({ ...f, id_item: id === "" ? undefined : id }))}
+                  />
                 </label>
               </>
             )}
@@ -927,8 +938,8 @@ function AbaAfinidades({ onErro }: { onErro: (m: string) => void }) {
             ) : (
               afinidades.map((a) => (
                 <tr key={a.id} className="border-b border-white/5">
-                  <td className="px-3 py-2 font-bold">{a.FishingBait?.item?.nome ?? `#${a.id_bait_item}`}</td>
-                  <td className="px-3 py-2">{a.species?.item?.nome ?? `#${a.id_species}`}</td>
+                  <td className="px-3 py-2 font-bold">{a.FishingBait?.item ? formatarItemComId(a.FishingBait.item.nome, a.id_bait_item) : `#${a.id_bait_item}`}</td>
+                  <td className="px-3 py-2">{a.species?.item ? formatarItemComId(a.species.item.nome, a.species.id) : `#${a.id_species}`}</td>
                   <td className="px-3 py-2">{a.multiplicador_peso_ppm.toLocaleString("pt-BR")}</td>
                   <td className="px-3 py-2">
                     <button type="button" onClick={() => abrirEdicao(a)} className="text-[#F3B43F] hover:underline">Editar</button>
@@ -948,12 +959,12 @@ function AbaAfinidades({ onErro }: { onErro: (m: string) => void }) {
               <>
                 <label className="flex flex-col gap-1 text-xs">Isca
                   <Select required value={form.id_bait_item ?? ""} onChange={(e) => setForm((f) => ({ ...f, id_bait_item: Number(e.target.value) }))}>
-                    {iscas.map((i) => <option key={i.id_item} value={i.id_item}>{i.item?.nome ?? i.key}</option>)}
+                    {iscas.map((i) => <option key={i.id_item} value={i.id_item}>{i.item ? formatarItemComId(i.item.nome, i.id_item) : i.key}</option>)}
                   </Select>
                 </label>
                 <label className="flex flex-col gap-1 text-xs">Espécie
                   <Select required value={form.id_species ?? ""} onChange={(e) => setForm((f) => ({ ...f, id_species: Number(e.target.value) }))}>
-                    {especies.map((e) => <option key={e.id} value={e.id}>{e.item?.nome ?? e.key}</option>)}
+                    {especies.map((e) => <option key={e.id} value={e.id}>{e.item ? formatarItemComId(e.item.nome, e.id) : e.key}</option>)}
                   </Select>
                 </label>
               </>

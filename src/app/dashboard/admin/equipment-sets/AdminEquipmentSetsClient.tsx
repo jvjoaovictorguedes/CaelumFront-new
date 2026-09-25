@@ -16,6 +16,7 @@ import {
   removerPecaEquipmentSetAdmin,
   type EquipmentSetApi,
 } from "@/lib/api/admin";
+import { ItemSelect, formatarItemComId, useItensParaSelecaoAdmin } from "@/components/admin/ItemPicker";
 
 const ATRIBUTOS_STAT = ["forca", "vitalidade", "agilidade", "inteligencia", "velocidade", "defesa"] as const;
 
@@ -28,7 +29,8 @@ function DetalheSet({ set, efeitos, onFechar, onMudou }: { set: EquipmentSetApi;
   const [imagemUrl, setImagemUrl] = useState(set.imagem_url ?? "");
   const [salvandoInfo, setSalvandoInfo] = useState(false);
 
-  const [novoItemId, setNovoItemId] = useState("");
+  const [novoItemId, setNovoItemId] = useState<number | "">("");
+  const { itens: itensDisponiveis } = useItensParaSelecaoAdmin();
   const [novaPieceKey, setNovaPieceKey] = useState("");
   const [adicionandoPeca, setAdicionandoPeca] = useState(false);
 
@@ -68,6 +70,7 @@ function DetalheSet({ set, efeitos, onFechar, onMudou }: { set: EquipmentSetApi;
 
   async function adicionarPeca(evento: React.FormEvent) {
     evento.preventDefault();
+    if (novoItemId === "") return;
     setAdicionandoPeca(true);
     setErro("");
     try {
@@ -170,7 +173,7 @@ function DetalheSet({ set, efeitos, onFechar, onMudou }: { set: EquipmentSetApi;
           {(set.pecas ?? []).map((peca) => (
             <div key={peca.id} className="flex items-center justify-between rounded-lg bg-black/20 px-2 py-1 text-sm">
               <span>
-                {peca.item?.nome ?? `Item #${peca.item_id}`} <span className="text-white/40">({peca.piece_key})</span>
+                {formatarItemComId(peca.item?.nome ?? `Item`, peca.item_id)} <span className="text-white/40">({peca.piece_key})</span>
               </span>
               <button type="button" onClick={() => removerPeca(peca.id)} className="text-xs text-red-400 hover:underline">
                 Remover
@@ -179,8 +182,13 @@ function DetalheSet({ set, efeitos, onFechar, onMudou }: { set: EquipmentSetApi;
           ))}
           <form onSubmit={adicionarPeca} className="flex flex-wrap items-end gap-2 pt-1">
             <label className="flex flex-col gap-1 text-[10px] text-white/60">
-              ID do item
-              <input required type="number" value={novoItemId} onChange={(e) => setNovoItemId(e.target.value)} className="w-24 rounded-lg border border-white/20 bg-black/30 px-2 py-1 text-sm" />
+              Item (nome — o ID é só pra referência, nunca digitado)
+              <ItemSelect
+                itens={itensDisponiveis}
+                value={novoItemId}
+                onChange={setNovoItemId}
+                className="w-64 rounded-lg border border-white/20 bg-black/30 px-2 py-1 text-sm"
+              />
             </label>
             <label className="flex flex-col gap-1 text-[10px] text-white/60">
               piece_key

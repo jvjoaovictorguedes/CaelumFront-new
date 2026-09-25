@@ -414,6 +414,7 @@ export default function AdminItemsClient() {
         <table className="w-full text-left text-sm text-white">
           <thead>
             <tr className="border-b border-white/10 text-xs uppercase text-white/50">
+              <th className="px-3 py-2">ID</th>
               <th className="px-3 py-2">Imagem</th>
               <th className="px-3 py-2">Nome</th>
               <th className="px-3 py-2">Tipo</th>
@@ -427,19 +428,20 @@ export default function AdminItemsClient() {
           <tbody>
             {carregando ? (
               <tr>
-                <td colSpan={8} className="px-3 py-4 text-center text-white/50">
+                <td colSpan={9} className="px-3 py-4 text-center text-white/50">
                   Carregando...
                 </td>
               </tr>
             ) : itens.length === 0 ? (
               <tr>
-                <td colSpan={8} className="px-3 py-4 text-center text-white/50">
+                <td colSpan={9} className="px-3 py-4 text-center text-white/50">
                   Nenhum item encontrado.
                 </td>
               </tr>
             ) : (
               itens.map((item) => (
                 <tr key={item.id} className={`border-b border-white/5 ${!item.ativo ? "opacity-50" : ""}`}>
+                  <td className="px-3 py-2 font-mono text-xs text-white/60">#{item.id}</td>
                   <td className="px-3 py-2">
                     {item.imagem_url ? (
                       // eslint-disable-next-line @next/next/no-img-element
@@ -523,7 +525,17 @@ export default function AdminItemsClient() {
             onClick={(e) => e.stopPropagation()}
             className="flex max-h-[85vh] w-full max-w-lg flex-col gap-3 overflow-y-auto rounded-2xl border-2 border-[#F3B43F] bg-[#292018] p-5 text-white shadow-2xl"
           >
-            <p className="font-imFeel text-xl text-[#F3B43F]">{editandoId ? "Editar item" : "Novo item"}</p>
+            <div className="flex items-center gap-2">
+              <p className="font-imFeel text-xl text-[#F3B43F]">{editandoId ? "Editar item" : "Novo item"}</p>
+              {editandoId && (
+                <span
+                  title="ID do item — apenas leitura, nunca editável"
+                  className="rounded-full border border-white/20 bg-black/30 px-2 py-0.5 font-mono text-[10px] text-white/60"
+                >
+                  ID: {editandoId}
+                </span>
+              )}
+            </div>
             {mensagem && <p className="text-sm text-[#F3B43F]">{mensagem}</p>}
 
             <label className="flex flex-col gap-1 text-xs">

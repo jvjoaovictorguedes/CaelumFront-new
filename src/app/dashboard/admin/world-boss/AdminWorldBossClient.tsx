@@ -25,6 +25,7 @@ import {
   type WorldBossSettingsApi,
   type WorldBossStatusOperacionalApi,
 } from "@/lib/api/admin";
+import { ItemSelect, useItensParaSelecaoAdmin } from "@/components/admin/ItemPicker";
 
 type Aba = "catalogo" | "ciclo" | "config" | "metricas";
 
@@ -93,6 +94,7 @@ function AbaCatalogo() {
   const [mensagem, setMensagem] = useState("");
   const [editandoId, setEditandoId] = useState<number | null>(null);
   const [form, setForm] = useState<PayloadWorldBossConfigAdmin>(configFormVazio());
+  const { itens: itensDisponiveis } = useItensParaSelecaoAdmin();
   const [salvando, setSalvando] = useState(false);
   const [mostrarForm, setMostrarForm] = useState(false);
   const [carregandoEdicao, setCarregandoEdicao] = useState(false);
@@ -329,8 +331,13 @@ function AbaCatalogo() {
             </div>
 
             <label className="flex flex-col gap-1 text-xs">
-              ID do item de Golpe Final
-              <input required type="number" min={1} value={form.id_item_golpe_final} onChange={(e) => setForm((f) => ({ ...f, id_item_golpe_final: Number(e.target.value) }))} className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm" />
+              Item de Golpe Final
+              <ItemSelect
+                itens={itensDisponiveis}
+                value={form.id_item_golpe_final || ""}
+                onChange={(id) => setForm((f) => ({ ...f, id_item_golpe_final: id === "" ? 0 : id }))}
+                permitirVazio={false}
+              />
             </label>
 
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">

@@ -9,6 +9,7 @@ import {
   type GrantResultApi,
   type GrantSearchResultApi,
 } from "@/lib/api/admin";
+import { ItemSelect, useItensParaSelecaoAdmin } from "@/components/admin/ItemPicker";
 
 interface LinhaItem {
   id_item: string;
@@ -29,6 +30,7 @@ export default function AdminGrantsClient() {
   const [concedendo, setConcedendo] = useState(false);
   const [erroConcessao, setErroConcessao] = useState("");
   const [resultado, setResultado] = useState<GrantResultApi | null>(null);
+  const { itens: itensDisponiveis } = useItensParaSelecaoAdmin();
 
   async function buscar(evento: React.FormEvent) {
     evento.preventDefault();
@@ -161,10 +163,15 @@ export default function AdminGrantsClient() {
           </div>
 
           <div className="flex flex-col gap-2">
-            <p className="text-xs font-bold uppercase text-[#F3B43F]/80">Itens (ID do item — detecta sozinho se é equipamento ou empilhável)</p>
+            <p className="text-xs font-bold uppercase text-[#F3B43F]/80">Itens (escolha pelo nome — detecta sozinho se é equipamento ou empilhável)</p>
             {itens.map((linha, i) => (
               <div key={i} className="flex items-center gap-2">
-                <input type="number" placeholder="ID do item" value={linha.id_item} onChange={(e) => atualizarLinhaItem(i, "id_item", e.target.value)} className="w-32 rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm" />
+                <ItemSelect
+                  itens={itensDisponiveis}
+                  value={linha.id_item ? Number(linha.id_item) : ""}
+                  onChange={(id) => atualizarLinhaItem(i, "id_item", id === "" ? "" : String(id))}
+                  className="w-64 rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm"
+                />
                 <input type="number" min={1} placeholder="Quantidade" value={linha.quantidade} onChange={(e) => atualizarLinhaItem(i, "quantidade", e.target.value)} className="w-28 rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm" />
                 <button type="button" onClick={() => removerLinhaItem(i)} className="text-xs text-red-400 hover:underline">
                   Remover

@@ -27,6 +27,7 @@ import {
   type PayloadGuildMissionAdmin,
   type PayloadMissionAdmin,
 } from "@/lib/api/admin";
+import { ItemSelect, formatarItemComId, useItensParaSelecaoAdmin } from "@/components/admin/ItemPicker";
 
 type Aba = "livres" | "guilda-aventureiros" | "guilda";
 
@@ -45,6 +46,7 @@ function MissoesLivresTab({ catalogos }: { catalogos: MissionCatalogosApi | null
   const [erro, setErro] = useState("");
   const [editandoId, setEditandoId] = useState<number | null>(null);
   const [form, setForm] = useState<PayloadMissionAdmin>({});
+  const { itens: itensDisponiveis } = useItensParaSelecaoAdmin();
   const [mostrarForm, setMostrarForm] = useState(false);
   const [salvando, setSalvando] = useState(false);
 
@@ -226,8 +228,12 @@ function MissoesLivresTab({ catalogos }: { catalogos: MissionCatalogosApi | null
             </div>
             <div className="flex gap-2">
               <label className="flex flex-1 flex-col gap-1 text-xs">
-                Item de recompensa (ID, opcional)
-                <input type="number" min={1} value={form.recompensa_item_id ?? ""} onChange={(e) => setForm((f) => ({ ...f, recompensa_item_id: e.target.value ? Number(e.target.value) : null }))} className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm" />
+                Item de recompensa (opcional)
+                <ItemSelect
+                  itens={itensDisponiveis}
+                  value={form.recompensa_item_id ?? ""}
+                  onChange={(id) => setForm((f) => ({ ...f, recompensa_item_id: id === "" ? null : id }))}
+                />
               </label>
               <label className="flex flex-1 flex-col gap-1 text-xs">
                 Quantidade do item
@@ -253,9 +259,10 @@ function MissoesLivresTab({ catalogos }: { catalogos: MissionCatalogosApi | null
 function RecompensasModal({ missao, onFechar, onMudou }: { missao: AdventureGuildMissionApi; onFechar: () => void; onMudou: () => void }) {
   const [erro, setErro] = useState("");
   const [tipo, setTipo] = useState<"Ouro" | "XP" | "Item">("Ouro");
-  const [idItem, setIdItem] = useState("");
+  const [idItem, setIdItem] = useState<number | "">("");
   const [quantidade, setQuantidade] = useState(1);
   const [salvando, setSalvando] = useState(false);
+  const { itens: itensDisponiveis } = useItensParaSelecaoAdmin();
 
   async function adicionar() {
     setSalvando(true);
@@ -293,7 +300,7 @@ function RecompensasModal({ missao, onFechar, onMudou }: { missao: AdventureGuil
         {(missao.recompensas ?? []).map((r) => (
           <div key={r.id} className="flex items-center justify-between rounded-lg bg-black/20 px-2 py-1 text-sm">
             <span>
-              {r.tipo === "Item" ? `${r.quantidade}x ${r.item?.nome ?? `Item #${r.id_item}`}` : `${r.quantidade} ${r.tipo}`}
+              {r.tipo === "Item" ? `${r.quantidade}x ${r.item ? formatarItemComId(r.item.nome, r.id_item ?? 0) : `Item #${r.id_item}`}` : `${r.quantidade} ${r.tipo}`}
             </span>
             <button type="button" onClick={() => remover(r.id)} className="text-xs text-red-400 hover:underline">
               Remover
@@ -308,7 +315,12 @@ function RecompensasModal({ missao, onFechar, onMudou }: { missao: AdventureGuil
             <option value="Item">Item</option>
           </select>
           {tipo === "Item" && (
-            <input type="number" min={1} placeholder="ID do item" value={idItem} onChange={(e) => setIdItem(e.target.value)} className="w-24 rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm" />
+            <ItemSelect
+              itens={itensDisponiveis}
+              value={idItem}
+              onChange={setIdItem}
+              className="w-64 rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm"
+            />
           )}
           <input type="number" min={1} value={quantidade} onChange={(e) => setQuantidade(Number(e.target.value))} className="w-20 rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm" />
           <button type="button" onClick={adicionar} disabled={salvando} className="rounded-lg bg-[#BC8418] px-3 py-1.5 text-xs font-bold text-black hover:bg-[#a5710f] disabled:opacity-50">
@@ -330,6 +342,7 @@ function GuildaAventureirosTab({ catalogos }: { catalogos: MissionCatalogosApi |
   const [mostrarForm, setMostrarForm] = useState(false);
   const [salvando, setSalvando] = useState(false);
   const [recompensasId, setRecompensasId] = useState<number | null>(null);
+  const { itens: itensDisponiveis } = useItensParaSelecaoAdmin();
 
   const carregar = useCallback(async () => {
     setCarregando(true);
@@ -516,8 +529,12 @@ function GuildaAventureirosTab({ catalogos }: { catalogos: MissionCatalogosApi |
                 <input type="number" value={form.id_area_alvo ?? ""} onChange={(e) => setForm((f) => ({ ...f, id_area_alvo: e.target.value ? Number(e.target.value) : null }))} className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm" />
               </label>
               <label className="flex flex-1 flex-col gap-1 text-xs">
-                Item alvo (ID, opcional)
-                <input type="number" value={form.id_item_alvo ?? ""} onChange={(e) => setForm((f) => ({ ...f, id_item_alvo: e.target.value ? Number(e.target.value) : null }))} className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm" />
+                Item alvo (opcional)
+                <ItemSelect
+                  itens={itensDisponiveis}
+                  value={form.id_item_alvo ?? ""}
+                  onChange={(id) => setForm((f) => ({ ...f, id_item_alvo: id === "" ? null : id }))}
+                />
               </label>
             </div>
             <label className="flex items-center gap-2 text-xs">
