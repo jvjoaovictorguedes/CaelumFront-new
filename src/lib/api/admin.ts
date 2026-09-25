@@ -79,6 +79,7 @@ export interface FiltrosItensAdmin {
   raridade?: string;
   nome?: string;
   apenasAtivos?: boolean;
+  disponivelLoja?: boolean;
 }
 
 export async function listarItensAdmin(filtros: FiltrosItensAdmin = {}): Promise<PaginaApi<AdminItemApi>> {
