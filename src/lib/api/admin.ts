@@ -362,3 +362,78 @@ export async function atualizarLootAdmin(id: number, payload: Partial<AdventureM
   const resposta = await axiosInstance.patch<{ data: { loot: AdventureMonsterLootApi } }>(`/admin/adventure/loot/${id}`, payload);
   return resposta.data.data.loot;
 }
+
+// Painel Administrativo Fase 4 — Conjuntos de Equipamentos.
+export interface EquipmentSetPieceApi {
+  id: number;
+  equipment_set_id: number;
+  item_id: number;
+  piece_key: string;
+  ordem: number | null;
+  item?: { id: number; nome: string; imagem_url: string | null; tipo_item: string };
+}
+
+export interface EquipmentSetBonusApi {
+  id: number;
+  equipment_set_id: number;
+  pieces_required: number;
+  stats: Record<string, number>;
+  effect_key: string | null;
+  effect_config: Record<string, unknown>;
+  descricao: string | null;
+}
+
+export interface EquipmentSetApi {
+  id: number;
+  key: string;
+  nome: string;
+  descricao: string | null;
+  imagem_url: string | null;
+  ativo: boolean;
+  pecas?: EquipmentSetPieceApi[];
+  bonuses?: EquipmentSetBonusApi[];
+}
+
+export async function listarEquipmentSetsAdmin(): Promise<EquipmentSetApi[]> {
+  const resposta = await axiosInstance.get<{ data: { sets: EquipmentSetApi[] } }>("/admin/equipment-sets");
+  return resposta.data.data.sets;
+}
+export async function criarEquipmentSetAdmin(payload: Partial<EquipmentSetApi>): Promise<EquipmentSetApi> {
+  const resposta = await axiosInstance.post<{ data: { set: EquipmentSetApi } }>("/admin/equipment-sets", payload);
+  return resposta.data.data.set;
+}
+export async function atualizarEquipmentSetAdmin(id: number, payload: Partial<EquipmentSetApi>): Promise<EquipmentSetApi> {
+  const resposta = await axiosInstance.patch<{ data: { set: EquipmentSetApi } }>(`/admin/equipment-sets/${id}`, payload);
+  return resposta.data.data.set;
+}
+export async function duplicarEquipmentSetAdmin(id: number): Promise<EquipmentSetApi> {
+  const resposta = await axiosInstance.post<{ data: { set: EquipmentSetApi } }>(`/admin/equipment-sets/${id}/duplicate`);
+  return resposta.data.data.set;
+}
+export async function adicionarPecaEquipmentSetAdmin(idSet: number, payload: { item_id: number; piece_key: string; ordem?: number }): Promise<EquipmentSetPieceApi> {
+  const resposta = await axiosInstance.post<{ data: { peca: EquipmentSetPieceApi } }>(`/admin/equipment-sets/${idSet}/pieces`, payload);
+  return resposta.data.data.peca;
+}
+export async function removerPecaEquipmentSetAdmin(idPeca: number): Promise<void> {
+  await axiosInstance.delete(`/admin/equipment-sets/pieces/${idPeca}`);
+}
+export async function adicionarBonusEquipmentSetAdmin(
+  idSet: number,
+  payload: { pieces_required: number; stats?: Record<string, number>; effect_key?: string | null; effect_config?: Record<string, unknown>; descricao?: string | null },
+): Promise<EquipmentSetBonusApi> {
+  const resposta = await axiosInstance.post<{ data: { bonus: EquipmentSetBonusApi } }>(`/admin/equipment-sets/${idSet}/bonuses`, payload);
+  return resposta.data.data.bonus;
+}
+export async function removerBonusEquipmentSetAdmin(idBonus: number): Promise<void> {
+  await axiosInstance.delete(`/admin/equipment-sets/bonuses/${idBonus}`);
+}
+export async function previewEquipmentSetAdmin(idSet: number, pecas: number): Promise<{ bonuses: { pieces_required: number; ativo: boolean; stats: Record<string, number>; effect_key: string | null; descricao: string | null }[] }> {
+  const resposta = await axiosInstance.post<{ data: { bonuses: { pieces_required: number; ativo: boolean; stats: Record<string, number>; effect_key: string | null; descricao: string | null }[] } }>(
+    `/admin/equipment-sets/${idSet}/preview?pecas=${pecas}`,
+  );
+  return resposta.data.data;
+}
+export async function listarEfeitosEquipmentSetAdmin(): Promise<string[]> {
+  const resposta = await axiosInstance.get<{ data: { efeitos: string[] } }>("/admin/equipment-sets/effects");
+  return resposta.data.data.efeitos;
+}
