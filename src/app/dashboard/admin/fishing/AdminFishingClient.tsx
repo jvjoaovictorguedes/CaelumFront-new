@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   atualizarFishingAffinityAdmin,
   atualizarFishingBaitAdmin,
@@ -515,6 +515,28 @@ function AbaPool({ onErro }: { onErro: (m: string) => void }) {
     setMostrarForm(true);
   }
 
+  // % de chance de cada espécie DENTRO da zona — espelha exatamente a
+  // fórmula de sorteio do backend (fishingEncounterService.sortearPonderado):
+  // peso / soma dos pesos ATIVOS da mesma zona, sem considerar afinidade
+  // de isca (isso é só um multiplicador que entra na hora da pescaria, a
+  // % aqui é a base "sem isca" — ver AbaAfinidades pro efeito da isca).
+  // Puramente derivado do que já foi carregado — nunca persistido.
+  const totalAtivoPorZona = useMemo(() => {
+    const totais = new Map<number, number>();
+    for (const item of pool) {
+      if (!item.ativo) continue;
+      totais.set(item.id_zone, (totais.get(item.id_zone) ?? 0) + item.encounter_weight);
+    }
+    return totais;
+  }, [pool]);
+
+  function chancePercentual(item: FishingPoolAdminApi): string | null {
+    if (!item.ativo) return null;
+    const total = totalAtivoPorZona.get(item.id_zone) ?? 0;
+    if (total <= 0) return null;
+    return `≈${((item.encounter_weight / total) * 100).toFixed(1)}%`;
+  }
+
   async function salvar(e: React.FormEvent) {
     e.preventDefault();
     setSalvando(true);
@@ -564,7 +586,14 @@ function AbaPool({ onErro }: { onErro: (m: string) => void }) {
                 <tr key={item.id} className="border-b border-white/5">
                   <td className="px-3 py-2 font-bold">{item.FishingZone?.nome ?? `#${item.id_zone}`}</td>
                   <td className="px-3 py-2">{item.species?.item ? formatarItemComId(item.species.item.nome, item.species.id) : `#${item.id_species}`}</td>
-                  <td className="px-3 py-2">{item.encounter_weight}</td>
+                  <td className="px-3 py-2">
+                    {item.encounter_weight}
+                    {chancePercentual(item) && (
+                      <span className="ml-2 text-xs font-bold text-sky-300" title="Chance aproximada de aparição dentro da zona (peso ÷ soma dos pesos ativos da zona), sem contar afinidade de isca.">
+                        {chancePercentual(item)} de chance nessa zona
+                      </span>
+                    )}
+                  </td>
                   <td className="px-3 py-2">
                     <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${item.ativo ? "bg-green-500/20 text-green-300" : "bg-white/10 text-white/60"}`}>
                       {item.ativo ? "Ativo" : "Inativo"}
