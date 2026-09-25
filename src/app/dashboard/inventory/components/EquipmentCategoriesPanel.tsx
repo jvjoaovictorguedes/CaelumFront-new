@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import axiosInstance from "@/utils/axiosIntance";
 import { resolveMediaUrl } from "@/utils/media-url";
 import { useCharacter } from "@/contexts/CharacterContext";
@@ -410,6 +411,69 @@ export default function EquipmentCategoriesPanel() {
           </div>
         );
       })}
+
+      <VarasDePescaSecao instancias={instancias} />
+    </div>
+  );
+}
+
+// Varas de pesca (tipo "Ferramenta") são instâncias como qualquer outro
+// equipamento — CharacterEquipmentInstance —, mas nunca aparecem em
+// nenhum slot de combate (spec Pesca §9.1/§38) e por isso ficavam
+// invisíveis aqui: nenhuma das SEÇÕES acima as filtra. Mostra elas
+// numa seção própria, só leitura — trocar a vara ativa continua sendo
+// feito na página de Pesca (loadout tem regra própria, fora do
+// equip/unequip de combate).
+function VarasDePescaSecao({ instancias }: { instancias: InstanciaApi[] }) {
+  const varas = instancias.filter((i) => i.tipo_item === "Ferramenta");
+  if (varas.length === 0) return null;
+
+  return (
+    <div className="rounded-2xl border-2 border-[#F3B43F] bg-[#292018]/90 p-5 text-white shadow-xl">
+      <div className="mb-3 flex justify-center">
+        <p className="rounded-full border border-[#F3B43F]/50 bg-black/30 px-4 py-1 text-xs font-bold uppercase tracking-widest text-[#F3B43F]">
+          Varas de Pesca
+        </p>
+      </div>
+      <p className="mb-3 text-center text-xs text-white/50">
+        Escolha a vara ativa na{" "}
+        <Link href="/dashboard/fishing" className="text-[#F3B43F] underline hover:text-white">
+          Pesca
+        </Link>
+        .
+      </p>
+      <div className="grid grid-cols-4 gap-2 sm:grid-cols-7">
+        {agruparInstancias(varas).map((grupo) => {
+          const instancia = grupo.representante;
+          return (
+            <div
+              key={instancia.id}
+              className={`group relative h-16 w-16 overflow-visible rounded-lg border-2 bg-[#3a2f24] ${bordaPorRaridade(instancia.raridade)}`}
+            >
+              <div className="h-full w-full overflow-hidden rounded-lg">
+                <ItemThumb item={instancia} />
+              </div>
+              {grupo.quantidade > 1 && (
+                <span className="pointer-events-none absolute -bottom-1 -right-1 rounded bg-black/80 px-1 text-[9px] font-bold text-[#F3B43F]">
+                  x{grupo.quantidade}
+                </span>
+              )}
+              {instancia.refinamento > 0 && (
+                <span className="pointer-events-none absolute -bottom-1 -left-1 rounded bg-black/80 px-1 text-[9px] font-bold text-[#F3B43F]">
+                  +{instancia.refinamento}
+                </span>
+              )}
+              <div className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-2 w-40 -translate-x-1/2 rounded-md bg-black/90 p-2 text-center opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+                <span className="block text-[10px] font-bold leading-tight text-white">
+                  {instancia.nome}
+                  {instancia.refinamento > 0 && ` +${instancia.refinamento}`}
+                  {grupo.quantidade > 1 && ` (x${grupo.quantidade})`}
+                </span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

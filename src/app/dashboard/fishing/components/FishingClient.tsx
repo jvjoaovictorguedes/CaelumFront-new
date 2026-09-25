@@ -211,13 +211,13 @@ export default function FishingClient() {
             <div>
               <p className="mb-1 text-xs uppercase text-white/50">Zona</p>
               <select
-                className="w-full rounded bg-white/10 p-2 text-sm"
+                className="w-full rounded bg-white/10 p-2 text-sm text-white [color-scheme:dark]"
                 value={zonaSelecionada ?? ""}
                 onChange={(e) => setZonaSelecionada(Number(e.target.value) || null)}
               >
-                <option value="">Selecione…</option>
+                <option value="" className="bg-[#1a1410] text-white">Selecione…</option>
                 {zonas.map((z) => (
-                  <option key={z.id} value={z.id}>
+                  <option key={z.id} value={z.id} className="bg-[#1a1410] text-white">
                     {z.nome} (Nv. {z.nivel_pesca_minimo}+)
                   </option>
                 ))}
@@ -229,13 +229,13 @@ export default function FishingClient() {
             <div>
               <p className="mb-1 text-xs uppercase text-white/50">Vara</p>
               <select
-                className="w-full rounded bg-white/10 p-2 text-sm"
+                className="w-full rounded bg-white/10 p-2 text-sm text-white [color-scheme:dark]"
                 value={varaSelecionada ?? ""}
                 onChange={(e) => setVaraSelecionada(Number(e.target.value) || null)}
               >
-                <option value="">Selecione uma vara…</option>
+                <option value="" className="bg-[#1a1410] text-white">Selecione uma vara…</option>
                 {varas.map((v) => (
-                  <option key={v.id_instancia} value={v.id_instancia}>
+                  <option key={v.id_instancia} value={v.id_instancia} className="bg-[#1a1410] text-white">
                     {v.nome} +{v.refinamento}
                   </option>
                 ))}
@@ -249,13 +249,18 @@ export default function FishingClient() {
             <div>
               <p className="mb-1 text-xs uppercase text-white/50">Isca</p>
               <select
-                className="w-full rounded bg-white/10 p-2 text-sm"
+                className="w-full rounded bg-white/10 p-2 text-sm text-white [color-scheme:dark]"
                 value={iscaSelecionada ?? ""}
                 onChange={(e) => setIscaSelecionada(Number(e.target.value) || null)}
               >
-                <option value="">Sem isca</option>
+                <option value="" className="bg-[#1a1410] text-white">Sem isca</option>
                 {iscas.map((i) => (
-                  <option key={i.id_item} value={i.id_item} disabled={i.quantidade_disponivel <= 0}>
+                  <option
+                    key={i.id_item}
+                    value={i.id_item}
+                    disabled={i.quantidade_disponivel <= 0}
+                    className="bg-[#1a1410] text-white"
+                  >
                     {i.nome} ({i.quantidade_disponivel})
                   </option>
                 ))}
