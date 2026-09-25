@@ -110,22 +110,54 @@ export default function AdminUsersClient() {
     setMensagem("");
   }
 
+  // O backend aceita um lote de ids por requisição, mas o corpo da
+  // requisição tem limite de tamanho (express.json 100kb) e uma
+  // exclusão de milhares de contas numa única chamada também levaria
+  // minutos síncronos — "Selecionar tudo" neste banco de dev chega a
+  // marcar ~17 mil contas de teste. Envia em lotes menores, sequencial,
+  // com progresso visível, em vez de um POST gigante que estoura o
+  // limite de corpo (413) ou o timeout da requisição.
+  const TAMANHO_LOTE = 300;
+
   async function confirmarExclusao() {
     setProcessando(true);
     setErro("");
     setMensagem("");
+    const idsSelecionados = [...selecionados];
+    const lotes: number[][] = [];
+    for (let i = 0; i < idsSelecionados.length; i += TAMANHO_LOTE) {
+      lotes.push(idsSelecionados.slice(i, i + TAMANHO_LOTE));
+    }
+
+    const resultadosAcumulados: ResultadoExclusaoEmLoteApi["resultados"] = [];
+    let excluidosTotal = 0;
     try {
-      const resultado = await excluirUsuariosEmLoteAdmin([...selecionados]);
-      setUltimoResultado(resultado);
+      for (let i = 0; i < lotes.length; i++) {
+        if (lotes.length > 1) {
+          setMensagem(`Excluindo lote ${i + 1} de ${lotes.length} (${lotes[i].length} contas)...`);
+        }
+        const resultado = await excluirUsuariosEmLoteAdmin(lotes[i]);
+        resultadosAcumulados.push(...resultado.resultados);
+        excluidosTotal += resultado.excluidos;
+      }
+      setUltimoResultado({ total: idsSelecionados.length, excluidos: excluidosTotal, resultados: resultadosAcumulados });
       setMensagem(
-        `${resultado.excluidos} de ${resultado.total} conta(s) excluída(s) com sucesso.` +
-          (resultado.excluidos < resultado.total ? " Veja abaixo os motivos das que não puderam ser excluídas." : ""),
+        `${excluidosTotal} de ${idsSelecionados.length} conta(s) excluída(s) com sucesso.` +
+          (excluidosTotal < idsSelecionados.length ? " Veja abaixo os motivos das que não puderam ser excluídas." : ""),
       );
       setSelecionados(new Set());
       setConfirmando(false);
       await carregar(1, busca);
     } catch (error) {
-      setErro(mensagemDeErroAdmin(error, "Não foi possível excluir as contas selecionadas."));
+      // Lotes já processados com sucesso não são desfeitos — mostra o
+      // que já foi excluído até o ponto da falha, além do erro.
+      if (resultadosAcumulados.length > 0) {
+        setUltimoResultado({ total: idsSelecionados.length, excluidos: excluidosTotal, resultados: resultadosAcumulados });
+      }
+      setErro(
+        mensagemDeErroAdmin(error, "Não foi possível excluir as contas selecionadas.") +
+          (excluidosTotal > 0 ? ` (${excluidosTotal} conta(s) já foram excluídas antes da falha.)` : ""),
+      );
     } finally {
       setProcessando(false);
     }
@@ -295,6 +327,7 @@ export default function AdminUsersClient() {
               usuário e todos os personagens vinculados. <span className="font-bold">Essa ação não pode ser desfeita.</span>{" "}
               Contas administrativas nunca são afetadas, mesmo que estejam na seleção.
             </p>
+            {processando && mensagem && <p className="text-xs text-[#F3B43F]">{mensagem}</p>}
             <div className="mt-2 flex justify-end gap-2">
               <button
                 type="button"
