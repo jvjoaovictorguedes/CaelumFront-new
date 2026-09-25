@@ -1401,3 +1401,225 @@ export async function despertarWorldBossAdmin(payload: { motivo: string }): Prom
 export async function cancelarCicloWorldBossAdmin(payload: { motivo: string }): Promise<void> {
   await axiosInstance.post("/admin/world-boss/current/cancel", payload);
 }
+
+// Painel Administrativo — Pesca & Navegação: Zonas, Espécies, Pool
+// (zona x espécie), Portos, Iscas e Afinidades. Vara de Pesca já é
+// gerenciada dentro do admin de Itens (tipo "Ferramenta").
+interface ItemResumoApi {
+  id: number;
+  nome: string;
+  raridade?: string;
+  imagem_url: string | null;
+}
+
+export interface FishingZoneAdminApi {
+  id: number;
+  key: string;
+  nome: string;
+  descricao: string | null;
+  imagem_url: string | null;
+  id_world_node: number | null;
+  nivel_pesca_minimo: number;
+  tier_embarcacao_minimo: number;
+  dificuldade_ambiente: number;
+  ativo: boolean;
+  WorldMapNode?: { id: number; nome: string } | null;
+}
+
+export interface PayloadFishingZoneAdmin {
+  key?: string;
+  nome: string;
+  descricao?: string | null;
+  imagem_url?: string | null;
+  id_world_node?: number | null;
+  nivel_pesca_minimo?: number;
+  tier_embarcacao_minimo?: number;
+  dificuldade_ambiente?: number;
+  ativo?: boolean;
+}
+
+export async function listarFishingZonesAdmin(): Promise<FishingZoneAdminApi[]> {
+  const resposta = await axiosInstance.get<{ data: { zonas: FishingZoneAdminApi[] } }>("/admin/fishing/zones");
+  return resposta.data.data.zonas;
+}
+export async function criarFishingZoneAdmin(payload: PayloadFishingZoneAdmin): Promise<FishingZoneAdminApi> {
+  const resposta = await axiosInstance.post<{ data: { zona: FishingZoneAdminApi } }>("/admin/fishing/zones", payload);
+  return resposta.data.data.zona;
+}
+export async function atualizarFishingZoneAdmin(id: number, payload: Partial<PayloadFishingZoneAdmin>): Promise<FishingZoneAdminApi> {
+  const resposta = await axiosInstance.patch<{ data: { zona: FishingZoneAdminApi } }>(`/admin/fishing/zones/${id}`, payload);
+  return resposta.data.data.zona;
+}
+
+export type ComportamentoEspecie = "CALM" | "BURST" | "ERRATIC" | "ENDURANCE" | "DEEP_DIVE";
+export type PerfilPeso = "LIGHT" | "NORMAL" | "HEAVY";
+
+export interface FishingSpeciesAdminApi {
+  id: number;
+  key: string;
+  id_item: number;
+  nome_cientifico: string | null;
+  descricao: string | null;
+  comportamento_key: ComportamentoEspecie;
+  dificuldade_base: number;
+  peso_min_g: number;
+  peso_max_g: number;
+  perfil_peso: PerfilPeso;
+  pontos_base_torneio: number;
+  lendario: boolean;
+  ativo: boolean;
+  item?: ItemResumoApi;
+}
+
+export interface PayloadFishingSpeciesAdmin {
+  key?: string;
+  id_item?: number;
+  nome_cientifico?: string | null;
+  descricao?: string | null;
+  comportamento_key: ComportamentoEspecie;
+  dificuldade_base: number;
+  peso_min_g: number;
+  peso_max_g: number;
+  perfil_peso?: PerfilPeso;
+  pontos_base_torneio?: number;
+  lendario?: boolean;
+  ativo?: boolean;
+}
+
+export async function listarFishingSpeciesAdmin(): Promise<FishingSpeciesAdminApi[]> {
+  const resposta = await axiosInstance.get<{ data: { especies: FishingSpeciesAdminApi[] } }>("/admin/fishing/species");
+  return resposta.data.data.especies;
+}
+export async function criarFishingSpeciesAdmin(payload: PayloadFishingSpeciesAdmin): Promise<FishingSpeciesAdminApi> {
+  const resposta = await axiosInstance.post<{ data: { especie: FishingSpeciesAdminApi } }>("/admin/fishing/species", payload);
+  return resposta.data.data.especie;
+}
+export async function atualizarFishingSpeciesAdmin(id: number, payload: Partial<PayloadFishingSpeciesAdmin>): Promise<FishingSpeciesAdminApi> {
+  const resposta = await axiosInstance.patch<{ data: { especie: FishingSpeciesAdminApi } }>(`/admin/fishing/species/${id}`, payload);
+  return resposta.data.data.especie;
+}
+
+export interface FishingPoolAdminApi {
+  id: number;
+  id_zone: number;
+  id_species: number;
+  encounter_weight: number;
+  nivel_pesca_minimo: number | null;
+  ativo: boolean;
+  FishingZone?: { id: number; nome: string };
+  species?: { id: number; key: string; id_item: number; item?: { id: number; nome: string } };
+}
+
+export interface PayloadFishingPoolAdmin {
+  id_zone?: number;
+  id_species?: number;
+  encounter_weight?: number;
+  nivel_pesca_minimo?: number | null;
+  ativo?: boolean;
+}
+
+export async function listarFishingPoolAdmin(idZone?: number): Promise<FishingPoolAdminApi[]> {
+  const resposta = await axiosInstance.get<{ data: { pool: FishingPoolAdminApi[] } }>("/admin/fishing/pool", {
+    params: idZone ? { idZone } : undefined,
+  });
+  return resposta.data.data.pool;
+}
+export async function criarFishingPoolAdmin(payload: PayloadFishingPoolAdmin): Promise<FishingPoolAdminApi> {
+  const resposta = await axiosInstance.post<{ data: { item: FishingPoolAdminApi } }>("/admin/fishing/pool", payload);
+  return resposta.data.data.item;
+}
+export async function atualizarFishingPoolAdmin(id: number, payload: Partial<PayloadFishingPoolAdmin>): Promise<FishingPoolAdminApi> {
+  const resposta = await axiosInstance.patch<{ data: { item: FishingPoolAdminApi } }>(`/admin/fishing/pool/${id}`, payload);
+  return resposta.data.data.item;
+}
+
+export interface FishingPortAdminApi {
+  id: number;
+  key: string;
+  nome: string;
+  id_world_node: number | null;
+  descricao: string | null;
+  ativo: boolean;
+  WorldMapNode?: { id: number; nome: string } | null;
+}
+
+export interface PayloadFishingPortAdmin {
+  key?: string;
+  nome: string;
+  id_world_node?: number | null;
+  descricao?: string | null;
+  ativo?: boolean;
+}
+
+export async function listarFishingPortsAdmin(): Promise<FishingPortAdminApi[]> {
+  const resposta = await axiosInstance.get<{ data: { portos: FishingPortAdminApi[] } }>("/admin/fishing/ports");
+  return resposta.data.data.portos;
+}
+export async function criarFishingPortAdmin(payload: PayloadFishingPortAdmin): Promise<FishingPortAdminApi> {
+  const resposta = await axiosInstance.post<{ data: { porto: FishingPortAdminApi } }>("/admin/fishing/ports", payload);
+  return resposta.data.data.porto;
+}
+export async function atualizarFishingPortAdmin(id: number, payload: Partial<PayloadFishingPortAdmin>): Promise<FishingPortAdminApi> {
+  const resposta = await axiosInstance.patch<{ data: { porto: FishingPortAdminApi } }>(`/admin/fishing/ports/${id}`, payload);
+  return resposta.data.data.porto;
+}
+
+export interface FishingBaitAdminApi {
+  id_item: number;
+  key: string;
+  nome_exibicao: string | null;
+  nivel_pesca_minimo: number;
+  ativo: boolean;
+  item?: ItemResumoApi;
+}
+
+export interface PayloadFishingBaitAdmin {
+  key?: string;
+  id_item?: number;
+  nome_exibicao?: string | null;
+  nivel_pesca_minimo?: number;
+  ativo?: boolean;
+}
+
+export async function listarFishingBaitsAdmin(): Promise<FishingBaitAdminApi[]> {
+  const resposta = await axiosInstance.get<{ data: { iscas: FishingBaitAdminApi[] } }>("/admin/fishing/baits");
+  return resposta.data.data.iscas;
+}
+export async function criarFishingBaitAdmin(payload: PayloadFishingBaitAdmin): Promise<FishingBaitAdminApi> {
+  const resposta = await axiosInstance.post<{ data: { isca: FishingBaitAdminApi } }>("/admin/fishing/baits", payload);
+  return resposta.data.data.isca;
+}
+export async function atualizarFishingBaitAdmin(idItem: number, payload: Partial<PayloadFishingBaitAdmin>): Promise<FishingBaitAdminApi> {
+  const resposta = await axiosInstance.patch<{ data: { isca: FishingBaitAdminApi } }>(`/admin/fishing/baits/${idItem}`, payload);
+  return resposta.data.data.isca;
+}
+
+export interface FishingAffinityAdminApi {
+  id: number;
+  id_bait_item: number;
+  id_species: number;
+  multiplicador_peso_ppm: number;
+  FishingBait?: { id_item: number; key: string; item?: { id: number; nome: string } };
+  species?: { id: number; key: string; item?: { id: number; nome: string } };
+}
+
+export interface PayloadFishingAffinityAdmin {
+  id_bait_item?: number;
+  id_species?: number;
+  multiplicador_peso_ppm?: number;
+}
+
+export async function listarFishingAffinitiesAdmin(idBaitItem?: number): Promise<FishingAffinityAdminApi[]> {
+  const resposta = await axiosInstance.get<{ data: { afinidades: FishingAffinityAdminApi[] } }>("/admin/fishing/affinities", {
+    params: idBaitItem ? { idBaitItem } : undefined,
+  });
+  return resposta.data.data.afinidades;
+}
+export async function criarFishingAffinityAdmin(payload: PayloadFishingAffinityAdmin): Promise<FishingAffinityAdminApi> {
+  const resposta = await axiosInstance.post<{ data: { afinidade: FishingAffinityAdminApi } }>("/admin/fishing/affinities", payload);
+  return resposta.data.data.afinidade;
+}
+export async function atualizarFishingAffinityAdmin(id: number, payload: Partial<PayloadFishingAffinityAdmin>): Promise<FishingAffinityAdminApi> {
+  const resposta = await axiosInstance.patch<{ data: { afinidade: FishingAffinityAdminApi } }>(`/admin/fishing/affinities/${id}`, payload);
+  return resposta.data.data.afinidade;
+}
