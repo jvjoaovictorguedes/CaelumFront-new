@@ -5,6 +5,7 @@ import axiosInstance from "@/utils/axiosIntance";
 import SmeltingPanel from "./SmeltingPanel";
 import CraftingPanel from "./CraftingPanel";
 import RefinementPanel from "./RefinementPanel";
+import CauldronPanel from "./CauldronPanel";
 
 export interface ProgressoForja {
   nivel: number;
@@ -12,12 +13,13 @@ export interface ProgressoForja {
   xp_proximo_nivel: number | null;
 }
 
-type Aba = "fabricacao" | "fundicao" | "refinamento";
+type Aba = "fabricacao" | "fundicao" | "refinamento" | "caldeirao";
 
 const ABAS: { chave: Aba; rotulo: string }[] = [
   { chave: "fabricacao", rotulo: "Fabricação" },
   { chave: "fundicao", rotulo: "Fundição" },
   { chave: "refinamento", rotulo: "Refinamento" },
+  { chave: "caldeirao", rotulo: "Caldeirão" },
 ];
 
 export default function ForgeClient() {
@@ -55,17 +57,19 @@ export default function ForgeClient() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="rounded-2xl border-2 border-[#F3B43F] bg-[#292018]/90 p-5 text-white shadow-xl">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="text-sm uppercase tracking-widest text-[#F3B43F]">Forja — Nível {nivel} / 10</p>
-          <p className="text-xs text-white/60">
-            XP {xp.toLocaleString("pt-BR")} / {xpProximo ? xpProximo.toLocaleString("pt-BR") : "MAX"}
-          </p>
+      {aba !== "caldeirao" && (
+        <div className="rounded-2xl border-2 border-[#F3B43F] bg-[#292018]/90 p-5 text-white shadow-xl">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-sm uppercase tracking-widest text-[#F3B43F]">Forja — Nível {nivel} / 10</p>
+            <p className="text-xs text-white/60">
+              XP {xp.toLocaleString("pt-BR")} / {xpProximo ? xpProximo.toLocaleString("pt-BR") : "MAX"}
+            </p>
+          </div>
+          <div className="mt-2 h-2 overflow-hidden rounded-full bg-black/50">
+            <div className="h-full bg-[#F3B43F]" style={{ width: `${percentualXp}%` }} />
+          </div>
         </div>
-        <div className="mt-2 h-2 overflow-hidden rounded-full bg-black/50">
-          <div className="h-full bg-[#F3B43F]" style={{ width: `${percentualXp}%` }} />
-        </div>
-      </div>
+      )}
 
       <div className="flex flex-wrap gap-2">
         {ABAS.map((item) => (
@@ -87,6 +91,7 @@ export default function ForgeClient() {
       {aba === "fabricacao" && <CraftingPanel nivelForja={nivel} onProgressoMudou={carregarProgresso} />}
       {aba === "fundicao" && <SmeltingPanel nivelForja={nivel} onProgressoMudou={carregarProgresso} />}
       {aba === "refinamento" && <RefinementPanel nivelForja={nivel} onProgressoMudou={carregarProgresso} />}
+      {aba === "caldeirao" && <CauldronPanel />}
     </div>
   );
 }
