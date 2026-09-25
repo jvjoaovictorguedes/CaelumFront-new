@@ -720,3 +720,140 @@ export async function reverterMediaVersaoAdmin(grupo: string, versao: number): P
 export async function desativarMediaGrupoAdmin(grupo: string): Promise<void> {
   await axiosInstance.delete(`/admin/media/${grupo}`);
 }
+
+// Painel Administrativo Fase 9 — Missões (livres, Guilda dos
+// Aventureiros, Guilda). Um hub só (permissão missions.manage), três
+// catálogos independentes — nenhuma tabela de progresso de jogador é
+// tocada por essas rotas.
+export interface MissionCatalogosApi {
+  tiposMissaoLivre: string[];
+  categoriasMissaoLivre: string[];
+  tiposObjetivoGuildaAventureiros: string[];
+  ranksAventureiros: string[];
+  tiposObjetivoMissaoGuilda: string[];
+  categoriasMissaoGuilda: string[];
+  ranksGuilda: string[];
+}
+export async function catalogosMissoesAdmin(): Promise<MissionCatalogosApi> {
+  const resposta = await axiosInstance.get<{ data: MissionCatalogosApi }>("/admin/missions/catalogs");
+  return resposta.data.data;
+}
+
+export interface MissionApi {
+  id: number;
+  nome: string;
+  descricao: string;
+  tipo: string;
+  meta: number;
+  categoria: string;
+  nivel_minimo: number;
+  recompensa_dinheiro: number;
+  recompensa_xp: number;
+  recompensa_item_id: number | null;
+  recompensa_item_quantidade: number;
+  ativa: boolean;
+  itemRecompensa?: { id: number; nome: string; imagem_url: string | null } | null;
+}
+export type PayloadMissionAdmin = Partial<Omit<MissionApi, "id" | "itemRecompensa">>;
+
+export async function listarMissoesLivresAdmin(filtros: { tipo?: string; categoria?: string; ativa?: string } = {}): Promise<MissionApi[]> {
+  const resposta = await axiosInstance.get<{ data: { missoes: MissionApi[] } }>("/admin/missions/free", { params: filtros });
+  return resposta.data.data.missoes;
+}
+export async function criarMissaoLivreAdmin(payload: PayloadMissionAdmin): Promise<MissionApi> {
+  const resposta = await axiosInstance.post<{ data: { missao: MissionApi } }>("/admin/missions/free", payload);
+  return resposta.data.data.missao;
+}
+export async function atualizarMissaoLivreAdmin(id: number, payload: PayloadMissionAdmin): Promise<MissionApi> {
+  const resposta = await axiosInstance.patch<{ data: { missao: MissionApi } }>(`/admin/missions/free/${id}`, payload);
+  return resposta.data.data.missao;
+}
+export async function duplicarMissaoLivreAdmin(id: number): Promise<MissionApi> {
+  const resposta = await axiosInstance.post<{ data: { missao: MissionApi } }>(`/admin/missions/free/${id}/duplicate`);
+  return resposta.data.data.missao;
+}
+
+export interface AdventureGuildMissionRewardApi {
+  id: number;
+  id_mission: number;
+  tipo: "Ouro" | "XP" | "Item";
+  id_item: number | null;
+  quantidade: number;
+  item?: { id: number; nome: string; imagem_url: string | null } | null;
+}
+export interface AdventureGuildMissionApi {
+  id: number;
+  rank: string;
+  nome: string;
+  descricao: string;
+  tipo_objetivo: string;
+  id_monstro_alvo: number | null;
+  id_area_alvo: number | null;
+  id_item_alvo: number | null;
+  quantidade_objetivo: number;
+  qualidade_minima: string | null;
+  eh_provacao: boolean;
+  ativa: boolean;
+  recompensas?: AdventureGuildMissionRewardApi[];
+}
+export type PayloadAdventureGuildMissionAdmin = Partial<Omit<AdventureGuildMissionApi, "id" | "recompensas">>;
+
+export async function listarMissoesGuildaAventureirosAdmin(
+  filtros: { rank?: string; ativa?: string; eh_provacao?: string } = {},
+): Promise<AdventureGuildMissionApi[]> {
+  const resposta = await axiosInstance.get<{ data: { missoes: AdventureGuildMissionApi[] } }>("/admin/missions/adventurers-guild", { params: filtros });
+  return resposta.data.data.missoes;
+}
+export async function criarMissaoGuildaAventureirosAdmin(payload: PayloadAdventureGuildMissionAdmin): Promise<AdventureGuildMissionApi> {
+  const resposta = await axiosInstance.post<{ data: { missao: AdventureGuildMissionApi } }>("/admin/missions/adventurers-guild", payload);
+  return resposta.data.data.missao;
+}
+export async function atualizarMissaoGuildaAventureirosAdmin(id: number, payload: PayloadAdventureGuildMissionAdmin): Promise<AdventureGuildMissionApi> {
+  const resposta = await axiosInstance.patch<{ data: { missao: AdventureGuildMissionApi } }>(`/admin/missions/adventurers-guild/${id}`, payload);
+  return resposta.data.data.missao;
+}
+export async function duplicarMissaoGuildaAventureirosAdmin(id: number): Promise<AdventureGuildMissionApi> {
+  const resposta = await axiosInstance.post<{ data: { missao: AdventureGuildMissionApi } }>(`/admin/missions/adventurers-guild/${id}/duplicate`);
+  return resposta.data.data.missao;
+}
+export async function adicionarRecompensaGuildaAventureirosAdmin(
+  idMission: number,
+  payload: { tipo: "Ouro" | "XP" | "Item"; id_item?: number | null; quantidade: number },
+): Promise<AdventureGuildMissionRewardApi> {
+  const resposta = await axiosInstance.post<{ data: { recompensa: AdventureGuildMissionRewardApi } }>(`/admin/missions/adventurers-guild/${idMission}/rewards`, payload);
+  return resposta.data.data.recompensa;
+}
+export async function removerRecompensaGuildaAventureirosAdmin(idRecompensa: number): Promise<void> {
+  await axiosInstance.delete(`/admin/missions/adventurers-guild/rewards/${idRecompensa}`);
+}
+
+export interface GuildMissionApi {
+  id: number;
+  categoria: string;
+  rank: string | null;
+  nome: string;
+  descricao: string;
+  tipo_objetivo: string;
+  meta: number;
+  xp_guilda: number;
+  pontos_contribuicao: number;
+  ativa: boolean;
+}
+export type PayloadGuildMissionAdmin = Partial<Omit<GuildMissionApi, "id">>;
+
+export async function listarMissoesGuildaAdmin(filtros: { categoria?: string; rank?: string; ativa?: string } = {}): Promise<GuildMissionApi[]> {
+  const resposta = await axiosInstance.get<{ data: { missoes: GuildMissionApi[] } }>("/admin/missions/guild", { params: filtros });
+  return resposta.data.data.missoes;
+}
+export async function criarMissaoGuildaAdmin(payload: PayloadGuildMissionAdmin): Promise<GuildMissionApi> {
+  const resposta = await axiosInstance.post<{ data: { missao: GuildMissionApi } }>("/admin/missions/guild", payload);
+  return resposta.data.data.missao;
+}
+export async function atualizarMissaoGuildaAdmin(id: number, payload: PayloadGuildMissionAdmin): Promise<GuildMissionApi> {
+  const resposta = await axiosInstance.patch<{ data: { missao: GuildMissionApi } }>(`/admin/missions/guild/${id}`, payload);
+  return resposta.data.data.missao;
+}
+export async function duplicarMissaoGuildaAdmin(id: number): Promise<GuildMissionApi> {
+  const resposta = await axiosInstance.post<{ data: { missao: GuildMissionApi } }>(`/admin/missions/guild/${id}/duplicate`);
+  return resposta.data.data.missao;
+}
