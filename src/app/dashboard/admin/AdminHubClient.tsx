@@ -64,6 +64,7 @@ const CATEGORIAS: CategoriaAdmin[] = [
     titulo: "Sistema",
     modulos: [
       { titulo: "Patch Notes", descricao: "Publicar atualizações sem migration.", href: "/dashboard/admin/patch-notes", permissao: "patchnotes.manage" },
+      { titulo: "Jornal da Guilda", descricao: "Registrar conquistas notáveis de jogadores e guildas.", href: "/dashboard/admin/guild-journal", permissao: "guildjournal.manage" },
       { titulo: "Administradores", descricao: "Perfis e permissões.", href: "/dashboard/admin/administrators", permissao: "admins.manage" },
       { titulo: "Auditoria", descricao: "Histórico de ações administrativas.", href: "/dashboard/admin/audit", permissao: "audit.view" },
     ],

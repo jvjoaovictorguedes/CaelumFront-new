@@ -6,8 +6,9 @@ import { useCharacter } from "@/contexts/CharacterContext";
 import BalcaoDeEspoliosPanel from "./BalcaoDeEspoliosPanel";
 import MuralDeCacadasPanel from "./MuralDeCacadasPanel";
 import WorldBossArena from "./WorldBossArena";
+import GuildJournalPanel from "./GuildJournalPanel";
 
-type Aba = "Diaria" | "Semanal" | "Mensal" | "Rank" | "Marco" | "Balcao" | "Cacadas" | "AmeacaMundial";
+type Aba = "Diaria" | "Semanal" | "Mensal" | "Rank" | "Marco" | "Balcao" | "Cacadas" | "AmeacaMundial" | "Jornal";
 
 interface MissaoLivreApi {
   id: number;
@@ -116,9 +117,10 @@ const ROTULO_ABA: Record<Aba, string> = {
   Balcao: "Balcão de Espólios",
   Cacadas: "Caçadas",
   AmeacaMundial: "Ameaça Mundial",
+  Jornal: "Jornal da Guilda",
 };
 
-const ROTA_POR_ABA: Record<Exclude<Aba, "Rank" | "Balcao" | "Cacadas" | "AmeacaMundial">, string> = {
+const ROTA_POR_ABA: Record<Exclude<Aba, "Rank" | "Balcao" | "Cacadas" | "AmeacaMundial" | "Jornal">, string> = {
   Diaria: "daily",
   Semanal: "weekly",
   Mensal: "monthly",
@@ -153,9 +155,9 @@ export default function AdventureGuildPanel() {
     if (abaAtual === "Rank") {
       const resp = await axiosInstance.get<{ data?: QuadroDeRankApi }>("/adventure-guild/rank");
       setQuadro(resp.data?.data ?? null);
-    } else if (abaAtual === "Balcao" || abaAtual === "Cacadas" || abaAtual === "AmeacaMundial") {
-      // BalcaoDeEspoliosPanel/MuralDeCacadasPanel/WorldBossArena
-      // carregam os próprios dados — nada a buscar aqui.
+    } else if (abaAtual === "Balcao" || abaAtual === "Cacadas" || abaAtual === "AmeacaMundial" || abaAtual === "Jornal") {
+      // BalcaoDeEspoliosPanel/MuralDeCacadasPanel/WorldBossArena/
+      // GuildJournalPanel carregam os próprios dados — nada a buscar aqui.
     } else {
       const resp = await axiosInstance.get<{ data?: { missoes?: MissaoLivreApi[] } }>(
         `/adventure-guild/${ROTA_POR_ABA[abaAtual]}`,
@@ -267,8 +269,9 @@ export default function AdventureGuildPanel() {
       {!carregando && aba === "Balcao" && <BalcaoDeEspoliosPanel />}
       {!carregando && aba === "Cacadas" && <MuralDeCacadasPanel />}
       {!carregando && aba === "AmeacaMundial" && <WorldBossArena />}
+      {!carregando && aba === "Jornal" && <GuildJournalPanel />}
 
-      {!carregando && aba !== "Rank" && aba !== "Balcao" && aba !== "Cacadas" && aba !== "AmeacaMundial" && (
+      {!carregando && aba !== "Rank" && aba !== "Balcao" && aba !== "Cacadas" && aba !== "AmeacaMundial" && aba !== "Jornal" && (
         <div className="flex flex-col gap-2">
           {(missoesLivres ?? []).length === 0 && (
             <p className="text-sm text-white/60">Nenhuma missão disponível nesta categoria.</p>

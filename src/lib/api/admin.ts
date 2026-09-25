@@ -241,6 +241,63 @@ export async function duplicarPatchNoteAdmin(id: number): Promise<PatchNoteApi> 
   return resposta.data.data.nota;
 }
 
+// Jornal da Guilda dos Aventureiros — feed de conquistas notáveis de
+// jogadores/guildas, curado pelo Admin (nunca gerado automaticamente
+// por gatilho de jogo). Mesmo workflow Rascunho/Publicado/Agendado dos
+// Patch Notes, domínio separado.
+export type CategoriaGuildJournal = "ConquistaIndividual" | "ConquistaDeGuilda" | "Evento" | "Outro";
+
+export interface GuildJournalEntryApi {
+  id: number;
+  ordem: number;
+  categoria: CategoriaGuildJournal;
+  titulo: string;
+  descricao: string;
+  resumo: string | null;
+  imagem_url: string | null;
+  personagem_nome: string | null;
+  guilda_nome: string | null;
+  destaque: boolean;
+  status: "Rascunho" | "Publicado" | "Agendado";
+  publicado_em: string;
+  created_by_admin_id: number | null;
+}
+
+export interface PayloadGuildJournalAdmin {
+  categoria?: CategoriaGuildJournal;
+  titulo: string;
+  descricao: string;
+  resumo?: string | null;
+  imagem_url?: string | null;
+  personagem_nome?: string | null;
+  guilda_nome?: string | null;
+  destaque?: boolean;
+  status?: "Rascunho" | "Publicado" | "Agendado";
+  publicado_em?: string;
+}
+
+export async function listarGuildJournalAdmin(
+  filtros: { pagina?: number; porPagina?: number; status?: string; categoria?: string; nome?: string } = {},
+): Promise<PaginaApi<GuildJournalEntryApi>> {
+  const resposta = await axiosInstance.get<{ data: PaginaApi<GuildJournalEntryApi> }>("/admin/guild-journal", {
+    params: filtros,
+  });
+  return resposta.data.data;
+}
+
+export async function criarGuildJournalAdmin(payload: PayloadGuildJournalAdmin): Promise<GuildJournalEntryApi> {
+  const resposta = await axiosInstance.post<{ data: { nota: GuildJournalEntryApi } }>("/admin/guild-journal", payload);
+  return resposta.data.data.nota;
+}
+
+export async function atualizarGuildJournalAdmin(
+  id: number,
+  payload: Partial<PayloadGuildJournalAdmin>,
+): Promise<GuildJournalEntryApi> {
+  const resposta = await axiosInstance.patch<{ data: { nota: GuildJournalEntryApi } }>(`/admin/guild-journal/${id}`, payload);
+  return resposta.data.data.nota;
+}
+
 // Painel Administrativo Fase 14 (§25) — Configurações do jogo (GameSetting).
 export interface GameSettingApi {
   chave: string;
