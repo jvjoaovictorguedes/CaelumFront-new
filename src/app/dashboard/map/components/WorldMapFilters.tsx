@@ -1,6 +1,6 @@
 "use client";
 
-export type FiltroTipo = "TODOS" | "AVENTURA" | "EXPEDICAO" | "CIDADES" | "SERVICOS";
+export type FiltroTipo = "TODOS" | "AVENTURA" | "EXPEDICAO" | "CIDADES" | "SERVICOS" | "PESCA";
 export type SubfiltroExpedicao = "Mineracao" | "Silvicultura" | "Exploracao" | null;
 
 const FILTROS: { valor: FiltroTipo; label: string }[] = [
@@ -9,6 +9,7 @@ const FILTROS: { valor: FiltroTipo; label: string }[] = [
   { valor: "EXPEDICAO", label: "Expedição" },
   { valor: "CIDADES", label: "Cidades" },
   { valor: "SERVICOS", label: "Serviços" },
+  { valor: "PESCA", label: "Pesca" },
 ];
 
 const SUBFILTROS_EXPEDICAO: { valor: Exclude<SubfiltroExpedicao, null>; label: string }[] = [

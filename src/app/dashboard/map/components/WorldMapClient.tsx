@@ -50,6 +50,12 @@ export interface ServicoCapitalApi {
   rota: string;
 }
 
+export interface FishingPontoApi {
+  tipo: "zona" | "porto";
+  id: number;
+  nome: string;
+}
+
 export interface NodeApi {
   id: number;
   nome: string;
@@ -63,6 +69,9 @@ export interface NodeApi {
   adventure?: AdventureInfoApi;
   expedition?: ExpeditionInfoApi;
   city?: { servicos: ServicoCapitalApi[] };
+  // Ponto de Pesca (FishingZone/FishingPort.id_world_node) — independente
+  // do `tipo` acima, por isso é campo à parte, não um novo valor de tipo.
+  pesca?: FishingPontoApi | null;
 }
 
 export interface ConnectionApi {
@@ -90,6 +99,7 @@ function nodePassaNoFiltro(node: NodeApi, filtro: FiltroTipo, subfiltroExpedicao
   }
   if (filtro === "CIDADES") return node.tipo === "City";
   if (filtro === "SERVICOS") return node.tipo === "Service";
+  if (filtro === "PESCA") return Boolean(node.pesca);
   return true;
 }
 

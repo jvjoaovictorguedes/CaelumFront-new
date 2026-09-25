@@ -178,7 +178,26 @@ export default function WorldMapLocationPanel({
           </div>
         )}
 
-        {(node.tipo === "Service" || node.tipo === "Landmark") && (
+        {node.pesca && (
+          <div className="space-y-3">
+            <p className="text-sm text-white/80">
+              {node.pesca.tipo === "porto"
+                ? "Porto de pesca — ponto de partida pra viagens marítimas até zonas de pesca."
+                : "Zona de pesca — água com espécies pra capturar."}
+            </p>
+            <button
+              type="button"
+              onClick={() =>
+                router.push(node.pesca!.tipo === "zona" ? `/dashboard/fishing?zona=${node.pesca!.id}` : "/dashboard/fishing")
+              }
+              className="rounded-lg border-2 border-sky-400 bg-sky-500 px-4 py-2 text-sm font-bold text-[#0b1b2b] transition hover:bg-sky-400"
+            >
+              Ir para Pesca & Navegação
+            </button>
+          </div>
+        )}
+
+        {!node.pesca && (node.tipo === "Service" || node.tipo === "Landmark") && (
           <p className="text-sm text-white/60">Ponto de interesse — sem ações disponíveis nesta versão do mapa.</p>
         )}
       </div>

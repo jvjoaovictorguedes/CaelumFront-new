@@ -6,6 +6,7 @@
 // envia intenção (cast/hook/reel ON-OFF/abandon) e mostra exatamente o
 // que o servidor devolve, nunca decide espécie/peso/tensão sozinho.
 import { useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useToast } from "@/contexts/ToastContext";
 import {
   fishingApi,
@@ -17,6 +18,9 @@ import {
   type VaraPesca,
   type Vessel,
 } from "@/lib/api/fishing";
+import FishingAlmanaque from "./FishingAlmanaque";
+import FishingRanking from "./FishingRanking";
+import FishingTorneio, { TorneioBanner } from "./FishingTorneio";
 
 function extrairMensagemErro(error: unknown, padrao: string) {
   return (error as { response?: { data?: { message?: string } } })?.response?.data?.message ?? padrao;
@@ -24,9 +28,19 @@ function extrairMensagemErro(error: unknown, padrao: string) {
 
 const FASES_TERMINAIS = new Set(["CAUGHT", "ESCAPED", "BROKEN_LINE", "EXPIRED", "ABORTED"]);
 
+type AbaPesca = "PESCAR" | "ALMANAQUE" | "RANKING" | "TORNEIO";
+const ABAS_PESCA: { valor: AbaPesca; label: string }[] = [
+  { valor: "PESCAR", label: "Pescar" },
+  { valor: "ALMANAQUE", label: "Almanaque Marinho" },
+  { valor: "RANKING", label: "Ranking" },
+  { valor: "TORNEIO", label: "Torneio" },
+];
+
 export default function FishingClient() {
   const { mostrarErro, mostrarSucesso, mostrarInfo } = useToast();
+  const searchParams = useSearchParams();
   const [carregando, setCarregando] = useState(true);
+  const [aba, setAba] = useState<AbaPesca>("PESCAR");
 
   const [progresso, setProgresso] = useState<ProgressoPesca | null>(null);
   const [zonas, setZonas] = useState<FishingZone[]>([]);
@@ -63,13 +77,21 @@ export default function FishingClient() {
       setRotas(rs);
       setZonaAtualId(nav.id_zone_atual);
       setSessao(ativa);
-      if (nav.id_zone_atual) setZonaSelecionada(nav.id_zone_atual);
+      // Deep-link opcional a partir do Mapa de Caelum (?zona=<id>) — só
+      // pré-seleciona no seletor, nunca navega/viaja sozinho (a viagem
+      // continua exigindo uma rota marítima real, spec §18.3).
+      const zonaQuery = Number(searchParams.get("zona"));
+      if (zonaQuery && z.some((zona) => zona.id === zonaQuery)) {
+        setZonaSelecionada(zonaQuery);
+      } else if (nav.id_zone_atual) {
+        setZonaSelecionada(nav.id_zone_atual);
+      }
     } catch (error) {
       mostrarErro(extrairMensagemErro(error, "Não foi possível carregar a tela de Pesca."));
     } finally {
       setCarregando(false);
     }
-  }, [mostrarErro]);
+  }, [mostrarErro, searchParams]);
 
   useEffect(() => {
     carregarTudo();
@@ -153,6 +175,33 @@ export default function FishingClient() {
 
   return (
     <div className="flex flex-col gap-6">
+      {/* Banner do Torneio da Pesca — sempre visível, qualquer aba */}
+      <TorneioBanner onVerTorneio={() => setAba("TORNEIO")} />
+
+      {/* Abas */}
+      <div className="flex flex-wrap gap-2">
+        {ABAS_PESCA.map(({ valor, label }) => (
+          <button
+            key={valor}
+            type="button"
+            onClick={() => setAba(valor)}
+            className={`rounded-full border px-3 py-1.5 text-xs font-bold uppercase tracking-wide transition ${
+              aba === valor
+                ? "border-sky-400 bg-sky-500 text-[#0b1b2b]"
+                : "border-sky-500/40 bg-black/30 text-sky-300 hover:bg-black/50"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {aba === "ALMANAQUE" && <FishingAlmanaque />}
+      {aba === "RANKING" && <FishingRanking />}
+      {aba === "TORNEIO" && <FishingTorneio />}
+
+      {aba === "PESCAR" && (
+        <>
       {/* Progresso */}
       <div className="rounded-xl border border-white/10 bg-black/30 p-4 text-white">
         <p className="text-sm uppercase tracking-widest text-sky-300">Nível de Pesca</p>
@@ -288,6 +337,8 @@ export default function FishingClient() {
           onAbandon={() => acao(() => fishingApi.abandon(sessao.id))}
           onNovaSessao={() => setSessao(null)}
         />
+      )}
+        </>
       )}
     </div>
   );

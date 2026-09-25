@@ -1623,3 +1623,105 @@ export async function atualizarFishingAffinityAdmin(id: number, payload: Partial
   const resposta = await axiosInstance.patch<{ data: { afinidade: FishingAffinityAdminApi } }>(`/admin/fishing/affinities/${id}`, payload);
   return resposta.data.data.afinidade;
 }
+
+// Embarcações
+export interface VesselAdminApi {
+  id: number;
+  key: string;
+  nome: string;
+  tier: number;
+  nivel_pesca_minimo: number;
+  preco: number;
+  descricao: string | null;
+  ativo: boolean;
+}
+
+export interface PayloadVesselAdmin {
+  key?: string;
+  nome: string;
+  tier?: number;
+  nivel_pesca_minimo?: number;
+  preco?: number;
+  descricao?: string | null;
+  ativo?: boolean;
+}
+
+export async function listarVesselsAdmin(): Promise<VesselAdminApi[]> {
+  const resposta = await axiosInstance.get<{ data: { vessels: VesselAdminApi[] } }>("/admin/fishing/vessels");
+  return resposta.data.data.vessels;
+}
+export async function criarVesselAdmin(payload: PayloadVesselAdmin): Promise<VesselAdminApi> {
+  const resposta = await axiosInstance.post<{ data: { vessel: VesselAdminApi } }>("/admin/fishing/vessels", payload);
+  return resposta.data.data.vessel;
+}
+export async function atualizarVesselAdmin(id: number, payload: Partial<PayloadVesselAdmin>): Promise<VesselAdminApi> {
+  const resposta = await axiosInstance.patch<{ data: { vessel: VesselAdminApi } }>(`/admin/fishing/vessels/${id}`, payload);
+  return resposta.data.data.vessel;
+}
+
+// Rotas marítimas
+export interface MarineRouteAdminApi {
+  id: number;
+  id_world_connection: number;
+  id_port_origem: number;
+  id_zone_destino: number;
+  min_vessel_tier: number;
+  distance: number;
+  ativo: boolean;
+  portoOrigem?: { id: number; nome: string };
+  zonaDestino?: { id: number; nome: string };
+}
+
+export interface PayloadMarineRouteAdmin {
+  id_world_connection?: number;
+  id_port_origem?: number;
+  id_zone_destino?: number;
+  min_vessel_tier?: number;
+  distance?: number;
+  ativo?: boolean;
+}
+
+export async function listarMarineRoutesAdmin(): Promise<MarineRouteAdminApi[]> {
+  const resposta = await axiosInstance.get<{ data: { rotas: MarineRouteAdminApi[] } }>("/admin/fishing/routes");
+  return resposta.data.data.rotas;
+}
+export async function criarMarineRouteAdmin(payload: PayloadMarineRouteAdmin): Promise<MarineRouteAdminApi> {
+  const resposta = await axiosInstance.post<{ data: { rota: MarineRouteAdminApi } }>("/admin/fishing/routes", payload);
+  return resposta.data.data.rota;
+}
+export async function atualizarMarineRouteAdmin(id: number, payload: Partial<PayloadMarineRouteAdmin>): Promise<MarineRouteAdminApi> {
+  const resposta = await axiosInstance.patch<{ data: { rota: MarineRouteAdminApi } }>(`/admin/fishing/routes/${id}`, payload);
+  return resposta.data.data.rota;
+}
+
+// Torneios de Pesca
+export interface FishingTournamentAdminApi {
+  id: number;
+  nome: string;
+  id_zone: number | null;
+  inicia_em: string;
+  termina_em: string;
+  ativo: boolean;
+  zona?: { id: number; nome: string } | null;
+}
+
+export interface PayloadFishingTournamentAdmin {
+  nome: string;
+  id_zone?: number | null;
+  inicia_em?: string;
+  termina_em?: string;
+  ativo?: boolean;
+}
+
+export async function listarFishingTournamentsAdmin(): Promise<FishingTournamentAdminApi[]> {
+  const resposta = await axiosInstance.get<{ data: { torneios: FishingTournamentAdminApi[] } }>("/admin/fishing/tournaments");
+  return resposta.data.data.torneios;
+}
+export async function criarFishingTournamentAdmin(payload: PayloadFishingTournamentAdmin): Promise<FishingTournamentAdminApi> {
+  const resposta = await axiosInstance.post<{ data: { torneio: FishingTournamentAdminApi } }>("/admin/fishing/tournaments", payload);
+  return resposta.data.data.torneio;
+}
+export async function atualizarFishingTournamentAdmin(id: number, payload: Partial<PayloadFishingTournamentAdmin>): Promise<FishingTournamentAdminApi> {
+  const resposta = await axiosInstance.patch<{ data: { torneio: FishingTournamentAdminApi } }>(`/admin/fishing/tournaments/${id}`, payload);
+  return resposta.data.data.torneio;
+}
