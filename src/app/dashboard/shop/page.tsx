@@ -3,7 +3,6 @@ import { getCurrentCharacter } from "@/utils/character-session";
 import { type ShopItemData } from "./components/ShopItem";
 import ShopCatalog from "./components/ShopCatalog";
 import PageMusic from "@/components/music/PageMusic";
-import { MUSIC } from "@/constants/music";
 
 interface ItemsResponse {
   data?: {
@@ -48,7 +47,7 @@ export default async function ShopPage() {
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-5 p-2 sm:p-4">
-      <PageMusic track={MUSIC.TAVERNA_MERCADO} />
+      <PageMusic slot="PAGE_SHOP" />
       {/* CABEÇALHO */}
       <div className="rounded-2xl border-2 border-[#F3B43F] bg-[#292018]/90 p-5 text-white shadow-xl">
         <p className="text-sm uppercase tracking-widest text-[#F3B43F]">

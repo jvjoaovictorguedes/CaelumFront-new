@@ -7,7 +7,6 @@ import {
 } from "@/lib/api/pvp";
 import PvpClient from "./components/PvpClient";
 import PageMusic from "@/components/music/PageMusic";
-import { MUSIC } from "@/constants/music";
 
 export default async function PvpPage() {
   const character = await getCurrentCharacter();
@@ -15,7 +14,7 @@ export default async function PvpPage() {
   if (!character) {
     return (
       <div className="flex flex-col items-center justify-center h-full">
-        <PageMusic track={MUSIC.ANIMADA} />
+        <PageMusic slot="PAGE_PVP" />
         <div className="rounded-2xl border border-[#F3B43F]/30 bg-[#292018]/80 p-6 text-center text-white shadow-xl">
           <h1 className="font-imFeel text-4xl mb-4">Duelo</h1>
           <p className="text-lg text-white/80">
@@ -35,7 +34,7 @@ export default async function PvpPage() {
 
   return (
     <>
-      <PageMusic track={MUSIC.ANIMADA} />
+      <PageMusic slot="PAGE_PVP" />
       <PvpClient
         character={{
           id: character.id,

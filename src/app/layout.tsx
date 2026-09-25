@@ -4,6 +4,7 @@ import "./globals.css";
 import { getUserCookie } from "@/app/create/temp-character-data-action";
 import { MessagesSocketProvider } from "@/contexts/MessagesSocketContext";
 import { MusicProvider } from "@/contexts/MusicContext";
+import { MusicConfigProvider } from "@/contexts/MusicConfigContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -40,9 +41,11 @@ export default async function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} ${imFellEnglish.variable} antialiased`}
       >
         <MusicProvider>
-          <MessagesSocketProvider currentUserId={currentUserId ?? undefined}>
-            {children}
-          </MessagesSocketProvider>
+          <MusicConfigProvider>
+            <MessagesSocketProvider currentUserId={currentUserId ?? undefined}>
+              {children}
+            </MessagesSocketProvider>
+          </MusicConfigProvider>
         </MusicProvider>
       </body>
     </html>
