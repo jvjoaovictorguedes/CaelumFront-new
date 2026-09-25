@@ -153,6 +153,8 @@ export default function FishingClient() {
       if (atualizada.fase === "CAUGHT" && atualizada.resultado) {
         const r = atualizada.resultado;
         mostrarSucesso(`Capturou um peixe de ${r.weight_g}g! +${r.xp} XP de Pesca.${r.primeira_descoberta ? " Nova espécie descoberta!" : ""}`);
+      } else if (atualizada.fase === "WAITING_BITE" && sessao?.fase !== "WAITING_BITE") {
+        mostrarInfo("Linha lançada! Fique de olho e continue clicando em \"Fisgar!\" até o peixe morder.");
       } else if (FASES_TERMINAIS.has(atualizada.fase) && atualizada.fase !== "CAUGHT") {
         mostrarInfo(`Sessão encerrada: ${atualizada.resultado?.motivo ?? atualizada.fase}.`);
       }
@@ -379,12 +381,24 @@ function FishingArena({
                 style={{ width: `${tensaoPct}%` }}
               />
             </div>
+            {sessao.fase === "FIGHTING" && (
+              <p className="mt-1 text-xs text-white/50">
+                A tensão sobe quando você recolhe a linha (ON) e desce quando você solta (OFF). Se a tensão encher
+                (barra fica vermelha), a linha arrebenta e o peixe escapa — alterne entre Recolher e Soltar pra manter
+                a tensão controlada enquanto avança.
+              </p>
+            )}
           </div>
           <div className="mb-4">
             <p className="mb-1 text-xs uppercase text-white/50">Progresso de captura</p>
             <div className="h-4 w-full overflow-hidden rounded-full bg-white/10">
               <div className="h-full bg-green-500 transition-all" style={{ width: `${progressoPct}%` }} />
             </div>
+            {sessao.fase === "FIGHTING" && (
+              <p className="mt-1 text-xs text-white/50">
+                Só avança enquanto você está recolhendo a linha (ON). Encha essa barra até o fim pra capturar o peixe.
+              </p>
+            )}
           </div>
 
           <div className="flex flex-wrap gap-2">
@@ -420,6 +434,13 @@ function FishingArena({
               Abandonar
             </button>
           </div>
+          {sessao.fase === "WAITING_BITE" && (
+            <p className="mt-3 text-xs text-amber-300/90">
+              Fique de olho na água: o peixe pode morder a qualquer momento e você só tem uma janela curta pra fisgar.
+              Continue clicando em <span className="font-bold">Fisgar!</span> até o peixe morder — clicar cedo demais
+              não tem problema, só não pode demorar depois que ele morder.
+            </p>
+          )}
         </>
       )}
 
