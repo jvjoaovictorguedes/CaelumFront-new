@@ -34,6 +34,8 @@ const CATEGORIAS: CategoriaAdmin[] = [
       { titulo: "Caçadas", descricao: "Dificuldades e Reputação de Caçador.", href: "/dashboard/admin/hunts", permissao: "hunts.manage" },
       { titulo: "Mídia", descricao: "Upload e versionamento de assets.", href: "/dashboard/admin/media", permissao: "media.manage" },
       { titulo: "Taverna", descricao: "Cardápio, jogos de azar, descanso e métricas.", href: "/dashboard/admin/tavern", permissao: "tavern.manage" },
+      { titulo: "Ameaça Mundial", descricao: "Catálogo de Boss Global, ciclo atual e métricas.", href: "/dashboard/admin/world-boss", permissao: "worldboss.manage" },
+      { titulo: "Pesca & Navegação", descricao: "Zonas, espécies, pool de encontro, portos, iscas e afinidades.", href: "/dashboard/admin/fishing", permissao: "fishing.manage" },
     ],
   },
   {
@@ -63,6 +65,7 @@ const CATEGORIAS: CategoriaAdmin[] = [
     titulo: "Sistema",
     modulos: [
       { titulo: "Patch Notes", descricao: "Publicar atualizações sem migration.", href: "/dashboard/admin/patch-notes", permissao: "patchnotes.manage" },
+      { titulo: "Jornal da Guilda", descricao: "Registrar conquistas notáveis de jogadores e guildas.", href: "/dashboard/admin/guild-journal", permissao: "guildjournal.manage" },
       { titulo: "Administradores", descricao: "Perfis e permissões.", href: "/dashboard/admin/administrators", permissao: "admins.manage" },
       { titulo: "Auditoria", descricao: "Histórico de ações administrativas.", href: "/dashboard/admin/audit", permissao: "audit.view" },
     ],

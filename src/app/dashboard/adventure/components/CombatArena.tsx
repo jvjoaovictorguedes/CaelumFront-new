@@ -240,6 +240,16 @@ interface RespostaCombate {
       zona: { id: number; nome: string | null };
       beneficiosPorNivel: Record<string, { xp: number; ouro: number; espolio: number }>;
     } | null;
+
+    // Boss Global (§5.1) — presente só na vitória que faz o encontro
+    // elegível bater o threshold secreto (nunca revelado aqui nem em
+    // nenhum outro lugar do cliente); null em qualquer outra vitória.
+    worldBoss?: {
+      descoberto: boolean;
+      event_id: number;
+      nome: string | null;
+      mensagem_descoberta: string | null;
+    } | null;
   };
 }
 
@@ -361,6 +371,9 @@ export default function CombatArena({
     { id_item: number; nome: string; quantidade: number; imagem_url?: string | null; raridade?: string }[]
   >([]);
 
+  const [worldBossDescoberto, setWorldBossDescoberto] = useState<
+    RespostaCombate["data"]["worldBoss"]
+  >(null);
   const [bestiarioCompletoAgora, setBestiarioCompletoAgora] = useState<
     RespostaCombate["data"]["bestiarioCompletoAgora"]
   >(null);
@@ -918,6 +931,7 @@ export default function CombatArena({
         setDrop(data.drop ?? null);
         setEspolios(data.espolios ?? []);
         setBestiarioCompletoAgora(data.bestiarioCompletoAgora ?? null);
+        setWorldBossDescoberto(data.worldBoss?.descoberto ? data.worldBoss : null);
       }
     } catch (error: unknown) {
       const mensagem =
@@ -1250,6 +1264,24 @@ export default function CombatArena({
                     </div>
                   );
                 })}
+              </div>
+            )}
+
+            {worldBossDescoberto && (
+              <div className="mb-4 rounded-xl border-2 border-red-500/70 bg-black/40 p-3 text-left">
+                <p className="mb-1 text-center font-imFeel text-xl text-red-400">
+                  ⚠ Ameaça Mundial descoberta! ⚠
+                </p>
+                <p className="text-center text-sm font-bold text-white">{worldBossDescoberto.nome}</p>
+                {worldBossDescoberto.mensagem_descoberta && (
+                  <p className="mt-2 text-center text-xs italic text-white/70">
+                    {worldBossDescoberto.mensagem_descoberta}
+                  </p>
+                )}
+                <p className="mt-2 text-center text-xs text-red-300">
+                  Foi você quem a encontrou! Acompanhe a Guilda dos Aventureiros — ela despertará
+                  em instantes.
+                </p>
               </div>
             )}
 

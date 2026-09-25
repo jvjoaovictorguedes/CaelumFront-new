@@ -241,6 +241,63 @@ export async function duplicarPatchNoteAdmin(id: number): Promise<PatchNoteApi> 
   return resposta.data.data.nota;
 }
 
+// Jornal da Guilda dos Aventureiros — feed de conquistas notáveis de
+// jogadores/guildas, curado pelo Admin (nunca gerado automaticamente
+// por gatilho de jogo). Mesmo workflow Rascunho/Publicado/Agendado dos
+// Patch Notes, domínio separado.
+export type CategoriaGuildJournal = "ConquistaIndividual" | "ConquistaDeGuilda" | "Evento" | "Outro";
+
+export interface GuildJournalEntryApi {
+  id: number;
+  ordem: number;
+  categoria: CategoriaGuildJournal;
+  titulo: string;
+  descricao: string;
+  resumo: string | null;
+  imagem_url: string | null;
+  personagem_nome: string | null;
+  guilda_nome: string | null;
+  destaque: boolean;
+  status: "Rascunho" | "Publicado" | "Agendado";
+  publicado_em: string;
+  created_by_admin_id: number | null;
+}
+
+export interface PayloadGuildJournalAdmin {
+  categoria?: CategoriaGuildJournal;
+  titulo: string;
+  descricao: string;
+  resumo?: string | null;
+  imagem_url?: string | null;
+  personagem_nome?: string | null;
+  guilda_nome?: string | null;
+  destaque?: boolean;
+  status?: "Rascunho" | "Publicado" | "Agendado";
+  publicado_em?: string;
+}
+
+export async function listarGuildJournalAdmin(
+  filtros: { pagina?: number; porPagina?: number; status?: string; categoria?: string; nome?: string } = {},
+): Promise<PaginaApi<GuildJournalEntryApi>> {
+  const resposta = await axiosInstance.get<{ data: PaginaApi<GuildJournalEntryApi> }>("/admin/guild-journal", {
+    params: filtros,
+  });
+  return resposta.data.data;
+}
+
+export async function criarGuildJournalAdmin(payload: PayloadGuildJournalAdmin): Promise<GuildJournalEntryApi> {
+  const resposta = await axiosInstance.post<{ data: { nota: GuildJournalEntryApi } }>("/admin/guild-journal", payload);
+  return resposta.data.data.nota;
+}
+
+export async function atualizarGuildJournalAdmin(
+  id: number,
+  payload: Partial<PayloadGuildJournalAdmin>,
+): Promise<GuildJournalEntryApi> {
+  const resposta = await axiosInstance.patch<{ data: { nota: GuildJournalEntryApi } }>(`/admin/guild-journal/${id}`, payload);
+  return resposta.data.data.nota;
+}
+
 // Painel Administrativo Fase 14 (§25) — Configurações do jogo (GameSetting).
 export interface GameSettingApi {
   chave: string;
@@ -1174,4 +1231,395 @@ export interface TavernMetricsApi {
 export async function obterTavernMetricasAdmin(): Promise<TavernMetricsApi> {
   const resposta = await axiosInstance.get<{ data: TavernMetricsApi }>("/admin/tavern/metrics");
   return resposta.data.data;
+}
+
+// Boss Global / Ameaça Mundial — Painel Administrativo (catálogo,
+// worldboss.manage) + operação do ciclo atual (events.manage).
+export interface WorldBossPhaseApi {
+  id?: number;
+  ordem: number;
+  nome_fase: string;
+  hp_percentual_max: number;
+  modificador_dano_percentual?: number;
+  texto_alerta?: string | null;
+}
+
+export interface WorldBossConfigApi {
+  id: number;
+  nome: string;
+  descricao: string;
+  lore: string | null;
+  imagem_url: string | null;
+  ativo: boolean;
+  peso_selecao: number;
+  vida_base: string;
+  defesa: number;
+  mensagem_descoberta: string;
+  mensagem_convocacao: string;
+  mensagem_fase_final: string | null;
+  mensagem_derrota: string | null;
+  id_item_golpe_final: number;
+  gold_descoberta: number;
+  gold_participacao: number;
+  xp_participacao: number;
+  min_dano_participacao: number | null;
+  fases: WorldBossPhaseApi[];
+  zonas: number[];
+}
+
+// A listagem (GET /configs) nunca carrega fases/zonas completas — só
+// a contagem, pra evitar N+1 no backend. GET /configs/:id (usado ao
+// abrir "Editar") é que devolve o WorldBossConfigApi completo.
+export interface WorldBossConfigListItemApi extends Omit<WorldBossConfigApi, "fases" | "zonas"> {
+  fases_count: number;
+  zonas_count: number;
+}
+
+export interface PayloadWorldBossConfigAdmin {
+  nome: string;
+  descricao: string;
+  lore?: string | null;
+  imagem_url?: string | null;
+  peso_selecao?: number;
+  vida_base: number;
+  defesa?: number;
+  mensagem_descoberta: string;
+  mensagem_convocacao: string;
+  mensagem_fase_final?: string | null;
+  mensagem_derrota?: string | null;
+  id_item_golpe_final: number;
+  gold_descoberta?: number;
+  gold_participacao?: number;
+  xp_participacao?: number;
+  min_dano_participacao?: number | null;
+  fases?: WorldBossPhaseApi[];
+  zonas?: number[];
+  ativo?: boolean;
+}
+
+export async function listarWorldBossConfigsAdmin(
+  filtros: { pagina?: number; porPagina?: number; ativo?: boolean; nome?: string } = {},
+): Promise<PaginaApi<WorldBossConfigListItemApi>> {
+  const resposta = await axiosInstance.get<{ data: PaginaApi<WorldBossConfigListItemApi> }>("/admin/world-boss/configs", { params: filtros });
+  return resposta.data.data;
+}
+export async function obterWorldBossConfigAdmin(id: number): Promise<WorldBossConfigApi> {
+  const resposta = await axiosInstance.get<{ data: { config: WorldBossConfigApi } }>(`/admin/world-boss/configs/${id}`);
+  return resposta.data.data.config;
+}
+export async function criarWorldBossConfigAdmin(payload: PayloadWorldBossConfigAdmin): Promise<WorldBossConfigApi> {
+  const resposta = await axiosInstance.post<{ data: { config: WorldBossConfigApi } }>("/admin/world-boss/configs", payload);
+  return resposta.data.data.config;
+}
+export async function atualizarWorldBossConfigAdmin(id: number, payload: Partial<PayloadWorldBossConfigAdmin>): Promise<WorldBossConfigApi> {
+  const resposta = await axiosInstance.patch<{ data: { config: WorldBossConfigApi } }>(`/admin/world-boss/configs/${id}`, payload);
+  return resposta.data.data.config;
+}
+export async function duplicarWorldBossConfigAdmin(id: number): Promise<WorldBossConfigApi> {
+  const resposta = await axiosInstance.post<{ data: { config: WorldBossConfigApi } }>(`/admin/world-boss/configs/${id}/duplicate`);
+  return resposta.data.data.config;
+}
+export async function desativarWorldBossConfigAdmin(id: number): Promise<WorldBossConfigApi> {
+  const resposta = await axiosInstance.post<{ data: { config: WorldBossConfigApi } }>(`/admin/world-boss/configs/${id}/deactivate`);
+  return resposta.data.data.config;
+}
+export async function reativarWorldBossConfigAdmin(id: number): Promise<WorldBossConfigApi> {
+  const resposta = await axiosInstance.post<{ data: { config: WorldBossConfigApi } }>(`/admin/world-boss/configs/${id}/reactivate`);
+  return resposta.data.data.config;
+}
+
+export interface WorldBossSettingsApi {
+  "worldboss.enabled": boolean;
+  "worldboss.cooldown_hours": number;
+  "worldboss.discovery_threshold_min": number;
+  "worldboss.discovery_threshold_max": number;
+  "worldboss.discovery_auto_awaken_seconds": number;
+  "worldboss.hp_broadcast_interval_ms": number;
+  "worldboss.leaderboard_limit": number;
+  "worldboss.participation_rewards_enabled": boolean;
+}
+
+export async function obterWorldBossSettingsAdmin(): Promise<WorldBossSettingsApi> {
+  const resposta = await axiosInstance.get<{ data: { settings: WorldBossSettingsApi } }>("/admin/world-boss/settings");
+  return resposta.data.data.settings;
+}
+export async function atualizarWorldBossSettingsAdmin(payload: Partial<WorldBossSettingsApi>): Promise<WorldBossSettingsApi> {
+  const resposta = await axiosInstance.patch<{ data: { settings: WorldBossSettingsApi } }>("/admin/world-boss/settings", payload);
+  return resposta.data.data.settings;
+}
+
+export interface WorldBossMetricsApi {
+  encontrosElegiveisPorHora: { window_start: string; encontros_elegiveis: number }[];
+  historico: {
+    id: number;
+    status: string;
+    nome: string | null;
+    discovered_at: string | null;
+    activated_at: string | null;
+    defeated_at: string | null;
+    discoverer_character_id: number | null;
+    final_blow_character_id: number | null;
+    participation_rewards_status: string;
+  }[];
+}
+
+export async function obterWorldBossMetricasAdmin(): Promise<WorldBossMetricsApi> {
+  const resposta = await axiosInstance.get<{ data: WorldBossMetricsApi }>("/admin/world-boss/metrics");
+  return resposta.data.data;
+}
+
+export interface WorldBossStatusOperacionalApi {
+  status: string;
+  id?: number;
+  id_world_boss_config?: number;
+  nome?: string | null;
+  hp_max?: number;
+  hp_current?: number;
+  discovery_threshold?: number | null;
+  discovery_progress?: number;
+  discoverer_character_id?: number | null;
+  discovery_zone_id?: number | null;
+  discovered_at?: string | null;
+  auto_awaken_at?: string | null;
+  activated_at?: string | null;
+  final_blow_character_id?: number | null;
+  defeated_at?: string | null;
+  next_eligible_at?: string | null;
+  participation_rewards_status?: string;
+}
+
+export async function obterWorldBossStatusOperacionalAdmin(): Promise<WorldBossStatusOperacionalApi> {
+  const resposta = await axiosInstance.get<{ data: WorldBossStatusOperacionalApi }>("/admin/world-boss/current/status");
+  return resposta.data.data;
+}
+export async function forcarDescobertaWorldBossAdmin(payload: { motivo: string; characterId?: number }): Promise<void> {
+  await axiosInstance.post("/admin/world-boss/current/force-discovery", payload);
+}
+export async function despertarWorldBossAdmin(payload: { motivo: string }): Promise<void> {
+  await axiosInstance.post("/admin/world-boss/current/awaken", payload);
+}
+export async function cancelarCicloWorldBossAdmin(payload: { motivo: string }): Promise<void> {
+  await axiosInstance.post("/admin/world-boss/current/cancel", payload);
+}
+
+// Painel Administrativo — Pesca & Navegação: Zonas, Espécies, Pool
+// (zona x espécie), Portos, Iscas e Afinidades. Vara de Pesca já é
+// gerenciada dentro do admin de Itens (tipo "Ferramenta").
+interface ItemResumoApi {
+  id: number;
+  nome: string;
+  raridade?: string;
+  imagem_url: string | null;
+}
+
+export interface FishingZoneAdminApi {
+  id: number;
+  key: string;
+  nome: string;
+  descricao: string | null;
+  imagem_url: string | null;
+  id_world_node: number | null;
+  nivel_pesca_minimo: number;
+  tier_embarcacao_minimo: number;
+  dificuldade_ambiente: number;
+  ativo: boolean;
+  WorldMapNode?: { id: number; nome: string } | null;
+}
+
+export interface PayloadFishingZoneAdmin {
+  key?: string;
+  nome: string;
+  descricao?: string | null;
+  imagem_url?: string | null;
+  id_world_node?: number | null;
+  nivel_pesca_minimo?: number;
+  tier_embarcacao_minimo?: number;
+  dificuldade_ambiente?: number;
+  ativo?: boolean;
+}
+
+export async function listarFishingZonesAdmin(): Promise<FishingZoneAdminApi[]> {
+  const resposta = await axiosInstance.get<{ data: { zonas: FishingZoneAdminApi[] } }>("/admin/fishing/zones");
+  return resposta.data.data.zonas;
+}
+export async function criarFishingZoneAdmin(payload: PayloadFishingZoneAdmin): Promise<FishingZoneAdminApi> {
+  const resposta = await axiosInstance.post<{ data: { zona: FishingZoneAdminApi } }>("/admin/fishing/zones", payload);
+  return resposta.data.data.zona;
+}
+export async function atualizarFishingZoneAdmin(id: number, payload: Partial<PayloadFishingZoneAdmin>): Promise<FishingZoneAdminApi> {
+  const resposta = await axiosInstance.patch<{ data: { zona: FishingZoneAdminApi } }>(`/admin/fishing/zones/${id}`, payload);
+  return resposta.data.data.zona;
+}
+
+export type ComportamentoEspecie = "CALM" | "BURST" | "ERRATIC" | "ENDURANCE" | "DEEP_DIVE";
+export type PerfilPeso = "LIGHT" | "NORMAL" | "HEAVY";
+
+export interface FishingSpeciesAdminApi {
+  id: number;
+  key: string;
+  id_item: number;
+  nome_cientifico: string | null;
+  descricao: string | null;
+  comportamento_key: ComportamentoEspecie;
+  dificuldade_base: number;
+  peso_min_g: number;
+  peso_max_g: number;
+  perfil_peso: PerfilPeso;
+  pontos_base_torneio: number;
+  lendario: boolean;
+  ativo: boolean;
+  item?: ItemResumoApi;
+}
+
+export interface PayloadFishingSpeciesAdmin {
+  key?: string;
+  id_item?: number;
+  nome_cientifico?: string | null;
+  descricao?: string | null;
+  comportamento_key: ComportamentoEspecie;
+  dificuldade_base: number;
+  peso_min_g: number;
+  peso_max_g: number;
+  perfil_peso?: PerfilPeso;
+  pontos_base_torneio?: number;
+  lendario?: boolean;
+  ativo?: boolean;
+}
+
+export async function listarFishingSpeciesAdmin(): Promise<FishingSpeciesAdminApi[]> {
+  const resposta = await axiosInstance.get<{ data: { especies: FishingSpeciesAdminApi[] } }>("/admin/fishing/species");
+  return resposta.data.data.especies;
+}
+export async function criarFishingSpeciesAdmin(payload: PayloadFishingSpeciesAdmin): Promise<FishingSpeciesAdminApi> {
+  const resposta = await axiosInstance.post<{ data: { especie: FishingSpeciesAdminApi } }>("/admin/fishing/species", payload);
+  return resposta.data.data.especie;
+}
+export async function atualizarFishingSpeciesAdmin(id: number, payload: Partial<PayloadFishingSpeciesAdmin>): Promise<FishingSpeciesAdminApi> {
+  const resposta = await axiosInstance.patch<{ data: { especie: FishingSpeciesAdminApi } }>(`/admin/fishing/species/${id}`, payload);
+  return resposta.data.data.especie;
+}
+
+export interface FishingPoolAdminApi {
+  id: number;
+  id_zone: number;
+  id_species: number;
+  encounter_weight: number;
+  nivel_pesca_minimo: number | null;
+  ativo: boolean;
+  FishingZone?: { id: number; nome: string };
+  species?: { id: number; key: string; id_item: number; item?: { id: number; nome: string } };
+}
+
+export interface PayloadFishingPoolAdmin {
+  id_zone?: number;
+  id_species?: number;
+  encounter_weight?: number;
+  nivel_pesca_minimo?: number | null;
+  ativo?: boolean;
+}
+
+export async function listarFishingPoolAdmin(idZone?: number): Promise<FishingPoolAdminApi[]> {
+  const resposta = await axiosInstance.get<{ data: { pool: FishingPoolAdminApi[] } }>("/admin/fishing/pool", {
+    params: idZone ? { idZone } : undefined,
+  });
+  return resposta.data.data.pool;
+}
+export async function criarFishingPoolAdmin(payload: PayloadFishingPoolAdmin): Promise<FishingPoolAdminApi> {
+  const resposta = await axiosInstance.post<{ data: { item: FishingPoolAdminApi } }>("/admin/fishing/pool", payload);
+  return resposta.data.data.item;
+}
+export async function atualizarFishingPoolAdmin(id: number, payload: Partial<PayloadFishingPoolAdmin>): Promise<FishingPoolAdminApi> {
+  const resposta = await axiosInstance.patch<{ data: { item: FishingPoolAdminApi } }>(`/admin/fishing/pool/${id}`, payload);
+  return resposta.data.data.item;
+}
+
+export interface FishingPortAdminApi {
+  id: number;
+  key: string;
+  nome: string;
+  id_world_node: number | null;
+  descricao: string | null;
+  ativo: boolean;
+  WorldMapNode?: { id: number; nome: string } | null;
+}
+
+export interface PayloadFishingPortAdmin {
+  key?: string;
+  nome: string;
+  id_world_node?: number | null;
+  descricao?: string | null;
+  ativo?: boolean;
+}
+
+export async function listarFishingPortsAdmin(): Promise<FishingPortAdminApi[]> {
+  const resposta = await axiosInstance.get<{ data: { portos: FishingPortAdminApi[] } }>("/admin/fishing/ports");
+  return resposta.data.data.portos;
+}
+export async function criarFishingPortAdmin(payload: PayloadFishingPortAdmin): Promise<FishingPortAdminApi> {
+  const resposta = await axiosInstance.post<{ data: { porto: FishingPortAdminApi } }>("/admin/fishing/ports", payload);
+  return resposta.data.data.porto;
+}
+export async function atualizarFishingPortAdmin(id: number, payload: Partial<PayloadFishingPortAdmin>): Promise<FishingPortAdminApi> {
+  const resposta = await axiosInstance.patch<{ data: { porto: FishingPortAdminApi } }>(`/admin/fishing/ports/${id}`, payload);
+  return resposta.data.data.porto;
+}
+
+export interface FishingBaitAdminApi {
+  id_item: number;
+  key: string;
+  nome_exibicao: string | null;
+  nivel_pesca_minimo: number;
+  ativo: boolean;
+  item?: ItemResumoApi;
+}
+
+export interface PayloadFishingBaitAdmin {
+  key?: string;
+  id_item?: number;
+  nome_exibicao?: string | null;
+  nivel_pesca_minimo?: number;
+  ativo?: boolean;
+}
+
+export async function listarFishingBaitsAdmin(): Promise<FishingBaitAdminApi[]> {
+  const resposta = await axiosInstance.get<{ data: { iscas: FishingBaitAdminApi[] } }>("/admin/fishing/baits");
+  return resposta.data.data.iscas;
+}
+export async function criarFishingBaitAdmin(payload: PayloadFishingBaitAdmin): Promise<FishingBaitAdminApi> {
+  const resposta = await axiosInstance.post<{ data: { isca: FishingBaitAdminApi } }>("/admin/fishing/baits", payload);
+  return resposta.data.data.isca;
+}
+export async function atualizarFishingBaitAdmin(idItem: number, payload: Partial<PayloadFishingBaitAdmin>): Promise<FishingBaitAdminApi> {
+  const resposta = await axiosInstance.patch<{ data: { isca: FishingBaitAdminApi } }>(`/admin/fishing/baits/${idItem}`, payload);
+  return resposta.data.data.isca;
+}
+
+export interface FishingAffinityAdminApi {
+  id: number;
+  id_bait_item: number;
+  id_species: number;
+  multiplicador_peso_ppm: number;
+  FishingBait?: { id_item: number; key: string; item?: { id: number; nome: string } };
+  species?: { id: number; key: string; item?: { id: number; nome: string } };
+}
+
+export interface PayloadFishingAffinityAdmin {
+  id_bait_item?: number;
+  id_species?: number;
+  multiplicador_peso_ppm?: number;
+}
+
+export async function listarFishingAffinitiesAdmin(idBaitItem?: number): Promise<FishingAffinityAdminApi[]> {
+  const resposta = await axiosInstance.get<{ data: { afinidades: FishingAffinityAdminApi[] } }>("/admin/fishing/affinities", {
+    params: idBaitItem ? { idBaitItem } : undefined,
+  });
+  return resposta.data.data.afinidades;
+}
+export async function criarFishingAffinityAdmin(payload: PayloadFishingAffinityAdmin): Promise<FishingAffinityAdminApi> {
+  const resposta = await axiosInstance.post<{ data: { afinidade: FishingAffinityAdminApi } }>("/admin/fishing/affinities", payload);
+  return resposta.data.data.afinidade;
+}
+export async function atualizarFishingAffinityAdmin(id: number, payload: Partial<PayloadFishingAffinityAdmin>): Promise<FishingAffinityAdminApi> {
+  const resposta = await axiosInstance.patch<{ data: { afinidade: FishingAffinityAdminApi } }>(`/admin/fishing/affinities/${id}`, payload);
+  return resposta.data.data.afinidade;
 }
