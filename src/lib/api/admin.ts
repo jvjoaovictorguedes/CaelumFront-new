@@ -915,3 +915,40 @@ export async function salvarHuntConfigAdmin(payload: Partial<HuntConfigApi>): Pr
   const resposta = await axiosInstance.put<{ data: { config: HuntConfigApi } }>("/admin/hunts/config", payload);
   return resposta.data.data.config;
 }
+
+// Painel Administrativo Fase 12 — Premiações (ouro/XP/itens a
+// jogadores). A busca aqui é mínima (a tela "Busca" plena, própria da
+// categoria Jogadores, não foi construída nesta rodada) — só o
+// suficiente pra achar quem vai receber a premiação.
+export interface GrantSearchResultApi {
+  id: number;
+  nome: string;
+  nivel: number;
+  dinheiro: number;
+  username: string | null;
+}
+export async function buscarPersonagensAdmin(termo: string): Promise<GrantSearchResultApi[]> {
+  const resposta = await axiosInstance.get<{ data: { personagens: GrantSearchResultApi[] } }>("/admin/grants/search", { params: { termo } });
+  return resposta.data.data.personagens;
+}
+
+export interface PayloadGrantAdmin {
+  ouro?: number;
+  xp?: number;
+  itens?: { id_item: number; quantidade: number; refinamento?: number }[];
+  motivo: string;
+}
+export interface GrantResultApi {
+  personagem: { id: number; nome: string; nivel: number; dinheiro: number };
+  concedido: {
+    ouro: number;
+    xp: number;
+    niveisGanhos: number;
+    itens: { id_item: number; nome: string; quantidade: number }[];
+    equipamentos: { id_item: number; nome: string; quantidade: number }[];
+  };
+}
+export async function concederPremiacaoAdmin(idPersonagem: number, payload: PayloadGrantAdmin): Promise<GrantResultApi> {
+  const resposta = await axiosInstance.post<{ data: GrantResultApi }>(`/admin/grants/${idPersonagem}`, payload);
+  return resposta.data.data;
+}

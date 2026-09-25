@@ -40,7 +40,7 @@ const CATEGORIAS: CategoriaAdmin[] = [
     modulos: [
       { titulo: "Busca", descricao: "Consultar jogador por nome/ID." },
       { titulo: "Inventário", descricao: "Correções administrativas de inventário." },
-      { titulo: "Premiações", descricao: "Conceder itens/equipamentos a um jogador." },
+      { titulo: "Premiações", descricao: "Conceder itens/equipamentos a um jogador.", href: "/dashboard/admin/grants", permissao: "players.reward" },
     ],
   },
   {
