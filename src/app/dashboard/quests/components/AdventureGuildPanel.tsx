@@ -134,6 +134,11 @@ export default function AdventureGuildPanel() {
   const { refreshCharacter } = useCharacter();
   const [aba, setAba] = useState<Aba>("Diaria");
   const [overview, setOverview] = useState<OverviewApi | null>(null);
+  // Timestamp absoluto (não os ms restantes crus da API, que ficam
+  // desatualizados entre um fetch e outro) em que o cooldown da
+  // Provação libera — recalculado a cada `carregarOverview()`, contado
+  // ao vivo contra `agora` no render abaixo.
+  const [cooldownProvacaoLiberaEm, setCooldownProvacaoLiberaEm] = useState(0);
   const [missoesLivres, setMissoesLivres] = useState<MissaoLivreApi[] | null>(null);
   const [quadro, setQuadro] = useState<QuadroDeRankApi | null>(null);
   const [carregando, setCarregando] = useState(true);
@@ -148,7 +153,9 @@ export default function AdventureGuildPanel() {
 
   const carregarOverview = useCallback(async () => {
     const resp = await axiosInstance.get<{ data?: OverviewApi }>("/adventure-guild");
-    setOverview(resp.data?.data ?? null);
+    const dados = resp.data?.data ?? null;
+    setOverview(dados);
+    setCooldownProvacaoLiberaEm(dados && dados.cooldown_provacao_restante_ms > 0 ? Date.now() + dados.cooldown_provacao_restante_ms : 0);
   }, []);
 
   const carregarAba = useCallback(async (abaAtual: Aba) => {
@@ -341,20 +348,29 @@ export default function AdventureGuildPanel() {
             />
           )}
 
-          {!overview?.provacao_ativa && overview?.apto_para_promocao && (
-            <div className="rounded-xl border-2 border-[#F3B43F] bg-black/30 p-4 text-center">
-              <p className="font-imFeel text-xl">Você atingiu os requisitos deste Rank!</p>
-              <p className="mb-3 text-sm text-white/70">Complete sua Provação para avançar de Rank.</p>
-              <button
-                type="button"
-                onClick={iniciarProvacao}
-                disabled={processando === "trial-start"}
-                className="rounded-lg bg-[#F3B43F] px-4 py-2 font-bold text-black transition hover:bg-[#e0a52f] disabled:opacity-50"
-              >
-                {processando === "trial-start" ? "Iniciando..." : "Iniciar Provação"}
-              </button>
-            </div>
-          )}
+          {!overview?.provacao_ativa && overview?.apto_para_promocao && (() => {
+            const cooldownRestante = Math.max(0, cooldownProvacaoLiberaEm - agora);
+            const emCooldown = cooldownRestante > 0;
+            return (
+              <div className="rounded-xl border-2 border-[#F3B43F] bg-black/30 p-4 text-center">
+                <p className="font-imFeel text-xl">Você atingiu os requisitos deste Rank!</p>
+                <p className="mb-3 text-sm text-white/70">Complete sua Provação para avançar de Rank.</p>
+                {emCooldown && (
+                  <p className="mb-2 text-xs text-red-400">
+                    Você falhou a última Provação — tente de novo em {formatarContagem(cooldownRestante)}.
+                  </p>
+                )}
+                <button
+                  type="button"
+                  onClick={iniciarProvacao}
+                  disabled={processando === "trial-start" || emCooldown}
+                  className="rounded-lg bg-[#F3B43F] px-4 py-2 font-bold text-black transition hover:bg-[#e0a52f] disabled:opacity-50"
+                >
+                  {processando === "trial-start" ? "Iniciando..." : "Iniciar Provação"}
+                </button>
+              </div>
+            );
+          })()}
 
           {!overview?.provacao_ativa && !overview?.apto_para_promocao && (
             <div>
