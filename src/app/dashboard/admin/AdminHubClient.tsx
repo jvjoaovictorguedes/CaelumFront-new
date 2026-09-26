@@ -31,6 +31,7 @@ const CATEGORIAS: CategoriaAdmin[] = [
       { titulo: "Itens", descricao: "Criar, editar e desativar itens e propriedades.", href: "/dashboard/admin/items", permissao: "items.manage" },
       { titulo: "Conjuntos de Equipamentos", descricao: "Peças, thresholds e bônus de conjunto.", href: "/dashboard/admin/equipment-sets", permissao: "equipmentsets.manage" },
       { titulo: "Habilidades", descricao: "Catálogo de Habilidades (Power), vínculos e evolução 1-10.", href: "/dashboard/admin/powers", permissao: "powers.manage" },
+      { titulo: "Proezas Únicas", descricao: "Cadastrar Proezas e a Habilidade Única vinculada (concessão fica em Premiações).", href: "/dashboard/admin/unique-feats", permissao: "unique-feats.manage" },
       { titulo: "Missões", descricao: "Missões livres, Guilda dos Aventureiros e Missões de Guilda.", href: "/dashboard/admin/missions", permissao: "missions.manage" },
       { titulo: "Aventura", descricao: "Zonas, monstros, aparição e loot.", href: "/dashboard/admin/adventure", permissao: "adventure.manage" },
       { titulo: "Balcão de Espólios", descricao: "Reputação Comercial e faixas de quantidade das encomendas.", href: "/dashboard/admin/spoils", permissao: "spoils.manage" },

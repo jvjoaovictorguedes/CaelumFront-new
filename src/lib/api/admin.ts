@@ -89,6 +89,30 @@ export async function listarItensAdmin(filtros: FiltrosItensAdmin = {}): Promise
   return resposta.data.data;
 }
 
+// Item leve pra picker (ItemSelect) — nunca a linha completa da tabela
+// paginada de Itens (sem propriedades de arma/armadura/consumível).
+export interface AdminItemSelecionavelApi {
+  id: number;
+  nome: string;
+  tipo_item: string;
+  raridade: string;
+  imagem_url: string | null;
+  ativo: boolean;
+}
+
+// Endpoint dedicado (GET /admin/items/select) — devolve o catálogo
+// INTEIRO (ver comentário do backend em adminItemService.
+// listAllItemsForSelection), nunca capado em 100 como a tabela paginada
+// de listarItensAdmin. Todo ItemSelect do painel deve usar esta função,
+// nunca listarItensAdmin com um porPagina "grande" (bug real reportado:
+// isso escondia os itens mais antigos do catálogo em qualquer picker).
+export async function listarItensParaSelecaoAdmin(filtros: { apenasAtivos?: boolean; tipo_item?: string } = {}): Promise<AdminItemSelecionavelApi[]> {
+  const resposta = await axiosInstance.get<{ data: { itens: AdminItemSelecionavelApi[] } }>("/admin/items/select", {
+    params: filtros,
+  });
+  return resposta.data.data.itens;
+}
+
 export interface PayloadItemAdmin {
   item: {
     nome: string;
@@ -387,15 +411,23 @@ export interface AdventureZoneApi {
   ativa: boolean;
 }
 
+// Reformulação V2 dos Monstros — nível/vida/dano/agilidade/velocidade/
+// recompensa são stats FIXOS e autorais (nunca mais multiplicador_* em
+// cima de uma fórmula por nível).
 export interface AdventureMonsterApi {
   id: number;
   nome: string;
   descricao: string | null;
   imagem_url: string | null;
-  multiplicador_vida: number;
-  multiplicador_dano: number;
-  multiplicador_agilidade: number;
-  multiplicador_velocidade: number;
+  sprite_key: string | null;
+  nivel: number | null;
+  vida_maxima: number | null;
+  dano_min: number | null;
+  dano_max: number | null;
+  agilidade: number | null;
+  velocidade: number | null;
+  xp_recompensa: number | null;
+  ouro_recompensa: number | null;
   ativo: boolean;
 }
 
@@ -405,8 +437,10 @@ export interface AdventureZoneMonsterApi {
   id_monstro: number;
   peso_aparicao: number;
   tipo_aparicao: "Comum" | "Raro";
-  nivel_min_override: number | null;
-  nivel_max_override: number | null;
+  // Reformulação V2 (§4.3) — só decide ELEGIBILIDADE de aparição (jogador
+  // abaixo disso não vê esse vínculo no pool); nunca mais uma faixa de
+  // nível pro monstro em si (o nível dele é o fixo de AdventureMonster).
+  nivel_jogador_minimo: number;
   ativo: boolean;
   AdventureZone?: { id: number; nome: string };
   monstro?: { id: number; nome: string; imagem_url: string | null };
@@ -453,110 +487,6 @@ export async function atualizarMonstroAdmin(id: number, payload: Partial<Adventu
 export async function duplicarMonstroAdmin(id: number): Promise<AdventureMonsterApi> {
   const resposta = await axiosInstance.post<{ data: { monstro: AdventureMonsterApi } }>(`/admin/adventure/monsters/${id}/duplicate`);
   return resposta.data.data.monstro;
-}
-
-// Editor de Balanceamento de Monstros por Resultado — preview/simulação
-// NUNCA persistem nada; só a chamada a atualizarMonstroAdmin (acima)
-// salva de verdade.
-export interface MonsterBalanceMultiplicadoresApi {
-  vida: number;
-  dano: number;
-  agilidade: number;
-  velocidade: number;
-}
-export interface MonsterBalanceStatsRangeApi {
-  min: number;
-  media: number;
-  max: number;
-}
-export interface MonsterBalanceStatsApi {
-  vida: MonsterBalanceStatsRangeApi;
-  dano: MonsterBalanceStatsRangeApi;
-  agilidade: MonsterBalanceStatsRangeApi;
-  velocidade: MonsterBalanceStatsRangeApi;
-}
-export interface MonsterBalanceFaixaLinhaApi {
-  nivel: number;
-  vidaMedia: number;
-  danoMedio: number;
-  agilidadeMedia: number;
-  velocidadeMedia: number;
-  esquivaVsMedio: number;
-}
-export interface MonsterBalanceDificuldadeApi {
-  chave: string;
-  label: string;
-  taxaVitoriaJogadorAproximada?: number;
-  origem: "heuristica" | "simulacao";
-}
-export interface MonsterBalancePreviewApi {
-  nivelReferencia: number;
-  baseNivel: { vidaMedia: number; danoMedio: number; agilidadeMedia: number; velocidadeMedia: number };
-  multiplicadores: MonsterBalanceMultiplicadoresApi;
-  statsFinais: MonsterBalanceStatsApi;
-  esquivaContraPerfis: Record<string, number>;
-  ttk: { turnosParaMatar: number; turnosParaMorrer: number };
-  dificuldadeEstimada: MonsterBalanceDificuldadeApi;
-  faixaPorNivel: MonsterBalanceFaixaLinhaApi[] | null;
-  avisos: string[];
-}
-export interface MonsterBalanceSimulationApi {
-  totalCombates: number;
-  vitoriasJogador: number;
-  vitoriasMonstro: number;
-  timeouts: number;
-  taxaVitoriaJogadorPct: number;
-  turnosMedios: number;
-  turnosMediana: number;
-  turnosP95: number;
-  vidaRestanteMediaVencedor: number | null;
-  danoTotalMonstroMedio: number;
-  esquivaObservadaPct: number;
-  dificuldade: MonsterBalanceDificuldadeApi;
-}
-export interface MonsterBalancePresetApi {
-  chave: string;
-  label: string;
-  multiplicadores: MonsterBalanceMultiplicadoresApi;
-}
-export interface MonsterBalancePerfilApi {
-  chave: string;
-  label: string;
-}
-export interface MonsterBalanceDesiredInput {
-  hpMean: number;
-  damageMean: number;
-  dodgeVsAveragePct: number;
-  speedMean: number;
-}
-
-export async function previewBalanceamentoMonstroAdmin(
-  id: number,
-  payload: {
-    referenceLevel: number;
-    mode: "desired" | "multipliers";
-    desired?: MonsterBalanceDesiredInput;
-    multiplicadores?: MonsterBalanceMultiplicadoresApi;
-    zoneId?: number;
-  },
-): Promise<MonsterBalancePreviewApi> {
-  const resposta = await axiosInstance.post<{ data: MonsterBalancePreviewApi }>(`/admin/adventure/monsters/${id}/balance-preview`, payload);
-  return resposta.data.data;
-}
-
-export async function simularBalanceamentoMonstroAdmin(
-  id: number,
-  payload: { referenceLevel: number; multiplicadores: MonsterBalanceMultiplicadoresApi; profile?: string; iterations?: number },
-): Promise<MonsterBalanceSimulationApi> {
-  const resposta = await axiosInstance.post<{ data: MonsterBalanceSimulationApi }>(`/admin/adventure/monsters/${id}/balance-simulate`, payload);
-  return resposta.data.data;
-}
-
-export async function listarPresetsBalanceamentoAdmin(): Promise<{ presets: MonsterBalancePresetApi[]; perfis: MonsterBalancePerfilApi[] }> {
-  const resposta = await axiosInstance.get<{ data: { presets: MonsterBalancePresetApi[]; perfis: MonsterBalancePerfilApi[] } }>(
-    "/admin/adventure/monsters/balance-presets",
-  );
-  return resposta.data.data;
 }
 
 export async function listarAparicoesAdmin(idArea?: number): Promise<AdventureZoneMonsterApi[]> {
@@ -1180,6 +1110,105 @@ export interface GrantResultApi {
 export async function concederPremiacaoAdmin(idPersonagem: number, payload: PayloadGrantAdmin): Promise<GrantResultApi> {
   const resposta = await axiosInstance.post<{ data: GrantResultApi }>(`/admin/grants/${idPersonagem}`, payload);
   return resposta.data.data;
+}
+
+// Proezas Únicas — catálogo (§ ampliação de Premiações pedida pelo
+// usuário). Cada Proeza concede uma "Habilidade Única" (Power com
+// acquisition_scope=UNIQUE_FEAT) pra só UM personagem no servidor
+// inteiro — a concessão manual usa o MESMO claim atômico que o gatilho
+// real usaria (ver adminUniqueFeatService.js no backend).
+export const TRIGGER_KEYS_PROEZA_UNICA = [
+  "WORLD_BOSS_FINAL_BLOW",
+  "ADVENTURE_VICTORY",
+  "FORGE_CRAFT_COMPLETED",
+  "FORGE_REFINEMENT_COMPLETED",
+  "ALCHEMY_CRAFT_COMPLETED",
+  "FISH_CAUGHT",
+  "NAVIGATION_DISCOVERY",
+  "EXPEDITION_COMPLETED",
+  "BESTIARY_EVENT",
+] as const;
+export type TriggerKeyProezaUnica = (typeof TRIGGER_KEYS_PROEZA_UNICA)[number];
+
+export interface UniqueFeatPowerApi {
+  id: number;
+  nome: string;
+  descricao: string;
+  tipo_poder: "Ativo" | "Passivo";
+  escala_atributo: "Forca" | "Vitalidade" | "Agilidade" | "Inteligencia" | "Velocidade";
+}
+export interface UniqueFeatClaimApi {
+  id: number;
+  id_personagem: number | null;
+  character_name_snapshot: string;
+  claimed_at: string;
+  status: "VALID" | "REVOKED";
+}
+export interface UniqueFeatApi {
+  id: number;
+  key: string;
+  nome: string;
+  descricao_publica: string;
+  descricao_secreta_admin: string;
+  icone_url: string | null;
+  categoria: string | null;
+  trigger_key: TriggerKeyProezaUnica;
+  trigger_config: Record<string, unknown>;
+  id_power_reward: number;
+  visibility_before_claim: "HIDDEN" | "TEASER";
+  reveal_after_claim: "FULL" | "FLAVOR_ONLY" | "REMAIN_SECRET";
+  announce_global: boolean;
+  ativa: boolean;
+  claim?: UniqueFeatClaimApi | null;
+  powerRecompensa?: UniqueFeatPowerApi;
+}
+
+export async function listarProezasUnicasAdmin(): Promise<UniqueFeatApi[]> {
+  const resposta = await axiosInstance.get<{ data: { feats: UniqueFeatApi[] } }>("/admin/unique-feats");
+  return resposta.data.data.feats;
+}
+
+export interface PayloadCriarProezaUnicaAdmin {
+  key: string;
+  nome: string;
+  descricao_publica: string;
+  descricao_secreta_admin: string;
+  icone_url?: string | null;
+  categoria?: string | null;
+  trigger_key: TriggerKeyProezaUnica;
+  trigger_config?: Record<string, unknown>;
+  visibility_before_claim?: "HIDDEN" | "TEASER";
+  reveal_after_claim?: "FULL" | "FLAVOR_ONLY" | "REMAIN_SECRET";
+  announce_global?: boolean;
+  power: {
+    nome: string;
+    descricao: string;
+    tipo_poder: "Ativo" | "Passivo";
+    escala_atributo: "Forca" | "Vitalidade" | "Agilidade" | "Inteligencia" | "Velocidade";
+    valor_escala?: number;
+    custo_mana?: number;
+    dano_base?: number;
+    cura_base?: number;
+    cooldown?: number | null;
+    imagem_url?: string | null;
+  };
+}
+export async function criarProezaUnicaAdmin(payload: PayloadCriarProezaUnicaAdmin): Promise<UniqueFeatApi> {
+  const resposta = await axiosInstance.post<{ data: { feat: UniqueFeatApi } }>("/admin/unique-feats", payload);
+  return resposta.data.data.feat;
+}
+
+export async function atualizarProezaUnicaAdmin(id: number, payload: Partial<UniqueFeatApi>): Promise<UniqueFeatApi> {
+  const resposta = await axiosInstance.patch<{ data: { feat: UniqueFeatApi } }>(`/admin/unique-feats/${id}`, payload);
+  return resposta.data.data.feat;
+}
+
+export async function concederProezaUnicaAdmin(idFeat: number, idPersonagem: number, motivo: string): Promise<UniqueFeatClaimApi> {
+  const resposta = await axiosInstance.post<{ data: { claim: UniqueFeatClaimApi } }>(`/admin/unique-feats/${idFeat}/grant`, {
+    id_personagem: idPersonagem,
+    motivo,
+  });
+  return resposta.data.data.claim;
 }
 
 // Painel Administrativo Fase 15 — Buff Global (evento temporal server-wide).
