@@ -75,6 +75,7 @@ const CATEGORIAS: CategoriaAdmin[] = [
       { titulo: "Administradores", descricao: "Perfis e permissões.", href: "/dashboard/admin/administrators", permissao: "admins.manage" },
       { titulo: "Excluir Contas", descricao: "Exclusão em massa de contas de jogador — ação destrutiva.", href: "/dashboard/admin/users", permissao: "users.delete" },
       { titulo: "Auditoria", descricao: "Histórico de ações administrativas.", href: "/dashboard/admin/audit", permissao: "audit.view" },
+      { titulo: "Manutenção", descricao: "Kill-switch site-wide — só admins jogam enquanto ativo.", href: "/dashboard/admin/maintenance", permissao: "maintenance.manage" },
     ],
   },
 ];

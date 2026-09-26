@@ -2342,3 +2342,21 @@ export async function obterForgeMetricasAdmin(): Promise<ForgeMetricasApi> {
   const resposta = await axiosInstance.get<{ data: ForgeMetricasApi }>("/admin/forge/metrics");
   return resposta.data.data;
 }
+
+// Modo Manutenção — kill-switch site-wide (pedido do usuário: "ao
+// ativar, só admin consegue jogar"). Status público é lido pelo
+// RootLayout via o backend direto (sem passar por esses helpers, que
+// exigem sessão admin); estes dois cobrem só a tela de administração
+// do painel.
+export interface MaintenanceStatusApi {
+  enabled: boolean;
+  message: string;
+}
+export async function obterStatusManutencaoAdmin(): Promise<MaintenanceStatusApi> {
+  const resposta = await axiosInstance.get<{ data: MaintenanceStatusApi }>("/admin/maintenance");
+  return resposta.data.data;
+}
+export async function atualizarStatusManutencaoAdmin(payload: { enabled: boolean; message?: string }): Promise<MaintenanceStatusApi> {
+  const resposta = await axiosInstance.patch<{ data: MaintenanceStatusApi }>("/admin/maintenance", payload);
+  return resposta.data.data;
+}

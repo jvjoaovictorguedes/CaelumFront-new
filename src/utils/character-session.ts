@@ -138,6 +138,24 @@ export async function isCurrentUserAdmin() {
 }
 
 /**
+ * Modo Manutenção (kill-switch site-wide, painel Admin > Manutenção) —
+ * endpoint PÚBLICO no backend (GET /api/maintenance/status, sem auth),
+ * consultado direto pelo RootLayout antes de decidir se mostra o jogo
+ * ou a tela de manutenção. Nunca deixa uma falha de rede aqui derrubar
+ * o site inteiro — se o backend estiver de pé o suficiente pra
+ * responder qualquer coisa, é bem melhor deixar passar do que travar
+ * todo mundo por causa só desta checagem.
+ */
+export async function obterStatusManutencao(): Promise<{ enabled: boolean; message: string }> {
+  try {
+    const response = await axiosInstance.get<{ enabled: boolean; message: string }>("/maintenance/status");
+    return { enabled: Boolean(response.data?.enabled), message: response.data?.message ?? "" };
+  } catch {
+    return { enabled: false, message: "" };
+  }
+}
+
+/**
  * Permissões granulares do Painel Administrativo (só uma pista de UI —
  * a autorização de verdade é sempre requireAdminPermission no backend,
  * que relê o banco a cada request). Vazio pra quem não é isAdmin.
