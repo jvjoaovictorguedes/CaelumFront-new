@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePvpSocket } from "@/contexts/PvpSocketContext";
 import EloBadge from "@/components/pvp/EloBadge";
+import CharacterProfileLink from "@/components/profile/CharacterProfileLink";
 import {
   buscarLeaderboardRanked,
   buscarStatusRanked,
@@ -263,7 +264,9 @@ export default function RankedPanel({
                     >
                       <td className="py-1">{linha.posicao}</td>
                       <td className="max-w-[10rem] truncate py-1">
-                        {linha.nome}{" "}
+                        <CharacterProfileLink characterId={linha.id} className="inline">
+                          {linha.nome}
+                        </CharacterProfileLink>{" "}
                         <span
                           className={`ml-1 inline-block h-2 w-2 shrink-0 rounded-full align-middle ${
                             linha.online ? "bg-green-400" : "bg-white/20"

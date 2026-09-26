@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import WorldMapCanvas from "./WorldMapCanvas";
 import WorldMapFilters, { type FiltroTipo, type SubfiltroExpedicao } from "./WorldMapFilters";
 import WorldMapLocationPanel from "./WorldMapLocationPanel";
@@ -49,6 +50,12 @@ export interface ServicoCapitalApi {
   rota: string;
 }
 
+export interface FishingPontoApi {
+  tipo: "zona" | "porto";
+  id: number;
+  nome: string;
+}
+
 export interface NodeApi {
   id: number;
   nome: string;
@@ -62,6 +69,9 @@ export interface NodeApi {
   adventure?: AdventureInfoApi;
   expedition?: ExpeditionInfoApi;
   city?: { servicos: ServicoCapitalApi[] };
+  // Ponto de Pesca (FishingZone/FishingPort.id_world_node) — independente
+  // do `tipo` acima, por isso é campo à parte, não um novo valor de tipo.
+  pesca?: FishingPontoApi | null;
 }
 
 export interface ConnectionApi {
@@ -89,6 +99,7 @@ function nodePassaNoFiltro(node: NodeApi, filtro: FiltroTipo, subfiltroExpedicao
   }
   if (filtro === "CIDADES") return node.tipo === "City";
   if (filtro === "SERVICOS") return node.tipo === "Service";
+  if (filtro === "PESCA") return Boolean(node.pesca);
   return true;
 }
 
@@ -112,7 +123,20 @@ export default function WorldMapClient({ mapa }: { mapa: WorldMapApi }) {
   return (
     <div className="flex h-full flex-col gap-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="font-imFeel text-3xl text-white sm:text-4xl">Mapa de Caelum</h1>
+        <div className="flex items-center gap-3">
+          {/* O mapa cobre a tela toda (fixed inset-0) por cima do menu
+              lateral/hambúrguer — sem isso não existe como sair da
+              página, nem no mobile nem no desktop. */}
+          <Link
+            href="/dashboard"
+            aria-label="Fechar mapa"
+            title="Fechar mapa"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-2 border-[#F3B43F] bg-[#292018] text-[#F3B43F] transition hover:bg-[#3a2f24]"
+          >
+            ✕
+          </Link>
+          <h1 className="font-imFeel text-3xl text-white sm:text-4xl">Mapa de Caelum</h1>
+        </div>
         <WorldMapFilters
           filtro={filtro}
           onFiltroChange={(f) => {

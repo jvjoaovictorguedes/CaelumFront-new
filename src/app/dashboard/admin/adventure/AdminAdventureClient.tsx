@@ -22,6 +22,7 @@ import {
   type AdventureZoneApi,
   type AdventureZoneMonsterApi,
 } from "@/lib/api/admin";
+import { ItemSelect, formatarItemComId, useItensParaSelecaoAdmin } from "@/components/admin/ItemPicker";
 
 type Aba = "zonas" | "monstros" | "aparicoes" | "drops";
 
@@ -197,7 +198,20 @@ function MonstrosTab() {
 
   function abrirCriacao() {
     setEditandoId(null);
-    setForm({ nome: "", descricao: "", imagem_url: "", multiplicador_vida: 1, multiplicador_dano: 1, multiplicador_agilidade: 1, multiplicador_velocidade: 1, ativo: true });
+    setForm({
+      nome: "",
+      descricao: "",
+      imagem_url: "",
+      nivel: 1,
+      vida_maxima: 30,
+      dano_min: 1,
+      dano_max: 3,
+      agilidade: 2,
+      velocidade: 2,
+      xp_recompensa: 20,
+      ouro_recompensa: 10,
+      ativo: true,
+    });
     setMostrarForm(true);
   }
 
@@ -256,13 +270,15 @@ function MonstrosTab() {
           {monstros.map((monstro) => (
             <div key={monstro.id} className={`flex items-center justify-between gap-3 rounded-xl border border-[#F3B43F]/30 bg-[#292018]/80 p-3 text-white ${!monstro.ativo ? "opacity-50" : ""}`}>
               <div className="min-w-0">
-                <p className="font-bold">{monstro.nome}</p>
+                <p className="font-bold">
+                  {monstro.nome} <span className="text-xs text-white/50">(nível {monstro.nivel ?? "?"})</span>
+                </p>
                 <p className="text-xs text-white/50">
-                  Vida x{monstro.multiplicador_vida} · Dano x{monstro.multiplicador_dano}
+                  Vida {monstro.vida_maxima ?? "?"} · Dano {monstro.dano_min ?? "?"}-{monstro.dano_max ?? "?"} · XP {monstro.xp_recompensa ?? "?"} · Ouro {monstro.ouro_recompensa ?? "?"}
                 </p>
               </div>
               <div className="flex shrink-0 flex-wrap justify-end gap-2 text-sm">
-                <button type="button" onClick={() => abrirEdicao(monstro)} className="text-[#F3B43F] hover:underline">
+                <button type="button" onClick={() => abrirEdicao(monstro)} className="text-white/70 hover:underline">
                   Editar
                 </button>
                 <button type="button" onClick={() => duplicar(monstro)} className="text-white/70 hover:underline">
@@ -293,22 +309,42 @@ function MonstrosTab() {
               Imagem (URL)
               <input value={form.imagem_url ?? ""} onChange={(e) => setForm((f) => ({ ...f, imagem_url: e.target.value }))} className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm" />
             </label>
+            <label className="flex flex-col gap-1 text-xs">
+              Sprite key (opcional)
+              <input value={form.sprite_key ?? ""} onChange={(e) => setForm((f) => ({ ...f, sprite_key: e.target.value || null }))} className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm" />
+            </label>
             <div className="grid grid-cols-2 gap-2">
               <label className="flex flex-col gap-1 text-xs">
-                Mult. vida
-                <input type="number" step="0.01" value={form.multiplicador_vida ?? 1} onChange={(e) => setForm((f) => ({ ...f, multiplicador_vida: Number(e.target.value) }))} className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm" />
+                Nível
+                <input type="number" min={1} step="1" value={form.nivel ?? 1} onChange={(e) => setForm((f) => ({ ...f, nivel: Number(e.target.value) }))} className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm" />
               </label>
               <label className="flex flex-col gap-1 text-xs">
-                Mult. dano
-                <input type="number" step="0.01" value={form.multiplicador_dano ?? 1} onChange={(e) => setForm((f) => ({ ...f, multiplicador_dano: Number(e.target.value) }))} className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm" />
+                Vida máxima
+                <input type="number" min={1} step="1" value={form.vida_maxima ?? 30} onChange={(e) => setForm((f) => ({ ...f, vida_maxima: Number(e.target.value) }))} className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm" />
               </label>
               <label className="flex flex-col gap-1 text-xs">
-                Mult. agilidade
-                <input type="number" step="0.01" value={form.multiplicador_agilidade ?? 1} onChange={(e) => setForm((f) => ({ ...f, multiplicador_agilidade: Number(e.target.value) }))} className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm" />
+                Dano mínimo
+                <input type="number" min={0} step="1" value={form.dano_min ?? 1} onChange={(e) => setForm((f) => ({ ...f, dano_min: Number(e.target.value) }))} className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm" />
               </label>
               <label className="flex flex-col gap-1 text-xs">
-                Mult. velocidade
-                <input type="number" step="0.01" value={form.multiplicador_velocidade ?? 1} onChange={(e) => setForm((f) => ({ ...f, multiplicador_velocidade: Number(e.target.value) }))} className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm" />
+                Dano máximo
+                <input type="number" min={0} step="1" value={form.dano_max ?? 3} onChange={(e) => setForm((f) => ({ ...f, dano_max: Number(e.target.value) }))} className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm" />
+              </label>
+              <label className="flex flex-col gap-1 text-xs">
+                Agilidade
+                <input type="number" min={1} step="1" value={form.agilidade ?? 2} onChange={(e) => setForm((f) => ({ ...f, agilidade: Number(e.target.value) }))} className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm" />
+              </label>
+              <label className="flex flex-col gap-1 text-xs">
+                Velocidade
+                <input type="number" min={1} step="1" value={form.velocidade ?? 2} onChange={(e) => setForm((f) => ({ ...f, velocidade: Number(e.target.value) }))} className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm" />
+              </label>
+              <label className="flex flex-col gap-1 text-xs">
+                XP de recompensa
+                <input type="number" min={0} step="1" value={form.xp_recompensa ?? 0} onChange={(e) => setForm((f) => ({ ...f, xp_recompensa: Number(e.target.value) }))} className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm" />
+              </label>
+              <label className="flex flex-col gap-1 text-xs">
+                Ouro de recompensa
+                <input type="number" min={0} step="1" value={form.ouro_recompensa ?? 0} onChange={(e) => setForm((f) => ({ ...f, ouro_recompensa: Number(e.target.value) }))} className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm" />
               </label>
             </div>
             <div className="mt-2 flex justify-end gap-2">
@@ -362,7 +398,7 @@ function AparicoesTab() {
   }, [carregar]);
 
   function abrirCriacao() {
-    setForm({ id_area: zonaFiltro || zonas[0]?.id, id_monstro: monstros[0]?.id, peso_aparicao: 100, tipo_aparicao: "Comum", ativo: true });
+    setForm({ id_area: zonaFiltro || zonas[0]?.id, id_monstro: monstros[0]?.id, peso_aparicao: 100, tipo_aparicao: "Comum", nivel_jogador_minimo: 1, ativo: true });
     setMostrarForm(true);
   }
 
@@ -396,6 +432,15 @@ function AparicoesTab() {
       await carregar();
     } catch (error) {
       setErro(mensagemDeErroAdmin(error, "Não foi possível mudar o peso."));
+    }
+  }
+
+  async function mudarNivelJogadorMinimo(aparicao: AdventureZoneMonsterApi, nivel: number) {
+    try {
+      await atualizarAparicaoAdmin(aparicao.id, { nivel_jogador_minimo: nivel });
+      await carregar();
+    } catch (error) {
+      setErro(mensagemDeErroAdmin(error, "Não foi possível mudar o nível mínimo."));
     }
   }
 
@@ -436,6 +481,16 @@ function AparicoesTab() {
                     type="number"
                     defaultValue={aparicao.peso_aparicao}
                     onBlur={(e) => mudarPeso(aparicao, Number(e.target.value))}
+                    className="w-16 rounded-lg border border-white/20 bg-black/30 px-2 py-1 text-white"
+                  />
+                </label>
+                <label className="flex items-center gap-1 text-xs text-white/60">
+                  Nível mín.
+                  <input
+                    type="number"
+                    min={1}
+                    defaultValue={aparicao.nivel_jogador_minimo}
+                    onBlur={(e) => mudarNivelJogadorMinimo(aparicao, Number(e.target.value))}
                     className="w-16 rounded-lg border border-white/20 bg-black/30 px-2 py-1 text-white"
                   />
                 </label>
@@ -486,6 +541,10 @@ function AparicoesTab() {
                 <input type="number" value={form.peso_aparicao ?? 100} onChange={(e) => setForm((f) => ({ ...f, peso_aparicao: Number(e.target.value) }))} className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm" />
               </label>
             </div>
+            <label className="flex flex-col gap-1 text-xs">
+              Nível mínimo do jogador (só elegibilidade de aparição)
+              <input type="number" min={1} value={form.nivel_jogador_minimo ?? 1} onChange={(e) => setForm((f) => ({ ...f, nivel_jogador_minimo: Number(e.target.value) }))} className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm" />
+            </label>
             <div className="mt-2 flex justify-end gap-2">
               <button type="button" onClick={() => setMostrarForm(false)} className="rounded-lg border border-white/20 px-4 py-2 text-sm text-white/70 hover:bg-white/10">
                 Cancelar
@@ -510,6 +569,7 @@ function DropsTab() {
   const [mostrarForm, setMostrarForm] = useState(false);
   const [form, setForm] = useState<Partial<AdventureMonsterLootApi> & { chance_percentual?: number }>({});
   const [salvando, setSalvando] = useState(false);
+  const { itens: itensDisponiveis } = useItensParaSelecaoAdmin();
 
   const carregar = useCallback(async () => {
     setCarregando(true);
@@ -584,7 +644,7 @@ function DropsTab() {
             <div key={entrada.id} className={`flex items-center justify-between gap-3 rounded-xl border border-[#F3B43F]/30 bg-[#292018]/80 p-3 text-white ${!entrada.ativo ? "opacity-50" : ""}`}>
               <div className="min-w-0">
                 <p className="font-bold">
-                  {entrada.item?.nome} <span className="text-xs text-white/50">de {entrada.AdventureMonster?.nome}</span>
+                  {entrada.item ? formatarItemComId(entrada.item.nome, entrada.id_item) : `Item #${entrada.id_item}`} <span className="text-xs text-white/50">de {entrada.AdventureMonster?.nome}</span>
                 </p>
                 <p className="text-xs text-[#F3B43F]">
                   {(entrada.chance_ppm / 10000).toFixed(2)}% · x{entrada.quantidade_min}-{entrada.quantidade_max} · {entrada.categoria}
@@ -614,8 +674,12 @@ function DropsTab() {
               </select>
             </label>
             <label className="flex flex-col gap-1 text-xs">
-              ID do item
-              <input type="number" required value={form.id_item ?? ""} onChange={(e) => setForm((f) => ({ ...f, id_item: Number(e.target.value) }))} placeholder="Veja o id na tela de Itens" className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm" />
+              Item
+              <ItemSelect
+                itens={itensDisponiveis}
+                value={form.id_item ?? ""}
+                onChange={(id) => setForm((f) => ({ ...f, id_item: id === "" ? undefined : id }))}
+              />
             </label>
             <div className="flex gap-2">
               <label className="flex flex-1 flex-col gap-1 text-xs">

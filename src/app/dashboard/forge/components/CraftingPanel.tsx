@@ -143,7 +143,7 @@ function bordaPorQualidade(qualidade: string) {
   return BORDA_RARIDADE[qualidade.toLowerCase()] ?? BORDA_RARIDADE.comum;
 }
 
-const ORDEM_CATEGORIA = ["Arma", "Armadura", "Capacete", "Escudo", "Acessorio1", "Acessorio2"];
+const ORDEM_CATEGORIA = ["Arma", "Armadura", "Capacete", "Escudo", "Acessorio1", "Acessorio2", "Ferramenta"];
 const LABEL_CATEGORIA: Record<string, string> = {
   Arma: "Armas",
   Armadura: "Armaduras",
@@ -151,6 +151,7 @@ const LABEL_CATEGORIA: Record<string, string> = {
   Escudo: "Escudos",
   Acessorio1: "Acessórios",
   Acessorio2: "Acessórios",
+  Ferramenta: "Varas de Pesca",
 };
 
 function ordenarCategorias(resumo: CategoriaResumo[]) {
@@ -193,6 +194,9 @@ export default function CraftingPanel({ onProgressoMudou }: { nivelForja: number
   const [carregandoCategoria, setCarregandoCategoria] = useState<Record<string, boolean>>({});
   const [secoesAbertas, setSecoesAbertas] = useState<Record<string, boolean>>({});
   const [qualidadeSelecionada, setQualidadeSelecionada] = useState<Record<number, string>>({});
+  // Sem :hover no mobile o tooltip de atributos do blueprint nunca
+  // aparecia por toque — agora tocar no ícone/nome também alterna ele.
+  const [statsAbertos, setStatsAbertos] = useState<number | null>(null);
   const [fila, setFila] = useState<EntradaFilaForja | null>(null);
   const [contagem, setContagem] = useState(0);
   const [carregando, setCarregando] = useState(true);
@@ -431,7 +435,10 @@ export default function CraftingPanel({ onProgressoMudou }: { nivelForja: number
         key={blueprint.id}
         className="rounded-2xl border-2 border-[#F3B43F] bg-[#292018]/90 p-5 text-white shadow-xl"
       >
-        <div className="group relative mb-3 flex items-center gap-3">
+        <div
+          className="group relative mb-3 flex cursor-pointer items-center gap-3"
+          onClick={() => setStatsAbertos((atual) => (atual === blueprint.id ? null : blueprint.id))}
+        >
           <div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg border-2 border-[#F3B43F]/60 bg-[#3a2f24] transition duration-150 group-hover:scale-110">
             {src ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -454,7 +461,11 @@ export default function CraftingPanel({ onProgressoMudou }: { nivelForja: number
             <p className="text-xs text-white/50">Nível mínimo de Forja: {blueprint.nivel_forja_minimo}</p>
           </div>
           {variante.propriedades && (
-            <div className="pointer-events-none absolute left-0 top-full z-20 mt-2 w-52 rounded-md border border-[#F3B43F]/40 bg-black/95 p-2 text-left text-xs opacity-0 shadow-xl transition-opacity group-hover:opacity-100">
+            <div
+              className={`pointer-events-none absolute left-0 top-full z-20 mt-2 w-52 rounded-md border border-[#F3B43F]/40 bg-black/95 p-2 text-left text-xs shadow-xl transition-opacity group-hover:opacity-100 ${
+                statsAbertos === blueprint.id ? "opacity-100" : "opacity-0"
+              }`}
+            >
               <p className="mb-1 text-white/50">Atributos ({variante.qualidade_exibicao}):</p>
               <AtributosDoItem propriedades={variante.propriedades} />
             </div>

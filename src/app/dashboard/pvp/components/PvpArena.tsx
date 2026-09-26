@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { spriteForClass } from "../../adventure/components/sprites/spriteForClass";
+import CharacterProfileLink from "@/components/profile/CharacterProfileLink";
 
 export interface Turno {
   atacante: "A" | "B";
@@ -43,7 +44,7 @@ export default function PvpArena({
   resultado: ResultadoDuelo;
   aoFechar: () => void;
 }) {
-  const { turnos, desafiante, desafiado, vencedorChave, recompensa, log } = resultado;
+  const { turnos, desafiante, desafiado, vencedorChave, log } = resultado;
 
   const vidaMaxA = turnos[0]?.vidaMaxA ?? 1;
   const vidaMaxB = turnos[0]?.vidaMaxB ?? 1;
@@ -108,7 +109,9 @@ export default function PvpArena({
             animState={animA}
             stroke="#F3B43F"
           />
-          <p className="text-sm font-bold text-[#F3B43F]">{desafiante.nome}</p>
+          <CharacterProfileLink characterId={desafiante.id} className="text-sm font-bold text-[#F3B43F]">
+            {desafiante.nome}
+          </CharacterProfileLink>
         </div>
         <p className="font-imFeel text-2xl text-[#F3B43F]/70 select-none">VS</p>
         <div className="flex flex-col items-center gap-2">
@@ -118,7 +121,9 @@ export default function PvpArena({
             stroke="#e05252"
             flip
           />
-          <p className="text-sm font-bold text-[#e05252]">{desafiado.nome}</p>
+          <CharacterProfileLink characterId={desafiado.id} className="text-sm font-bold text-[#e05252]">
+            {desafiado.nome}
+          </CharacterProfileLink>
         </div>
       </div>
 
@@ -143,8 +148,8 @@ export default function PvpArena({
             {vencedorChave === "A" ? "Vitória!" : "Derrota..."}
           </p>
           {vencedorChave === "A" && (
-            <p className="mb-3">
-              +{recompensa.experiencia} de experiência · +{recompensa.dinheiro} moedas
+            <p className="mb-3 text-sm text-white/60">
+              Duelo Casual — só treino, sem XP/ouro (ranqueado/torneio têm recompensa própria).
             </p>
           )}
           <button

@@ -5,8 +5,7 @@ import { useRouter } from "next/navigation";
 
 import axiosInstance from "@/utils/axiosIntance";
 import { useCharacter } from "@/contexts/CharacterContext";
-import { useMusic } from "@/contexts/MusicContext";
-import { MUSIC_PRIORITY, sortearFaixaCombate } from "@/constants/music";
+import { useContextMusic } from "@/hooks/useContextMusic";
 import CombatActionBar, {
   type ConsumivelAcao,
 } from "@/components/combat/CombatActionBar";
@@ -240,6 +239,16 @@ interface RespostaCombate {
       zona: { id: number; nome: string | null };
       beneficiosPorNivel: Record<string, { xp: number; ouro: number; espolio: number }>;
     } | null;
+
+    // Boss Global (§5.1) — presente só na vitória que faz o encontro
+    // elegível bater o threshold secreto (nunca revelado aqui nem em
+    // nenhum outro lugar do cliente); null em qualquer outra vitória.
+    worldBoss?: {
+      descoberto: boolean;
+      event_id: number;
+      nome: string | null;
+      mensagem_descoberta: string | null;
+    } | null;
   };
 }
 
@@ -288,18 +297,11 @@ export default function CombatArena({
   // dar F5.
   const { atualizarCharacter } = useCharacter();
 
-  // Sorteia uma das 4 faixas de combate só na primeira renderização
-  // deste encontro (§ escolha do usuário: alternar aleatoriamente a
-  // cada combate novo) — CombatArena só existe montado enquanto o
-  // encontro está ativo, então um novo mount = um combate novo.
-  const { requestMusic, releaseMusic } = useMusic();
-  const [faixaCombate] = useState(sortearFaixaCombate);
-  useEffect(() => {
-    const ownerId = "combat-solo";
-    requestMusic({ ownerId, track: faixaCombate, priority: MUSIC_PRIORITY.COMBAT });
-    return () => releaseMusic(ownerId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [faixaCombate.key]);
+  // Sorteia uma faixa do pool CONTEXT_COMBAT_PVE (Painel Administrativo
+  // de Músicas §9.2) só na primeira renderização deste encontro —
+  // CombatArena só existe montado enquanto o encontro está ativo, então
+  // um novo mount = um combate novo.
+  useContextMusic("CONTEXT_COMBAT_PVE");
 
   const vidaMaxima = character.vida_maxima ?? 30 + character.vitalidade * 6;
 
@@ -361,6 +363,9 @@ export default function CombatArena({
     { id_item: number; nome: string; quantidade: number; imagem_url?: string | null; raridade?: string }[]
   >([]);
 
+  const [worldBossDescoberto, setWorldBossDescoberto] = useState<
+    RespostaCombate["data"]["worldBoss"]
+  >(null);
   const [bestiarioCompletoAgora, setBestiarioCompletoAgora] = useState<
     RespostaCombate["data"]["bestiarioCompletoAgora"]
   >(null);
@@ -474,7 +479,20 @@ export default function CombatArena({
     } catch (error) {
       console.error("Erro ao sair da área de caça:", error);
     } finally {
+      // `rota` costuma ser a MESMA /dashboard/adventure que já está
+      // montada (CombatArena vive dentro dela) — o App Router trata
+      // push pra URL atual como no-op e não re-executa o Server
+      // Component, então a tela ficava presa na luta mesmo depois do
+      // servidor já ter zerado encontro_pve/sessão (bug reportado:
+      // "Sair mesmo assim" não voltava pra lista de zonas, e só ao
+      // clicar Atacar — que aí sim batia num 404 "Nenhum combate
+      // ativo" e forçava o router.refresh() do catch abaixo — a tela
+      // finalmente atualizava). router.refresh() força o Server
+      // Component da rota atual a buscar os dados de novo sempre,
+      // então cobre tanto o caso de push pra mesma rota quanto pra uma
+      // rota diferente (ex.: "Sair para a página principal" → /dashboard).
       router.push(rota);
+      router.refresh();
     }
   }
 
@@ -918,6 +936,7 @@ export default function CombatArena({
         setDrop(data.drop ?? null);
         setEspolios(data.espolios ?? []);
         setBestiarioCompletoAgora(data.bestiarioCompletoAgora ?? null);
+        setWorldBossDescoberto(data.worldBoss?.descoberto ? data.worldBoss : null);
       }
     } catch (error: unknown) {
       const mensagem =
@@ -1250,6 +1269,24 @@ export default function CombatArena({
                     </div>
                   );
                 })}
+              </div>
+            )}
+
+            {worldBossDescoberto && (
+              <div className="mb-4 rounded-xl border-2 border-red-500/70 bg-black/40 p-3 text-left">
+                <p className="mb-1 text-center font-imFeel text-xl text-red-400">
+                  ⚠ Ameaça Mundial descoberta! ⚠
+                </p>
+                <p className="text-center text-sm font-bold text-white">{worldBossDescoberto.nome}</p>
+                {worldBossDescoberto.mensagem_descoberta && (
+                  <p className="mt-2 text-center text-xs italic text-white/70">
+                    {worldBossDescoberto.mensagem_descoberta}
+                  </p>
+                )}
+                <p className="mt-2 text-center text-xs text-red-300">
+                  Foi você quem a encontrou! Acompanhe a Guilda dos Aventureiros — ela despertará
+                  em instantes.
+                </p>
               </div>
             )}
 

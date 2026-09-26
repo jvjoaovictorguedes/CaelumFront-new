@@ -7,6 +7,9 @@ interface ModuloAdmin {
   descricao: string;
   href?: string;
   permissao?: string;
+  // Alternativa a `permissao` pra módulos que aparecem com QUALQUER uma
+  // de várias permissões (ex.: Forja: forge.manage OU forge.balance).
+  permissaoQualquerUma?: string[];
 }
 
 interface CategoriaAdmin {
@@ -33,28 +36,34 @@ const CATEGORIAS: CategoriaAdmin[] = [
       { titulo: "Balcão de Espólios", descricao: "Reputação Comercial e faixas de quantidade das encomendas.", href: "/dashboard/admin/spoils", permissao: "spoils.manage" },
       { titulo: "Caçadas", descricao: "Dificuldades e Reputação de Caçador.", href: "/dashboard/admin/hunts", permissao: "hunts.manage" },
       { titulo: "Mídia", descricao: "Upload e versionamento de assets.", href: "/dashboard/admin/media", permissao: "media.manage" },
+      { titulo: "Músicas", descricao: "Faixas, páginas, contextos e pools — rascunho, publicação e rollback.", href: "/dashboard/admin/music", permissao: "music.manage" },
+      { titulo: "Taverna", descricao: "Cardápio, jogos de azar, descanso e métricas.", href: "/dashboard/admin/tavern", permissao: "tavern.manage" },
+      { titulo: "Ameaça Mundial", descricao: "Catálogo de Boss Global, ciclo atual e métricas.", href: "/dashboard/admin/world-boss", permissao: "worldboss.manage" },
+      { titulo: "Pesca & Navegação", descricao: "Zonas, espécies, pool de encontro, portos, iscas e afinidades.", href: "/dashboard/admin/fishing", permissao: "fishing.manage" },
+      { titulo: "Forja", descricao: "Blueprints, barras, pergaminhos e balanceamento de fundição/fabricação/refinamento.", href: "/dashboard/admin/forge", permissaoQualquerUma: ["forge.manage", "forge.balance"] },
+      { titulo: "Proezas Únicas", descricao: "Easter eggs de vencedor único, seus Legados, triggers e histórico de reparos.", href: "/dashboard/admin/unique-feats", permissao: "uniquefeats.manage" },
     ],
   },
   {
     titulo: "Jogadores",
     modulos: [
-      { titulo: "Busca", descricao: "Consultar jogador por nome/ID." },
-      { titulo: "Inventário", descricao: "Correções administrativas de inventário." },
+      { titulo: "Busca", descricao: "Consultar jogador por nome/ID.", href: "/dashboard/admin/players", permissao: "players.view" },
+      { titulo: "Inventário", descricao: "Correções administrativas de inventário.", href: "/dashboard/admin/inventory", permissao: "players.manage" },
       { titulo: "Premiações", descricao: "Conceder itens/equipamentos a um jogador.", href: "/dashboard/admin/grants", permissao: "players.reward" },
     ],
   },
   {
     titulo: "Economia",
     modulos: [
-      { titulo: "Loja NPC", descricao: "Preços e disponibilidade." },
-      { titulo: "Mercado P2P", descricao: "Moderar anúncios e ver histórico." },
+      { titulo: "Loja NPC", descricao: "Preços e disponibilidade.", href: "/dashboard/admin/shop", permissao: "items.manage" },
+      { titulo: "Mercado P2P", descricao: "Moderar anúncios e ver histórico.", href: "/dashboard/admin/market", permissao: "market.moderate" },
       { titulo: "Configurações", descricao: "Parâmetros econômicos (GameSetting).", href: "/dashboard/admin/settings", permissao: "economy.manage" },
     ],
   },
   {
     titulo: "Eventos",
     modulos: [
-      { titulo: "Buff Global", descricao: "XP/Ouro/Drop de Aventura e XP de Expedição, por tempo limitado." },
+      { titulo: "Buff Global", descricao: "XP/Ouro/Drop de Aventura e XP de Expedição, por tempo limitado.", href: "/dashboard/admin/buffs", permissao: "events.manage" },
       { titulo: "Torneios", descricao: "Criar, iniciar e encerrar torneios.", href: "/dashboard/admin/tournaments", permissao: "tournaments.manage" },
     ],
   },
@@ -62,8 +71,11 @@ const CATEGORIAS: CategoriaAdmin[] = [
     titulo: "Sistema",
     modulos: [
       { titulo: "Patch Notes", descricao: "Publicar atualizações sem migration.", href: "/dashboard/admin/patch-notes", permissao: "patchnotes.manage" },
+      { titulo: "Jornal da Guilda", descricao: "Registrar conquistas notáveis de jogadores e guildas.", href: "/dashboard/admin/guild-journal", permissao: "guildjournal.manage" },
       { titulo: "Administradores", descricao: "Perfis e permissões.", href: "/dashboard/admin/administrators", permissao: "admins.manage" },
+      { titulo: "Excluir Contas", descricao: "Exclusão em massa de contas de jogador — ação destrutiva.", href: "/dashboard/admin/users", permissao: "users.delete" },
       { titulo: "Auditoria", descricao: "Histórico de ações administrativas.", href: "/dashboard/admin/audit", permissao: "audit.view" },
+      { titulo: "Manutenção", descricao: "Kill-switch site-wide — só admins jogam enquanto ativo.", href: "/dashboard/admin/maintenance", permissao: "maintenance.manage" },
     ],
   },
 ];
@@ -83,7 +95,10 @@ export default function AdminHubClient({ permissoes }: { permissoes: string[] })
           <p className="mb-2 text-xs font-bold uppercase tracking-widest text-[#F3B43F]/80">{categoria.titulo}</p>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {categoria.modulos.map((modulo) => {
-              const disponivel = Boolean(modulo.href) && (!modulo.permissao || permissoes.includes(modulo.permissao));
+              const disponivel =
+                Boolean(modulo.href) &&
+                (!modulo.permissao || permissoes.includes(modulo.permissao)) &&
+                (!modulo.permissaoQualquerUma || modulo.permissaoQualquerUma.some((p) => permissoes.includes(p)));
               const conteudo = (
                 <div
                   className={`flex h-full flex-col gap-1 rounded-2xl border-2 p-4 shadow-xl transition ${
@@ -101,7 +116,7 @@ export default function AdminHubClient({ permissoes }: { permissoes: string[] })
                   )}
                   {modulo.href && !disponivel && (
                     <span className="mt-auto pt-2 text-[10px] font-bold uppercase tracking-wide text-red-400/80">
-                      Sem permissão ({modulo.permissao})
+                      Sem permissão ({modulo.permissao ?? modulo.permissaoQualquerUma?.join(" ou ")})
                     </span>
                   )}
                 </div>

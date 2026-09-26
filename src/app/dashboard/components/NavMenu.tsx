@@ -73,6 +73,8 @@ export default function NavMenu({
     { name: "Mercado Negro", iconUrl: "/icons/ui/mercado.png", path: "/dashboard/market" },
     { name: "Forja", iconUrl: "/icons/ui/forja.png", path: "/dashboard/forge" },
     { name: "Expedição", iconUrl: "/icons/ui/expedicao.png", path: "/dashboard/expedition" },
+    { name: "Pesca", iconUrl: "/icons/ui/pesca.png", path: "/dashboard/fishing" },
+    { name: "Taverna", iconUrl: "/icons/loja.png", path: "/dashboard/tavern" },
     {
       name: "Guildas",
       iconUrl: "/icons/guildas.png",
@@ -94,6 +96,13 @@ export default function NavMenu({
       name: "Ranking",
       iconUrl: "/icons/ranking.png",
       path: "/dashboard/ranking",
+    },
+    // Sem ícone próprio ainda — reaproveita a chama (mesma convenção do
+    // Painel Administrativo abaixo, que reaproveita o de Duelo).
+    {
+      name: "Hall das Lendas",
+      iconUrl: "/icons/ui/chama.png",
+      path: "/dashboard/hall-das-lendas",
     },
     {
       name: "Bestiário",

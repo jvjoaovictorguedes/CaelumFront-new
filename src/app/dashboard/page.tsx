@@ -2,14 +2,13 @@ import Link from "next/link";
 import { getCurrentCharacter } from "@/utils/character-session";
 import { CaelumEmblema } from "@/components/CaelumBrand/CaelumBrand";
 import PageMusic from "@/components/music/PageMusic";
-import { MUSIC } from "@/constants/music";
 
 export default async function DashboardHomePage() {
   const character = await getCurrentCharacter();
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 p-2 sm:p-4">
-      <PageMusic track={MUSIC.AMBIENTE} />
+      <PageMusic slot="PAGE_ADVENTURE" />
       <section className="rounded-2xl border-2 border-[#F3B43F] bg-[#292018]/90 p-6 text-white shadow-xl">
         <div className="flex items-center gap-4">
           <CaelumEmblema tamanho="md" />

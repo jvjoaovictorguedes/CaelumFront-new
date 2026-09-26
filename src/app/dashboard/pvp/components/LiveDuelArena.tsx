@@ -315,9 +315,9 @@ export default function LiveDuelArena({ meuCharacterId }: { meuCharacterId: numb
               Uma falha interna encerrou a partida. Seu rating não foi alterado.
             </p>
           )}
-          {resultadoFinal.recompensa && resultadoFinal.vencedorChave === minhaChave && (
-            <p className="mb-3">
-              +{resultadoFinal.recompensa.experiencia} de experiência · +{resultadoFinal.recompensa.dinheiro} moedas
+          {!duelo.ranked && resultadoFinal.vencedorChave === minhaChave && (
+            <p className="mb-3 text-sm text-white/60">
+              Duelo Casual — só treino, sem XP/ouro (ranqueado/torneio têm recompensa própria).
             </p>
           )}
           {duelo.ranked && ratingUpdate && (

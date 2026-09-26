@@ -80,7 +80,7 @@ export default function PatchNotesBell() {
   const overlays = (
     <>
       {mostrarAviso && (
-        <div className="fixed left-1/2 top-4 z-[110] w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 rounded-xl border-2 border-[#F3B43F] bg-[#292018] p-3 text-white shadow-2xl">
+        <div className="fixed left-1/2 top-20 z-[110] w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 rounded-xl border-2 border-[#F3B43F] bg-[#292018] p-3 text-white shadow-2xl sm:top-4">
           <div className="flex items-start justify-between gap-2">
             <p className="text-sm">
               <span className="font-bold text-[#F3B43F]">

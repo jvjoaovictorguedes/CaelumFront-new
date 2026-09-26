@@ -8,6 +8,7 @@ import RankedPanel from "./RankedPanel";
 import TournamentsPanel from "./TournamentsPanel";
 import { usePvpSocket } from "@/contexts/PvpSocketContext";
 import { AVISO_CASUAL_NAO_COMPETITIVO } from "@/lib/api/pvp";
+import CharacterProfileLink from "@/components/profile/CharacterProfileLink";
 
 type Aba = "casual" | "ranked" | "torneios";
 
@@ -258,11 +259,13 @@ export default function PvpClient({
                   return (
                     <div
                       key={oponente.id}
-                      className="flex items-center justify-between rounded-xl border border-white/10 bg-[#3a2f24] px-4 py-3"
+                      className="flex min-w-0 flex-col gap-2 rounded-xl border border-white/10 bg-[#3a2f24] px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
                     >
                       <div className="min-w-0 flex-1">
                         <p className="truncate font-bold text-[#F3B43F]">
-                          {oponente.nome}{" "}
+                          <CharacterProfileLink characterId={oponente.id} className="truncate text-[#F3B43F]">
+                            {oponente.nome}
+                          </CharacterProfileLink>{" "}
                           <span
                             className={`ml-1 inline-block h-2 w-2 shrink-0 rounded-full align-middle ${
                               estaOnline ? "bg-green-400" : "bg-white/20"

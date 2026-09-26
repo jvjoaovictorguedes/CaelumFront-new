@@ -4,7 +4,6 @@ import axiosInstance from "@/utils/axiosIntance";
 import { getCurrentCharacter } from "@/utils/character-session";
 import { resolveMediaUrl } from "@/utils/media-url";
 import PageMusic from "@/components/music/PageMusic";
-import { MUSIC } from "@/constants/music";
 
 interface DropApi {
   nome: string;
@@ -115,7 +114,7 @@ export default async function BestiaryRegionPage({
 
   return (
     <div className="flex h-full flex-col gap-4">
-      <PageMusic track={MUSIC.BESTIARIO} />
+      <PageMusic slot="PAGE_BESTIARY" />
       <div>
         <Link href="/dashboard/bestiary" className="text-sm text-[#F3B43F]/80 hover:underline">
           ← Bestiário

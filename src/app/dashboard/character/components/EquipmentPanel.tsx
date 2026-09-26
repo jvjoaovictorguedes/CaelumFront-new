@@ -218,9 +218,16 @@ export default function EquipmentPanel({ classe }: { classe?: string }) {
                   </span>
                 )}
 
-                {/* Nome/atributos só aparecem no hover, flutuando acima do
-                    item em vez de caber dentro da caixinha 16x16. */}
-                <div className="pointer-events-none absolute bottom-full left-1/2 mb-2 w-36 -translate-x-1/2 rounded-md bg-black/90 p-2 text-center opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+                {/* Nome/atributos aparecem no hover (desktop) — no
+                    mobile não existe :hover, então reaproveita o
+                    próprio estado de "selecionado" (já ativado ao
+                    tocar no item pra equipar) pra também mostrar o
+                    tooltip, em vez de ficar invisível pra quem usa touch. */}
+                <div
+                  className={`pointer-events-none absolute bottom-full left-1/2 mb-2 w-36 -translate-x-1/2 rounded-md bg-black/90 p-2 text-center shadow-lg transition-opacity group-hover:opacity-100 ${
+                    selecionado ? "opacity-100" : "opacity-0"
+                  }`}
+                >
                   <span className="block text-[10px] font-bold leading-tight text-white">
                     {instancia.nome}
                     {instancia.refinamento > 0 && ` +${instancia.refinamento}`}

@@ -9,11 +9,15 @@ import {
   mensagemDeErroAdmin,
   reverterMediaVersaoAdmin,
   type MediaAssetApi,
+  type MediaAssetTipoApi,
 } from "@/lib/api/admin";
 import { resolveMediaUrl } from "@/utils/media-url";
 import { enviarMediaAdmin } from "./uploadMediaAction";
 
-const CATEGORIAS = ["Item", "Power", "Monster", "EquipmentSet", "Outro"] as const;
+const CATEGORIAS_IMAGEM = ["Item", "Power", "Monster", "EquipmentSet", "Outro"] as const;
+const CATEGORIA_AUDIO = "Musica" as const;
+const ACCEPT_IMAGEM = "image/png,image/jpeg,image/webp,image/gif";
+const ACCEPT_AUDIO = "audio/mpeg,audio/mp3,audio/ogg,audio/wav,audio/x-wav";
 
 function urlDaVersao(grupo: string, versao: number) {
   return resolveMediaUrl(`/api/media/${grupo}?v=${versao}`) ?? "";
@@ -22,16 +26,66 @@ function urlAtual(grupo: string) {
   return resolveMediaUrl(`/api/media/${grupo}`) ?? "";
 }
 
+// Deriva um slug de grupo a partir do nome do arquivo (minúsculas, sem
+// acento, só [a-z0-9_-], respeitando REGEX_GRUPO_VALIDO do backend:
+// começa/termina com letra ou número, 3-150 caracteres). O admin pode
+// editar esse valor sugerido antes de confirmar o envio.
+function slugSugerido(nomeArquivo: string): string {
+  const semExtensao = nomeArquivo.replace(/\.[^./\\]+$/, "");
+  let slug = semExtensao
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  if (!slug) slug = "midia";
+  if (slug.length < 3) slug = (slug + "-arquivo").slice(0, Math.max(3, slug.length + 3));
+  if (slug.length > 150) slug = slug.slice(0, 150);
+  slug = slug.replace(/-+$/g, "");
+  if (slug.length < 3) slug = `midia-${Date.now() % 100000}`;
+  return slug;
+}
+
+// "usados" cobre tanto os grupos já escolhidos NESTE mesmo lote quanto
+// os grupos que já existem no servidor (gruposExistentes) — sem os dois
+// juntos, um nome genérico de arquivo (ex.: "icone.png", "banner.jpg")
+// reaproveitava silenciosamente o slug de uma imagem antiga não
+// relacionada e virava uma NOVA VERSÃO dela, desativando a versão
+// antiga (bug relatado: "subi imagem nova e bugou as antigas").
+function slugUnicoNaLista(base: string, usados: Set<string>): string {
+  let slug = base;
+  let contador = 2;
+  while (usados.has(slug)) {
+    const sufixo = `-${contador}`;
+    slug = base.length + sufixo.length > 150 ? base.slice(0, 150 - sufixo.length) + sufixo : base + sufixo;
+    contador += 1;
+  }
+  return slug;
+}
+
+type StatusEnvio = "pendente" | "enviando" | "ok" | "erro";
+
+interface ArquivoParaEnvio {
+  id: string;
+  file: File;
+  grupo: string;
+  status: StatusEnvio;
+  mensagem?: string;
+}
+
 function DetalheGrupo({ grupo, onFechar, onMudou }: { grupo: string; onFechar: () => void; onMudou: () => void }) {
   const [versoes, setVersoes] = useState<MediaAssetApi[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
   const [mensagem, setMensagem] = useState("");
 
-  const [categoria, setCategoria] = useState<(typeof CATEGORIAS)[number]>("Outro");
+  const [categoria, setCategoria] = useState<string>("Outro");
   const [descricao, setDescricao] = useState("");
   const [arquivo, setArquivo] = useState<File | null>(null);
   const [enviando, setEnviando] = useState(false);
+
+  const tipoGrupo: MediaAssetTipoApi = versoes[0]?.tipo ?? "imagem";
+  const categoriasDisponiveis: readonly string[] = tipoGrupo === "audio" ? [CATEGORIA_AUDIO] : CATEGORIAS_IMAGEM;
 
   const carregar = useCallback(async () => {
     setCarregando(true);
@@ -63,6 +117,7 @@ function DetalheGrupo({ grupo, onFechar, onMudou }: { grupo: string; onFechar: (
       const formData = new FormData();
       formData.append("grupo", grupo);
       formData.append("categoria", categoria);
+      formData.append("tipo", tipoGrupo);
       if (descricao) formData.append("descricao", descricao);
       formData.append("arquivo", arquivo);
       const resultado = await enviarMediaAdmin(formData);
@@ -105,7 +160,7 @@ function DetalheGrupo({ grupo, onFechar, onMudou }: { grupo: string; onFechar: (
 
   function copiarUrl() {
     navigator.clipboard?.writeText(urlAtual(grupo));
-    setMensagem("URL copiada — cole no campo Imagem (URL) de Item/Habilidade/etc.");
+    setMensagem("URL copiada — cole no campo Imagem (URL) de Item/Power/etc.");
   }
 
   return (
@@ -127,13 +182,17 @@ function DetalheGrupo({ grupo, onFechar, onMudou }: { grupo: string; onFechar: (
           </button>
         </div>
 
+        {tipoGrupo === "audio" && !carregando && (
+          <audio controls src={urlAtual(grupo)} className="w-full" />
+        )}
+
         <div className="flex flex-col gap-2 rounded-xl border border-white/10 p-3">
           <p className="text-xs font-bold uppercase text-[#F3B43F]/80">Enviar nova versão</p>
           <div className="flex flex-wrap items-end gap-2">
             <label className="flex flex-col gap-1 text-[10px] text-white/60">
               Categoria
-              <select value={categoria} onChange={(e) => setCategoria(e.target.value as (typeof CATEGORIAS)[number])} className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm">
-                {CATEGORIAS.map((c) => (
+              <select value={categoria} onChange={(e) => setCategoria(e.target.value)} disabled={tipoGrupo === "audio"} className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm disabled:opacity-60">
+                {categoriasDisponiveis.map((c) => (
                   <option key={c} value={c}>
                     {c}
                   </option>
@@ -142,7 +201,7 @@ function DetalheGrupo({ grupo, onFechar, onMudou }: { grupo: string; onFechar: (
             </label>
             <label className="flex flex-1 flex-col gap-1 text-[10px] text-white/60">
               Arquivo
-              <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={(e) => setArquivo(e.target.files?.[0] ?? null)} className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-xs" />
+              <input type="file" accept={tipoGrupo === "audio" ? ACCEPT_AUDIO : ACCEPT_IMAGEM} onChange={(e) => setArquivo(e.target.files?.[0] ?? null)} className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-xs" />
             </label>
             <button type="button" onClick={enviarNovaVersao} disabled={enviando} className="rounded-lg bg-[#BC8418] px-3 py-1.5 text-xs font-bold text-black hover:bg-[#a5710f] disabled:opacity-50">
               {enviando ? "Enviando..." : "+ Versão"}
@@ -163,8 +222,12 @@ function DetalheGrupo({ grupo, onFechar, onMudou }: { grupo: string; onFechar: (
           ) : (
             versoes.map((v) => (
               <div key={v.id} className={`flex items-center gap-3 rounded-lg px-2 py-1.5 text-xs ${v.ativo ? "bg-[#F3B43F]/10" : "bg-black/20"}`}>
-                {/* eslint-disable-next-line @next/next/no-img-element -- thumbnail de mídia enviada pelo admin, nunca passa por next/image */}
-                <img src={urlDaVersao(grupo, v.versao)} alt={`v${v.versao}`} className="h-10 w-10 shrink-0 rounded-lg border border-white/10 bg-black/30 object-contain" />
+                {v.tipo === "audio" ? (
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-black/30 text-lg">🎵</div>
+                ) : (
+                  // eslint-disable-next-line @next/next/no-img-element -- thumbnail de mídia enviada pelo admin, nunca passa por next/image
+                  <img src={urlDaVersao(grupo, v.versao)} alt={`v${v.versao}`} className="h-10 w-10 shrink-0 rounded-lg border border-white/10 bg-black/30 object-contain" />
+                )}
                 <div className="flex-1">
                   <p className={v.ativo ? "font-bold text-[#F3B43F]" : "text-white/70"}>
                     v{v.versao} {v.ativo && "(atual)"} · {v.categoria} · {(v.tamanho_bytes / 1024).toFixed(0)}KB
@@ -185,7 +248,244 @@ function DetalheGrupo({ grupo, onFechar, onMudou }: { grupo: string; onFechar: (
   );
 }
 
+function ModalEnviarMidia({
+  tipoInicial,
+  onFechar,
+  onConcluido,
+}: {
+  tipoInicial: MediaAssetTipoApi;
+  onFechar: () => void;
+  onConcluido: () => void;
+}) {
+  const [tipo, setTipo] = useState<MediaAssetTipoApi>(tipoInicial);
+  const [categoria, setCategoria] = useState<string>(tipoInicial === "audio" ? CATEGORIA_AUDIO : "Item");
+  const [descricao, setDescricao] = useState("");
+  const [arquivos, setArquivos] = useState<ArquivoParaEnvio[]>([]);
+  const [enviando, setEnviando] = useState(false);
+  const [erroGeral, setErroGeral] = useState("");
+  // Todo grupo já ativo no servidor, de QUALQUER categoria/tipo — busca
+  // uma vez, ao abrir o modal. "Cada arquivo vira um grupo próprio"
+  // (aviso abaixo) é sempre a intenção aqui, nunca versionar um grupo
+  // já existente (isso é o formulário dentro de DetalheGrupo); sem
+  // conferir contra o servidor, um nome de arquivo genérico (ex.:
+  // "icone.png", "banner.jpg") reaproveitava silenciosamente o slug de
+  // uma imagem antiga não relacionada, desativando-a — bug relatado
+  // ("subi imagem nova e bugou as antigas").
+  const [gruposExistentes, setGruposExistentes] = useState<Set<string>>(new Set());
+
+  const categoriasDisponiveis: readonly string[] = tipo === "audio" ? [CATEGORIA_AUDIO] : CATEGORIAS_IMAGEM;
+
+  useEffect(() => {
+    listarMediaGruposAdmin({ porPagina: 10000 })
+      .then((resultado) => setGruposExistentes(new Set(resultado.itens.map((item) => item.grupo))))
+      .catch(() => {});
+  }, []);
+
+  function mudarTipo(novoTipo: MediaAssetTipoApi) {
+    setTipo(novoTipo);
+    setCategoria(novoTipo === "audio" ? CATEGORIA_AUDIO : "Item");
+    setArquivos([]);
+  }
+
+  function selecionarArquivos(lista: FileList | null) {
+    if (!lista || lista.length === 0) return;
+    const usados = new Set<string>(gruposExistentes);
+    const novos: ArquivoParaEnvio[] = Array.from(lista).map((file, i) => {
+      const base = slugSugerido(file.name);
+      const grupo = slugUnicoNaLista(base, usados);
+      usados.add(grupo);
+      return { id: `${Date.now()}-${i}-${file.name}`, file, grupo, status: "pendente" as StatusEnvio };
+    });
+    setArquivos(novos);
+    setErroGeral("");
+  }
+
+  function editarGrupo(id: string, novoGrupo: string) {
+    setArquivos((atual) => atual.map((a) => (a.id === id ? { ...a, grupo: novoGrupo } : a)));
+  }
+
+  function removerArquivo(id: string) {
+    setArquivos((atual) => atual.filter((a) => a.id !== id));
+  }
+
+  async function enviarTodos() {
+    if (arquivos.length === 0) {
+      setErroGeral("Escolha ao menos um arquivo.");
+      return;
+    }
+    const grupos = arquivos.map((a) => a.grupo.trim());
+    if (grupos.some((g) => !g)) {
+      setErroGeral("Todo arquivo precisa de um identificador de grupo preenchido.");
+      return;
+    }
+    if (new Set(grupos).size !== grupos.length) {
+      setErroGeral("Dois arquivos não podem usar o mesmo identificador de grupo — ajuste antes de enviar.");
+      return;
+    }
+    const colisoes = arquivos.filter((a) => gruposExistentes.has(a.grupo.trim()));
+    if (colisoes.length > 0) {
+      setErroGeral(
+        `Identificador já usado por uma mídia existente: ${colisoes.map((a) => `"${a.grupo.trim()}" (${a.file.name})`).join(", ")}. ` +
+          "Escolha outro identificador — enviar assim SUBSTITUIRIA a imagem antiga em todo lugar que ela é usada. " +
+          "Se a intenção é atualizar aquela mídia específica, abra o grupo dela na lista e envie uma nova versão por lá.",
+      );
+      return;
+    }
+
+    setEnviando(true);
+    setErroGeral("");
+
+    // Envio sequencial: mais lento que em paralelo, mas mantém o
+    // feedback por arquivo simples e evita sobrecarregar o servidor
+    // com vários uploads simultâneos vindos do mesmo admin.
+    for (const item of arquivos) {
+      setArquivos((atual) => atual.map((a) => (a.id === item.id ? { ...a, status: "enviando", mensagem: undefined } : a)));
+      try {
+        const formData = new FormData();
+        formData.append("grupo", item.grupo.trim());
+        formData.append("categoria", categoria);
+        formData.append("tipo", tipo);
+        if (descricao) formData.append("descricao", descricao);
+        formData.append("arquivo", item.file);
+        const resultado = await enviarMediaAdmin(formData);
+        if (!resultado.success) {
+          setArquivos((atual) =>
+            atual.map((a) => (a.id === item.id ? { ...a, status: "erro", mensagem: resultado.message || "Falha ao enviar." } : a)),
+          );
+        } else {
+          setArquivos((atual) => atual.map((a) => (a.id === item.id ? { ...a, status: "ok", mensagem: `v${resultado.asset?.versao} enviada` } : a)));
+        }
+      } catch {
+        setArquivos((atual) => atual.map((a) => (a.id === item.id ? { ...a, status: "erro", mensagem: "Não foi possível enviar." } : a)));
+      }
+    }
+
+    setEnviando(false);
+    onConcluido();
+  }
+
+  const total = arquivos.length;
+  const ok = arquivos.filter((a) => a.status === "ok").length;
+  const comErro = arquivos.filter((a) => a.status === "erro").length;
+  const terminou = total > 0 && ok + comErro === total;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={() => !enviando && onFechar()}>
+      <div onClick={(e) => e.stopPropagation()} className="flex max-h-[90vh] w-full max-w-2xl flex-col gap-3 overflow-y-auto rounded-2xl border-2 border-[#F3B43F] bg-[#292018] p-5 text-white shadow-2xl">
+        <p className="font-imFeel text-xl text-[#F3B43F]">Enviar mídia</p>
+        {erroGeral && <p className="rounded-lg bg-black/50 px-3 py-2 text-sm text-red-400">{erroGeral}</p>}
+
+        <div className="flex gap-2">
+          <button type="button" onClick={() => mudarTipo("imagem")} disabled={enviando} className={`rounded-lg px-3 py-1.5 text-xs font-bold ${tipo === "imagem" ? "bg-[#BC8418] text-black" : "border border-white/20 text-white/70"}`}>
+            Imagens
+          </button>
+          <button type="button" onClick={() => mudarTipo("audio")} disabled={enviando} className={`rounded-lg px-3 py-1.5 text-xs font-bold ${tipo === "audio" ? "bg-[#BC8418] text-black" : "border border-white/20 text-white/70"}`}>
+            Músicas
+          </button>
+        </div>
+
+        <label className="flex flex-col gap-1 text-xs">
+          Categoria
+          <select value={categoria} onChange={(e) => setCategoria(e.target.value)} disabled={enviando || tipo === "audio"} className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm disabled:opacity-60">
+            {categoriasDisponiveis.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="flex flex-col gap-1 text-xs">
+          Descrição (opcional, aplicada a todos os arquivos deste envio)
+          <textarea value={descricao} onChange={(e) => setDescricao(e.target.value)} disabled={enviando} rows={2} className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm" />
+        </label>
+        <label className="flex flex-col gap-1 text-xs">
+          {tipo === "audio" ? "Arquivos de áudio (MP3, OGG ou WAV — até 20MB cada)" : "Arquivos de imagem (PNG, JPEG, WEBP ou GIF — até 5MB cada)"}
+          <input
+            required
+            type="file"
+            multiple
+            disabled={enviando}
+            accept={tipo === "audio" ? ACCEPT_AUDIO : ACCEPT_IMAGEM}
+            onChange={(e) => selecionarArquivos(e.target.files)}
+            className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm"
+          />
+        </label>
+        <p className="text-[10px] text-white/50">
+          Cada arquivo vira um grupo próprio — revise/ajuste o identificador sugerido de cada um antes de enviar. Minúsculas,
+          números, hífen ou underscore, começando e terminando com letra ou número.
+        </p>
+
+        {arquivos.length > 0 && (
+          <div className="flex flex-col gap-2 rounded-xl border border-white/10 p-2">
+            {arquivos.map((item) => {
+              const colide = gruposExistentes.has(item.grupo.trim());
+              return (
+                <div key={item.id} className="flex flex-col gap-1">
+                  <div className="flex flex-wrap items-center gap-2 rounded-lg bg-black/20 px-2 py-1.5 text-xs">
+                    <span className="w-28 shrink-0 truncate text-white/60" title={item.file.name}>
+                      {item.file.name}
+                    </span>
+                    <input
+                      value={item.grupo}
+                      onChange={(e) => editarGrupo(item.id, e.target.value)}
+                      disabled={enviando || item.status === "ok"}
+                      className={`min-w-0 flex-1 rounded-lg border bg-black/30 px-2 py-1 text-xs disabled:opacity-60 ${colide ? "border-red-500" : "border-white/20"}`}
+                    />
+                    <span
+                      className={
+                        item.status === "ok"
+                          ? "font-bold text-green-400"
+                          : item.status === "erro"
+                            ? "font-bold text-red-400"
+                            : item.status === "enviando"
+                              ? "text-[#F3B43F]"
+                              : "text-white/40"
+                      }
+                    >
+                      {item.status === "pendente" && "aguardando"}
+                      {item.status === "enviando" && "enviando..."}
+                      {item.status === "ok" && `✓ ${item.mensagem}`}
+                      {item.status === "erro" && `✕ ${item.mensagem}`}
+                    </span>
+                    {item.status !== "enviando" && item.status !== "ok" && (
+                      <button type="button" onClick={() => removerArquivo(item.id)} className="shrink-0 text-white/50 hover:text-red-400">
+                        remover
+                      </button>
+                    )}
+                  </div>
+                  {colide && item.status === "pendente" && (
+                    <p className="px-2 text-[10px] font-bold text-red-400">
+                      Esse identificador já existe — enviar assim substitui a imagem antiga em todo lugar que ela é usada.
+                    </p>
+                  )}
+                </div>
+              );
+            })}
+            {terminou && (
+              <p className="text-xs font-bold text-[#F3B43F]">
+                Concluído: {ok} de {total} enviado(s) com sucesso{comErro > 0 ? `, ${comErro} com erro` : ""}.
+              </p>
+            )}
+          </div>
+        )}
+
+        <div className="mt-2 flex justify-end gap-2">
+          <button type="button" onClick={onFechar} disabled={enviando} className="rounded-lg border border-white/20 px-4 py-2 text-sm text-white/70 hover:bg-white/10 disabled:opacity-50">
+            {terminou ? "Fechar" : "Cancelar"}
+          </button>
+          {!terminou && (
+            <button type="button" onClick={enviarTodos} disabled={enviando || arquivos.length === 0} className="rounded-lg bg-[#BC8418] px-4 py-2 text-sm font-bold text-black hover:bg-[#a5710f] disabled:opacity-50">
+              {enviando ? "Enviando..." : `Enviar ${arquivos.length || ""}`.trim()}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function AdminMediaClient() {
+  const [aba, setAba] = useState<MediaAssetTipoApi>("imagem");
   const [itens, setItens] = useState<MediaAssetApi[]>([]);
   const [total, setTotal] = useState(0);
   const [carregando, setCarregando] = useState(true);
@@ -193,21 +493,15 @@ export default function AdminMediaClient() {
   const [filtroCategoria, setFiltroCategoria] = useState("");
   const [filtroNome, setFiltroNome] = useState("");
   const [grupoDetalhe, setGrupoDetalhe] = useState<string | null>(null);
-
   const [mostrarUpload, setMostrarUpload] = useState(false);
-  const [novoGrupo, setNovoGrupo] = useState("");
-  const [novaCategoria, setNovaCategoria] = useState<(typeof CATEGORIAS)[number]>("Item");
-  const [novaDescricao, setNovaDescricao] = useState("");
-  const [novoArquivo, setNovoArquivo] = useState<File | null>(null);
-  const [enviando, setEnviando] = useState(false);
-  const [erroUpload, setErroUpload] = useState("");
 
   const carregar = useCallback(async () => {
     setCarregando(true);
     setErro("");
     try {
       const resultado = await listarMediaGruposAdmin({
-        categoria: filtroCategoria || undefined,
+        categoria: aba === "imagem" ? filtroCategoria || undefined : undefined,
+        tipo: aba,
         nome: filtroNome || undefined,
         porPagina: 60,
       });
@@ -218,38 +512,15 @@ export default function AdminMediaClient() {
     } finally {
       setCarregando(false);
     }
-  }, [filtroCategoria, filtroNome]);
+  }, [aba, filtroCategoria, filtroNome]);
 
   useEffect(() => {
     carregar();
   }, [carregar]);
 
-  async function enviar() {
-    if (!novoGrupo.trim() || !novoArquivo) {
-      setErroUpload("Preencha o grupo e escolha um arquivo.");
-      return;
-    }
-    setEnviando(true);
-    setErroUpload("");
-    try {
-      const formData = new FormData();
-      formData.append("grupo", novoGrupo.trim());
-      formData.append("categoria", novaCategoria);
-      if (novaDescricao) formData.append("descricao", novaDescricao);
-      formData.append("arquivo", novoArquivo);
-      const resultado = await enviarMediaAdmin(formData);
-      if (!resultado.success) {
-        setErroUpload(resultado.message || "Não foi possível enviar o arquivo.");
-        return;
-      }
-      setMostrarUpload(false);
-      setNovoGrupo("");
-      setNovaDescricao("");
-      setNovoArquivo(null);
-      await carregar();
-    } finally {
-      setEnviando(false);
-    }
+  function mudarAba(nova: MediaAssetTipoApi) {
+    setAba(nova);
+    setFiltroCategoria("");
   }
 
   return (
@@ -267,8 +538,18 @@ export default function AdminMediaClient() {
       </div>
       <p className="text-xs text-white/50">
         Cada envio pertence a um &quot;grupo&quot; — suba de novo pro mesmo grupo pra criar uma nova versão sem perder as
-        anteriores. Copie a URL de um grupo e cole no campo Imagem (URL) de Itens, Habilidades, Conjuntos etc.
+        anteriores. Copie a URL de um grupo e cole no campo Imagem (URL) de Itens, Habilidades, Conjuntos etc. Dá pra enviar
+        várias imagens de uma vez — cada uma vira um grupo próprio.
       </p>
+
+      <div className="flex gap-2">
+        <button type="button" onClick={() => mudarAba("imagem")} className={`rounded-lg px-3 py-1.5 text-sm font-bold ${aba === "imagem" ? "bg-[#BC8418] text-black" : "border border-white/20 text-white/70"}`}>
+          Imagens
+        </button>
+        <button type="button" onClick={() => mudarAba("audio")} className={`rounded-lg px-3 py-1.5 text-sm font-bold ${aba === "audio" ? "bg-[#BC8418] text-black" : "border border-white/20 text-white/70"}`}>
+          Músicas
+        </button>
+      </div>
 
       <div className="flex flex-wrap gap-2">
         <input
@@ -278,14 +559,16 @@ export default function AdminMediaClient() {
           onChange={(e) => setFiltroNome(e.target.value)}
           className="rounded-lg border border-white/20 bg-black/30 px-3 py-1.5 text-sm text-white"
         />
-        <select value={filtroCategoria} onChange={(e) => setFiltroCategoria(e.target.value)} className="rounded-lg border border-white/20 bg-black/30 px-3 py-1.5 text-sm text-white">
-          <option value="">Todas as categorias</option>
-          {CATEGORIAS.map((c) => (
-            <option key={c} value={c}>
-              {c}
-            </option>
-          ))}
-        </select>
+        {aba === "imagem" && (
+          <select value={filtroCategoria} onChange={(e) => setFiltroCategoria(e.target.value)} className="rounded-lg border border-white/20 bg-black/30 px-3 py-1.5 text-sm text-white">
+            <option value="">Todas as categorias</option>
+            {CATEGORIAS_IMAGEM.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+        )}
       </div>
 
       {erro && <p className="rounded-lg bg-black/50 px-3 py-2 text-sm text-red-400">{erro}</p>}
@@ -295,21 +578,40 @@ export default function AdminMediaClient() {
       ) : (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
           {itens.map((item) => (
-            <button
+            // div (não button) porque o card de áudio precisa embutir um
+            // <audio controls> — elemento interativo, que HTML não deixa
+            // aninhar dentro de outro elemento interativo (<button>).
+            <div
               key={item.grupo}
-              type="button"
+              role="button"
+              tabIndex={0}
               onClick={() => setGrupoDetalhe(item.grupo)}
-              className="flex flex-col gap-1 rounded-2xl border-2 border-[#F3B43F]/40 bg-[#292018]/80 p-3 text-left text-white hover:bg-[#3a2c14]"
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") setGrupoDetalhe(item.grupo);
+              }}
+              className="flex cursor-pointer flex-col gap-1 rounded-2xl border-2 border-[#F3B43F]/40 bg-[#292018]/80 p-3 text-left text-white hover:bg-[#3a2c14]"
             >
-              {/* eslint-disable-next-line @next/next/no-img-element -- thumbnail de mídia enviada pelo admin, nunca passa por next/image */}
-              <img src={urlDaVersao(item.grupo, item.versao)} alt={item.grupo} className="h-24 w-full rounded-lg border border-white/10 bg-black/30 object-contain" />
+              {item.tipo === "audio" ? (
+                <div className="flex h-24 w-full flex-col items-center justify-center gap-1 rounded-lg border border-white/10 bg-black/30 text-3xl">
+                  🎵
+                  <audio
+                    controls
+                    src={urlDaVersao(item.grupo, item.versao)}
+                    onClick={(e) => e.stopPropagation()}
+                    className="h-6 w-full px-1"
+                  />
+                </div>
+              ) : (
+                // eslint-disable-next-line @next/next/no-img-element -- thumbnail de mídia enviada pelo admin, nunca passa por next/image
+                <img src={urlDaVersao(item.grupo, item.versao)} alt={item.grupo} className="h-24 w-full rounded-lg border border-white/10 bg-black/30 object-contain" />
+              )}
               <p className="truncate text-xs font-bold text-[#F3B43F]" title={item.grupo}>
                 {item.grupo}
               </p>
               <p className="text-[10px] text-white/50">
                 {item.categoria} · v{item.versao}
               </p>
-            </button>
+            </div>
           ))}
           {itens.length === 0 && <p className="col-span-full text-sm text-white/50">Nenhuma mídia enviada ainda.</p>}
         </div>
@@ -317,48 +619,11 @@ export default function AdminMediaClient() {
       {total > itens.length && <p className="text-xs text-white/40">Mostrando {itens.length} de {total} — refine a busca pra ver mais.</p>}
 
       {mostrarUpload && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={() => setMostrarUpload(false)}>
-          <div onClick={(e) => e.stopPropagation()} className="flex w-full max-w-md flex-col gap-3 rounded-2xl border-2 border-[#F3B43F] bg-[#292018] p-5 text-white shadow-2xl">
-            <p className="font-imFeel text-xl text-[#F3B43F]">Enviar mídia</p>
-            {erroUpload && <p className="rounded-lg bg-black/50 px-3 py-2 text-sm text-red-400">{erroUpload}</p>}
-            <label className="flex flex-col gap-1 text-xs">
-              Grupo (identificador único, ex: espada-flamejante-icone)
-              <input
-                required
-                value={novoGrupo}
-                onChange={(e) => setNovoGrupo(e.target.value)}
-                placeholder="minusculo-com-hifen"
-                className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm"
-              />
-            </label>
-            <label className="flex flex-col gap-1 text-xs">
-              Categoria
-              <select value={novaCategoria} onChange={(e) => setNovaCategoria(e.target.value as (typeof CATEGORIAS)[number])} className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm">
-                {CATEGORIAS.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="flex flex-col gap-1 text-xs">
-              Descrição (opcional)
-              <textarea value={novaDescricao} onChange={(e) => setNovaDescricao(e.target.value)} rows={2} className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm" />
-            </label>
-            <label className="flex flex-col gap-1 text-xs">
-              Arquivo (PNG, JPEG, WEBP ou GIF — até 5MB)
-              <input required type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={(e) => setNovoArquivo(e.target.files?.[0] ?? null)} className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm" />
-            </label>
-            <div className="mt-2 flex justify-end gap-2">
-              <button type="button" onClick={() => setMostrarUpload(false)} className="rounded-lg border border-white/20 px-4 py-2 text-sm text-white/70 hover:bg-white/10">
-                Cancelar
-              </button>
-              <button type="button" onClick={enviar} disabled={enviando} className="rounded-lg bg-[#BC8418] px-4 py-2 text-sm font-bold text-black hover:bg-[#a5710f] disabled:opacity-50">
-                {enviando ? "Enviando..." : "Enviar"}
-              </button>
-            </div>
-          </div>
-        </div>
+        <ModalEnviarMidia
+          tipoInicial={aba}
+          onFechar={() => setMostrarUpload(false)}
+          onConcluido={carregar}
+        />
       )}
 
       {grupoDetalhe && <DetalheGrupo grupo={grupoDetalhe} onFechar={() => setGrupoDetalhe(null)} onMudou={carregar} />}

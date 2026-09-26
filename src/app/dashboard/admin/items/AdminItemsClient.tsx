@@ -160,6 +160,7 @@ const TIPOS_ITEM = [
   "QuestItem",
   "Currencia",
   "Espolio",
+  "Ferramenta",
 ];
 const RARIDADES = ["Comum", "Incomum", "Raro", "Epico", "Lendario", "Mitico"];
 const TIPOS_DANO = ["Fisico", "Magico"];
@@ -170,6 +171,8 @@ const SLOTS_ARMADURA = ["Cabeca", "Torso", "Pes", "Acessorio1", "Acessorio2"];
 const TIPOS_COM_ARMA = ["Arma"];
 const TIPOS_COM_ARMADURA = ["Armadura", "Capacete", "Escudo", "Acessorio1", "Acessorio2"];
 const TIPOS_COM_CONSUMIVEL = ["Consumivel"];
+const TIPOS_COM_VARA_PESCA = ["Ferramenta"];
+const TIPOS_EQUIPAMENTO = [...TIPOS_COM_ARMA, ...TIPOS_COM_ARMADURA, ...TIPOS_COM_VARA_PESCA];
 
 function formularioVazio(): PayloadItemAdmin {
   return {
@@ -189,6 +192,7 @@ function formularioVazio(): PayloadItemAdmin {
     weapon: { dano_min: 0, dano_max: 0, tipo_dano: "Fisico", tipo_arma: "Espada", bonus_atributo: "Forca", valor_bonus_atributo: 0 },
     armor: { slot_equipamento: "Cabeca", defesa: 0, bonus_forca: 0, bonus_vitalidade: 0, bonus_inteligencia: 0, bonus_agilidade: 0, bonus_velocidade: 0 },
     consumable: { efeito_vida: 0, efeito_mana: 0, efeito_atributo: "", valor_atributo: 0, duracao_efeito: null },
+    fishingRod: { forca_linha: 100, controle: 100, recolhimento: 100, precisao: 100, estabilidade: 100, nivel_pesca_minimo: 1 },
   };
 }
 
@@ -269,6 +273,7 @@ export default function AdminItemsClient() {
       weapon: item.weaponProperties ?? formularioVazio().weapon,
       armor: item.armorProperties ?? formularioVazio().armor,
       consumable: item.consumableProperties ?? formularioVazio().consumable,
+      fishingRod: item.fishingRodProperties ?? formularioVazio().fishingRod,
     });
     setMostrarForm(true);
     setMensagem("");
@@ -410,9 +415,11 @@ export default function AdminItemsClient() {
         <table className="w-full text-left text-sm text-white">
           <thead>
             <tr className="border-b border-white/10 text-xs uppercase text-white/50">
+              <th className="px-3 py-2">ID</th>
               <th className="px-3 py-2">Imagem</th>
               <th className="px-3 py-2">Nome</th>
               <th className="px-3 py-2">Tipo</th>
+              <th className="px-3 py-2">Tier</th>
               <th className="px-3 py-2">Raridade</th>
               <th className="px-3 py-2">Loja</th>
               <th className="px-3 py-2">Mercado</th>
@@ -423,19 +430,20 @@ export default function AdminItemsClient() {
           <tbody>
             {carregando ? (
               <tr>
-                <td colSpan={8} className="px-3 py-4 text-center text-white/50">
+                <td colSpan={10} className="px-3 py-4 text-center text-white/50">
                   Carregando...
                 </td>
               </tr>
             ) : itens.length === 0 ? (
               <tr>
-                <td colSpan={8} className="px-3 py-4 text-center text-white/50">
+                <td colSpan={10} className="px-3 py-4 text-center text-white/50">
                   Nenhum item encontrado.
                 </td>
               </tr>
             ) : (
               itens.map((item) => (
                 <tr key={item.id} className={`border-b border-white/5 ${!item.ativo ? "opacity-50" : ""}`}>
+                  <td className="px-3 py-2 font-mono text-xs text-white/60">#{item.id}</td>
                   <td className="px-3 py-2">
                     {item.imagem_url ? (
                       // eslint-disable-next-line @next/next/no-img-element
@@ -450,6 +458,7 @@ export default function AdminItemsClient() {
                   </td>
                   <td className="px-3 py-2 font-bold">{item.nome}</td>
                   <td className="px-3 py-2">{item.tipo_item}</td>
+                  <td className="px-3 py-2">{item.tier_equipamento ?? "—"}</td>
                   <td className="px-3 py-2">{item.raridade}</td>
                   <td className="px-3 py-2">{item.disponivel_loja ? "Sim" : "Não"}</td>
                   <td className="px-3 py-2">{item.negociavel_mercado ? "Sim" : "Não"}</td>
@@ -519,7 +528,17 @@ export default function AdminItemsClient() {
             onClick={(e) => e.stopPropagation()}
             className="flex max-h-[85vh] w-full max-w-lg flex-col gap-3 overflow-y-auto rounded-2xl border-2 border-[#F3B43F] bg-[#292018] p-5 text-white shadow-2xl"
           >
-            <p className="font-imFeel text-xl text-[#F3B43F]">{editandoId ? "Editar item" : "Novo item"}</p>
+            <div className="flex items-center gap-2">
+              <p className="font-imFeel text-xl text-[#F3B43F]">{editandoId ? "Editar item" : "Novo item"}</p>
+              {editandoId && (
+                <span
+                  title="ID do item — apenas leitura, nunca editável"
+                  className="rounded-full border border-white/20 bg-black/30 px-2 py-0.5 font-mono text-[10px] text-white/60"
+                >
+                  ID: {editandoId}
+                </span>
+              )}
+            </div>
             {mensagem && <p className="text-sm text-[#F3B43F]">{mensagem}</p>}
 
             <label className="flex flex-col gap-1 text-xs">
@@ -574,6 +593,25 @@ export default function AdminItemsClient() {
                 </select>
               </label>
             </div>
+
+            {TIPOS_EQUIPAMENTO.includes(tipoAtual) && (
+              <label className="flex flex-col gap-1 text-xs">
+                Tier (1-5) <span className="text-red-400">*</span>
+                <input
+                  type="number"
+                  min={1}
+                  max={5}
+                  value={form.item.tier_equipamento ?? ""}
+                  onChange={(e) =>
+                    setForm((f) => ({
+                      ...f,
+                      item: { ...f.item, tier_equipamento: e.target.value === "" ? null : Number(e.target.value) },
+                    }))
+                  }
+                  className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm"
+                />
+              </label>
+            )}
 
             <div className="flex gap-2">
               <label className="flex flex-1 flex-col gap-1 text-xs">
@@ -789,6 +827,40 @@ export default function AdminItemsClient() {
                       type="number"
                       value={form.consumable?.efeito_mana ?? 0}
                       onChange={(e) => setForm((f) => ({ ...f, consumable: { ...f.consumable!, efeito_mana: Number(e.target.value) } }))}
+                      className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm"
+                    />
+                  </label>
+                </div>
+              </fieldset>
+            )}
+
+            {TIPOS_COM_VARA_PESCA.includes(tipoAtual) && (
+              <fieldset className="flex flex-col gap-2 rounded-lg border border-white/10 p-3">
+                <legend className="px-1 text-xs font-bold uppercase text-[#F3B43F]">Propriedades de vara de pesca</legend>
+                <p className="text-[10px] text-white/40">
+                  Escala 0-1000 (mesma amplitude de Arma/Armadura). Nunca entra no Poder de Combate — vara não é equipamento de combate.
+                </p>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                  {(["forca_linha", "controle", "recolhimento", "precisao", "estabilidade"] as const).map((campo) => (
+                    <label key={campo} className="flex flex-col gap-1 text-xs">
+                      {campo.replace("_", " ")}
+                      <input
+                        type="number"
+                        min={0}
+                        max={1000}
+                        value={form.fishingRod?.[campo] ?? 100}
+                        onChange={(e) => setForm((f) => ({ ...f, fishingRod: { ...f.fishingRod!, [campo]: Number(e.target.value) } }))}
+                        className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm"
+                      />
+                    </label>
+                  ))}
+                  <label className="flex flex-col gap-1 text-xs">
+                    Nível de Pesca mín.
+                    <input
+                      type="number"
+                      min={1}
+                      value={form.fishingRod?.nivel_pesca_minimo ?? 1}
+                      onChange={(e) => setForm((f) => ({ ...f, fishingRod: { ...f.fishingRod!, nivel_pesca_minimo: Number(e.target.value) } }))}
                       className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm"
                     />
                   </label>
