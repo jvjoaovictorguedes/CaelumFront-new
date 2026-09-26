@@ -887,7 +887,7 @@ export interface MediaAssetApi {
   id: number;
   grupo: string;
   versao: number;
-  categoria: "Item" | "Power" | "Monster" | "EquipmentSet" | "Musica" | "Outro";
+  categoria: "Item" | "Power" | "Monster" | "EquipmentSet" | "Musica" | "Outro" | "Avatar";
   tipo: MediaAssetTipoApi;
   nome_arquivo_original: string | null;
   mime: string;
@@ -897,6 +897,11 @@ export interface MediaAssetApi {
   descricao: string | null;
   ativo: boolean;
   id_admin_criador: number | null;
+  // Só relevante pra categoria "Avatar" — null = liberado pra qualquer
+  // personagem; preenchido = só quem É daquela raça/classe pode
+  // escolher esse avatar no AvatarPickerModal.
+  restrito_raca_id: number | null;
+  restrito_classe_id: number | null;
   createdAt: string;
   updatedAt: string;
 }

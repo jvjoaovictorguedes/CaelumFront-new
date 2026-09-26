@@ -61,12 +61,17 @@ export function getRaceImage(
   return localImage ?? resolveMediaUrl(imageUrl);
 }
 
-// Avatar de perfil escolhido pelo jogador (ver AVATARES_VALIDOS em
-// characterController.js, no backend — as duas listas de chaves
-// precisam ficar em sincronia). Todo mundo reaproveita arte que já
-// existia no jogo (ilustrações de raça/classe + algumas extras que já
-// estavam em public/images sem uso nenhum), então não precisa de
-// upload nem de uma URL arbitrária vinda do personagem.
+// Avatar de perfil escolhido pelo jogador (ver avatarService.js, no
+// backend — as chaves estáticas precisam ficar em sincronia). Todo
+// mundo reaproveita arte que já existia no jogo (ilustrações de raça/
+// classe), então não precisa de upload nem de uma URL arbitrária vinda
+// do personagem. "minotauro"/"dragao"/"guardiao_celeste" foram
+// removidos: não correspondem a nenhuma raça/classe real do jogo (bug
+// relatado — apareciam como opção pra qualquer personagem sem fazer
+// sentido nenhum). guerreiro/mago/celestial só aparecem no
+// AvatarPickerModal quando o backend confirma (via GET
+// /characters/:id/avatares-disponiveis) que o personagem É de fato
+// daquela classe/raça — ver AvatarPickerModal.tsx.
 export const AVATAR_CATALOGO: { chave: string; rotulo: string; src: string }[] = [
   { chave: "guerreiro", rotulo: "Guerreiro", src: "/images/guerreiro-lutador.jpg" },
   { chave: "mago", rotulo: "Mago", src: "/images/mago-lutador.jpg" },
@@ -79,9 +84,6 @@ export const AVATAR_CATALOGO: { chave: string; rotulo: string; src: string }[] =
   { chave: "orc", rotulo: "Orc", src: "/images/orc.png" },
   { chave: "orca", rotulo: "Orca", src: "/images/female-orc.webp" },
   { chave: "celestial", rotulo: "Celestial", src: "/images/celestial.webp" },
-  { chave: "minotauro", rotulo: "Minotauro", src: "/images/minotauro.jpg" },
-  { chave: "dragao", rotulo: "Dragão", src: "/images/dragon.webp" },
-  { chave: "guardiao_celeste", rotulo: "Guardião Celeste", src: "/images/heavenly.webp" },
 ];
 
 export function getAvatarUrl(avatarKey?: string | null) {

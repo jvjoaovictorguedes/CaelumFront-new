@@ -4,17 +4,21 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import {
   desativarMediaGrupoAdmin,
+  listarClassesPublicas,
   listarMediaGruposAdmin,
   listarMediaVersoesAdmin,
+  listarRacasPublicas,
   mensagemDeErroAdmin,
   reverterMediaVersaoAdmin,
+  type ClassPublicaApi,
   type MediaAssetApi,
   type MediaAssetTipoApi,
+  type RacePublicaApi,
 } from "@/lib/api/admin";
 import { resolveMediaUrl } from "@/utils/media-url";
 import { enviarMediaAdmin } from "./uploadMediaAction";
 
-const CATEGORIAS_IMAGEM = ["Item", "Power", "Monster", "EquipmentSet", "Outro"] as const;
+const CATEGORIAS_IMAGEM = ["Item", "Power", "Monster", "EquipmentSet", "Avatar", "Outro"] as const;
 const CATEGORIA_AUDIO = "Musica" as const;
 const ACCEPT_IMAGEM = "image/png,image/jpeg,image/webp,image/gif";
 const ACCEPT_AUDIO = "audio/mpeg,audio/mp3,audio/ogg,audio/wav,audio/x-wav";
@@ -63,6 +67,64 @@ function slugUnicoNaLista(base: string, usados: Set<string>): string {
   return slug;
 }
 
+// Raças/classes pro seletor de restrição de avatar — só busca uma vez,
+// reaproveitado pelos dois formulários (enviar novo / nova versão).
+// Mesmas listas "públicas" já usadas em AdminPowersClient pra vincular
+// Power a raça/classe (raças raras como Celestial não aparecem aqui —
+// mesma limitação já existente naquela tela, não uma regressão desta).
+function useRacasEClasses() {
+  const [racas, setRacas] = useState<RacePublicaApi[]>([]);
+  const [classes, setClasses] = useState<ClassPublicaApi[]>([]);
+  useEffect(() => {
+    listarRacasPublicas().then(setRacas).catch(() => {});
+    listarClassesPublicas().then(setClasses).catch(() => {});
+  }, []);
+  return { racas, classes };
+}
+
+function SeletorRestricaoAvatar({
+  racas,
+  classes,
+  restritoRacaId,
+  restritoClasseId,
+  onMudarRaca,
+  onMudarClasse,
+}: {
+  racas: RacePublicaApi[];
+  classes: ClassPublicaApi[];
+  restritoRacaId: string;
+  restritoClasseId: string;
+  onMudarRaca: (v: string) => void;
+  onMudarClasse: (v: string) => void;
+}) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      <label className="flex flex-1 flex-col gap-1 text-[10px] text-white/60">
+        Restringir à raça (opcional)
+        <select value={restritoRacaId} onChange={(e) => onMudarRaca(e.target.value)} className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm">
+          <option value="">Qualquer raça</option>
+          {racas.map((r) => (
+            <option key={r.id} value={r.id}>
+              {r.nome_masculino}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="flex flex-1 flex-col gap-1 text-[10px] text-white/60">
+        Restringir à classe (opcional)
+        <select value={restritoClasseId} onChange={(e) => onMudarClasse(e.target.value)} className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm">
+          <option value="">Qualquer classe</option>
+          {classes.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.nome}
+            </option>
+          ))}
+        </select>
+      </label>
+    </div>
+  );
+}
+
 type StatusEnvio = "pendente" | "enviando" | "ok" | "erro";
 
 interface ArquivoParaEnvio {
@@ -83,6 +145,9 @@ function DetalheGrupo({ grupo, onFechar, onMudou }: { grupo: string; onFechar: (
   const [descricao, setDescricao] = useState("");
   const [arquivo, setArquivo] = useState<File | null>(null);
   const [enviando, setEnviando] = useState(false);
+  const [restritoRacaId, setRestritoRacaId] = useState("");
+  const [restritoClasseId, setRestritoClasseId] = useState("");
+  const { racas, classes } = useRacasEClasses();
 
   const tipoGrupo: MediaAssetTipoApi = versoes[0]?.tipo ?? "imagem";
   const categoriasDisponiveis: readonly string[] = tipoGrupo === "audio" ? [CATEGORIA_AUDIO] : CATEGORIAS_IMAGEM;
@@ -93,7 +158,11 @@ function DetalheGrupo({ grupo, onFechar, onMudou }: { grupo: string; onFechar: (
     try {
       const lista = await listarMediaVersoesAdmin(grupo);
       setVersoes(lista);
-      if (lista[0]) setCategoria(lista[0].categoria);
+      if (lista[0]) {
+        setCategoria(lista[0].categoria);
+        setRestritoRacaId(lista[0].restrito_raca_id != null ? String(lista[0].restrito_raca_id) : "");
+        setRestritoClasseId(lista[0].restrito_classe_id != null ? String(lista[0].restrito_classe_id) : "");
+      }
     } catch (error) {
       setErro(mensagemDeErroAdmin(error, "Não foi possível carregar as versões."));
     } finally {
@@ -119,6 +188,8 @@ function DetalheGrupo({ grupo, onFechar, onMudou }: { grupo: string; onFechar: (
       formData.append("categoria", categoria);
       formData.append("tipo", tipoGrupo);
       if (descricao) formData.append("descricao", descricao);
+      if (categoria === "Avatar" && restritoRacaId) formData.append("restrito_raca_id", restritoRacaId);
+      if (categoria === "Avatar" && restritoClasseId) formData.append("restrito_classe_id", restritoClasseId);
       formData.append("arquivo", arquivo);
       const resultado = await enviarMediaAdmin(formData);
       if (!resultado.success) {
@@ -207,6 +278,16 @@ function DetalheGrupo({ grupo, onFechar, onMudou }: { grupo: string; onFechar: (
               {enviando ? "Enviando..." : "+ Versão"}
             </button>
           </div>
+          {categoria === "Avatar" && (
+            <SeletorRestricaoAvatar
+              racas={racas}
+              classes={classes}
+              restritoRacaId={restritoRacaId}
+              restritoClasseId={restritoClasseId}
+              onMudarRaca={setRestritoRacaId}
+              onMudarClasse={setRestritoClasseId}
+            />
+          )}
           <textarea value={descricao} onChange={(e) => setDescricao(e.target.value)} placeholder="Descrição (opcional)" rows={2} className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm" />
         </div>
 
@@ -263,6 +344,9 @@ function ModalEnviarMidia({
   const [arquivos, setArquivos] = useState<ArquivoParaEnvio[]>([]);
   const [enviando, setEnviando] = useState(false);
   const [erroGeral, setErroGeral] = useState("");
+  const [restritoRacaId, setRestritoRacaId] = useState("");
+  const [restritoClasseId, setRestritoClasseId] = useState("");
+  const { racas, classes } = useRacasEClasses();
   // Todo grupo já ativo no servidor, de QUALQUER categoria/tipo — busca
   // uma vez, ao abrir o modal. "Cada arquivo vira um grupo próprio"
   // (aviso abaixo) é sempre a intenção aqui, nunca versionar um grupo
@@ -346,6 +430,8 @@ function ModalEnviarMidia({
         formData.append("categoria", categoria);
         formData.append("tipo", tipo);
         if (descricao) formData.append("descricao", descricao);
+        if (categoria === "Avatar" && restritoRacaId) formData.append("restrito_raca_id", restritoRacaId);
+        if (categoria === "Avatar" && restritoClasseId) formData.append("restrito_classe_id", restritoClasseId);
         formData.append("arquivo", item.file);
         const resultado = await enviarMediaAdmin(formData);
         if (!resultado.success) {
@@ -394,6 +480,16 @@ function ModalEnviarMidia({
             ))}
           </select>
         </label>
+        {categoria === "Avatar" && (
+          <SeletorRestricaoAvatar
+            racas={racas}
+            classes={classes}
+            restritoRacaId={restritoRacaId}
+            restritoClasseId={restritoClasseId}
+            onMudarRaca={setRestritoRacaId}
+            onMudarClasse={setRestritoClasseId}
+          />
+        )}
         <label className="flex flex-col gap-1 text-xs">
           Descrição (opcional, aplicada a todos os arquivos deste envio)
           <textarea value={descricao} onChange={(e) => setDescricao(e.target.value)} disabled={enviando} rows={2} className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm" />
