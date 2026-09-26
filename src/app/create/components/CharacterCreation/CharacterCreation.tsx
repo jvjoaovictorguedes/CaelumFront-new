@@ -129,16 +129,29 @@ const LABEL_ATRIBUTO: { chave: keyof RaceData; label: string }[] = [
   { chave: "bonus_velocidade", label: "Velocidade" },
 ];
 
+// Bug reportado: em 1280x720/1366x768/1440x900 os atributos da raça
+// ficavam minúsculos e ilegíveis. Duas causas, corrigidas juntas:
+// 1) esta badge usava um `text-[10px]` fixo pra QUALQUER viewport —
+//    nunca crescia em telas maiores, então nunca havia "tamanho bom"
+//    de verdade, só telas grandes disfarçando o problema com mais
+//    espaço em volta. Agora cresce de 12px (mobile) até 14px (>=640px),
+//    nunca menor que antes.
+// 2) o container pai (ver `grid-cols-1 2xl:grid-cols-2` mais abaixo)
+//    dividia a tela em Raça+Classe já a partir de 1024px — exatamente
+//    a faixa 1280-1440px reclamada — sobrando só ~500px pra 4 cards de
+//    raça lado a lado. Empurrado pra 2xl (1536px) devolve a largura
+//    cheia do formulário pra essa faixa; 1920px+ continua dividido
+//    igual antes (visual grande preservado).
 function AtributosDaRaca({ raca }: { raca: RaceData }) {
   return (
-    <div className="flex flex-wrap justify-center gap-1 text-[10px]">
+    <div className="grid grid-cols-2 justify-items-center gap-1.5 sm:grid-cols-3 sm:gap-2">
       {LABEL_ATRIBUTO.map(({ chave, label }) => {
         const valor = raca[chave] as number;
         if (!valor) return null;
         return (
           <span
             key={chave}
-            className={`rounded px-1.5 py-0.5 font-bold ${
+            className={`w-full rounded px-2 py-1 text-center text-xs font-bold sm:text-sm ${
               valor > 0 ? "bg-green-900/40 text-green-300" : "bg-red-900/40 text-red-300"
             }`}
           >
@@ -569,7 +582,14 @@ export default function CharacterCreation() {
             </label>
           </div>
 
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          {/* Raça e Classe ficam lado a lado só a partir de 2xl (1536px) —
+              antes disso (era `lg`, 1024px) cada coluna passava a
+              dividir a largura do formulário exatamente na faixa
+              1280-1440px reclamada, sobrando pouco espaço pros 4 cards
+              de raça por linha e pro bloco de atributos. Empilhado em
+              telas menores/médias, o visual em telas grandes (>=1536px,
+              cobre 1920x1080) fica idêntico ao de antes. */}
+          <div className="grid grid-cols-1 gap-6 2xl:grid-cols-2">
             {/* Coluna Raça */}
             <div>
               <h3 className="mb-3 text-center text-xl text-[#F3B43F] sm:text-2xl">Raça</h3>
