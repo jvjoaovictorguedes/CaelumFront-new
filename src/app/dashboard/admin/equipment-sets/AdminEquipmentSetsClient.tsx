@@ -182,7 +182,7 @@ function DetalheSet({ set, efeitos, onFechar, onMudou }: { set: EquipmentSetApi;
           ))}
           <form onSubmit={adicionarPeca} className="flex flex-wrap items-end gap-2 pt-1">
             <label className="flex flex-col gap-1 text-[10px] text-white/60">
-              Item (nome — o ID é só pra referência, nunca digitado)
+              Item (busque por ID ou nome)
               <ItemSelect
                 itens={itensDisponiveis}
                 value={novoItemId}
