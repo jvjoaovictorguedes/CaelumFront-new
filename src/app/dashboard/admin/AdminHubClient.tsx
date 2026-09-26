@@ -65,6 +65,7 @@ const CATEGORIAS: CategoriaAdmin[] = [
     modulos: [
       { titulo: "Buff Global", descricao: "XP/Ouro/Drop de Aventura e XP de Expedição, por tempo limitado.", href: "/dashboard/admin/buffs", permissao: "events.manage" },
       { titulo: "Torneios", descricao: "Criar, iniciar e encerrar torneios.", href: "/dashboard/admin/tournaments", permissao: "tournaments.manage" },
+      { titulo: "Códigos de Resgate", descricao: "Criar códigos promocionais que jogadores resgatam por recompensas.", href: "/dashboard/admin/redemption-codes", permissao: "codes.manage" },
     ],
   },
   {

@@ -1117,6 +1117,53 @@ export async function concederPremiacaoAdmin(idPersonagem: number, payload: Payl
   return resposta.data.data;
 }
 
+// Painel Administrativo — Códigos de Resgate. Recompensa reaproveita o
+// mesmo formato de PayloadGrantAdmin (ouro/xp/itens), sem "motivo".
+export interface RecompensaCodigoApi {
+  ouro?: number;
+  xp?: number;
+  itens?: { id_item: number; quantidade: number; raridade?: string; refinamento?: number }[];
+}
+export interface RedemptionCodeApi {
+  id: number;
+  codigo: string;
+  recompensa: RecompensaCodigoApi;
+  expira_em: string;
+  ativo: boolean;
+  id_admin_criador: number | null;
+  createdAt: string;
+  updatedAt: string;
+  total_resgates: number;
+}
+export interface PayloadCriarRedemptionCode {
+  codigo: string;
+  recompensa: RecompensaCodigoApi;
+  expira_em: string;
+}
+export interface PayloadAtualizarRedemptionCode {
+  ativo?: boolean;
+  expira_em?: string;
+  recompensa?: RecompensaCodigoApi;
+}
+export async function listarRedemptionCodesAdmin(): Promise<RedemptionCodeApi[]> {
+  const resposta = await axiosInstance.get<{ data: { codigos: RedemptionCodeApi[] } }>("/admin/redemption-codes");
+  return resposta.data.data.codigos;
+}
+export async function criarRedemptionCodeAdmin(payload: PayloadCriarRedemptionCode): Promise<RedemptionCodeApi> {
+  const resposta = await axiosInstance.post<{ data: { codigo: RedemptionCodeApi } }>("/admin/redemption-codes", payload);
+  return resposta.data.data.codigo;
+}
+export async function atualizarRedemptionCodeAdmin(
+  id: number,
+  payload: PayloadAtualizarRedemptionCode,
+): Promise<RedemptionCodeApi> {
+  const resposta = await axiosInstance.patch<{ data: { codigo: RedemptionCodeApi } }>(
+    `/admin/redemption-codes/${id}`,
+    payload,
+  );
+  return resposta.data.data.codigo;
+}
+
 // Proezas Únicas — ver bloco completo (catálogo/Legados/Triggers/
 // Histórico-Reparos) mais abaixo, na Fase 6 do Painel Administrativo.
 // Uma versão simplificada e conflitante (mesmos nomes de tipo, rotas

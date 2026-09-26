@@ -9,6 +9,7 @@ import CombatLoadoutPanel from "./components/CombatLoadoutPanel";
 import EquipmentPanel from "./components/EquipmentPanel";
 import EquipmentPrivacyToggle from "./components/EquipmentPrivacyToggle";
 import EvolutionsPanel from "./components/EvolutionsPanel";
+import RedeemCodeForm from "./components/RedeemCodeForm";
 import StatusPanel from "./components/StatusPanel";
 import PageMusic from "@/components/music/PageMusic";
 
@@ -63,6 +64,7 @@ export default async function CharacterPage() {
         informacoes={
           <div className="flex flex-col gap-4">
             <EquipmentPrivacyToggle characterId={character.id} />
+            <RedeemCodeForm characterId={character.id} />
             <ChangePasswordForm email={user?.email} />
           </div>
         }
