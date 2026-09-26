@@ -13,6 +13,7 @@ import PvpProfileSummary from "../components/PvpProfileSummary";
 import BestiaryProfileSummary from "../components/BestiaryProfileSummary";
 import AchievementShowcase from "../components/AchievementShowcase";
 import ProfileEditModal from "../components/ProfileEditModal";
+import UniqueFeatProfileCard from "@/components/unique-feats/UniqueFeatProfileCard";
 
 const ABAS = [
   { id: "visao_geral", label: "Visão Geral" },
@@ -74,6 +75,11 @@ export default function ProfilePage({ params }: { params: Promise<{ characterId:
   return (
     <div className="mx-auto flex max-w-4xl flex-col gap-4 p-2 sm:p-4">
       <AdventurerHero perfil={perfil} />
+
+      {/* Fora das abas de propósito — Proezas Únicas são raras o bastante
+          pra merecer visibilidade imediata, nunca escondidas atrás de um
+          clique como as Conquistas comuns (§14, "não diluir a raridade"). */}
+      <UniqueFeatProfileCard uniqueFeats={perfil.uniqueFeats} />
 
       {perfil.permissions.eh_proprio && (
         <button

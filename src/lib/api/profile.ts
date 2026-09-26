@@ -8,6 +8,7 @@
  */
 import axiosInstance from "@/utils/axiosIntance";
 import type { Propriedades, Slot } from "@/components/equipment/BonecoDePapel";
+import type { UniqueFeatItem } from "@/lib/api/unique-feats";
 
 export interface PerfilIdentity {
   id: number;
@@ -124,6 +125,10 @@ export interface PerfilJogador {
   pvp: PerfilPvp;
   bestiary: PerfilBestiario;
   achievements: { total: number; lista: PerfilConquista[] };
+  // Sistema de Proezas Únicas §14 — sempre completo (é o próprio
+  // aventureiro exibido que é o dono do feito, nunca do visitante), card
+  // distinto de `achievements` de propósito.
+  uniqueFeats: UniqueFeatItem[];
   highlights: PerfilHighlights;
   permissions: PerfilPermissoes;
   // Só presente no próprio perfil (TitleSelector, §25/§43).

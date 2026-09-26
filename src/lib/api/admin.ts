@@ -692,6 +692,9 @@ export interface PowerApi {
   valor_escala: number;
   imagem_url: string | null;
   efeitosDeStatus?: PowerStatusEffectApi[];
+  // Sistema de Proezas Únicas §9 — marca técnica de aquisição restrita
+  // (sempre presente na resposta do backend, mesmo pra Powers normais).
+  acquisition_scope?: "NORMAL" | "UNIQUE_FEAT";
 }
 
 export interface PayloadPowerAdmin {
@@ -2307,4 +2310,204 @@ export interface ForgeMetricasApi {
 export async function obterForgeMetricasAdmin(): Promise<ForgeMetricasApi> {
   const resposta = await axiosInstance.get<{ data: ForgeMetricasApi }>("/admin/forge/metrics");
   return resposta.data.data;
+}
+
+// ---------------------------------------------------------------------
+// Painel Administrativo Fase 6 — Sistema de Proezas Únicas (§19).
+// uniquefeats.manage cobre Proezas/Legados/Triggers/Histórico; a
+// revogação e a transferência de claim (reparo excepcional) exigem a
+// permissão SEPARADA e mais forte uniquefeats.repair (só SuperAdmin —
+// ver adminUniqueFeatRoutes.js no backend). trigger_key/trigger_config
+// nunca são validados aqui: os schemas vêm sempre em runtime de
+// listarUniqueFeatTriggerSchemasAdmin/validarUniqueFeatTriggerConfigAdmin,
+// nunca hardcoded no frontend.
+export interface UniqueFeatTriggerSchemaApi {
+  trigger_key: string;
+  schema: Record<string, "number" | "string" | "boolean" | "array">;
+}
+export async function listarUniqueFeatTriggerSchemasAdmin(): Promise<UniqueFeatTriggerSchemaApi[]> {
+  const resposta = await axiosInstance.get<{ data: { itens: UniqueFeatTriggerSchemaApi[] } }>("/admin/unique-feats/triggers/schemas");
+  return resposta.data.data.itens;
+}
+export async function obterUniqueFeatTriggerSchemaAdmin(triggerKey: string): Promise<UniqueFeatTriggerSchemaApi> {
+  const resposta = await axiosInstance.get<{ data: UniqueFeatTriggerSchemaApi }>(`/admin/unique-feats/triggers/schemas/${triggerKey}`);
+  return resposta.data.data;
+}
+export async function validarUniqueFeatTriggerConfigAdmin(triggerKey: string, triggerConfig: Record<string, unknown>): Promise<{ valido: true }> {
+  const resposta = await axiosInstance.post<{ data: { valido: true } }>("/admin/unique-feats/triggers/validar", {
+    trigger_key: triggerKey,
+    trigger_config: triggerConfig,
+  });
+  return resposta.data.data;
+}
+
+export interface UniqueFeatClaimApi {
+  id: number;
+  id_unique_feat: number;
+  id_personagem: number | null;
+  character_name_snapshot: string;
+  claimed_at: string;
+  trigger_key: string;
+  trigger_snapshot: Record<string, unknown>;
+  source_event_id: string | null;
+  status: "VALID" | "REVOKED";
+  repair_metadata: Record<string, unknown> | null;
+  proeza?: { id: number; key: string; nome: string; id_power_reward: number };
+  personagem?: { id: number; nome: string } | null;
+}
+
+export interface UniqueFeatApi {
+  id: number;
+  key: string;
+  nome: string;
+  descricao_publica: string;
+  descricao_secreta_admin: string;
+  icone_url: string | null;
+  categoria: string | null;
+  trigger_key: string;
+  trigger_config: Record<string, unknown>;
+  id_power_reward: number;
+  id_achievement_reward: number | null;
+  id_title_reward: number | null;
+  visibility_before_claim: "HIDDEN" | "TEASER";
+  reveal_after_claim: "FULL" | "FLAVOR_ONLY" | "REMAIN_SECRET";
+  announce_global: boolean;
+  ativa: boolean;
+  claim?: UniqueFeatClaimApi | null;
+  powerRecompensa?: { id: number; nome: string; acquisition_scope: "NORMAL" | "UNIQUE_FEAT" };
+  achievementRecompensa?: { id: number; nome: string } | null;
+  titleRecompensa?: { id: number; nome: string } | null;
+}
+
+export interface PayloadNovoPowerUniqueFeatAdmin {
+  nome: string;
+  descricao: string;
+  tipo_poder: "Ativo" | "Passivo";
+  custo_mana?: number;
+  dano_base?: number | null;
+  cura_base?: number | null;
+  cooldown?: number | null;
+  escala_atributo: "Forca" | "Vitalidade" | "Agilidade" | "Inteligencia" | "Velocidade";
+  valor_escala?: number;
+  imagem_url?: string | null;
+}
+
+export interface PayloadUniqueFeatAdmin {
+  nome: string;
+  key: string;
+  descricao_publica: string;
+  descricao_secreta_admin: string;
+  icone_url?: string | null;
+  categoria?: string | null;
+  trigger_key: string;
+  trigger_config?: Record<string, unknown>;
+  id_achievement_reward?: number | null;
+  id_title_reward?: number | null;
+  visibility_before_claim?: "HIDDEN" | "TEASER";
+  reveal_after_claim?: "FULL" | "FLAVOR_ONLY" | "REMAIN_SECRET";
+  announce_global?: boolean;
+  // Exatamente um dos dois é obrigatório na CRIAÇÃO (nunca nos dois —
+  // o backend rejeita se faltarem ambos); nenhum dos dois é aceito na
+  // edição (o Legado fica fixo depois de criado).
+  id_power_reward?: number;
+  novo_power?: PayloadNovoPowerUniqueFeatAdmin;
+}
+
+export type PayloadEdicaoUniqueFeatAdmin = Partial<Omit<PayloadUniqueFeatAdmin, "id_power_reward" | "novo_power">>;
+
+export interface FiltrosUniqueFeatsAdmin {
+  nome?: string;
+  trigger_key?: string;
+  ativa?: boolean;
+  conquistada?: boolean;
+  categoria?: string;
+}
+
+export async function listarUniqueFeatsAdmin(filtros: FiltrosUniqueFeatsAdmin = {}): Promise<UniqueFeatApi[]> {
+  const resposta = await axiosInstance.get<{ data: { itens: UniqueFeatApi[] } }>("/admin/unique-feats", { params: filtros });
+  return resposta.data.data.itens;
+}
+export async function obterUniqueFeatAdmin(id: number): Promise<UniqueFeatApi> {
+  const resposta = await axiosInstance.get<{ data: { feat: UniqueFeatApi } }>(`/admin/unique-feats/${id}`);
+  return resposta.data.data.feat;
+}
+export async function criarUniqueFeatAdmin(payload: PayloadUniqueFeatAdmin): Promise<UniqueFeatApi> {
+  const resposta = await axiosInstance.post<{ data: { feat: UniqueFeatApi } }>("/admin/unique-feats", payload);
+  return resposta.data.data.feat;
+}
+export async function atualizarUniqueFeatAdmin(id: number, payload: PayloadEdicaoUniqueFeatAdmin): Promise<UniqueFeatApi> {
+  const resposta = await axiosInstance.put<{ data: { feat: UniqueFeatApi } }>(`/admin/unique-feats/${id}`, payload);
+  return resposta.data.data.feat;
+}
+export async function duplicarUniqueFeatAdmin(id: number): Promise<UniqueFeatApi> {
+  const resposta = await axiosInstance.post<{ data: { feat: UniqueFeatApi } }>(`/admin/unique-feats/${id}/duplicate`);
+  return resposta.data.data.feat;
+}
+export async function desativarUniqueFeatAdmin(id: number, motivo?: string): Promise<UniqueFeatApi> {
+  const resposta = await axiosInstance.post<{ data: { feat: UniqueFeatApi } }>(`/admin/unique-feats/${id}/deactivate`, { motivo });
+  return resposta.data.data.feat;
+}
+export async function reativarUniqueFeatAdmin(id: number): Promise<UniqueFeatApi> {
+  const resposta = await axiosInstance.post<{ data: { feat: UniqueFeatApi } }>(`/admin/unique-feats/${id}/reactivate`);
+  return resposta.data.data.feat;
+}
+
+export interface UniquePowerEffectApi {
+  id_power: number;
+  effect_key: string;
+  config: Record<string, unknown>;
+  allow_pve: boolean;
+  allow_party: boolean;
+  allow_guild_boss: boolean;
+  allow_world_boss: boolean;
+  allow_pvp_casual: boolean;
+  allow_ranked: boolean;
+  allow_tournament: boolean;
+  ativo: boolean;
+}
+export interface UniqueFeatLegadoApi {
+  power: PowerApi;
+  efeito: UniquePowerEffectApi | null;
+  jogadoresAfetados: number;
+}
+export async function obterUniqueFeatLegadoAdmin(idPower: number): Promise<UniqueFeatLegadoApi> {
+  const resposta = await axiosInstance.get<{ data: UniqueFeatLegadoApi }>(`/admin/unique-feats/legados/${idPower}`);
+  return resposta.data.data;
+}
+export interface PayloadUniqueFeatLegadoAdmin {
+  effect_key?: string;
+  config?: Record<string, unknown>;
+  allow_pve?: boolean;
+  allow_party?: boolean;
+  allow_guild_boss?: boolean;
+  allow_world_boss?: boolean;
+  allow_pvp_casual?: boolean;
+  allow_ranked?: boolean;
+  allow_tournament?: boolean;
+  ativo?: boolean;
+}
+export async function atualizarUniqueFeatLegadoAdmin(idPower: number, payload: PayloadUniqueFeatLegadoAdmin): Promise<UniquePowerEffectApi> {
+  const resposta = await axiosInstance.put<{ data: { efeito: UniquePowerEffectApi } }>(`/admin/unique-feats/legados/${idPower}`, payload);
+  return resposta.data.data.efeito;
+}
+
+export interface FiltrosUniqueFeatClaimsAdmin {
+  idPersonagem?: number;
+  trigger_key?: string;
+  status?: "VALID" | "REVOKED";
+}
+export async function listarUniqueFeatClaimsAdmin(filtros: FiltrosUniqueFeatClaimsAdmin = {}): Promise<UniqueFeatClaimApi[]> {
+  const resposta = await axiosInstance.get<{ data: { itens: UniqueFeatClaimApi[] } }>("/admin/unique-feats/claims/historico", { params: filtros });
+  return resposta.data.data.itens;
+}
+export async function revogarUniqueFeatClaimAdmin(id: number, motivo: string): Promise<UniqueFeatClaimApi> {
+  const resposta = await axiosInstance.post<{ data: { claim: UniqueFeatClaimApi } }>(`/admin/unique-feats/claims/${id}/revogar`, { motivo });
+  return resposta.data.data.claim;
+}
+export async function transferirUniqueFeatClaimAdmin(id: number, idPersonagemNovo: number, motivo: string): Promise<UniqueFeatClaimApi> {
+  const resposta = await axiosInstance.post<{ data: { claim: UniqueFeatClaimApi } }>(`/admin/unique-feats/claims/${id}/transferir`, {
+    idPersonagemNovo,
+    motivo,
+  });
+  return resposta.data.data.claim;
 }

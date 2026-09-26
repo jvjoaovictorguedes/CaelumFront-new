@@ -41,6 +41,7 @@ const CATEGORIAS: CategoriaAdmin[] = [
       { titulo: "Ameaça Mundial", descricao: "Catálogo de Boss Global, ciclo atual e métricas.", href: "/dashboard/admin/world-boss", permissao: "worldboss.manage" },
       { titulo: "Pesca & Navegação", descricao: "Zonas, espécies, pool de encontro, portos, iscas e afinidades.", href: "/dashboard/admin/fishing", permissao: "fishing.manage" },
       { titulo: "Forja", descricao: "Blueprints, barras, pergaminhos e balanceamento de fundição/fabricação/refinamento.", href: "/dashboard/admin/forge", permissaoQualquerUma: ["forge.manage", "forge.balance"] },
+      { titulo: "Proezas Únicas", descricao: "Easter eggs de vencedor único, seus Legados, triggers e histórico de reparos.", href: "/dashboard/admin/unique-feats", permissao: "uniquefeats.manage" },
     ],
   },
   {
