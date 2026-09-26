@@ -31,7 +31,9 @@ import {
   previewForgeRefinamentoAdmin,
   reativarForgeScrollAdmin,
   removerForgeBarraAdmin,
+  removerForgeRaridadeOverrideAdmin,
   salvarForgeBarraAdmin,
+  salvarForgeRaridadeOverrideAdmin,
   validarForgeBlueprintAdmin,
   type AdminItemApi,
   type ForgeBalanceCompletoApi,
@@ -47,6 +49,23 @@ import {
   type ForgeSimulacaoRefinamentoApi,
   type PayloadForgeBlueprintAdmin,
 } from "@/lib/api/admin";
+
+// Mesma separação de equipmentRarityService.js no backend — qual
+// categoria de blueprint aceita quais chaves de atributo num override de
+// raridade. Acessorio1/Acessorio2/Capacete/Escudo usam ArmorProperties.
+const CHAVES_OVERRIDE_POR_CATEGORIA: Record<ForgeCategoria, string[]> = {
+  Arma: ["dano_min", "dano_max", "valor_bonus_atributo"],
+  Armadura: ["defesa", "bonus_forca", "bonus_vitalidade", "bonus_inteligencia", "bonus_agilidade", "bonus_velocidade"],
+  Capacete: ["defesa", "bonus_forca", "bonus_vitalidade", "bonus_inteligencia", "bonus_agilidade", "bonus_velocidade"],
+  Escudo: ["defesa", "bonus_forca", "bonus_vitalidade", "bonus_inteligencia", "bonus_agilidade", "bonus_velocidade"],
+  Acessorio1: ["defesa", "bonus_forca", "bonus_vitalidade", "bonus_inteligencia", "bonus_agilidade", "bonus_velocidade"],
+  Acessorio2: ["defesa", "bonus_forca", "bonus_vitalidade", "bonus_inteligencia", "bonus_agilidade", "bonus_velocidade"],
+  Ferramenta: ["forca_linha", "controle", "recolhimento", "precisao", "estabilidade"],
+};
+
+function overridesFormVazio(): Record<ForgeQualidade, Record<string, string>> {
+  return Object.fromEntries(FORGE_QUALIDADES.map((q) => [q, {}])) as Record<ForgeQualidade, Record<string, string>>;
+}
 
 type Aba = "visao" | "blueprints" | "barras" | "pergaminhos" | "refinamento" | "balanceamento" | "metricas";
 
@@ -358,6 +377,7 @@ function EditorBlueprint({ id, onFechar }: { id: number | null; onFechar: () => 
   const [seletorItemResultadoAberto, setSeletorItemResultadoAberto] = useState(false);
   const [recursos, setRecursos] = useState<ForgeRecursoApi[]>([]);
   const [previewDados, setPreviewDados] = useState<Awaited<ReturnType<typeof previewForgeBlueprintAdmin>> | null>(null);
+  const [overridesForm, setOverridesForm] = useState<Record<ForgeQualidade, Record<string, string>>>(overridesFormVazio());
 
   const carregar = useCallback(async () => {
     if (!id) { setCarregando(false); return; }
@@ -366,6 +386,11 @@ function EditorBlueprint({ id, onFechar }: { id: number | null; onFechar: () => 
       const resultado = await obterForgeBlueprintAdmin(id);
       setBlueprint(resultado.blueprint);
       setRelatorio(resultado);
+      const overridesCarregados = overridesFormVazio();
+      for (const linha of resultado.blueprint.itemResultado?.raridadeOverrides ?? []) {
+        overridesCarregados[linha.qualidade] = Object.fromEntries(Object.entries(linha.atributos).map(([k, v]) => [k, String(v)]));
+      }
+      setOverridesForm(overridesCarregados);
       setForm({
         nome: resultado.blueprint.nome,
         categoria_equipamento: resultado.blueprint.categoria_equipamento,
@@ -426,6 +451,38 @@ function EditorBlueprint({ id, onFechar }: { id: number | null; onFechar: () => 
       setMensagem(`Item resultado definido como "${item.nome}" — qualquer raridade fabricada vira a raridade da instância.`);
       await carregar();
     } catch (error) { setErro(mensagemDeErroAdmin(error, "Não foi possível salvar o item resultado.")); } finally { setSalvando(false); }
+  }
+
+  const chavesOverrideAtuais = form.categoria_equipamento ? CHAVES_OVERRIDE_POR_CATEGORIA[form.categoria_equipamento] ?? [] : [];
+
+  async function salvarOverrideLinha(qualidade: ForgeQualidade) {
+    if (!idAtual) return;
+    const linha = overridesForm[qualidade] ?? {};
+    const atributos: Record<string, number> = {};
+    for (const chave of chavesOverrideAtuais) {
+      const valor = linha[chave];
+      if (valor !== undefined && valor !== "") atributos[chave] = Number(valor);
+    }
+    // Nenhum campo preenchido nessa linha equivale a "sem override" —
+    // remove em vez de salvar uma linha vazia sem efeito nenhum.
+    if (Object.keys(atributos).length === 0) return removerOverrideLinha(qualidade);
+
+    setSalvando(true); setErro("");
+    try {
+      await salvarForgeRaridadeOverrideAdmin(idAtual, qualidade, atributos);
+      setMensagem(`Override de raridade "${qualidade}" salvo.`);
+      await carregar();
+    } catch (error) { setErro(mensagemDeErroAdmin(error, "Não foi possível salvar o override de raridade.")); } finally { setSalvando(false); }
+  }
+
+  async function removerOverrideLinha(qualidade: ForgeQualidade) {
+    if (!idAtual) return;
+    setSalvando(true); setErro("");
+    try {
+      await removerForgeRaridadeOverrideAdmin(idAtual, qualidade);
+      setMensagem(`Override de raridade "${qualidade}" removido — volta a usar a curva global.`);
+      await carregar();
+    } catch (error) { setErro(mensagemDeErroAdmin(error, "Não foi possível remover o override de raridade.")); } finally { setSalvando(false); }
   }
 
   async function validar() {
@@ -540,6 +597,60 @@ function EditorBlueprint({ id, onFechar }: { id: number | null; onFechar: () => 
               </ul>
             )}
           </div>
+
+          {blueprint?.itemResultado && chavesOverrideAtuais.length > 0 && (
+            <div className={CARD}>
+              <p className="mb-3 font-imFeel text-xl text-[#F3B43F]">Atributos por Raridade (override)</p>
+              <p className="mb-3 text-xs text-white/50">
+                Por padrão toda raridade escala os atributos-base do Item pela curva global de multiplicadores (Comum 1.0x, Incomum 1.05x, Raro
+                1.1x, Épico 1.17x, Lendário 1.25x, Mítico 1.35x). Preencha um campo só se quiser travar um valor diferente pra ESSE item nessa
+                raridade — campo em branco continua usando a curva global. &quot;Salvar&quot; grava TODOS os campos preenchidos da linha de uma vez
+                (não é incremental); &quot;Remover&quot; apaga a linha inteira e volta ao padrão.
+              </p>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs text-white">
+                  <thead>
+                    <tr className="text-white/50">
+                      <th className="px-2 py-1">Raridade</th>
+                      {chavesOverrideAtuais.map((chave) => <th key={chave} className="px-2 py-1">{chave}</th>)}
+                      <th className="px-2 py-1"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {FORGE_QUALIDADES.map((qualidade) => {
+                      const temOverride = Object.keys(overridesForm[qualidade] ?? {}).length > 0;
+                      return (
+                        <tr key={qualidade} className="border-t border-white/10">
+                          <td className="px-2 py-1 font-bold">{qualidade}{temOverride && <span className="ml-1 text-[#F3B43F]">●</span>}</td>
+                          {chavesOverrideAtuais.map((chave) => (
+                            <td key={chave} className="px-2 py-1">
+                              <input
+                                type="number"
+                                placeholder="curva global"
+                                className={`${INPUT} w-24`}
+                                value={overridesForm[qualidade]?.[chave] ?? ""}
+                                onChange={(e) =>
+                                  setOverridesForm((f) => ({ ...f, [qualidade]: { ...f[qualidade], [chave]: e.target.value } }))
+                                }
+                              />
+                            </td>
+                          ))}
+                          <td className="px-2 py-1 whitespace-nowrap">
+                            <button type="button" disabled={salvando} onClick={() => salvarOverrideLinha(qualidade)} className="mr-2 text-[#F3B43F] hover:underline">
+                              Salvar
+                            </button>
+                            <button type="button" disabled={salvando || !temOverride} onClick={() => removerOverrideLinha(qualidade)} className="text-red-400 hover:underline disabled:opacity-30">
+                              Remover
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
 
           <div className={CARD}>
             <p className="mb-3 font-imFeel text-xl text-[#F3B43F]">Validação e ativação</p>
