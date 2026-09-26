@@ -31,7 +31,6 @@ const CATEGORIAS: CategoriaAdmin[] = [
       { titulo: "Itens", descricao: "Criar, editar e desativar itens e propriedades.", href: "/dashboard/admin/items", permissao: "items.manage" },
       { titulo: "Conjuntos de Equipamentos", descricao: "Peças, thresholds e bônus de conjunto.", href: "/dashboard/admin/equipment-sets", permissao: "equipmentsets.manage" },
       { titulo: "Habilidades", descricao: "Catálogo de Habilidades (Power), vínculos e evolução 1-10.", href: "/dashboard/admin/powers", permissao: "powers.manage" },
-      { titulo: "Proezas Únicas", descricao: "Cadastrar Proezas e a Habilidade Única vinculada (concessão fica em Premiações).", href: "/dashboard/admin/unique-feats", permissao: "unique-feats.manage" },
       { titulo: "Missões", descricao: "Missões livres, Guilda dos Aventureiros e Missões de Guilda.", href: "/dashboard/admin/missions", permissao: "missions.manage" },
       { titulo: "Aventura", descricao: "Zonas, monstros, aparição e loot.", href: "/dashboard/admin/adventure", permissao: "adventure.manage" },
       { titulo: "Balcão de Espólios", descricao: "Reputação Comercial e faixas de quantidade das encomendas.", href: "/dashboard/admin/spoils", permissao: "spoils.manage" },
@@ -42,6 +41,7 @@ const CATEGORIAS: CategoriaAdmin[] = [
       { titulo: "Ameaça Mundial", descricao: "Catálogo de Boss Global, ciclo atual e métricas.", href: "/dashboard/admin/world-boss", permissao: "worldboss.manage" },
       { titulo: "Pesca & Navegação", descricao: "Zonas, espécies, pool de encontro, portos, iscas e afinidades.", href: "/dashboard/admin/fishing", permissao: "fishing.manage" },
       { titulo: "Forja", descricao: "Blueprints, barras, pergaminhos e balanceamento de fundição/fabricação/refinamento.", href: "/dashboard/admin/forge", permissaoQualquerUma: ["forge.manage", "forge.balance"] },
+      { titulo: "Proezas Únicas", descricao: "Easter eggs de vencedor único, seus Legados, triggers e histórico de reparos.", href: "/dashboard/admin/unique-feats", permissao: "uniquefeats.manage" },
     ],
   },
   {

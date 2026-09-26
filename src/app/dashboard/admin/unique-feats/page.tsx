@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { isCurrentUserAdmin } from "@/utils/character-session";
+import { isCurrentUserAdmin, getCurrentAdminPermissions } from "@/utils/character-session";
 import AdminUniqueFeatsClient from "./AdminUniqueFeatsClient";
 
 export default async function AdminUniqueFeatsPage() {
@@ -7,10 +7,11 @@ export default async function AdminUniqueFeatsPage() {
   if (!isAdmin) {
     redirect("/dashboard");
   }
+  const permissoes = await getCurrentAdminPermissions();
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-5 p-2 sm:p-4">
-      <AdminUniqueFeatsClient />
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-5 p-2 sm:p-4">
+      <AdminUniqueFeatsClient podeReparar={permissoes.includes("uniquefeats.repair")} />
     </div>
   );
 }

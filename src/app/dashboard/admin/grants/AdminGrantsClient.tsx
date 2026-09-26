@@ -1,16 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   buscarPersonagensAdmin,
   concederPremiacaoAdmin,
-  concederProezaUnicaAdmin,
-  listarProezasUnicasAdmin,
   mensagemDeErroAdmin,
   type GrantResultApi,
   type GrantSearchResultApi,
-  type UniqueFeatApi,
 } from "@/lib/api/admin";
 import { ItemSelect, useItensParaSelecaoAdmin } from "@/components/admin/ItemPicker";
 
@@ -35,21 +32,6 @@ export default function AdminGrantsClient() {
   const [resultado, setResultado] = useState<GrantResultApi | null>(null);
   const { itens: itensDisponiveis } = useItensParaSelecaoAdmin();
 
-  const [proezas, setProezas] = useState<UniqueFeatApi[]>([]);
-  const [proezaSelecionada, setProezaSelecionada] = useState<number | "">("");
-  const [motivoProeza, setMotivoProeza] = useState("");
-  const [concedendoProeza, setConcedendoProeza] = useState(false);
-  const [erroProeza, setErroProeza] = useState("");
-  const [sucessoProeza, setSucessoProeza] = useState("");
-
-  useEffect(() => {
-    listarProezasUnicasAdmin()
-      .then(setProezas)
-      .catch(() => {});
-  }, []);
-
-  const proezasDisponiveis = proezas.filter((p) => p.ativa && !p.claim);
-
   async function buscar(evento: React.FormEvent) {
     evento.preventDefault();
     setBuscando(true);
@@ -72,30 +54,6 @@ export default function AdminGrantsClient() {
     setMotivo("");
     setResultado(null);
     setErroConcessao("");
-    setProezaSelecionada("");
-    setMotivoProeza("");
-    setErroProeza("");
-    setSucessoProeza("");
-  }
-
-  async function concederProeza(evento: React.FormEvent) {
-    evento.preventDefault();
-    if (!selecionado || proezaSelecionada === "") return;
-    setConcedendoProeza(true);
-    setErroProeza("");
-    setSucessoProeza("");
-    try {
-      await concederProezaUnicaAdmin(proezaSelecionada, selecionado.id, motivoProeza);
-      const proeza = proezas.find((p) => p.id === proezaSelecionada);
-      setSucessoProeza(`Proeza Única "${proeza?.nome}" concedida a ${selecionado.nome}!`);
-      setProezaSelecionada("");
-      setMotivoProeza("");
-      setProezas(await listarProezasUnicasAdmin());
-    } catch (error) {
-      setErroProeza(mensagemDeErroAdmin(error, "Não foi possível conceder a Proeza Única."));
-    } finally {
-      setConcedendoProeza(false);
-    }
   }
 
   function adicionarLinhaItem() {
@@ -232,52 +190,6 @@ export default function AdminGrantsClient() {
 
           <button type="submit" disabled={concedendo} className="self-end rounded-lg bg-[#BC8418] px-4 py-2 text-sm font-bold text-black hover:bg-[#a5710f] disabled:opacity-50">
             {concedendo ? "Concedendo..." : "Conceder"}
-          </button>
-        </form>
-      )}
-
-      {selecionado && (
-        <form onSubmit={concederProeza} className="flex flex-col gap-3 rounded-2xl border-2 border-[#F3B43F]/60 bg-[#292018] p-4 text-white">
-          <p className="font-imFeel text-lg text-[#F3B43F]">Conceder Proeza Única</p>
-          <p className="text-xs text-white/50">
-            Cada Proeza só pode ser conquistada por UM jogador do servidor inteiro — concede junto a Habilidade Única
-            vinculada. Pra cadastrar novas Proezas, use{" "}
-            <Link href="/dashboard/admin/unique-feats" className="text-[#F3B43F] hover:underline">
-              Proezas Únicas
-            </Link>
-            .
-          </p>
-          {erroProeza && <p className="rounded-lg bg-black/50 px-3 py-2 text-sm text-red-400">{erroProeza}</p>}
-          {sucessoProeza && <p className="rounded-lg bg-black/50 px-3 py-2 text-sm text-[#F3B43F]">{sucessoProeza}</p>}
-
-          <label className="flex flex-col gap-1 text-xs">
-            Proeza Única
-            <select
-              value={proezaSelecionada}
-              onChange={(e) => setProezaSelecionada(e.target.value ? Number(e.target.value) : "")}
-              className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm"
-            >
-              <option value="">Selecione...</option>
-              {proezasDisponiveis.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.nome} ({p.trigger_key})
-                </option>
-              ))}
-            </select>
-          </label>
-          {proezasDisponiveis.length === 0 && <p className="text-xs text-white/40">Nenhuma Proeza disponível (todas já conquistadas ou nenhuma cadastrada).</p>}
-
-          <label className="flex flex-col gap-1 text-xs">
-            Motivo (obrigatório — vai pra auditoria)
-            <textarea required value={motivoProeza} onChange={(e) => setMotivoProeza(e.target.value)} rows={2} className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm" />
-          </label>
-
-          <button
-            type="submit"
-            disabled={concedendoProeza || proezaSelecionada === ""}
-            className="self-end rounded-lg bg-[#BC8418] px-4 py-2 text-sm font-bold text-black hover:bg-[#a5710f] disabled:opacity-50"
-          >
-            {concedendoProeza ? "Concedendo..." : "Conceder Proeza"}
           </button>
         </form>
       )}

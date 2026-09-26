@@ -97,6 +97,13 @@ export default function NavMenu({
       iconUrl: "/icons/ranking.png",
       path: "/dashboard/ranking",
     },
+    // Sem ícone próprio ainda — reaproveita a chama (mesma convenção do
+    // Painel Administrativo abaixo, que reaproveita o de Duelo).
+    {
+      name: "Hall das Lendas",
+      iconUrl: "/icons/ui/chama.png",
+      path: "/dashboard/hall-das-lendas",
+    },
     {
       name: "Bestiário",
       iconUrl: "/icons/bestiario.png",
