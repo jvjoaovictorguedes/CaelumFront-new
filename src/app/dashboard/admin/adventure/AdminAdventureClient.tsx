@@ -21,8 +21,10 @@ import {
   type AdventureMonsterLootApi,
   type AdventureZoneApi,
   type AdventureZoneMonsterApi,
+  type MonsterBalanceMultiplicadoresApi,
 } from "@/lib/api/admin";
 import { ItemSelect, formatarItemComId, useItensParaSelecaoAdmin } from "@/components/admin/ItemPicker";
+import MonsterBalanceEditor from "./MonsterBalanceEditor";
 
 type Aba = "zonas" | "monstros" | "aparicoes" | "drops";
 
@@ -179,6 +181,8 @@ function MonstrosTab() {
   const [form, setForm] = useState<Partial<AdventureMonsterApi>>({});
   const [mostrarForm, setMostrarForm] = useState(false);
   const [salvando, setSalvando] = useState(false);
+  const [balanceandoMonstro, setBalanceandoMonstro] = useState<AdventureMonsterApi | null>(null);
+  const [salvandoBalanceamento, setSalvandoBalanceamento] = useState(false);
 
   const carregar = useCallback(async () => {
     setCarregando(true);
@@ -191,6 +195,29 @@ function MonstrosTab() {
       setCarregando(false);
     }
   }, []);
+
+  async function salvarBalanceamento(multiplicadores: MonsterBalanceMultiplicadoresApi, balanceContext: Record<string, unknown>) {
+    if (!balanceandoMonstro) return;
+    setSalvandoBalanceamento(true);
+    setErro("");
+    try {
+      await atualizarMonstroAdmin(balanceandoMonstro.id, {
+        multiplicador_vida: multiplicadores.vida,
+        multiplicador_dano: multiplicadores.dano,
+        multiplicador_agilidade: multiplicadores.agilidade,
+        multiplicador_velocidade: multiplicadores.velocidade,
+        // @ts-expect-error balanceContext é aceito pelo backend só pra
+        // auditoria (§12) — nunca persistido no AdventureMonster.
+        balanceContext,
+      });
+      setBalanceandoMonstro(null);
+      await carregar();
+    } catch (error) {
+      setErro(mensagemDeErroAdmin(error, "Não foi possível salvar o balanceamento do monstro."));
+    } finally {
+      setSalvandoBalanceamento(false);
+    }
+  }
 
   useEffect(() => {
     carregar();
@@ -263,7 +290,10 @@ function MonstrosTab() {
                 </p>
               </div>
               <div className="flex shrink-0 flex-wrap justify-end gap-2 text-sm">
-                <button type="button" onClick={() => abrirEdicao(monstro)} className="text-[#F3B43F] hover:underline">
+                <button type="button" onClick={() => setBalanceandoMonstro(monstro)} className="text-[#F3B43F] hover:underline">
+                  Balancear
+                </button>
+                <button type="button" onClick={() => abrirEdicao(monstro)} className="text-white/70 hover:underline">
                   Editar
                 </button>
                 <button type="button" onClick={() => duplicar(monstro)} className="text-white/70 hover:underline">
@@ -321,6 +351,19 @@ function MonstrosTab() {
               </button>
             </div>
           </form>
+        </div>
+      )}
+
+      {balanceandoMonstro && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={() => setBalanceandoMonstro(null)}>
+          <div onClick={(e) => e.stopPropagation()}>
+            <MonsterBalanceEditor
+              monstro={balanceandoMonstro}
+              onSalvar={salvarBalanceamento}
+              onCancelar={() => setBalanceandoMonstro(null)}
+              salvando={salvandoBalanceamento}
+            />
+          </div>
         </div>
       )}
     </div>

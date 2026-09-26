@@ -455,6 +455,110 @@ export async function duplicarMonstroAdmin(id: number): Promise<AdventureMonster
   return resposta.data.data.monstro;
 }
 
+// Editor de Balanceamento de Monstros por Resultado — preview/simulação
+// NUNCA persistem nada; só a chamada a atualizarMonstroAdmin (acima)
+// salva de verdade.
+export interface MonsterBalanceMultiplicadoresApi {
+  vida: number;
+  dano: number;
+  agilidade: number;
+  velocidade: number;
+}
+export interface MonsterBalanceStatsRangeApi {
+  min: number;
+  media: number;
+  max: number;
+}
+export interface MonsterBalanceStatsApi {
+  vida: MonsterBalanceStatsRangeApi;
+  dano: MonsterBalanceStatsRangeApi;
+  agilidade: MonsterBalanceStatsRangeApi;
+  velocidade: MonsterBalanceStatsRangeApi;
+}
+export interface MonsterBalanceFaixaLinhaApi {
+  nivel: number;
+  vidaMedia: number;
+  danoMedio: number;
+  agilidadeMedia: number;
+  velocidadeMedia: number;
+  esquivaVsMedio: number;
+}
+export interface MonsterBalanceDificuldadeApi {
+  chave: string;
+  label: string;
+  taxaVitoriaJogadorAproximada?: number;
+  origem: "heuristica" | "simulacao";
+}
+export interface MonsterBalancePreviewApi {
+  nivelReferencia: number;
+  baseNivel: { vidaMedia: number; danoMedio: number; agilidadeMedia: number; velocidadeMedia: number };
+  multiplicadores: MonsterBalanceMultiplicadoresApi;
+  statsFinais: MonsterBalanceStatsApi;
+  esquivaContraPerfis: Record<string, number>;
+  ttk: { turnosParaMatar: number; turnosParaMorrer: number };
+  dificuldadeEstimada: MonsterBalanceDificuldadeApi;
+  faixaPorNivel: MonsterBalanceFaixaLinhaApi[] | null;
+  avisos: string[];
+}
+export interface MonsterBalanceSimulationApi {
+  totalCombates: number;
+  vitoriasJogador: number;
+  vitoriasMonstro: number;
+  timeouts: number;
+  taxaVitoriaJogadorPct: number;
+  turnosMedios: number;
+  turnosMediana: number;
+  turnosP95: number;
+  vidaRestanteMediaVencedor: number | null;
+  danoTotalMonstroMedio: number;
+  esquivaObservadaPct: number;
+  dificuldade: MonsterBalanceDificuldadeApi;
+}
+export interface MonsterBalancePresetApi {
+  chave: string;
+  label: string;
+  multiplicadores: MonsterBalanceMultiplicadoresApi;
+}
+export interface MonsterBalancePerfilApi {
+  chave: string;
+  label: string;
+}
+export interface MonsterBalanceDesiredInput {
+  hpMean: number;
+  damageMean: number;
+  dodgeVsAveragePct: number;
+  speedMean: number;
+}
+
+export async function previewBalanceamentoMonstroAdmin(
+  id: number,
+  payload: {
+    referenceLevel: number;
+    mode: "desired" | "multipliers";
+    desired?: MonsterBalanceDesiredInput;
+    multiplicadores?: MonsterBalanceMultiplicadoresApi;
+    zoneId?: number;
+  },
+): Promise<MonsterBalancePreviewApi> {
+  const resposta = await axiosInstance.post<{ data: MonsterBalancePreviewApi }>(`/admin/adventure/monsters/${id}/balance-preview`, payload);
+  return resposta.data.data;
+}
+
+export async function simularBalanceamentoMonstroAdmin(
+  id: number,
+  payload: { referenceLevel: number; multiplicadores: MonsterBalanceMultiplicadoresApi; profile?: string; iterations?: number },
+): Promise<MonsterBalanceSimulationApi> {
+  const resposta = await axiosInstance.post<{ data: MonsterBalanceSimulationApi }>(`/admin/adventure/monsters/${id}/balance-simulate`, payload);
+  return resposta.data.data;
+}
+
+export async function listarPresetsBalanceamentoAdmin(): Promise<{ presets: MonsterBalancePresetApi[]; perfis: MonsterBalancePerfilApi[] }> {
+  const resposta = await axiosInstance.get<{ data: { presets: MonsterBalancePresetApi[]; perfis: MonsterBalancePerfilApi[] } }>(
+    "/admin/adventure/monsters/balance-presets",
+  );
+  return resposta.data.data;
+}
+
 export async function listarAparicoesAdmin(idArea?: number): Promise<AdventureZoneMonsterApi[]> {
   const resposta = await axiosInstance.get<{ data: { aparicoes: AdventureZoneMonsterApi[] } }>("/admin/adventure/zone-monsters", {
     params: idArea ? { idArea } : undefined,
