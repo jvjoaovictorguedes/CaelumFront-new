@@ -44,7 +44,7 @@ export default function PvpArena({
   resultado: ResultadoDuelo;
   aoFechar: () => void;
 }) {
-  const { turnos, desafiante, desafiado, vencedorChave, recompensa, log } = resultado;
+  const { turnos, desafiante, desafiado, vencedorChave, log } = resultado;
 
   const vidaMaxA = turnos[0]?.vidaMaxA ?? 1;
   const vidaMaxB = turnos[0]?.vidaMaxB ?? 1;
@@ -148,8 +148,8 @@ export default function PvpArena({
             {vencedorChave === "A" ? "Vitória!" : "Derrota..."}
           </p>
           {vencedorChave === "A" && (
-            <p className="mb-3">
-              +{recompensa.experiencia} de experiência · +{recompensa.dinheiro} moedas
+            <p className="mb-3 text-sm text-white/60">
+              Duelo Casual — só treino, sem XP/ouro (ranqueado/torneio têm recompensa própria).
             </p>
           )}
           <button
