@@ -1989,11 +1989,16 @@ export type ForgeCategoria = (typeof FORGE_CATEGORIAS)[number];
 export const FORGE_QUALIDADES = ["Comum", "Incomum", "Raro", "Epico", "Lendario", "Mitico"] as const;
 export type ForgeQualidade = (typeof FORGE_QUALIDADES)[number];
 
+// ProdutoAlquimia (Forja-Materiais): id_recurso passa a ser polimórfico —
+// AlchemyRecipe.id nesse tipo, ExpeditionResource.id nos outros dois.
+// Por isso não existe mais um "recurso" resolvido via association aqui;
+// o nome do recurso, quando precisar exibir, vem do backend já resolvido
+// (ex: nome_recurso no preview) em vez de um include fixo.
+export type ForgeTipoInsumo = "Barra" | "RecursoExpedicao" | "ProdutoAlquimia";
 export interface ForgeIngredienteApi {
-  tipo_insumo: "Barra" | "RecursoExpedicao";
+  tipo_insumo: ForgeTipoInsumo;
   id_recurso: number;
   quantidade_base: number;
-  recurso?: { id: number; nome: string; profissao: string };
 }
 
 // Reformulação V2 (Item Único por Equipamento, Raridade por Instância)
@@ -2068,7 +2073,7 @@ export interface PayloadForgeBlueprintAdmin {
   tier_equipamento?: number;
   multiplicador_tempo?: number;
   nivel_forja_minimo?: number;
-  ingredientes?: { tipo_insumo: "Barra" | "RecursoExpedicao"; id_recurso: number; quantidade_base: number }[];
+  ingredientes?: { tipo_insumo: ForgeTipoInsumo; id_recurso: number; quantidade_base: number }[];
   id_item_resultado?: number | null;
 }
 
@@ -2160,6 +2165,22 @@ export interface ForgeRecursoApi {
 export async function listarForgeRecursosAdmin(profissao?: string): Promise<ForgeRecursoApi[]> {
   const resposta = await axiosInstance.get<{ data: { recursos: ForgeRecursoApi[] } }>("/admin/forge/resources", { params: { profissao } });
   return resposta.data.data.recursos;
+}
+
+// Forja-Materiais: produtos do Caldeirão (Alquimia) elegíveis como
+// ingrediente ProdutoAlquimia — a Forja usa AlchemyRecipe.id como
+// id_recurso desse tipo (não confundir com ExpeditionResource.id, que
+// serve pra Barra/RecursoExpedicao).
+export interface ForgeProdutoAlquimiaApi {
+  id: number;
+  key: string;
+  nome: string;
+  categoria: string;
+  item_resultado: { id: number; nome: string; imagem_url: string | null } | null;
+}
+export async function listarForgeProdutosAlquimiaAdmin(): Promise<ForgeProdutoAlquimiaApi[]> {
+  const resposta = await axiosInstance.get<{ data: { produtos: ForgeProdutoAlquimiaApi[] } }>("/admin/forge/alchemy-products");
+  return resposta.data.data.produtos;
 }
 
 export interface ForgeBarraLinhaApi {
