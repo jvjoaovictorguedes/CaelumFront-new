@@ -9,6 +9,14 @@ interface CustoEvolucao {
   fragmentos: number;
 }
 
+const NOME_ATRIBUTO: Record<string, string> = {
+  Forca: "Força",
+  Vitalidade: "Vitalidade",
+  Agilidade: "Agilidade",
+  Inteligencia: "Inteligência",
+  Velocidade: "Velocidade",
+};
+
 interface PoderApi {
   id_power: number;
   nome: string;
@@ -146,7 +154,7 @@ function DetalheDoPoder({
   if (poder.dano_base) detalhes.push(`${poder.dano_base} de dano base`);
   if (poder.cura_base) detalhes.push(`${poder.cura_base} de cura base`);
   if (poder.cooldown) detalhes.push(`${poder.cooldown}s de recarga`);
-  detalhes.push(`escala com ${poder.escala_atributo} (x${poder.valor_escala})`);
+  detalhes.push(`escala com ${NOME_ATRIBUTO[poder.escala_atributo] ?? poder.escala_atributo} (x${poder.valor_escala})`);
 
   const bloqueado = !poder.aprendido;
 

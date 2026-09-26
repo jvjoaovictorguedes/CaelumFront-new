@@ -27,6 +27,8 @@ export interface PoderDuelo {
   custo_mana: number;
   dano_base: number;
   cura_base: number;
+  escala_atributo?: string;
+  valor_escala?: number;
 }
 
 export interface ConsumivelDuelo {
@@ -207,6 +209,8 @@ export interface PoderGrupo {
   custo_mana: number;
   dano_base: number;
   cura_base: number;
+  escala_atributo?: string;
+  valor_escala?: number;
 }
 
 export interface ConsumivelGrupo {

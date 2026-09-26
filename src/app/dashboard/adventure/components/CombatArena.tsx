@@ -57,6 +57,8 @@ interface Power {
   dano_base: number;
   cura_base: number;
   imagem_url?: string | null;
+  escala_atributo?: string;
+  valor_escala?: number;
 }
 
 interface Ability {
@@ -1207,6 +1209,8 @@ export default function CombatArena({
               imagem_url: habilidade.Power.imagem_url,
               custo_mana: habilidade.Power.custo_mana,
               descricao: habilidade.Power.descricao,
+              escala_atributo: habilidade.Power.escala_atributo,
+              valor_escala: habilidade.Power.valor_escala,
             }))}
             onUsarPoder={(powerId) => executarAcao({ type: "power", powerId })}
             consumiveis={consumiveis}

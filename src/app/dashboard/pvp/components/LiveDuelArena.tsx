@@ -272,6 +272,8 @@ export default function LiveDuelArena({ meuCharacterId }: { meuCharacterId: numb
                 nome: poder.nome,
                 imagem_url: poder.imagem_url,
                 custo_mana: poder.custo_mana,
+                escala_atributo: poder.escala_atributo,
+                valor_escala: poder.valor_escala,
               }))}
               onUsarPoder={(id) => agirEDesabilitar("power", id)}
               consumiveis={consumiveis}
