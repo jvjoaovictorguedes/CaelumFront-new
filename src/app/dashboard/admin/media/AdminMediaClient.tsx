@@ -46,6 +46,12 @@ function slugSugerido(nomeArquivo: string): string {
   return slug;
 }
 
+// "usados" cobre tanto os grupos já escolhidos NESTE mesmo lote quanto
+// os grupos que já existem no servidor (gruposExistentes) — sem os dois
+// juntos, um nome genérico de arquivo (ex.: "icone.png", "banner.jpg")
+// reaproveitava silenciosamente o slug de uma imagem antiga não
+// relacionada e virava uma NOVA VERSÃO dela, desativando a versão
+// antiga (bug relatado: "subi imagem nova e bugou as antigas").
 function slugUnicoNaLista(base: string, usados: Set<string>): string {
   let slug = base;
   let contador = 2;
@@ -257,8 +263,23 @@ function ModalEnviarMidia({
   const [arquivos, setArquivos] = useState<ArquivoParaEnvio[]>([]);
   const [enviando, setEnviando] = useState(false);
   const [erroGeral, setErroGeral] = useState("");
+  // Todo grupo já ativo no servidor, de QUALQUER categoria/tipo — busca
+  // uma vez, ao abrir o modal. "Cada arquivo vira um grupo próprio"
+  // (aviso abaixo) é sempre a intenção aqui, nunca versionar um grupo
+  // já existente (isso é o formulário dentro de DetalheGrupo); sem
+  // conferir contra o servidor, um nome de arquivo genérico (ex.:
+  // "icone.png", "banner.jpg") reaproveitava silenciosamente o slug de
+  // uma imagem antiga não relacionada, desativando-a — bug relatado
+  // ("subi imagem nova e bugou as antigas").
+  const [gruposExistentes, setGruposExistentes] = useState<Set<string>>(new Set());
 
   const categoriasDisponiveis: readonly string[] = tipo === "audio" ? [CATEGORIA_AUDIO] : CATEGORIAS_IMAGEM;
+
+  useEffect(() => {
+    listarMediaGruposAdmin({ porPagina: 10000 })
+      .then((resultado) => setGruposExistentes(new Set(resultado.itens.map((item) => item.grupo))))
+      .catch(() => {});
+  }, []);
 
   function mudarTipo(novoTipo: MediaAssetTipoApi) {
     setTipo(novoTipo);
@@ -268,7 +289,7 @@ function ModalEnviarMidia({
 
   function selecionarArquivos(lista: FileList | null) {
     if (!lista || lista.length === 0) return;
-    const usados = new Set<string>();
+    const usados = new Set<string>(gruposExistentes);
     const novos: ArquivoParaEnvio[] = Array.from(lista).map((file, i) => {
       const base = slugSugerido(file.name);
       const grupo = slugUnicoNaLista(base, usados);
@@ -299,6 +320,15 @@ function ModalEnviarMidia({
     }
     if (new Set(grupos).size !== grupos.length) {
       setErroGeral("Dois arquivos não podem usar o mesmo identificador de grupo — ajuste antes de enviar.");
+      return;
+    }
+    const colisoes = arquivos.filter((a) => gruposExistentes.has(a.grupo.trim()));
+    if (colisoes.length > 0) {
+      setErroGeral(
+        `Identificador já usado por uma mídia existente: ${colisoes.map((a) => `"${a.grupo.trim()}" (${a.file.name})`).join(", ")}. ` +
+          "Escolha outro identificador — enviar assim SUBSTITUIRIA a imagem antiga em todo lugar que ela é usada. " +
+          "Se a intenção é atualizar aquela mídia específica, abra o grupo dela na lista e envie uma nova versão por lá.",
+      );
       return;
     }
 
@@ -387,40 +417,50 @@ function ModalEnviarMidia({
 
         {arquivos.length > 0 && (
           <div className="flex flex-col gap-2 rounded-xl border border-white/10 p-2">
-            {arquivos.map((item) => (
-              <div key={item.id} className="flex flex-wrap items-center gap-2 rounded-lg bg-black/20 px-2 py-1.5 text-xs">
-                <span className="w-28 shrink-0 truncate text-white/60" title={item.file.name}>
-                  {item.file.name}
-                </span>
-                <input
-                  value={item.grupo}
-                  onChange={(e) => editarGrupo(item.id, e.target.value)}
-                  disabled={enviando || item.status === "ok"}
-                  className="min-w-0 flex-1 rounded-lg border border-white/20 bg-black/30 px-2 py-1 text-xs disabled:opacity-60"
-                />
-                <span
-                  className={
-                    item.status === "ok"
-                      ? "font-bold text-green-400"
-                      : item.status === "erro"
-                        ? "font-bold text-red-400"
-                        : item.status === "enviando"
-                          ? "text-[#F3B43F]"
-                          : "text-white/40"
-                  }
-                >
-                  {item.status === "pendente" && "aguardando"}
-                  {item.status === "enviando" && "enviando..."}
-                  {item.status === "ok" && `✓ ${item.mensagem}`}
-                  {item.status === "erro" && `✕ ${item.mensagem}`}
-                </span>
-                {item.status !== "enviando" && item.status !== "ok" && (
-                  <button type="button" onClick={() => removerArquivo(item.id)} className="shrink-0 text-white/50 hover:text-red-400">
-                    remover
-                  </button>
-                )}
-              </div>
-            ))}
+            {arquivos.map((item) => {
+              const colide = gruposExistentes.has(item.grupo.trim());
+              return (
+                <div key={item.id} className="flex flex-col gap-1">
+                  <div className="flex flex-wrap items-center gap-2 rounded-lg bg-black/20 px-2 py-1.5 text-xs">
+                    <span className="w-28 shrink-0 truncate text-white/60" title={item.file.name}>
+                      {item.file.name}
+                    </span>
+                    <input
+                      value={item.grupo}
+                      onChange={(e) => editarGrupo(item.id, e.target.value)}
+                      disabled={enviando || item.status === "ok"}
+                      className={`min-w-0 flex-1 rounded-lg border bg-black/30 px-2 py-1 text-xs disabled:opacity-60 ${colide ? "border-red-500" : "border-white/20"}`}
+                    />
+                    <span
+                      className={
+                        item.status === "ok"
+                          ? "font-bold text-green-400"
+                          : item.status === "erro"
+                            ? "font-bold text-red-400"
+                            : item.status === "enviando"
+                              ? "text-[#F3B43F]"
+                              : "text-white/40"
+                      }
+                    >
+                      {item.status === "pendente" && "aguardando"}
+                      {item.status === "enviando" && "enviando..."}
+                      {item.status === "ok" && `✓ ${item.mensagem}`}
+                      {item.status === "erro" && `✕ ${item.mensagem}`}
+                    </span>
+                    {item.status !== "enviando" && item.status !== "ok" && (
+                      <button type="button" onClick={() => removerArquivo(item.id)} className="shrink-0 text-white/50 hover:text-red-400">
+                        remover
+                      </button>
+                    )}
+                  </div>
+                  {colide && item.status === "pendente" && (
+                    <p className="px-2 text-[10px] font-bold text-red-400">
+                      Esse identificador já existe — enviar assim substitui a imagem antiga em todo lugar que ela é usada.
+                    </p>
+                  )}
+                </div>
+              );
+            })}
             {terminou && (
               <p className="text-xs font-bold text-[#F3B43F]">
                 Concluído: {ok} de {total} enviado(s) com sucesso{comErro > 0 ? `, ${comErro} com erro` : ""}.
