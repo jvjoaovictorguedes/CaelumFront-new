@@ -12,6 +12,10 @@ export default function Register() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [email, setEmail] = useState("");
   const [confirmEmail, setConfirmEmail] = useState("");
+  // Sistema de Referral — opcional, nunca bloqueia o registro por si só
+  // (campo vazio = sem indicação). Só barra se PREENCHIDO com um nome
+  // que não bate com nenhuma conta (validado no backend).
+  const [indicadoPor, setIndicadoPor] = useState("");
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -89,6 +93,7 @@ export default function Register() {
         username,
         email,
         password,
+        ...(indicadoPor.trim() ? { indicado_por: indicadoPor.trim() } : {}),
       });
       router.push("/login");
     } catch (error: unknown) {
@@ -162,6 +167,17 @@ export default function Register() {
             placeholder="Confirmar E-mail"
             value={confirmEmail}
             onChange={(e) => setConfirmEmail(e.target.value)}
+            disabled={isLoading}
+          />
+        </div>
+        <div className="flex justify-center mb-4">
+          <input
+            type="text"
+            id="indicado-por"
+            className="w-full px-3 py-2 text-[18px] text-black bg-[#DFC492] rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-[#DFC492] font-imFeel"
+            placeholder="Quem te indicou? (opcional)"
+            value={indicadoPor}
+            onChange={(e) => setIndicadoPor(e.target.value)}
             disabled={isLoading}
           />
         </div>
