@@ -2000,11 +2000,22 @@ export interface ForgeIngredienteApi {
 // — o blueprint aponta pra UM Item canônico, não mais uma linha por
 // qualidade. Qualquer raridade que a Forja produzir desse blueprint
 // vira a raridade da instância na coleta, nunca escolhe outro Item.
+// Override admin de atributos por Raridade (ver equipmentRarityService no
+// backend) — chave real é o Item (id_item_resultado do blueprint), não o
+// blueprint em si; "atributos" é parcial: só as chaves presentes
+// substituem o valor calculado pela curva global de multiplicadores.
+export interface ForgeRaridadeOverrideApi {
+  id_item: number;
+  qualidade: ForgeQualidade;
+  atributos: Record<string, number>;
+}
+
 export interface ForgeItemResultadoApi {
   id: number;
   nome: string;
   imagem_url: string | null;
   tier_equipamento?: number | null;
+  raridadeOverrides?: ForgeRaridadeOverrideApi[];
 }
 
 export interface ForgeBlueprintApi {
@@ -2118,6 +2129,25 @@ export interface ForgePreviewBlueprintApi {
 }
 export async function previewForgeBlueprintAdmin(id: number, params: { nivelForja: number; qualidadeBase: string }): Promise<ForgePreviewBlueprintApi> {
   const resposta = await axiosInstance.get<{ data: ForgePreviewBlueprintApi }>(`/admin/forge/blueprints/${id}/preview`, { params });
+  return resposta.data.data;
+}
+
+// Overrides já vêm junto de obterForgeBlueprintAdmin (blueprint.itemResultado.raridadeOverrides)
+// — estas duas funções só escrevem. atributos vazio/omitido numa chave
+// volta a usar o multiplicador global pra aquele atributo.
+export async function salvarForgeRaridadeOverrideAdmin(
+  idBlueprint: number,
+  qualidade: ForgeQualidade,
+  atributos: Record<string, number | string>,
+): Promise<ForgeRaridadeOverrideApi> {
+  const resposta = await axiosInstance.put<{ data: { override: ForgeRaridadeOverrideApi } }>(
+    `/admin/forge/blueprints/${idBlueprint}/rarity-overrides/${qualidade}`,
+    { atributos },
+  );
+  return resposta.data.data.override;
+}
+export async function removerForgeRaridadeOverrideAdmin(idBlueprint: number, qualidade: ForgeQualidade): Promise<{ removido: boolean }> {
+  const resposta = await axiosInstance.delete<{ data: { removido: boolean } }>(`/admin/forge/blueprints/${idBlueprint}/rarity-overrides/${qualidade}`);
   return resposta.data.data;
 }
 
