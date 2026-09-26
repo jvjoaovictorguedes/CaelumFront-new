@@ -324,7 +324,11 @@ export default function CharacterCreation() {
       return "nada";
     } catch (error) {
       console.error("Erro ao sortear classe rara:", error);
-      setErrorMessage("Não foi possível verificar o sorteio de classe rara (falha de conexão). Tente confirmar novamente.");
+      const mensagemServidor = (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      setErrorMessage(
+        mensagemServidor ??
+          "Não foi possível verificar o sorteio de classe rara (falha de conexão). Tente confirmar novamente.",
+      );
       return "erro";
     }
   };
@@ -342,7 +346,11 @@ export default function CharacterCreation() {
       return "nada";
     } catch (error) {
       console.error("Erro ao sortear raça rara:", error);
-      setErrorMessage("Não foi possível verificar o sorteio de raça rara (falha de conexão). Tente confirmar novamente.");
+      const mensagemServidor = (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      setErrorMessage(
+        mensagemServidor ??
+          "Não foi possível verificar o sorteio de raça rara (falha de conexão). Tente confirmar novamente.",
+      );
       return "erro";
     }
   };
