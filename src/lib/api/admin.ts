@@ -6,7 +6,9 @@
 import axiosInstance from "@/utils/axiosIntance";
 
 export function mensagemDeErroAdmin(erro: unknown, padrao: string): string {
-  return (erro as { response?: { data?: { message?: string } } })?.response?.data?.message ?? padrao;
+  const dados = (erro as { response?: { data?: { message?: string; detalhe?: string } } })?.response?.data;
+  if (!dados?.message) return padrao;
+  return dados.detalhe ? `${dados.message} (${dados.detalhe})` : dados.message;
 }
 
 export interface WeaponPropertiesApi {
