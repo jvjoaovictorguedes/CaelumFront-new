@@ -2147,6 +2147,17 @@ export async function desativarForgeBlueprintAdmin(id: number, motivo?: string):
   const resposta = await axiosInstance.post<{ data: { blueprint: ForgeBlueprintApi } }>(`/admin/forge/blueprints/${id}/deactivate`, { motivo });
   return resposta.data.data.blueprint;
 }
+// Bug "FORJA - CORREÇÃO EXCLUA TODOS OS BLUEPRINTS EXISTENTES NA
+// FORJA, ATIVOS OU INATIVOS" — exclusão de verdade (nunca existia antes,
+// só ativar/desativar).
+export async function excluirForgeBlueprintAdmin(id: number, motivo?: string): Promise<{ id: number; excluido: boolean }> {
+  const resposta = await axiosInstance.delete<{ data: { id: number; excluido: boolean } }>(`/admin/forge/blueprints/${id}`, { data: { motivo } });
+  return resposta.data.data;
+}
+export async function excluirTodosForgeBlueprintsAdmin(motivo?: string): Promise<{ total: number; excluidos: number }> {
+  const resposta = await axiosInstance.delete<{ data: { total: number; excluidos: number } }>("/admin/forge/blueprints", { data: { motivo } });
+  return resposta.data.data;
+}
 
 export interface ForgePreviewBlueprintApi {
   blueprint: { id: number; nome: string; categoria_equipamento: string; tier_equipamento: number | null };

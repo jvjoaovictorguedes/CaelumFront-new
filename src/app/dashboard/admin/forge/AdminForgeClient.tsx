@@ -15,6 +15,8 @@ import {
   desativarForgeScrollAdmin,
   duplicarForgeBlueprintAdmin,
   duplicarForgeScrollAdmin,
+  excluirForgeBlueprintAdmin,
+  excluirTodosForgeBlueprintsAdmin,
   listarForgeBarrasAdmin,
   listarForgeBlueprintsAdmin,
   listarForgeRecursosAdmin,
@@ -248,6 +250,20 @@ function AbaBlueprints() {
       await carregar();
     } catch (error) { setErro(mensagemDeErroAdmin(error, "Não foi possível mudar o status.")); }
   }
+  async function excluir(linha: ForgeBlueprintLinhaApi) {
+    if (!window.confirm(`Excluir o blueprint "${linha.nome}" definitivamente? Essa ação não pode ser desfeita.`)) return;
+    try {
+      await excluirForgeBlueprintAdmin(linha.id, "Excluído pelo Painel Administrativo.");
+      await carregar();
+    } catch (error) { setErro(mensagemDeErroAdmin(error, "Não foi possível excluir o blueprint.")); }
+  }
+  async function excluirTodos() {
+    if (!window.confirm(`Excluir TODOS os ${total} blueprint(s) da Forja — ativos e inativos? Essa ação não pode ser desfeita.`)) return;
+    try {
+      await excluirTodosForgeBlueprintsAdmin("Exclusão em massa pelo Painel Administrativo.");
+      await carregar();
+    } catch (error) { setErro(mensagemDeErroAdmin(error, "Não foi possível excluir todos os blueprints.")); }
+  }
 
   if (mostrarEditor) {
     return <EditorBlueprint id={editandoId} onFechar={() => { setMostrarEditor(false); carregar(); }} />;
@@ -267,7 +283,14 @@ function AbaBlueprints() {
             <option value="false">Inativo</option>
           </select>
         </div>
-        <button type="button" onClick={() => { setEditandoId(null); setMostrarEditor(true); }} className={BTN}>+ Novo blueprint</button>
+        <div className="flex gap-2">
+          {total > 0 && (
+            <button type="button" onClick={excluirTodos} className="rounded-lg border border-red-500/50 px-4 py-2 text-sm font-bold text-red-400 hover:bg-red-500/10">
+              Excluir todos
+            </button>
+          )}
+          <button type="button" onClick={() => { setEditandoId(null); setMostrarEditor(true); }} className={BTN}>+ Novo blueprint</button>
+        </div>
       </div>
 
       {erro && <p className="rounded-lg bg-black/50 px-3 py-2 text-sm text-red-400">{erro}</p>}
@@ -305,6 +328,7 @@ function AbaBlueprints() {
                       <button type="button" onClick={() => { setEditandoId(bp.id); setMostrarEditor(true); }} className="text-[#F3B43F] hover:underline">Editar</button>
                       <button type="button" onClick={() => duplicar(bp.id)} className="text-white/70 hover:underline">Duplicar</button>
                       <button type="button" onClick={() => alternarAtivo(bp)} className="text-white/70 hover:underline">{bp.ativo ? "Desativar" : "Ativar"}</button>
+                      <button type="button" onClick={() => excluir(bp)} className="text-red-400 hover:underline">Excluir</button>
                     </div>
                   </td>
                 </tr>
