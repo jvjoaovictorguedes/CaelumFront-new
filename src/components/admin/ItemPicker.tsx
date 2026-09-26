@@ -17,7 +17,7 @@
 // catálogo (a seleção final continua sempre vindo da lista, igual antes).
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { listarItensAdmin, type AdminItemApi } from "@/lib/api/admin";
+import { listarItensParaSelecaoAdmin, type AdminItemSelecionavelApi } from "@/lib/api/admin";
 
 /** Formata "Nome (ID: N)" de forma consistente em todo o admin. */
 export function formatarItemComId(nome: string, id: number): string {
@@ -26,19 +26,22 @@ export function formatarItemComId(nome: string, id: number): string {
 
 /**
  * Carrega a lista de itens (ativos, por padrão) pra alimentar dropdowns de
- * seleção de item em qualquer tela do admin. Busca uma página grande de
- * uma vez só — o catálogo de itens do jogo é pequeno o suficiente pra isso.
+ * seleção de item em qualquer tela do admin. Usa o endpoint dedicado de
+ * seleção (GET /admin/items/select) — NUNCA listarItensAdmin, que é a
+ * tabela paginada do CRUD de Itens e sempre capa em 100 linhas (bug real
+ * reportado: catálogos com mais de 100 itens ativos escondiam os mais
+ * antigos de todo picker do admin).
  */
 export function useItensParaSelecaoAdmin(apenasAtivos = true) {
-  const [itens, setItens] = useState<AdminItemApi[]>([]);
+  const [itens, setItens] = useState<AdminItemSelecionavelApi[]>([]);
   const [carregando, setCarregando] = useState(true);
 
   useEffect(() => {
     let cancelado = false;
     setCarregando(true);
-    listarItensAdmin({ porPagina: 1000, apenasAtivos })
+    listarItensParaSelecaoAdmin({ apenasAtivos })
       .then((resultado) => {
-        if (!cancelado) setItens(resultado.itens);
+        if (!cancelado) setItens(resultado);
       })
       .catch(() => {})
       .finally(() => {
@@ -57,7 +60,7 @@ function normalizar(texto: string): string {
 }
 
 /** Um item "casa" com a busca digitada pelo ID (prefixo ou igual) ou pelo nome (substring). */
-function itemCasaComBusca(item: AdminItemApi, buscaNormalizada: string): boolean {
+function itemCasaComBusca(item: AdminItemSelecionavelApi, buscaNormalizada: string): boolean {
   if (!buscaNormalizada) return true;
   if (String(item.id).includes(buscaNormalizada)) return true;
   return normalizar(item.nome).includes(buscaNormalizada);
@@ -79,7 +82,7 @@ export function ItemSelect({
   permitirVazio = true,
   id,
 }: {
-  itens: AdminItemApi[];
+  itens: AdminItemSelecionavelApi[];
   value: number | "";
   onChange: (id: number | "") => void;
   className?: string;
@@ -118,7 +121,7 @@ export function ItemSelect({
     return () => document.removeEventListener("mousedown", aoClicarFora);
   }, [aberto]);
 
-  function escolher(item: AdminItemApi) {
+  function escolher(item: AdminItemSelecionavelApi) {
     onChange(item.id);
     setBusca("");
     setAberto(false);

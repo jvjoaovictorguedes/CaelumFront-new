@@ -89,6 +89,30 @@ export async function listarItensAdmin(filtros: FiltrosItensAdmin = {}): Promise
   return resposta.data.data;
 }
 
+// Item leve pra picker (ItemSelect) — nunca a linha completa da tabela
+// paginada de Itens (sem propriedades de arma/armadura/consumível).
+export interface AdminItemSelecionavelApi {
+  id: number;
+  nome: string;
+  tipo_item: string;
+  raridade: string;
+  imagem_url: string | null;
+  ativo: boolean;
+}
+
+// Endpoint dedicado (GET /admin/items/select) — devolve o catálogo
+// INTEIRO (ver comentário do backend em adminItemService.
+// listAllItemsForSelection), nunca capado em 100 como a tabela paginada
+// de listarItensAdmin. Todo ItemSelect do painel deve usar esta função,
+// nunca listarItensAdmin com um porPagina "grande" (bug real reportado:
+// isso escondia os itens mais antigos do catálogo em qualquer picker).
+export async function listarItensParaSelecaoAdmin(filtros: { apenasAtivos?: boolean; tipo_item?: string } = {}): Promise<AdminItemSelecionavelApi[]> {
+  const resposta = await axiosInstance.get<{ data: { itens: AdminItemSelecionavelApi[] } }>("/admin/items/select", {
+    params: filtros,
+  });
+  return resposta.data.data.itens;
+}
+
 export interface PayloadItemAdmin {
   item: {
     nome: string;
@@ -387,15 +411,23 @@ export interface AdventureZoneApi {
   ativa: boolean;
 }
 
+// Reformulação V2 dos Monstros — nível/vida/dano/agilidade/velocidade/
+// recompensa são stats FIXOS e autorais (nunca mais multiplicador_* em
+// cima de uma fórmula por nível).
 export interface AdventureMonsterApi {
   id: number;
   nome: string;
   descricao: string | null;
   imagem_url: string | null;
-  multiplicador_vida: number;
-  multiplicador_dano: number;
-  multiplicador_agilidade: number;
-  multiplicador_velocidade: number;
+  sprite_key: string | null;
+  nivel: number | null;
+  vida_maxima: number | null;
+  dano_min: number | null;
+  dano_max: number | null;
+  agilidade: number | null;
+  velocidade: number | null;
+  xp_recompensa: number | null;
+  ouro_recompensa: number | null;
   ativo: boolean;
 }
 
@@ -405,8 +437,10 @@ export interface AdventureZoneMonsterApi {
   id_monstro: number;
   peso_aparicao: number;
   tipo_aparicao: "Comum" | "Raro";
-  nivel_min_override: number | null;
-  nivel_max_override: number | null;
+  // Reformulação V2 (§4.3) — só decide ELEGIBILIDADE de aparição (jogador
+  // abaixo disso não vê esse vínculo no pool); nunca mais uma faixa de
+  // nível pro monstro em si (o nível dele é o fixo de AdventureMonster).
+  nivel_jogador_minimo: number;
   ativo: boolean;
   AdventureZone?: { id: number; nome: string };
   monstro?: { id: number; nome: string; imagem_url: string | null };
@@ -453,110 +487,6 @@ export async function atualizarMonstroAdmin(id: number, payload: Partial<Adventu
 export async function duplicarMonstroAdmin(id: number): Promise<AdventureMonsterApi> {
   const resposta = await axiosInstance.post<{ data: { monstro: AdventureMonsterApi } }>(`/admin/adventure/monsters/${id}/duplicate`);
   return resposta.data.data.monstro;
-}
-
-// Editor de Balanceamento de Monstros por Resultado — preview/simulação
-// NUNCA persistem nada; só a chamada a atualizarMonstroAdmin (acima)
-// salva de verdade.
-export interface MonsterBalanceMultiplicadoresApi {
-  vida: number;
-  dano: number;
-  agilidade: number;
-  velocidade: number;
-}
-export interface MonsterBalanceStatsRangeApi {
-  min: number;
-  media: number;
-  max: number;
-}
-export interface MonsterBalanceStatsApi {
-  vida: MonsterBalanceStatsRangeApi;
-  dano: MonsterBalanceStatsRangeApi;
-  agilidade: MonsterBalanceStatsRangeApi;
-  velocidade: MonsterBalanceStatsRangeApi;
-}
-export interface MonsterBalanceFaixaLinhaApi {
-  nivel: number;
-  vidaMedia: number;
-  danoMedio: number;
-  agilidadeMedia: number;
-  velocidadeMedia: number;
-  esquivaVsMedio: number;
-}
-export interface MonsterBalanceDificuldadeApi {
-  chave: string;
-  label: string;
-  taxaVitoriaJogadorAproximada?: number;
-  origem: "heuristica" | "simulacao";
-}
-export interface MonsterBalancePreviewApi {
-  nivelReferencia: number;
-  baseNivel: { vidaMedia: number; danoMedio: number; agilidadeMedia: number; velocidadeMedia: number };
-  multiplicadores: MonsterBalanceMultiplicadoresApi;
-  statsFinais: MonsterBalanceStatsApi;
-  esquivaContraPerfis: Record<string, number>;
-  ttk: { turnosParaMatar: number; turnosParaMorrer: number };
-  dificuldadeEstimada: MonsterBalanceDificuldadeApi;
-  faixaPorNivel: MonsterBalanceFaixaLinhaApi[] | null;
-  avisos: string[];
-}
-export interface MonsterBalanceSimulationApi {
-  totalCombates: number;
-  vitoriasJogador: number;
-  vitoriasMonstro: number;
-  timeouts: number;
-  taxaVitoriaJogadorPct: number;
-  turnosMedios: number;
-  turnosMediana: number;
-  turnosP95: number;
-  vidaRestanteMediaVencedor: number | null;
-  danoTotalMonstroMedio: number;
-  esquivaObservadaPct: number;
-  dificuldade: MonsterBalanceDificuldadeApi;
-}
-export interface MonsterBalancePresetApi {
-  chave: string;
-  label: string;
-  multiplicadores: MonsterBalanceMultiplicadoresApi;
-}
-export interface MonsterBalancePerfilApi {
-  chave: string;
-  label: string;
-}
-export interface MonsterBalanceDesiredInput {
-  hpMean: number;
-  damageMean: number;
-  dodgeVsAveragePct: number;
-  speedMean: number;
-}
-
-export async function previewBalanceamentoMonstroAdmin(
-  id: number,
-  payload: {
-    referenceLevel: number;
-    mode: "desired" | "multipliers";
-    desired?: MonsterBalanceDesiredInput;
-    multiplicadores?: MonsterBalanceMultiplicadoresApi;
-    zoneId?: number;
-  },
-): Promise<MonsterBalancePreviewApi> {
-  const resposta = await axiosInstance.post<{ data: MonsterBalancePreviewApi }>(`/admin/adventure/monsters/${id}/balance-preview`, payload);
-  return resposta.data.data;
-}
-
-export async function simularBalanceamentoMonstroAdmin(
-  id: number,
-  payload: { referenceLevel: number; multiplicadores: MonsterBalanceMultiplicadoresApi; profile?: string; iterations?: number },
-): Promise<MonsterBalanceSimulationApi> {
-  const resposta = await axiosInstance.post<{ data: MonsterBalanceSimulationApi }>(`/admin/adventure/monsters/${id}/balance-simulate`, payload);
-  return resposta.data.data;
-}
-
-export async function listarPresetsBalanceamentoAdmin(): Promise<{ presets: MonsterBalancePresetApi[]; perfis: MonsterBalancePerfilApi[] }> {
-  const resposta = await axiosInstance.get<{ data: { presets: MonsterBalancePresetApi[]; perfis: MonsterBalancePerfilApi[] } }>(
-    "/admin/adventure/monsters/balance-presets",
-  );
-  return resposta.data.data;
 }
 
 export async function listarAparicoesAdmin(idArea?: number): Promise<AdventureZoneMonsterApi[]> {
@@ -1184,6 +1114,14 @@ export async function concederPremiacaoAdmin(idPersonagem: number, payload: Payl
   const resposta = await axiosInstance.post<{ data: GrantResultApi }>(`/admin/grants/${idPersonagem}`, payload);
   return resposta.data.data;
 }
+
+// Proezas Únicas — ver bloco completo (catálogo/Legados/Triggers/
+// Histórico-Reparos) mais abaixo, na Fase 6 do Painel Administrativo.
+// Uma versão simplificada e conflitante (mesmos nomes de tipo, rotas
+// diferentes) chegou de outro agente e foi descartada por decisão do
+// usuário — nunca reintroduzir listarProezasUnicasAdmin/
+// criarProezaUnicaAdmin/atualizarProezaUnicaAdmin/concederProezaUnicaAdmin
+// aqui, o painel completo cobre o mesmo caso de uso.
 
 // Painel Administrativo Fase 15 — Buff Global (evento temporal server-wide).
 export type TipoGlobalBuff = "Xp" | "Ouro" | "DropAventura" | "XpExpedicao";
@@ -2056,11 +1994,15 @@ export interface ForgeIngredienteApi {
   recurso?: { id: number; nome: string; profissao: string };
 }
 
-export interface ForgeResultadoApi {
-  id_blueprint: number;
-  qualidade: ForgeQualidade;
-  id_item: number;
-  item?: { id: number; nome: string; imagem_url: string | null; raridade: string; tier_equipamento: number | null };
+// Reformulação V2 (Item Único por Equipamento, Raridade por Instância)
+// — o blueprint aponta pra UM Item canônico, não mais uma linha por
+// qualidade. Qualquer raridade que a Forja produzir desse blueprint
+// vira a raridade da instância na coleta, nunca escolhe outro Item.
+export interface ForgeItemResultadoApi {
+  id: number;
+  nome: string;
+  imagem_url: string | null;
+  tier_equipamento?: number | null;
 }
 
 export interface ForgeBlueprintApi {
@@ -2071,8 +2013,9 @@ export interface ForgeBlueprintApi {
   multiplicador_tempo: number;
   nivel_forja_minimo: number;
   ativo: boolean;
+  id_item_resultado: number | null;
+  itemResultado: ForgeItemResultadoApi | null;
   ingredientes: ForgeIngredienteApi[];
-  resultados: ForgeResultadoApi[];
 }
 
 export interface ForgeBlueprintLinhaApi {
@@ -2083,7 +2026,7 @@ export interface ForgeBlueprintLinhaApi {
   nivel_forja_minimo: number;
   multiplicador_tempo: number;
   ativo: boolean;
-  resultados_count: number;
+  item_resultado: ForgeItemResultadoApi | null;
   resultados_completos: boolean;
   ingredientes_ok: boolean;
 }
@@ -2113,7 +2056,7 @@ export interface PayloadForgeBlueprintAdmin {
   multiplicador_tempo?: number;
   nivel_forja_minimo?: number;
   ingredientes?: { tipo_insumo: "Barra" | "RecursoExpedicao"; id_recurso: number; quantidade_base: number }[];
-  resultados?: Partial<Record<ForgeQualidade, number>>;
+  id_item_resultado?: number | null;
 }
 
 export async function listarForgeBlueprintsAdmin(
@@ -2169,7 +2112,7 @@ export interface ForgePreviewBlueprintApi {
   ingredientes: Array<{ tipo_insumo: string; nome_recurso?: string; quantidade_necessaria: number; id_item: number | null; nome_item: string | null; imagem_url: string | null }>;
   chances_percentual_por_qualidade_final: Record<string, number>;
   tempo_segundos: number;
-  item_resultado_qualidade_base: { id: number; nome: string; imagem_url: string | null; raridade: string } | null;
+  item_resultado_qualidade_base: { id: number; nome: string; imagem_url: string | null; raridade: string; propriedades: Record<string, unknown> | null } | null;
 }
 export async function previewForgeBlueprintAdmin(id: number, params: { nivelForja: number; qualidadeBase: string }): Promise<ForgePreviewBlueprintApi> {
   const resposta = await axiosInstance.get<{ data: ForgePreviewBlueprintApi }>(`/admin/forge/blueprints/${id}/preview`, { params });
@@ -2510,4 +2453,22 @@ export async function transferirUniqueFeatClaimAdmin(id: number, idPersonagemNov
     motivo,
   });
   return resposta.data.data.claim;
+}
+
+// Modo Manutenção — kill-switch site-wide (pedido do usuário: "ao
+// ativar, só admin consegue jogar"). Status público é lido pelo
+// RootLayout via o backend direto (sem passar por esses helpers, que
+// exigem sessão admin); estes dois cobrem só a tela de administração
+// do painel.
+export interface MaintenanceStatusApi {
+  enabled: boolean;
+  message: string;
+}
+export async function obterStatusManutencaoAdmin(): Promise<MaintenanceStatusApi> {
+  const resposta = await axiosInstance.get<{ data: MaintenanceStatusApi }>("/admin/maintenance");
+  return resposta.data.data;
+}
+export async function atualizarStatusManutencaoAdmin(payload: { enabled: boolean; message?: string }): Promise<MaintenanceStatusApi> {
+  const resposta = await axiosInstance.patch<{ data: MaintenanceStatusApi }>("/admin/maintenance", payload);
+  return resposta.data.data;
 }

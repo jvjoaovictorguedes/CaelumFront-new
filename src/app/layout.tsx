@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono, IM_Fell_English_SC } from "next/font/google";
 import "./globals.css";
 import { getUserCookie } from "@/app/create/temp-character-data-action";
+import { isCurrentUserAdmin, obterStatusManutencao } from "@/utils/character-session";
+import MaintenanceScreen from "@/components/MaintenanceScreen";
 import { MessagesSocketProvider } from "@/contexts/MessagesSocketContext";
 import { MusicProvider } from "@/contexts/MusicContext";
 import { MusicConfigProvider } from "@/contexts/MusicConfigContext";
@@ -35,18 +37,29 @@ export default async function RootLayout({
   const user = await getUserCookie();
   const currentUserId = user?.id ? Number(user.id) : null;
 
+  // Modo Manutenção (painel Admin > Manutenção) — checado em TODA
+  // navegação, antes de montar qualquer provider/tela: só admin passa.
+  // A checagem de isAdmin só roda quando a manutenção está de fato
+  // ligada (custa uma request a mais só nesse caso).
+  const manutencao = await obterStatusManutencao();
+  const bloqueado = manutencao.enabled && !(await isCurrentUserAdmin());
+
   return (
     <html lang="pt-BR">
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${imFellEnglish.variable} antialiased`}
       >
-        <MusicProvider>
-          <MusicConfigProvider>
-            <MessagesSocketProvider currentUserId={currentUserId ?? undefined}>
-              {children}
-            </MessagesSocketProvider>
-          </MusicConfigProvider>
-        </MusicProvider>
+        {bloqueado ? (
+          <MaintenanceScreen message={manutencao.message} />
+        ) : (
+          <MusicProvider>
+            <MusicConfigProvider>
+              <MessagesSocketProvider currentUserId={currentUserId ?? undefined}>
+                {children}
+              </MessagesSocketProvider>
+            </MusicConfigProvider>
+          </MusicProvider>
+        )}
       </body>
     </html>
   );
