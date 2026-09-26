@@ -269,6 +269,46 @@ export async function excluirUsuariosEmLoteAdmin(ids: number[]): Promise<Resulta
   return resposta.data.data;
 }
 
+// Painel Administrativo — "Referral" (referrals.view, somente leitura).
+// Cada linha é uma conta indicada; indicadoPor.totalIndicacoes é a
+// contagem GLOBAL do indicador (repete o mesmo número em toda linha
+// daquele indicador de propósito — é assim que a tela mostra "esse
+// indicador trouxe N pessoas" sem precisar de uma tela separada).
+export interface IndicadoAdminApi {
+  id: number;
+  username: string;
+  email: string;
+  dataCriacao: string;
+  indicadoPor: {
+    id: number;
+    username: string;
+    totalIndicacoes: number;
+  };
+}
+
+export interface PaginaIndicadosAdminApi {
+  total: number;
+  pagina: number;
+  porPagina: number;
+  totalPaginas: number;
+  indicados: IndicadoAdminApi[];
+}
+
+export interface ResumoReferralAdminApi {
+  totalIndicados: number;
+  totalIndicadores: number;
+}
+
+export async function listarReferralsAdmin(params: { busca?: string; pagina?: number; porPagina?: number } = {}): Promise<PaginaIndicadosAdminApi> {
+  const resposta = await axiosInstance.get<{ data: PaginaIndicadosAdminApi }>("/admin/referrals", { params });
+  return resposta.data.data;
+}
+
+export async function obterResumoReferralAdmin(): Promise<ResumoReferralAdminApi> {
+  const resposta = await axiosInstance.get<{ data: ResumoReferralAdminApi }>("/admin/referrals/resumo");
+  return resposta.data.data;
+}
+
 // Painel Administrativo Fase 13 (§24) — Patch Notes sem migration.
 export interface PatchNoteApi {
   id: number;
