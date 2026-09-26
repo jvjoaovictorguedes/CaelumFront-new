@@ -3,8 +3,8 @@
 import { useState } from "react";
 import axiosInstance from "@/utils/axiosIntance";
 
-const NIVEL_MINIMO = 5;
-const CUSTO = 500;
+const NIVEL_MINIMO = 10;
+const CUSTO = 1000;
 
 export default function CriarGuildaForm({
   characterId,
