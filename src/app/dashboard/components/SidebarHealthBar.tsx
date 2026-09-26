@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useCharacter } from "@/contexts/CharacterContext";
 
 // Vida sempre visível no menu, embaixo da foto — sem isso, a única forma
@@ -10,8 +11,11 @@ import { useCharacter } from "@/contexts/CharacterContext";
 // sem precisar de polling próprio.
 export default function SidebarHealthBar() {
   const { character } = useCharacter();
+  const router = useRouter();
 
   if (!character) return null;
+
+  const pontosParaDistribuir = character.pontos_distribuir ?? 0;
 
   const vidaMaxima = Math.max(
     character.vida_maxima ?? 30 + character.vitalidade * 6,
@@ -63,6 +67,17 @@ export default function SidebarHealthBar() {
           {(character.dinheiro ?? 0).toLocaleString("pt-BR")}
         </span>
       </div>
+      {pontosParaDistribuir > 0 && (
+        <button
+          type="button"
+          onClick={() => router.push("/dashboard/character?tab=status")}
+          className="w-full rounded-lg border border-black/30 bg-[#F3B43F]/90 px-2 py-1.5 text-center text-[10px] font-bold leading-tight text-black shadow transition hover:bg-[#F3B43F]"
+        >
+          Você tem pontos para distribuir
+          <br />
+          <span className="underline">clique aqui</span> para ir distribuir
+        </button>
+      )}
     </div>
   );
 }
