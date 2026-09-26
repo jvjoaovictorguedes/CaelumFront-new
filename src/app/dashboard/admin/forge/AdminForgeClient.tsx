@@ -1002,6 +1002,8 @@ function AbaBalanceamento() {
   if (!dados) return <p className="text-sm text-red-400">{erro}</p>;
 
   const fabricacao = dados["forge.crafting"].atual as { CHANCE_QUALIDADE_SUPERIOR_FABRICACAO_PPM_POR_NIVEL: Record<string, Record<string, number>> };
+  const fundicao = dados["forge.smelting"].atual as { FRAGMENTOS_POR_BARRA: Record<string, number> };
+  const refinamento = dados["forge.refinement"].atual as { BONUS_ATRIBUTO_REFINAMENTO_PCT: Record<string, number> };
 
   async function salvarTabelaFabricacao(nivel: string, tabela: Record<string, number>) {
     setSalvando(true); setMensagem(""); setErro("");
@@ -1016,6 +1018,20 @@ function AbaBalanceamento() {
     <div className="flex flex-col gap-4">
       {erro && <p className="rounded-lg bg-black/50 px-3 py-2 text-sm text-red-400">{erro}</p>}
       {mensagem && <p className="rounded-lg bg-black/50 px-3 py-2 text-sm text-[#F3B43F]">{mensagem}</p>}
+
+      <div className={CARD}>
+        <p className="mb-2 font-imFeel text-xl text-[#F3B43F]">Fundição — Fragmentos necessários por barra</p>
+        <p className="mb-2 text-xs text-white/50">Quantos fragmentos daquela qualidade o jogador precisa pra fundir 1 barra.</p>
+        <PainelFragmentosPorBarra tabelaInicial={fundicao.FRAGMENTOS_POR_BARRA} />
+      </div>
+
+      <div className={CARD}>
+        <p className="mb-2 font-imFeel text-xl text-[#F3B43F]">Refinamento — Bônus de atributo por nível</p>
+        <p className="mb-2 text-xs text-white/50">
+          Percentual acumulado aplicado ao atributo principal do equipamento em cada nível de refinamento (0 = sem refino).
+        </p>
+        <PainelBonusRefinamento tabelaInicial={refinamento.BONUS_ATRIBUTO_REFINAMENTO_PCT} />
+      </div>
 
       <div className={CARD}>
         <p className="mb-2 font-imFeel text-xl text-[#F3B43F]">RNG de Fabricação — soma por nível precisa fechar 1.000.000 PPM</p>
@@ -1036,6 +1052,89 @@ function AbaBalanceamento() {
         <p className="mb-2 text-xs text-white/50">NIVEL_MAXIMO não é editável na V1. Editar XP por etapa exige preview de impacto + confirmação.</p>
         <PainelProgressao onImpacto={setImpacto} impacto={impacto} />
       </div>
+    </div>
+  );
+}
+
+function PainelFragmentosPorBarra({ tabelaInicial }: { tabelaInicial: Record<string, number> }) {
+  const [tabela, setTabela] = useState(tabelaInicial);
+  const [salvando, setSalvando] = useState(false);
+  const [erro, setErro] = useState("");
+  const [mensagem, setMensagem] = useState("");
+
+  async function salvar() {
+    setSalvando(true); setErro(""); setMensagem("");
+    try {
+      await atualizarForgeBalanceAdmin("forge.smelting", { FRAGMENTOS_POR_BARRA: tabela });
+      setMensagem("Fragmentos por barra atualizados.");
+    } catch (error) { setErro(mensagemDeErroAdmin(error, "Não foi possível salvar.")); } finally { setSalvando(false); }
+  }
+
+  return (
+    <div>
+      <div className="flex flex-wrap gap-2">
+        {Object.entries(tabela).map(([qualidade, quantidade]) => (
+          <label key={qualidade} className="flex flex-col gap-1 text-xs">
+            {qualidade}
+            <input
+              type="number"
+              min={1}
+              className={`${INPUT} w-24`}
+              value={quantidade}
+              onChange={(e) => setTabela((t) => ({ ...t, [qualidade]: Math.max(1, Number(e.target.value) || 1) }))}
+            />
+          </label>
+        ))}
+      </div>
+      {erro && <p className="mt-2 text-sm text-red-400">{erro}</p>}
+      {mensagem && <p className="mt-2 text-sm text-[#F3B43F]">{mensagem}</p>}
+      <button type="button" disabled={salvando} onClick={salvar} className={`${BTN} mt-3`}>
+        {salvando ? "Salvando..." : "Salvar fragmentos por barra"}
+      </button>
+    </div>
+  );
+}
+
+function PainelBonusRefinamento({ tabelaInicial }: { tabelaInicial: Record<string, number> }) {
+  const [tabela, setTabela] = useState(tabelaInicial);
+  const [salvando, setSalvando] = useState(false);
+  const [erro, setErro] = useState("");
+  const [mensagem, setMensagem] = useState("");
+  const niveis = Object.keys(tabela).sort((a, b) => Number(a) - Number(b));
+
+  async function salvar() {
+    setSalvando(true); setErro(""); setMensagem("");
+    try {
+      await atualizarForgeBalanceAdmin("forge.refinement", { BONUS_ATRIBUTO_REFINAMENTO_PCT: tabela });
+      setMensagem("Bônus de refinamento atualizado.");
+    } catch (error) { setErro(mensagemDeErroAdmin(error, "Não foi possível salvar.")); } finally { setSalvando(false); }
+  }
+
+  return (
+    <div>
+      <div className="flex flex-wrap gap-2">
+        {niveis.map((nivel) => (
+          <label key={nivel} className="flex flex-col gap-1 text-xs">
+            +{nivel}
+            <div className="flex items-center gap-1">
+              <input
+                type="number"
+                min={0}
+                step={0.1}
+                className={`${INPUT} w-20`}
+                value={tabela[nivel]}
+                onChange={(e) => setTabela((t) => ({ ...t, [nivel]: Math.max(0, Number(e.target.value) || 0) }))}
+              />
+              <span className="text-white/50">%</span>
+            </div>
+          </label>
+        ))}
+      </div>
+      {erro && <p className="mt-2 text-sm text-red-400">{erro}</p>}
+      {mensagem && <p className="mt-2 text-sm text-[#F3B43F]">{mensagem}</p>}
+      <button type="button" disabled={salvando} onClick={salvar} className={`${BTN} mt-3`}>
+        {salvando ? "Salvando..." : "Salvar bônus de refinamento"}
+      </button>
     </div>
   );
 }
