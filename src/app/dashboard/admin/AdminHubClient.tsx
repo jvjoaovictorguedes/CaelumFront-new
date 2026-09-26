@@ -50,6 +50,7 @@ const CATEGORIAS: CategoriaAdmin[] = [
       { titulo: "Busca", descricao: "Consultar jogador por nome/ID.", href: "/dashboard/admin/players", permissao: "players.view" },
       { titulo: "Inventário", descricao: "Correções administrativas de inventário.", href: "/dashboard/admin/inventory", permissao: "players.manage" },
       { titulo: "Premiações", descricao: "Conceder itens/equipamentos a um jogador.", href: "/dashboard/admin/grants", permissao: "players.reward" },
+      { titulo: "Referral", descricao: "Quem foi indicado, por quem, e quantas indicações cada indicador tem.", href: "/dashboard/admin/referrals", permissao: "referrals.view" },
     ],
   },
   {
