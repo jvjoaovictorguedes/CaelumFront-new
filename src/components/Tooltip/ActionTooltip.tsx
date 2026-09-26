@@ -7,12 +7,15 @@
 // convenção visual (fundo dourado, texto escuro) do Tooltip original.
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 
-const POSICAO: Record<"top" | "bottom", string> = {
-  top: "bottom-full left-1/2 -translate-x-1/2 mb-2",
-  bottom: "top-full left-1/2 -translate-x-1/2 mt-2",
+const POSICAO_VERTICAL: Record<"top" | "bottom", string> = {
+  top: "bottom-full mb-2",
+  bottom: "top-full mt-2",
 };
+
+// Respiro mínimo nunca colado na borda da tela.
+const MARGEM_VIEWPORT = 8;
 
 export default function ActionTooltip({
   children,
@@ -24,6 +27,29 @@ export default function ActionTooltip({
   position?: "top" | "bottom";
 }) {
   const [visivel, setVisivel] = useState(false);
+  const [deslocamentoX, setDeslocamentoX] = useState(0);
+  const tooltipRef = useRef<HTMLDivElement>(null);
+
+  // O tooltip nasce centralizado no gatilho (left-1/2 -translate-x-1/2).
+  // Pra um ícone perto da borda da tela (ex.: primeiro Poder da barra de
+  // ações, colado no canto esquerdo — bug relatado com o texto cortado),
+  // isso projeta metade da caixa pra fora da viewport. useLayoutEffect
+  // mede a posição real ANTES do próximo paint e corrige com um
+  // deslocamento extra, sem o tooltip "pular" visivelmente.
+  useLayoutEffect(() => {
+    if (!visivel || !tooltipRef.current) {
+      setDeslocamentoX(0);
+      return;
+    }
+    const rect = tooltipRef.current.getBoundingClientRect();
+    if (rect.left < MARGEM_VIEWPORT) {
+      setDeslocamentoX(MARGEM_VIEWPORT - rect.left);
+    } else if (rect.right > window.innerWidth - MARGEM_VIEWPORT) {
+      setDeslocamentoX(window.innerWidth - MARGEM_VIEWPORT - rect.right);
+    } else {
+      setDeslocamentoX(0);
+    }
+  }, [visivel]);
 
   return (
     <div
@@ -38,7 +64,9 @@ export default function ActionTooltip({
       {children}
       {visivel && (
         <div
-          className={`pointer-events-none absolute z-50 min-w-[160px] max-w-[220px] whitespace-normal rounded-md bg-[#F3B43F] px-3 py-2 text-left text-sm text-[#3a2f24] shadow-lg animate-fade-in ${POSICAO[position]}`}
+          ref={tooltipRef}
+          style={{ transform: `translateX(calc(-50% + ${deslocamentoX}px))` }}
+          className={`pointer-events-none absolute left-1/2 z-50 min-w-[160px] max-w-[220px] whitespace-normal rounded-md bg-[#F3B43F] px-3 py-2 text-left text-sm text-[#3a2f24] shadow-lg animate-fade-in ${POSICAO_VERTICAL[position]}`}
         >
           {label}
         </div>
