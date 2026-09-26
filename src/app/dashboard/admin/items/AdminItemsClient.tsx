@@ -172,6 +172,7 @@ const TIPOS_COM_ARMA = ["Arma"];
 const TIPOS_COM_ARMADURA = ["Armadura", "Capacete", "Escudo", "Acessorio1", "Acessorio2"];
 const TIPOS_COM_CONSUMIVEL = ["Consumivel"];
 const TIPOS_COM_VARA_PESCA = ["Ferramenta"];
+const TIPOS_EQUIPAMENTO = [...TIPOS_COM_ARMA, ...TIPOS_COM_ARMADURA, ...TIPOS_COM_VARA_PESCA];
 
 function formularioVazio(): PayloadItemAdmin {
   return {
@@ -418,6 +419,7 @@ export default function AdminItemsClient() {
               <th className="px-3 py-2">Imagem</th>
               <th className="px-3 py-2">Nome</th>
               <th className="px-3 py-2">Tipo</th>
+              <th className="px-3 py-2">Tier</th>
               <th className="px-3 py-2">Raridade</th>
               <th className="px-3 py-2">Loja</th>
               <th className="px-3 py-2">Mercado</th>
@@ -428,13 +430,13 @@ export default function AdminItemsClient() {
           <tbody>
             {carregando ? (
               <tr>
-                <td colSpan={9} className="px-3 py-4 text-center text-white/50">
+                <td colSpan={10} className="px-3 py-4 text-center text-white/50">
                   Carregando...
                 </td>
               </tr>
             ) : itens.length === 0 ? (
               <tr>
-                <td colSpan={9} className="px-3 py-4 text-center text-white/50">
+                <td colSpan={10} className="px-3 py-4 text-center text-white/50">
                   Nenhum item encontrado.
                 </td>
               </tr>
@@ -456,6 +458,7 @@ export default function AdminItemsClient() {
                   </td>
                   <td className="px-3 py-2 font-bold">{item.nome}</td>
                   <td className="px-3 py-2">{item.tipo_item}</td>
+                  <td className="px-3 py-2">{item.tier_equipamento ?? "—"}</td>
                   <td className="px-3 py-2">{item.raridade}</td>
                   <td className="px-3 py-2">{item.disponivel_loja ? "Sim" : "Não"}</td>
                   <td className="px-3 py-2">{item.negociavel_mercado ? "Sim" : "Não"}</td>
@@ -590,6 +593,25 @@ export default function AdminItemsClient() {
                 </select>
               </label>
             </div>
+
+            {TIPOS_EQUIPAMENTO.includes(tipoAtual) && (
+              <label className="flex flex-col gap-1 text-xs">
+                Tier (1-5) <span className="text-red-400">*</span>
+                <input
+                  type="number"
+                  min={1}
+                  max={5}
+                  value={form.item.tier_equipamento ?? ""}
+                  onChange={(e) =>
+                    setForm((f) => ({
+                      ...f,
+                      item: { ...f.item, tier_equipamento: e.target.value === "" ? null : Number(e.target.value) },
+                    }))
+                  }
+                  className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm"
+                />
+              </label>
+            )}
 
             <div className="flex gap-2">
               <label className="flex flex-1 flex-col gap-1 text-xs">
