@@ -66,7 +66,13 @@ export default function ActionTooltip({
         <div
           ref={tooltipRef}
           style={{ transform: `translateX(calc(-50% + ${deslocamentoX}px))` }}
-          className={`pointer-events-none absolute left-1/2 z-50 min-w-[160px] max-w-[220px] whitespace-normal rounded-md bg-[#F3B43F] px-3 py-2 text-left text-sm text-[#3a2f24] shadow-lg animate-fade-in ${POSICAO_VERTICAL[position]}`}
+          // A tela de combate (Aventura/Duelo) é fixed inset-0 com
+          // overflow-hidden — sem limite de altura aqui, uma descrição
+          // de poder longa estourava o topo da tela e a borda do
+          // container cortava o texto no meio. max-h + scroll interno
+          // garante que o tooltip NUNCA passe do espaço disponível,
+          // mesmo pra descrições bem longas.
+          className={`pointer-events-none absolute left-1/2 z-50 max-h-[45vh] min-w-[160px] max-w-[260px] overflow-y-auto whitespace-normal rounded-md bg-[#F3B43F] px-3 py-2 text-left text-sm text-[#3a2f24] shadow-lg animate-fade-in ${POSICAO_VERTICAL[position]}`}
         >
           {label}
         </div>
