@@ -211,7 +211,7 @@ function AbaVisaoGeral() {
 // Blueprints
 // ---------------------------------------------------------------------
 function blueprintFormVazio(): PayloadForgeBlueprintAdmin {
-  return { nome: "", categoria_equipamento: "Arma", tier_equipamento: 3, multiplicador_tempo: 1, nivel_forja_minimo: 1, ingredientes: [], resultados: {} };
+  return { nome: "", categoria_equipamento: "Arma", tier_equipamento: 3, multiplicador_tempo: 1, nivel_forja_minimo: 1, ingredientes: [], id_item_resultado: null };
 }
 
 function AbaBlueprints() {
@@ -301,7 +301,7 @@ function AbaBlueprints() {
           <thead>
             <tr className="border-b border-white/10 text-xs uppercase text-white/50">
               <th className="px-3 py-2">Nome</th><th className="px-3 py-2">Categoria</th><th className="px-3 py-2">Tier</th>
-              <th className="px-3 py-2">Nv. Forja</th><th className="px-3 py-2">Resultados</th><th className="px-3 py-2">Status</th><th className="px-3 py-2">Ações</th>
+              <th className="px-3 py-2">Nv. Forja</th><th className="px-3 py-2">Item resultado</th><th className="px-3 py-2">Status</th><th className="px-3 py-2">Ações</th>
             </tr>
           </thead>
           <tbody>
@@ -317,7 +317,7 @@ function AbaBlueprints() {
                   <td className="px-3 py-2">{bp.tier_equipamento ?? "—"}</td>
                   <td className="px-3 py-2">{bp.nivel_forja_minimo}</td>
                   <td className="px-3 py-2">
-                    <span className={bp.resultados_completos ? "text-green-300" : "text-red-400"}>{bp.resultados_count}/6</span>
+                    <span className={bp.resultados_completos ? "text-green-300" : "text-red-400"}>{bp.item_resultado ? bp.item_resultado.nome : "Sem item"}</span>
                     {!bp.ingredientes_ok && <span className="ml-2 rounded-full bg-red-500/20 px-2 py-0.5 text-[10px] font-bold uppercase text-red-300">Ingrediente ausente</span>}
                   </td>
                   <td className="px-3 py-2">
@@ -353,7 +353,9 @@ function EditorBlueprint({ id, onFechar }: { id: number | null; onFechar: () => 
   const [salvando, setSalvando] = useState(false);
   const [mensagem, setMensagem] = useState("");
   const [erro, setErro] = useState("");
-  const [seletorAberto, setSeletorAberto] = useState<string | null>(null); // qualidade sendo escolhida, ou "novo-ingrediente"
+  // Reformulação V2 (Item Único por Equipamento) — só existe UM Item
+  // resultado por blueprint, não mais um seletor por qualidade.
+  const [seletorItemResultadoAberto, setSeletorItemResultadoAberto] = useState(false);
   const [recursos, setRecursos] = useState<ForgeRecursoApi[]>([]);
   const [previewDados, setPreviewDados] = useState<Awaited<ReturnType<typeof previewForgeBlueprintAdmin>> | null>(null);
 
@@ -371,7 +373,7 @@ function EditorBlueprint({ id, onFechar }: { id: number | null; onFechar: () => 
         multiplicador_tempo: resultado.blueprint.multiplicador_tempo,
         nivel_forja_minimo: resultado.blueprint.nivel_forja_minimo,
         ingredientes: resultado.blueprint.ingredientes.map((i) => ({ tipo_insumo: i.tipo_insumo, id_recurso: i.id_recurso, quantidade_base: i.quantidade_base })),
-        resultados: Object.fromEntries(resultado.blueprint.resultados.map((r) => [r.qualidade, r.id_item])),
+        id_item_resultado: resultado.blueprint.id_item_resultado,
       });
     } catch (error) {
       setErro(mensagemDeErroAdmin(error, "Não foi possível carregar o blueprint."));
@@ -416,14 +418,14 @@ function EditorBlueprint({ id, onFechar }: { id: number | null; onFechar: () => 
     } catch (error) { setErro(mensagemDeErroAdmin(error, "Não foi possível salvar os ingredientes.")); } finally { setSalvando(false); }
   }
 
-  async function salvarResultado(qualidade: ForgeQualidade, item: AdminItemApi) {
+  async function salvarItemResultado(item: AdminItemApi) {
     if (!idAtual) { setErro("Salve os campos básicos primeiro."); return; }
     setSalvando(true); setErro("");
     try {
-      await atualizarForgeBlueprintAdmin(idAtual, { resultados: { [qualidade]: item.id } });
-      setMensagem(`Resultado ${qualidade} definido como "${item.nome}".`);
+      await atualizarForgeBlueprintAdmin(idAtual, { id_item_resultado: item.id });
+      setMensagem(`Item resultado definido como "${item.nome}" — qualquer raridade fabricada vira a raridade da instância.`);
       await carregar();
-    } catch (error) { setErro(mensagemDeErroAdmin(error, "Não foi possível salvar o resultado.")); } finally { setSalvando(false); }
+    } catch (error) { setErro(mensagemDeErroAdmin(error, "Não foi possível salvar o item resultado.")); } finally { setSalvando(false); }
   }
 
   async function validar() {
@@ -448,8 +450,6 @@ function EditorBlueprint({ id, onFechar }: { id: number | null; onFechar: () => 
   }
 
   if (carregando) return <p className="text-sm text-white/60">Carregando...</p>;
-
-  const resultadosPorQualidade = new Map((blueprint?.resultados ?? []).map((r) => [r.qualidade, r]));
 
   return (
     <div className="flex flex-col gap-4">
@@ -512,30 +512,30 @@ function EditorBlueprint({ id, onFechar }: { id: number | null; onFechar: () => 
           </div>
 
           <div className={CARD}>
-            <p className="mb-3 font-imFeel text-xl text-[#F3B43F]">Resultados por qualidade (6/6)</p>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-              {FORGE_QUALIDADES.map((qualidade) => {
-                const atual = resultadosPorQualidade.get(qualidade);
-                return (
-                  <div key={qualidade} className="rounded-lg border border-white/10 p-2">
-                    <p className="text-xs uppercase text-white/50">{qualidade}</p>
-                    {atual?.item ? (
-                      <div className="mt-1 flex items-center gap-2">
-                        {atual.item.imagem_url ? <img src={atual.item.imagem_url} alt="" className="h-8 w-8 rounded object-cover" /> : <span className="h-8 w-8 rounded bg-white/10" />}
-                        <span className="text-xs text-white">{atual.item.nome}</span>
-                      </div>
-                    ) : (
-                      <p className="mt-1 text-xs text-red-400">Sem item</p>
-                    )}
-                    <button type="button" onClick={() => setSeletorAberto(qualidade)} className="mt-2 text-xs text-[#F3B43F] hover:underline">Selecionar item</button>
+            <p className="mb-3 font-imFeel text-xl text-[#F3B43F]">Item resultado</p>
+            <p className="mb-2 text-xs text-white/50">
+              Um Item só — qualquer raridade que a Forja produzir a partir desse blueprint vira a raridade da cópia coletada. Não precisa mais cadastrar um item por qualidade.
+            </p>
+            <div className="rounded-lg border border-white/10 p-3">
+              {blueprint?.itemResultado ? (
+                <div className="flex items-center gap-3">
+                  {blueprint.itemResultado.imagem_url ? <img src={blueprint.itemResultado.imagem_url} alt="" className="h-12 w-12 rounded object-cover" /> : <span className="h-12 w-12 rounded bg-white/10" />}
+                  <div>
+                    <p className="text-sm text-white">{blueprint.itemResultado.nome}</p>
+                    <p className="text-xs text-white/40">#{blueprint.itemResultado.id}</p>
                   </div>
-                );
-              })}
+                </div>
+              ) : (
+                <p className="text-sm text-red-400">Sem item resultado configurado.</p>
+              )}
+              <button type="button" onClick={() => setSeletorItemResultadoAberto(true)} className="mt-2 text-xs text-[#F3B43F] hover:underline">
+                {blueprint?.itemResultado ? "Trocar item" : "Selecionar item"}
+              </button>
             </div>
             {relatorio && relatorio.resultadosValidacao.alertas.length > 0 && (
               <ul className="mt-3 space-y-1 text-xs">
                 {relatorio.resultadosValidacao.alertas.map((a, i) => (
-                  <li key={i} className={a.nivel === "ERRO" ? "text-red-400" : a.nivel === "AVISO" ? "text-yellow-400" : "text-white/50"}>[{a.nivel}] {a.qualidade ? `${a.qualidade}: ` : ""}{a.mensagem}</li>
+                  <li key={i} className={a.nivel === "ERRO" ? "text-red-400" : a.nivel === "AVISO" ? "text-yellow-400" : "text-white/50"}>[{a.nivel}] {a.mensagem}</li>
                 ))}
               </ul>
             )}
@@ -593,11 +593,10 @@ function EditorBlueprint({ id, onFechar }: { id: number | null; onFechar: () => 
       )}
 
       <SeletorItem
-        aberto={Boolean(seletorAberto)}
-        onFechar={() => setSeletorAberto(null)}
+        aberto={seletorItemResultadoAberto}
+        onFechar={() => setSeletorItemResultadoAberto(false)}
         tipoItem={form.categoria_equipamento ? categoriaParaTipoItem(form.categoria_equipamento) : undefined}
-        raridade={seletorAberto ?? undefined}
-        onSelecionar={(item) => seletorAberto && salvarResultado(seletorAberto as ForgeQualidade, item)}
+        onSelecionar={(item) => { salvarItemResultado(item); setSeletorItemResultadoAberto(false); }}
       />
     </div>
   );

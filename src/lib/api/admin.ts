@@ -2053,11 +2053,15 @@ export interface ForgeIngredienteApi {
   recurso?: { id: number; nome: string; profissao: string };
 }
 
-export interface ForgeResultadoApi {
-  id_blueprint: number;
-  qualidade: ForgeQualidade;
-  id_item: number;
-  item?: { id: number; nome: string; imagem_url: string | null; raridade: string; tier_equipamento: number | null };
+// Reformulação V2 (Item Único por Equipamento, Raridade por Instância)
+// — o blueprint aponta pra UM Item canônico, não mais uma linha por
+// qualidade. Qualquer raridade que a Forja produzir desse blueprint
+// vira a raridade da instância na coleta, nunca escolhe outro Item.
+export interface ForgeItemResultadoApi {
+  id: number;
+  nome: string;
+  imagem_url: string | null;
+  tier_equipamento?: number | null;
 }
 
 export interface ForgeBlueprintApi {
@@ -2068,8 +2072,9 @@ export interface ForgeBlueprintApi {
   multiplicador_tempo: number;
   nivel_forja_minimo: number;
   ativo: boolean;
+  id_item_resultado: number | null;
+  itemResultado: ForgeItemResultadoApi | null;
   ingredientes: ForgeIngredienteApi[];
-  resultados: ForgeResultadoApi[];
 }
 
 export interface ForgeBlueprintLinhaApi {
@@ -2080,7 +2085,7 @@ export interface ForgeBlueprintLinhaApi {
   nivel_forja_minimo: number;
   multiplicador_tempo: number;
   ativo: boolean;
-  resultados_count: number;
+  item_resultado: ForgeItemResultadoApi | null;
   resultados_completos: boolean;
   ingredientes_ok: boolean;
 }
@@ -2110,7 +2115,7 @@ export interface PayloadForgeBlueprintAdmin {
   multiplicador_tempo?: number;
   nivel_forja_minimo?: number;
   ingredientes?: { tipo_insumo: "Barra" | "RecursoExpedicao"; id_recurso: number; quantidade_base: number }[];
-  resultados?: Partial<Record<ForgeQualidade, number>>;
+  id_item_resultado?: number | null;
 }
 
 export async function listarForgeBlueprintsAdmin(
@@ -2166,7 +2171,7 @@ export interface ForgePreviewBlueprintApi {
   ingredientes: Array<{ tipo_insumo: string; nome_recurso?: string; quantidade_necessaria: number; id_item: number | null; nome_item: string | null; imagem_url: string | null }>;
   chances_percentual_por_qualidade_final: Record<string, number>;
   tempo_segundos: number;
-  item_resultado_qualidade_base: { id: number; nome: string; imagem_url: string | null; raridade: string } | null;
+  item_resultado_qualidade_base: { id: number; nome: string; imagem_url: string | null; raridade: string; propriedades: Record<string, unknown> | null } | null;
 }
 export async function previewForgeBlueprintAdmin(id: number, params: { nivelForja: number; qualidadeBase: string }): Promise<ForgePreviewBlueprintApi> {
   const resposta = await axiosInstance.get<{ data: ForgePreviewBlueprintApi }>(`/admin/forge/blueprints/${id}/preview`, { params });
