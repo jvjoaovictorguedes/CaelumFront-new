@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   FORGE_CATEGORIAS,
   FORGE_QUALIDADES,
@@ -19,6 +19,7 @@ import {
   excluirTodosForgeBlueprintsAdmin,
   listarForgeBarrasAdmin,
   listarForgeBlueprintsAdmin,
+  listarForgeProdutosAlquimiaAdmin,
   listarForgeRecursosAdmin,
   listarForgeScrollsAdmin,
   listarItensAdmin,
@@ -42,11 +43,13 @@ import {
   type ForgeBlueprintLinhaApi,
   type ForgeCategoria,
   type ForgeMetricasApi,
+  type ForgeProdutoAlquimiaApi,
   type ForgeQualidade,
   type ForgeRecursoApi,
   type ForgeRelatorioValidacaoApi,
   type ForgeScrollApi,
   type ForgeSimulacaoRefinamentoApi,
+  type ForgeTipoInsumo,
   type PayloadForgeBlueprintAdmin,
 } from "@/lib/api/admin";
 
@@ -375,7 +378,14 @@ function EditorBlueprint({ id, onFechar }: { id: number | null; onFechar: () => 
   // Reformulação V2 (Item Único por Equipamento) — só existe UM Item
   // resultado por blueprint, não mais um seletor por qualidade.
   const [seletorItemResultadoAberto, setSeletorItemResultadoAberto] = useState(false);
+  // Forja-Materiais: 3 fontes de ingrediente lógico — "recursos" traz
+  // TODAS as profissões (Mineração/Silvicultura/Exploração) de uma vez
+  // (sem filtro de profissao); "Barra" só é válida com recurso de
+  // Mineração (mesma regra que upsertBarraAdmin já impõe no backend),
+  // então o dropdown desse tipo filtra recursosMineracao localmente.
   const [recursos, setRecursos] = useState<ForgeRecursoApi[]>([]);
+  const [produtosAlquimia, setProdutosAlquimia] = useState<ForgeProdutoAlquimiaApi[]>([]);
+  const recursosMineracao = useMemo(() => recursos.filter((r) => r.profissao === "Mineracao"), [recursos]);
   const [previewDados, setPreviewDados] = useState<Awaited<ReturnType<typeof previewForgeBlueprintAdmin>> | null>(null);
   const [overridesForm, setOverridesForm] = useState<Record<ForgeQualidade, Record<string, string>>>(overridesFormVazio());
 
@@ -408,7 +418,8 @@ function EditorBlueprint({ id, onFechar }: { id: number | null; onFechar: () => 
   }, [id]);
 
   useEffect(() => { carregar(); }, [carregar]);
-  useEffect(() => { listarForgeRecursosAdmin("Mineracao").then(setRecursos).catch(() => setRecursos([])); }, []);
+  useEffect(() => { listarForgeRecursosAdmin().then(setRecursos).catch(() => setRecursos([])); }, []);
+  useEffect(() => { listarForgeProdutosAlquimiaAdmin().then(setProdutosAlquimia).catch(() => setProdutosAlquimia([])); }, []);
 
   async function salvarCamposBasicos() {
     setSalvando(true); setErro(""); setMensagem("");
@@ -536,17 +547,40 @@ function EditorBlueprint({ id, onFechar }: { id: number | null; onFechar: () => 
         <>
           <div className={CARD}>
             <p className="mb-3 font-imFeel text-xl text-[#F3B43F]">Ingredientes lógicos</p>
-            <p className="mb-2 text-xs text-white/50">O Admin escolhe o recurso lógico (Barra de Mineração) — o backend resolve o Item correto nas 6 qualidades.</p>
-            {(form.ingredientes ?? []).map((ing, idx) => (
-              <div key={idx} className="mb-2 flex flex-wrap items-center gap-2">
-                <select className={INPUT} value={ing.id_recurso} onChange={(e) => setForm((f) => ({ ...f, ingredientes: f.ingredientes!.map((x, i) => (i === idx ? { ...x, id_recurso: Number(e.target.value) } : x)) }))}>
-                  {recursos.map((r) => <option key={r.id} value={r.id}>{r.nome}</option>)}
-                </select>
-                <input type="number" min={1} className={`${INPUT} w-20`} value={ing.quantidade_base} onChange={(e) => setForm((f) => ({ ...f, ingredientes: f.ingredientes!.map((x, i) => (i === idx ? { ...x, quantidade_base: Number(e.target.value) } : x)) }))} />
-                <button type="button" onClick={() => setForm((f) => ({ ...f, ingredientes: f.ingredientes!.filter((_, i) => i !== idx) }))} className="text-xs text-red-400 hover:underline">Remover</button>
-              </div>
-            ))}
-            <button type="button" onClick={() => setForm((f) => ({ ...f, ingredientes: [...(f.ingredientes ?? []), { tipo_insumo: "Barra", id_recurso: recursos[0]?.id ?? 0, quantidade_base: 1 }] }))} className={BTN_GHOST}>+ Ingrediente</button>
+            <p className="mb-2 text-xs text-white/50">O Admin escolhe o tipo de insumo — Barra (só recurso de Mineração), Recurso de Expedição (Mineração/Silvicultura/Exploração) ou Produto do Caldeirão (Alquimia) — e o recurso lógico; o backend resolve o Item correto nas 6 qualidades (Produto do Caldeirão usa o mesmo Item nas 6).</p>
+            {(form.ingredientes ?? []).map((ing, idx) => {
+              const opcoesRecurso = ing.tipo_insumo === "Barra" ? recursosMineracao : recursos;
+              return (
+                <div key={idx} className="mb-2 flex flex-wrap items-center gap-2">
+                  <select
+                    className={INPUT}
+                    value={ing.tipo_insumo}
+                    onChange={(e) => {
+                      const novoTipo = e.target.value as ForgeTipoInsumo;
+                      const novoIdRecurso =
+                        novoTipo === "Barra" ? recursosMineracao[0]?.id ?? 0 : novoTipo === "ProdutoAlquimia" ? produtosAlquimia[0]?.id ?? 0 : recursos[0]?.id ?? 0;
+                      setForm((f) => ({ ...f, ingredientes: f.ingredientes!.map((x, i) => (i === idx ? { ...x, tipo_insumo: novoTipo, id_recurso: novoIdRecurso } : x)) }));
+                    }}
+                  >
+                    <option value="Barra">Barra (Mineração)</option>
+                    <option value="RecursoExpedicao">Recurso de Expedição</option>
+                    <option value="ProdutoAlquimia">Produto do Caldeirão</option>
+                  </select>
+                  {ing.tipo_insumo === "ProdutoAlquimia" ? (
+                    <select className={INPUT} value={ing.id_recurso} onChange={(e) => setForm((f) => ({ ...f, ingredientes: f.ingredientes!.map((x, i) => (i === idx ? { ...x, id_recurso: Number(e.target.value) } : x)) }))}>
+                      {produtosAlquimia.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
+                    </select>
+                  ) : (
+                    <select className={INPUT} value={ing.id_recurso} onChange={(e) => setForm((f) => ({ ...f, ingredientes: f.ingredientes!.map((x, i) => (i === idx ? { ...x, id_recurso: Number(e.target.value) } : x)) }))}>
+                      {opcoesRecurso.map((r) => <option key={r.id} value={r.id}>{r.nome} ({r.profissao})</option>)}
+                    </select>
+                  )}
+                  <input type="number" min={1} className={`${INPUT} w-20`} value={ing.quantidade_base} onChange={(e) => setForm((f) => ({ ...f, ingredientes: f.ingredientes!.map((x, i) => (i === idx ? { ...x, quantidade_base: Number(e.target.value) } : x)) }))} />
+                  <button type="button" onClick={() => setForm((f) => ({ ...f, ingredientes: f.ingredientes!.filter((_, i) => i !== idx) }))} className="text-xs text-red-400 hover:underline">Remover</button>
+                </div>
+              );
+            })}
+            <button type="button" onClick={() => setForm((f) => ({ ...f, ingredientes: [...(f.ingredientes ?? []), { tipo_insumo: "Barra", id_recurso: recursosMineracao[0]?.id ?? 0, quantidade_base: 1 }] }))} className={BTN_GHOST}>+ Ingrediente</button>
             <div className="mt-3 flex justify-end"><button type="button" disabled={salvando} onClick={salvarIngredientes} className={BTN}>Salvar ingredientes</button></div>
 
             {relatorio && (
