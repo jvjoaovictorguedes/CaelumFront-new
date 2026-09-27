@@ -115,6 +115,7 @@ function SeletorModal({
                   imagemUrl={resolveMediaUrl(opcao.imagemUrl)}
                   nome={opcao.nome}
                   permiteClique={false}
+                  position="bottom"
                   className="h-14 w-14"
                   imgClassName="h-full w-full object-cover"
                   fallback={thumbFallback(opcao.nome)}

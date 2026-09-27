@@ -296,6 +296,7 @@ export default function EquipmentCategoriesPanel() {
                 <ItemIcon
                   imagemUrl={resolveMediaUrl(equipadoNoSlot.imagem_url)}
                   nome={equipadoNoSlot.nome}
+                  position="bottom"
                   className={`h-10 w-10 shrink-0 rounded-lg border-2 bg-[#3a2f24] ${bordaPorRaridade(equipadoNoSlot.raridade)}`}
                   fallback={iconeFallback(equipadoNoSlot.nome)}
                 />
@@ -351,6 +352,7 @@ export default function EquipmentCategoriesPanel() {
                         imagemUrl={resolveMediaUrl(instancia.imagem_url)}
                         nome={instancia.nome}
                         permiteClique={false}
+                        position="bottom"
                         fallback={iconeFallback(instancia.nome)}
                       />
                       {grupo.quantidade > 1 && (
@@ -453,6 +455,7 @@ function VarasDePescaSecao({ instancias }: { instancias: InstanciaApi[] }) {
               <ItemIcon
                 imagemUrl={resolveMediaUrl(instancia.imagem_url)}
                 nome={instancia.nome}
+                position="bottom"
                 fallback={iconeFallback(instancia.nome)}
               />
               {grupo.quantidade > 1 && (

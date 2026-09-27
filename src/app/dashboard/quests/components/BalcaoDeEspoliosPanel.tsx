@@ -243,6 +243,7 @@ export default function BalcaoDeEspoliosPanel() {
                   <ItemIcon
                     imagemUrl={resolveMediaUrl(item.imagem_url)}
                     nome={item.nome}
+                    position="bottom"
                     className="h-12 w-12 shrink-0 rounded-lg bg-black/20"
                     fallback={iconeFallback(item.nome)}
                   />
@@ -341,6 +342,7 @@ export default function BalcaoDeEspoliosPanel() {
                       <ItemIcon
                         imagemUrl={resolveMediaUrl(encomenda.item.imagem_url)}
                         nome={encomenda.item.nome}
+                        position="bottom"
                         className="h-10 w-10 shrink-0 rounded-lg bg-black/20"
                         fallback={iconeFallback(encomenda.item.nome)}
                       />
