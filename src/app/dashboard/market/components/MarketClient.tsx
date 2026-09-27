@@ -101,6 +101,14 @@ const CORES_RARIDADE: Record<string, string> = {
   Mitico: "text-red-400",
 };
 
+const NOME_ATRIBUTO: Record<string, string> = {
+  Forca: "Força",
+  Vitalidade: "Vitalidade",
+  Inteligencia: "Inteligência",
+  Agilidade: "Agilidade",
+  Velocidade: "Velocidade",
+};
+
 const OPCOES_RARIDADE = ["Comum", "Incomum", "Raro", "Epico", "Lendario", "Mitico"] as const;
 
 // Fallback quando o item não tem imagem cadastrada — mesmo glifo por
@@ -184,6 +192,11 @@ function PropriedadesEquipamento({ item, instancia }: { item: ItemApi; instancia
       <p className="mt-1 text-xs text-white/80">
         <span className="font-bold text-[#F3B43F]">Dano efetivo:</span> {efetivo.dano_min}–{efetivo.dano_max}{" "}
         ({efetivo.tipo_dano === "Fisico" ? "Físico" : "Mágico"})
+        {efetivo.valor_bonus_atributo > 0 && (
+          <>
+            {" · "}+{efetivo.valor_bonus_atributo} {NOME_ATRIBUTO[efetivo.bonus_atributo] ?? efetivo.bonus_atributo}
+          </>
+        )}
       </p>
     );
   }
