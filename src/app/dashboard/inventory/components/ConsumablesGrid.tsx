@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import axiosInstance from "@/utils/axiosIntance";
 import { resolveMediaUrl } from "@/utils/media-url";
 import { useCharacter } from "@/contexts/CharacterContext";
-import ItemArtHoverPreview from "@/components/Item/ItemArtHoverPreview";
+import ItemIcon from "@/components/Item/ItemIcon";
 
 interface ItemInfo {
   id: number;
@@ -18,21 +18,6 @@ interface InventarioEntry {
   id_personagem_inventario: number;
   quantidade: number;
   Item: ItemInfo;
-}
-
-function ItemThumb({ item }: { item: ItemInfo }) {
-  const src = resolveMediaUrl(item.imagem_url);
-  if (src) {
-    return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img src={src} alt={item.nome} className="h-full w-full rounded-lg object-contain p-1" />
-    );
-  }
-  return (
-    <div className="flex h-full w-full items-center justify-center rounded-lg text-lg font-bold text-[#F3B43F]/80">
-      {item.nome.charAt(0).toUpperCase()}
-    </div>
-  );
 }
 
 export default function ConsumablesGrid({ characterId }: { characterId: number }) {
@@ -129,16 +114,16 @@ export default function ConsumablesGrid({ characterId }: { characterId: number }
                     : "border-[#F3B43F]/60 hover:border-[#F3B43F]"
                 }`}
               >
-                <div className="h-full w-full overflow-hidden rounded-lg">
-                  <ItemArtHoverPreview
-                    imagemUrl={resolveMediaUrl(entrada.Item.imagem_url)}
-                    nome={entrada.Item.nome}
-                    permiteClique={false}
-                    className="relative block h-full w-full"
-                  >
-                    <ItemThumb item={entrada.Item} />
-                  </ItemArtHoverPreview>
-                </div>
+                <ItemIcon
+                  imagemUrl={resolveMediaUrl(entrada.Item.imagem_url)}
+                  nome={entrada.Item.nome}
+                  permiteClique={false}
+                  fallback={
+                    <div className="flex h-full w-full items-center justify-center text-lg font-bold text-[#F3B43F]/80">
+                      {entrada.Item.nome.charAt(0).toUpperCase()}
+                    </div>
+                  }
+                />
                 {/* Badge fora do wrapper com overflow-hidden acima — senão
                     o offset negativo fica cortado pelo quadrado do item. */}
                 <span className="pointer-events-none absolute -bottom-1 -right-1 rounded bg-black/80 px-1 text-[9px] font-bold text-white">

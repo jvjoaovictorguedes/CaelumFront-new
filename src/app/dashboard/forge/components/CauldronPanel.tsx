@@ -10,7 +10,7 @@ import { useCallback, useEffect, useState } from "react";
 import axiosInstance from "@/utils/axiosIntance";
 import { resolveMediaUrl } from "@/utils/media-url";
 import { useToast } from "@/contexts/ToastContext";
-import ItemArtHoverPreview from "@/components/Item/ItemArtHoverPreview";
+import ItemIcon from "@/components/Item/ItemIcon";
 
 interface ProgressoAlquimia {
   nivel: number;
@@ -206,22 +206,17 @@ export default function CauldronPanel() {
           return (
             <div key={receita.id} className="rounded-2xl border-2 border-[#F3B43F] bg-[#292018]/90 p-5 text-white shadow-xl">
               <div className="mb-3 flex items-center gap-3">
-                <div
-                  className={`h-14 w-14 shrink-0 overflow-hidden rounded-lg border-2 bg-[#3a2f24] ${bordaPorRaridade(
-                    receita.resultado.raridade,
-                  )}`}
-                >
-                  <ItemArtHoverPreview imagemUrl={src} nome={receita.nome} className="relative block h-full w-full">
-                    {src ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={src} alt={receita.nome} className="h-full w-full object-contain p-1.5" />
-                    ) : (
-                      <div className="flex h-full w-full items-center justify-center text-lg font-bold text-[#F3B43F]/80">
-                        {receita.nome.charAt(0)}
-                      </div>
-                    )}
-                  </ItemArtHoverPreview>
-                </div>
+                <ItemIcon
+                  imagemUrl={src}
+                  nome={receita.nome}
+                  className={`h-14 w-14 shrink-0 rounded-lg border-2 bg-[#3a2f24] ${bordaPorRaridade(receita.resultado.raridade)}`}
+                  imgClassName="h-full w-full object-contain p-1.5"
+                  fallback={
+                    <div className="flex h-full w-full items-center justify-center text-lg font-bold text-[#F3B43F]/80">
+                      {receita.nome.charAt(0)}
+                    </div>
+                  }
+                />
                 <div className="min-w-0 flex-1">
                   <p className="font-imFeel text-xl uppercase">{receita.nome}</p>
                   <p className="text-xs text-white/50">

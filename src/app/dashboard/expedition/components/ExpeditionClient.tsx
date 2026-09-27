@@ -5,7 +5,7 @@ import axiosInstance from "@/utils/axiosIntance";
 import { resolveMediaUrl } from "@/utils/media-url";
 import { useCharacter } from "@/contexts/CharacterContext";
 import CombatArena from "../../adventure/components/CombatArena";
-import ItemArtHoverPreview from "@/components/Item/ItemArtHoverPreview";
+import ItemIcon from "@/components/Item/ItemIcon";
 
 type TipoProfissao = "Mineracao" | "Silvicultura" | "Exploracao";
 
@@ -139,18 +139,6 @@ function formatarTempo(ms: number) {
   return segundosRestantes > 0 ? `${minutos}min ${segundosRestantes}s` : `${minutos}min`;
 }
 
-function ImagemItem({ nome, imagem_url, className = "" }: { nome: string; imagem_url?: string | null; className?: string }) {
-  const src = resolveMediaUrl(imagem_url);
-  if (src) {
-    // eslint-disable-next-line @next/next/no-img-element
-    return <img src={src} alt={nome} className={`object-contain ${className}`} />;
-  }
-  return (
-    <div className={`flex items-center justify-center text-lg font-bold text-[#F3B43F]/80 ${className}`}>
-      {nome.charAt(0).toUpperCase()}
-    </div>
-  );
-}
 
 function BarraXp({ profissao }: { profissao: Profissao }) {
   const proximo = profissao.xp_proximo_nivel;
@@ -412,19 +400,17 @@ export default function ExpeditionClient() {
         >
           {resultado.item_ganho ? (
             <div className="flex items-center gap-3">
-              <div className={`h-14 w-14 shrink-0 overflow-hidden rounded-lg border-2 bg-[#3a2f24] ${bordaPorRaridade(resultado.item_ganho.raridade)}`}>
-                <ItemArtHoverPreview
-                  imagemUrl={resolveMediaUrl(resultado.item_ganho.imagem_url)}
-                  nome={resultado.item_ganho.nome}
-                  className="relative block h-full w-full"
-                >
-                  <ImagemItem
-                    nome={resultado.item_ganho.nome}
-                    imagem_url={resultado.item_ganho.imagem_url}
-                    className="h-full w-full p-1.5"
-                  />
-                </ItemArtHoverPreview>
-              </div>
+              <ItemIcon
+                imagemUrl={resolveMediaUrl(resultado.item_ganho.imagem_url)}
+                nome={resultado.item_ganho.nome}
+                className={`h-14 w-14 shrink-0 rounded-lg border-2 bg-[#3a2f24] ${bordaPorRaridade(resultado.item_ganho.raridade)}`}
+                imgClassName="h-full w-full object-contain p-1.5"
+                fallback={
+                  <div className="flex h-full w-full items-center justify-center text-lg font-bold text-[#F3B43F]/80">
+                    {resultado.item_ganho.nome.charAt(0).toUpperCase()}
+                  </div>
+                }
+              />
               <div>
                 <p className={`text-xs uppercase tracking-widest ${textoPorRaridade(resultado.item_ganho.raridade)}`}>
                   {resultado.item_ganho.raridade}
@@ -469,15 +455,17 @@ export default function ExpeditionClient() {
                     }`}
                   >
                     <div className="flex items-center gap-3">
-                      <div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg border border-white/10 bg-[#1c150f]">
-                        <ItemArtHoverPreview
-                          imagemUrl={resolveMediaUrl(regiao.imagem_url)}
-                          nome={regiao.nome}
-                          className="relative block h-full w-full"
-                        >
-                          <ImagemItem nome={regiao.nome} imagem_url={regiao.imagem_url} className="h-full w-full p-1.5" />
-                        </ItemArtHoverPreview>
-                      </div>
+                      <ItemIcon
+                        imagemUrl={resolveMediaUrl(regiao.imagem_url)}
+                        nome={regiao.nome}
+                        className="h-14 w-14 shrink-0 rounded-lg border border-white/10 bg-[#1c150f]"
+                        imgClassName="h-full w-full object-contain p-1.5"
+                        fallback={
+                          <div className="flex h-full w-full items-center justify-center text-lg font-bold text-[#F3B43F]/80">
+                            {regiao.nome.charAt(0).toUpperCase()}
+                          </div>
+                        }
+                      />
                       <div className="min-w-0">
                         <p className="truncate text-sm font-bold">{regiao.nome}</p>
                         <p className="text-xs text-white/50">Nível mínimo {regiao.nivel_minimo}</p>

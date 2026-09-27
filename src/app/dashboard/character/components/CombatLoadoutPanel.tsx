@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import axios from "axios";
 import axiosInstance from "@/utils/axiosIntance";
 import { resolveMediaUrl } from "@/utils/media-url";
-import ItemArtHoverPreview from "@/components/Item/ItemArtHoverPreview";
+import ItemIcon from "@/components/Item/ItemIcon";
 import { useCharacter } from "@/contexts/CharacterContext";
 
 const MAX_SLOTS = 5;
@@ -31,16 +31,9 @@ interface ItemInventarioApi {
   };
 }
 
-function Thumb({ nome, imagemUrl }: { nome: string; imagemUrl?: string | null }) {
-  const src = resolveMediaUrl(imagemUrl);
-  if (src) {
-    return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img src={src} alt={nome} className="h-full w-full rounded-lg object-cover" />
-    );
-  }
+function thumbFallback(nome: string) {
   return (
-    <div className="flex h-full w-full items-center justify-center rounded-lg text-lg font-bold text-[#F3B43F]/80">
+    <div className="flex h-full w-full items-center justify-center text-lg font-bold text-[#F3B43F]/80">
       {nome.charAt(0).toUpperCase()}
     </div>
   );
@@ -60,11 +53,9 @@ function Slot({
   const preenchido = Boolean(nome);
   return (
     <div className="flex flex-col items-center gap-1">
-      <div className="h-16 w-16 overflow-hidden rounded-lg border-2 border-[#F3B43F]/60 bg-[#3a2f24]">
+      <div className="h-16 w-16 rounded-lg border-2 border-[#F3B43F]/60 bg-[#3a2f24]">
         {preenchido && (
-          <ItemArtHoverPreview imagemUrl={resolveMediaUrl(imagemUrl)} nome={nome!} className="relative block h-full w-full">
-            <Thumb nome={nome!} imagemUrl={imagemUrl} />
-          </ItemArtHoverPreview>
+          <ItemIcon imagemUrl={resolveMediaUrl(imagemUrl)} nome={nome!} imgClassName="h-full w-full object-cover" fallback={thumbFallback(nome!)} />
         )}
       </div>
       <button
@@ -120,16 +111,14 @@ function SeletorModal({
                 onClick={() => onEscolher(opcao.id)}
                 className="flex flex-col items-center gap-1 rounded-xl border-2 border-white/10 p-2 transition hover:border-[#F3B43F]/60"
               >
-                <div className="h-14 w-14 overflow-hidden rounded-lg bg-[#3a2f24]">
-                  <ItemArtHoverPreview
-                    imagemUrl={resolveMediaUrl(opcao.imagemUrl)}
-                    nome={opcao.nome}
-                    permiteClique={false}
-                    className="relative block h-full w-full"
-                  >
-                    <Thumb nome={opcao.nome} imagemUrl={opcao.imagemUrl} />
-                  </ItemArtHoverPreview>
-                </div>
+                <ItemIcon
+                  imagemUrl={resolveMediaUrl(opcao.imagemUrl)}
+                  nome={opcao.nome}
+                  permiteClique={false}
+                  className="h-14 w-14"
+                  imgClassName="h-full w-full object-cover"
+                  fallback={thumbFallback(opcao.nome)}
+                />
                 <span className="text-center text-[10px] font-bold text-white/80">
                   {opcao.nome}
                 </span>

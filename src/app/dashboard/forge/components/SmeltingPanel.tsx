@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import axiosInstance from "@/utils/axiosIntance";
 import { resolveMediaUrl } from "@/utils/media-url";
 import { useToast } from "@/contexts/ToastContext";
-import ItemArtHoverPreview from "@/components/Item/ItemArtHoverPreview";
+import ItemIcon from "@/components/Item/ItemIcon";
 
 interface OpcaoFundicao {
   id_recurso: number;
@@ -156,18 +156,17 @@ export default function SmeltingPanel({
                         }`}
                       >
                         <div className="flex items-center gap-3">
-                          <div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg border border-white/10 bg-[#1c150f]">
-                            <ItemArtHoverPreview imagemUrl={src} nome={opcao.nome_barra} className="relative block h-full w-full">
-                              {src ? (
-                                // eslint-disable-next-line @next/next/no-img-element
-                                <img src={src} alt={opcao.nome_barra} className="h-full w-full object-contain p-1.5" />
-                              ) : (
-                                <div className="flex h-full w-full items-center justify-center text-lg font-bold text-[#F3B43F]/80">
-                                  {opcao.nome_recurso.charAt(0)}
-                                </div>
-                              )}
-                            </ItemArtHoverPreview>
-                          </div>
+                          <ItemIcon
+                            imagemUrl={src}
+                            nome={opcao.nome_barra}
+                            className="h-14 w-14 shrink-0 rounded-lg border border-white/10 bg-[#1c150f]"
+                            imgClassName="h-full w-full object-contain p-1.5"
+                            fallback={
+                              <div className="flex h-full w-full items-center justify-center text-lg font-bold text-[#F3B43F]/80">
+                                {opcao.nome_recurso.charAt(0)}
+                              </div>
+                            }
+                          />
                           <div>
                             <p className="text-sm font-bold uppercase">
                               {opcao.nome_recurso} — {opcao.qualidade}

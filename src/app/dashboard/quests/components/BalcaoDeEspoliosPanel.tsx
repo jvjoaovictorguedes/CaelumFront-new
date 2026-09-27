@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import axiosInstance from "@/utils/axiosIntance";
 import { resolveMediaUrl } from "@/utils/media-url";
 import { useCharacter } from "@/contexts/CharacterContext";
-import ItemArtHoverPreview from "@/components/Item/ItemArtHoverPreview";
+import ItemIcon from "@/components/Item/ItemIcon";
 
 type SubAba = "Vender" | "Encomendas";
 
@@ -75,15 +75,10 @@ function formatarContagem(ms: number) {
   return `${String(horas).padStart(2, "0")}:${String(minutos).padStart(2, "0")}:${String(segundos).padStart(2, "0")}`;
 }
 
-function ItemThumb({ item }: { item: ItemInfo }) {
-  const src = resolveMediaUrl(item.imagem_url);
-  if (src) {
-    // eslint-disable-next-line @next/next/no-img-element
-    return <img src={src} alt={item.nome} className="h-full w-full rounded-lg object-contain p-1" />;
-  }
+function iconeFallback(nome: string) {
   return (
-    <div className="flex h-full w-full items-center justify-center rounded-lg text-lg font-bold text-[#F3B43F]/80">
-      {item.nome.charAt(0).toUpperCase()}
+    <div className="flex h-full w-full items-center justify-center text-lg font-bold text-[#F3B43F]/80">
+      {nome.charAt(0).toUpperCase()}
     </div>
   );
 }
@@ -245,15 +240,12 @@ export default function BalcaoDeEspoliosPanel() {
                 }`}
               >
                 <div className="flex min-w-0 items-center gap-3">
-                  <div className="h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-black/20">
-                    <ItemArtHoverPreview
-                      imagemUrl={resolveMediaUrl(item.imagem_url)}
-                      nome={item.nome}
-                      className="relative block h-full w-full"
-                    >
-                      <ItemThumb item={item} />
-                    </ItemArtHoverPreview>
-                  </div>
+                  <ItemIcon
+                    imagemUrl={resolveMediaUrl(item.imagem_url)}
+                    nome={item.nome}
+                    className="h-12 w-12 shrink-0 rounded-lg bg-black/20"
+                    fallback={iconeFallback(item.nome)}
+                  />
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-bold">{item.nome}</p>
                     <p className="text-[11px] text-white/50">
@@ -346,15 +338,12 @@ export default function BalcaoDeEspoliosPanel() {
                 >
                   <div className="flex items-center gap-2">
                     {encomenda.item && (
-                      <div className="h-10 w-10 shrink-0 overflow-hidden rounded-lg bg-black/20">
-                        <ItemArtHoverPreview
-                          imagemUrl={resolveMediaUrl(encomenda.item.imagem_url)}
-                          nome={encomenda.item.nome}
-                          className="relative block h-full w-full"
-                        >
-                          <ItemThumb item={encomenda.item} />
-                        </ItemArtHoverPreview>
-                      </div>
+                      <ItemIcon
+                        imagemUrl={resolveMediaUrl(encomenda.item.imagem_url)}
+                        nome={encomenda.item.nome}
+                        className="h-10 w-10 shrink-0 rounded-lg bg-black/20"
+                        fallback={iconeFallback(encomenda.item.nome)}
+                      />
                     )}
                     <div className="min-w-0">
                       <p className="truncate font-bold">{encomenda.item?.nome ?? "Item"}</p>

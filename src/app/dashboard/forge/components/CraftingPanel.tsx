@@ -5,7 +5,7 @@ import axiosInstance from "@/utils/axiosIntance";
 import { resolveMediaUrl } from "@/utils/media-url";
 import { useToast } from "@/contexts/ToastContext";
 import { formatarTier } from "@/utils/equipmentTier";
-import ItemArtHoverPreview from "@/components/Item/ItemArtHoverPreview";
+import ItemIcon from "@/components/Item/ItemIcon";
 
 interface IngredienteBlueprint {
   id_item: number;
@@ -440,18 +440,18 @@ export default function CraftingPanel({ onProgressoMudou }: { nivelForja: number
           className="group relative mb-3 flex cursor-pointer items-center gap-3"
           onClick={() => setStatsAbertos((atual) => (atual === blueprint.id ? null : blueprint.id))}
         >
-          <div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg border-2 border-[#F3B43F]/60 bg-[#3a2f24]">
-            <ItemArtHoverPreview imagemUrl={src} nome={blueprint.nome} permiteClique={false} className="relative block h-full w-full">
-              {src ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={src} alt={blueprint.nome} className="h-full w-full object-contain p-1.5" />
-              ) : (
-                <div className="flex h-full w-full items-center justify-center text-lg font-bold text-[#F3B43F]/80">
-                  {blueprint.nome.charAt(0)}
-                </div>
-              )}
-            </ItemArtHoverPreview>
-          </div>
+          <ItemIcon
+            imagemUrl={src}
+            nome={blueprint.nome}
+            permiteClique={false}
+            className="h-14 w-14 shrink-0 rounded-lg border-2 border-[#F3B43F]/60 bg-[#3a2f24]"
+            imgClassName="h-full w-full object-contain p-1.5"
+            fallback={
+              <div className="flex h-full w-full items-center justify-center text-lg font-bold text-[#F3B43F]/80">
+                {blueprint.nome.charAt(0)}
+              </div>
+            }
+          />
           <div>
             <div className="flex items-center gap-2">
               <p className="font-imFeel text-xl uppercase">{blueprint.nome}</p>
