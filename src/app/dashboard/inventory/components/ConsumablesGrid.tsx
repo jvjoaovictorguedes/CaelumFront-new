@@ -6,18 +6,56 @@ import { resolveMediaUrl } from "@/utils/media-url";
 import { useCharacter } from "@/contexts/CharacterContext";
 import ItemIcon from "@/components/Item/ItemIcon";
 
+interface ConsumablePropertiesApi {
+  efeito_vida: number;
+  efeito_mana: number;
+}
+
 interface ItemInfo {
   id: number;
   nome: string;
   tipo_item: string;
   raridade: string;
   imagem_url?: string | null;
+  descricao?: string | null;
+  consumableProperties?: ConsumablePropertiesApi | null;
 }
 
 interface InventarioEntry {
   id_personagem_inventario: number;
   quantidade: number;
   Item: ItemInfo;
+}
+
+// Mesmo dado/redação do card da Loja (ShopItem.tsx) — o jogador que já
+// tem o consumível no inventário precisa poder ver de novo o que ele
+// faz sem ter que voltar pra Loja, especialmente pra decidir QUAL usar
+// (ex.: poção de vida vs. de mana) num aperto.
+function StatsDoConsumivel({ item }: { item: ItemInfo }) {
+  const props = item.consumableProperties;
+  const temEfeitoNumerico = (props?.efeito_vida ?? 0) > 0 || (props?.efeito_mana ?? 0) > 0;
+
+  if (!temEfeitoNumerico && !item.descricao) return null;
+
+  return (
+    <div className="mt-1 flex flex-col items-center gap-1 text-center">
+      {temEfeitoNumerico && (
+        <p className="flex flex-wrap items-center justify-center gap-x-2 text-xs">
+          {props!.efeito_vida > 0 && (
+            <span>
+              <span className="font-bold text-[#F3B43F]">+{props!.efeito_vida}%</span> Vida
+            </span>
+          )}
+          {props!.efeito_mana > 0 && (
+            <span>
+              <span className="font-bold text-[#F3B43F]">+{props!.efeito_mana}%</span> Mana
+            </span>
+          )}
+        </p>
+      )}
+      {item.descricao && <p className="max-w-xs text-xs text-white/60">{item.descricao}</p>}
+    </div>
+  );
 }
 
 export default function ConsumablesGrid({ characterId }: { characterId: number }) {
@@ -134,13 +172,14 @@ export default function ConsumablesGrid({ characterId }: { characterId: number }
           </div>
 
           {selecionadoEntrada && (
-            <div className="mt-4 flex items-center justify-center gap-3">
+            <div className="mt-4 flex flex-col items-center gap-2 border-t border-white/10 pt-3">
               <span className="text-sm font-bold">{selecionadoEntrada.Item.nome}</span>
+              <StatsDoConsumivel item={selecionadoEntrada.Item} />
               <button
                 type="button"
                 onClick={() => usar(selecionadoEntrada)}
                 disabled={usandoId !== null}
-                className="rounded-lg bg-[#BC8418] px-4 py-1.5 text-xs font-bold uppercase tracking-wide text-black transition hover:bg-[#a5710f] disabled:cursor-not-allowed disabled:opacity-50"
+                className="mt-1 rounded-lg bg-[#BC8418] px-4 py-1.5 text-xs font-bold uppercase tracking-wide text-black transition hover:bg-[#a5710f] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {usandoId ? "Usando..." : "Usar"}
               </button>
