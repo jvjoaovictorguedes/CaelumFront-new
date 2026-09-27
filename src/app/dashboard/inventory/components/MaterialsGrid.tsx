@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import axiosInstance from "@/utils/axiosIntance";
 import { resolveMediaUrl } from "@/utils/media-url";
+import ItemArtHoverPreview from "@/components/Item/ItemArtHoverPreview";
 
 interface ItemInfo {
   id: number;
@@ -116,7 +117,14 @@ function MaterialCard({ entrada }: { entrada: InventarioEntry }) {
       }`}
     >
       <div className="h-full w-full overflow-hidden rounded-lg">
-        <ItemThumb item={entrada.Item} />
+        <ItemArtHoverPreview
+          imagemUrl={resolveMediaUrl(entrada.Item.imagem_url)}
+          nome={entrada.Item.nome}
+          permiteClique={false}
+          className="relative block h-full w-full"
+        >
+          <ItemThumb item={entrada.Item} />
+        </ItemArtHoverPreview>
       </div>
       {/* Badge fora do wrapper com overflow-hidden acima — senão o
           offset negativo (-bottom-1/-right-1) fica cortado pelo

@@ -7,6 +7,7 @@ import { resolveMediaUrl } from "@/utils/media-url";
 import { useCharacter } from "@/contexts/CharacterContext";
 import { formatarTier } from "@/utils/equipmentTier";
 import { agruparInstancias } from "@/utils/agruparInstancias";
+import ItemArtHoverPreview from "@/components/Item/ItemArtHoverPreview";
 
 type Slot =
   | "Cabeca"
@@ -298,9 +299,15 @@ export default function EquipmentCategoriesPanel() {
             {equipadoNoSlot && (
               <div className="mb-3 flex items-center justify-center gap-2">
                 <div
-                  className={`h-10 w-10 shrink-0 overflow-hidden rounded-lg border-2 bg-[#3a2f24] transition duration-150 hover:scale-125 ${bordaPorRaridade(equipadoNoSlot.raridade)}`}
+                  className={`h-10 w-10 shrink-0 overflow-hidden rounded-lg border-2 bg-[#3a2f24] ${bordaPorRaridade(equipadoNoSlot.raridade)}`}
                 >
-                  <ItemThumb item={equipadoNoSlot} />
+                  <ItemArtHoverPreview
+                    imagemUrl={resolveMediaUrl(equipadoNoSlot.imagem_url)}
+                    nome={equipadoNoSlot.nome}
+                    className="relative block h-full w-full"
+                  >
+                    <ItemThumb item={equipadoNoSlot} />
+                  </ItemArtHoverPreview>
                 </div>
                 <p className="text-center text-xs text-white/60">
                   Equipado:{" "}
@@ -350,8 +357,15 @@ export default function EquipmentCategoriesPanel() {
                           : `${bordaPorRaridade(instancia.raridade)} hover:border-[#F3B43F]`
                       }`}
                     >
-                      <div className="h-full w-full overflow-hidden rounded-lg transition duration-150 group-hover:scale-110">
-                        <ItemThumb item={instancia} />
+                      <div className="h-full w-full overflow-hidden rounded-lg">
+                        <ItemArtHoverPreview
+                          imagemUrl={resolveMediaUrl(instancia.imagem_url)}
+                          nome={instancia.nome}
+                          permiteClique={false}
+                          className="relative block h-full w-full"
+                        >
+                          <ItemThumb item={instancia} />
+                        </ItemArtHoverPreview>
                       </div>
                       {grupo.quantidade > 1 && (
                         <span className="pointer-events-none absolute -bottom-1 -right-1 rounded bg-black/80 px-1 text-[9px] font-bold text-[#F3B43F]">
@@ -451,7 +465,13 @@ function VarasDePescaSecao({ instancias }: { instancias: InstanciaApi[] }) {
               className={`group relative h-16 w-16 overflow-visible rounded-lg border-2 bg-[#3a2f24] ${bordaPorRaridade(instancia.raridade)}`}
             >
               <div className="h-full w-full overflow-hidden rounded-lg">
-                <ItemThumb item={instancia} />
+                <ItemArtHoverPreview
+                  imagemUrl={resolveMediaUrl(instancia.imagem_url)}
+                  nome={instancia.nome}
+                  className="relative block h-full w-full"
+                >
+                  <ItemThumb item={instancia} />
+                </ItemArtHoverPreview>
               </div>
               {grupo.quantidade > 1 && (
                 <span className="pointer-events-none absolute -bottom-1 -right-1 rounded bg-black/80 px-1 text-[9px] font-bold text-[#F3B43F]">

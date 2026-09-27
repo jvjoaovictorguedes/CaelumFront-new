@@ -18,6 +18,7 @@ import {
 import { spriteFolderForClass, spriteForClass } from "./sprites/spriteForClass";
 import { resolveMediaUrl } from "@/utils/media-url";
 import { bordaPorRaridade } from "@/components/equipment/BonecoDePapel";
+import ItemArtHoverPreview from "@/components/Item/ItemArtHoverPreview";
 
 import { spriteFolderForEnemy, spriteForEnemy } from "./sprites/spriteForEnemy";
 
@@ -1251,18 +1252,16 @@ export default function CombatArena({
                       title={`${espolio.nome} x${espolio.quantidade}`}
                       className={`flex items-center gap-2 rounded-lg border-2 bg-black/30 px-2 py-1 ${bordaPorRaridade(espolio.raridade)}`}
                     >
-                      {imagem ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={imagem}
-                          alt={espolio.nome}
-                          className="h-8 w-8 object-contain transition-transform duration-150 hover:scale-125"
-                        />
-                      ) : (
-                        <span className="text-lg" aria-hidden="true">
-                          📦
-                        </span>
-                      )}
+                      <ItemArtHoverPreview imagemUrl={imagem} nome={espolio.nome}>
+                        {imagem ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={imagem} alt={espolio.nome} className="h-8 w-8 object-contain" />
+                        ) : (
+                          <span className="text-lg" aria-hidden="true">
+                            📦
+                          </span>
+                        )}
+                      </ItemArtHoverPreview>
                       <span className="text-xs font-bold text-white">
                         {espolio.nome} <span className="text-[#F3B43F]">x{espolio.quantidade}</span>
                       </span>

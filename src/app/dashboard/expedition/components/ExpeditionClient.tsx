@@ -5,6 +5,7 @@ import axiosInstance from "@/utils/axiosIntance";
 import { resolveMediaUrl } from "@/utils/media-url";
 import { useCharacter } from "@/contexts/CharacterContext";
 import CombatArena from "../../adventure/components/CombatArena";
+import ItemArtHoverPreview from "@/components/Item/ItemArtHoverPreview";
 
 type TipoProfissao = "Mineracao" | "Silvicultura" | "Exploracao";
 
@@ -411,12 +412,18 @@ export default function ExpeditionClient() {
         >
           {resultado.item_ganho ? (
             <div className="flex items-center gap-3">
-              <div className={`h-14 w-14 shrink-0 overflow-hidden rounded-lg border-2 bg-[#3a2f24] transition duration-150 hover:scale-125 ${bordaPorRaridade(resultado.item_ganho.raridade)}`}>
-                <ImagemItem
+              <div className={`h-14 w-14 shrink-0 overflow-hidden rounded-lg border-2 bg-[#3a2f24] ${bordaPorRaridade(resultado.item_ganho.raridade)}`}>
+                <ItemArtHoverPreview
+                  imagemUrl={resolveMediaUrl(resultado.item_ganho.imagem_url)}
                   nome={resultado.item_ganho.nome}
-                  imagem_url={resultado.item_ganho.imagem_url}
-                  className="h-full w-full p-1.5"
-                />
+                  className="relative block h-full w-full"
+                >
+                  <ImagemItem
+                    nome={resultado.item_ganho.nome}
+                    imagem_url={resultado.item_ganho.imagem_url}
+                    className="h-full w-full p-1.5"
+                  />
+                </ItemArtHoverPreview>
               </div>
               <div>
                 <p className={`text-xs uppercase tracking-widest ${textoPorRaridade(resultado.item_ganho.raridade)}`}>
@@ -462,8 +469,14 @@ export default function ExpeditionClient() {
                     }`}
                   >
                     <div className="flex items-center gap-3">
-                      <div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg border border-white/10 bg-[#1c150f] transition duration-150 hover:scale-125">
-                        <ImagemItem nome={regiao.nome} imagem_url={regiao.imagem_url} className="h-full w-full p-1.5" />
+                      <div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg border border-white/10 bg-[#1c150f]">
+                        <ItemArtHoverPreview
+                          imagemUrl={resolveMediaUrl(regiao.imagem_url)}
+                          nome={regiao.nome}
+                          className="relative block h-full w-full"
+                        >
+                          <ImagemItem nome={regiao.nome} imagem_url={regiao.imagem_url} className="h-full w-full p-1.5" />
+                        </ItemArtHoverPreview>
                       </div>
                       <div className="min-w-0">
                         <p className="truncate text-sm font-bold">{regiao.nome}</p>
