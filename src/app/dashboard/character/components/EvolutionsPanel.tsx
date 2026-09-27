@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import axiosInstance from "@/utils/axiosIntance";
 import { resolveMediaUrl } from "@/utils/media-url";
+import ItemArtHoverPreview from "@/components/Item/ItemArtHoverPreview";
 
 interface EvolucaoApi {
   id: number;
@@ -151,7 +152,13 @@ export default function EvolutionsPanel({ characterId }: { characterId: number }
               }`}
             >
               <div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg border border-white/10 bg-black/30">
-                <EvolucaoThumb evolucao={evolucao} />
+                <ItemArtHoverPreview
+                  imagemUrl={resolveMediaUrl(evolucao.imagem_url)}
+                  nome={evolucao.nome}
+                  className="relative block h-full w-full"
+                >
+                  <EvolucaoThumb evolucao={evolucao} />
+                </ItemArtHoverPreview>
               </div>
 
               <div className="min-w-0 flex-1">

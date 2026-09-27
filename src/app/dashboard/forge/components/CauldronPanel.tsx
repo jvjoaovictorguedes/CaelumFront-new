@@ -10,6 +10,7 @@ import { useCallback, useEffect, useState } from "react";
 import axiosInstance from "@/utils/axiosIntance";
 import { resolveMediaUrl } from "@/utils/media-url";
 import { useToast } from "@/contexts/ToastContext";
+import ItemArtHoverPreview from "@/components/Item/ItemArtHoverPreview";
 
 interface ProgressoAlquimia {
   nivel: number;
@@ -210,14 +211,16 @@ export default function CauldronPanel() {
                     receita.resultado.raridade,
                   )}`}
                 >
-                  {src ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={src} alt={receita.nome} className="h-full w-full object-contain p-1.5" />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center text-lg font-bold text-[#F3B43F]/80">
-                      {receita.nome.charAt(0)}
-                    </div>
-                  )}
+                  <ItemArtHoverPreview imagemUrl={src} nome={receita.nome} className="relative block h-full w-full">
+                    {src ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={src} alt={receita.nome} className="h-full w-full object-contain p-1.5" />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center text-lg font-bold text-[#F3B43F]/80">
+                        {receita.nome.charAt(0)}
+                      </div>
+                    )}
+                  </ItemArtHoverPreview>
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="font-imFeel text-xl uppercase">{receita.nome}</p>

@@ -119,7 +119,7 @@ const ICONE_POR_TIPO: Record<string, string> = {
 function IconeItem({ item }: { item: ItemApi }) {
   const imagemResolvida = resolveMediaUrl(item.imagem_url);
   return (
-    <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-black/30 transition duration-150 hover:scale-125">
+    <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-black/30">
       {imagemResolvida ? (
         <img src={imagemResolvida} alt={item.nome} className="h-full w-full object-contain p-1" />
       ) : (
@@ -457,6 +457,13 @@ function AbaComprar({ characterId }: { characterId: number }) {
                     className="relative block w-full cursor-help"
                     label={
                       <>
+                        {resolveMediaUrl(listing.item.imagem_url) && (
+                          <img
+                            src={resolveMediaUrl(listing.item.imagem_url)!}
+                            alt={listing.item.nome}
+                            className="mx-auto mb-2 h-28 w-28 rounded-lg bg-black/20 object-contain p-1"
+                          />
+                        )}
                         <p className="mb-1 font-bold">
                           {listing.item.nome}
                           {listing.instancia ? ` +${listing.instancia.refinamento}` : ""}

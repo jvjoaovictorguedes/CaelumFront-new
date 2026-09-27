@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import axiosInstance from "@/utils/axiosIntance";
 import { resolveMediaUrl } from "@/utils/media-url";
 import { useCharacter } from "@/contexts/CharacterContext";
+import ItemArtHoverPreview from "@/components/Item/ItemArtHoverPreview";
 
 type SubAba = "Vender" | "Encomendas";
 
@@ -245,7 +246,13 @@ export default function BalcaoDeEspoliosPanel() {
               >
                 <div className="flex min-w-0 items-center gap-3">
                   <div className="h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-black/20">
-                    <ItemThumb item={item} />
+                    <ItemArtHoverPreview
+                      imagemUrl={resolveMediaUrl(item.imagem_url)}
+                      nome={item.nome}
+                      className="relative block h-full w-full"
+                    >
+                      <ItemThumb item={item} />
+                    </ItemArtHoverPreview>
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-bold">{item.nome}</p>
@@ -340,7 +347,13 @@ export default function BalcaoDeEspoliosPanel() {
                   <div className="flex items-center gap-2">
                     {encomenda.item && (
                       <div className="h-10 w-10 shrink-0 overflow-hidden rounded-lg bg-black/20">
-                        <ItemThumb item={encomenda.item} />
+                        <ItemArtHoverPreview
+                          imagemUrl={resolveMediaUrl(encomenda.item.imagem_url)}
+                          nome={encomenda.item.nome}
+                          className="relative block h-full w-full"
+                        >
+                          <ItemThumb item={encomenda.item} />
+                        </ItemArtHoverPreview>
                       </div>
                     )}
                     <div className="min-w-0">

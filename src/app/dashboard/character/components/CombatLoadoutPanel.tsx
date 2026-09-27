@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import axios from "axios";
 import axiosInstance from "@/utils/axiosIntance";
 import { resolveMediaUrl } from "@/utils/media-url";
+import ItemArtHoverPreview from "@/components/Item/ItemArtHoverPreview";
 import { useCharacter } from "@/contexts/CharacterContext";
 
 const MAX_SLOTS = 5;
@@ -60,7 +61,11 @@ function Slot({
   return (
     <div className="flex flex-col items-center gap-1">
       <div className="h-16 w-16 overflow-hidden rounded-lg border-2 border-[#F3B43F]/60 bg-[#3a2f24]">
-        {preenchido && <Thumb nome={nome!} imagemUrl={imagemUrl} />}
+        {preenchido && (
+          <ItemArtHoverPreview imagemUrl={resolveMediaUrl(imagemUrl)} nome={nome!} className="relative block h-full w-full">
+            <Thumb nome={nome!} imagemUrl={imagemUrl} />
+          </ItemArtHoverPreview>
+        )}
       </div>
       <button
         type="button"
@@ -116,7 +121,14 @@ function SeletorModal({
                 className="flex flex-col items-center gap-1 rounded-xl border-2 border-white/10 p-2 transition hover:border-[#F3B43F]/60"
               >
                 <div className="h-14 w-14 overflow-hidden rounded-lg bg-[#3a2f24]">
-                  <Thumb nome={opcao.nome} imagemUrl={opcao.imagemUrl} />
+                  <ItemArtHoverPreview
+                    imagemUrl={resolveMediaUrl(opcao.imagemUrl)}
+                    nome={opcao.nome}
+                    permiteClique={false}
+                    className="relative block h-full w-full"
+                  >
+                    <Thumb nome={opcao.nome} imagemUrl={opcao.imagemUrl} />
+                  </ItemArtHoverPreview>
                 </div>
                 <span className="text-center text-[10px] font-bold text-white/80">
                   {opcao.nome}

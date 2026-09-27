@@ -47,7 +47,7 @@ export default function ItemDescriptionTooltip({
       {children}
       {visivel && (
         <div
-          className={`absolute z-50 max-h-[45vh] min-w-[200px] max-w-[280px] overflow-y-auto whitespace-normal rounded-md bg-[#F3B43F] px-3 py-2 text-left text-sm text-[#3a2f24] shadow-lg animate-fade-in ${POSICAO[position]}`}
+          className={`absolute z-50 max-h-[60vh] min-w-[200px] max-w-[300px] overflow-y-auto whitespace-normal rounded-md bg-[#F3B43F] px-3 py-2 text-left text-sm text-[#3a2f24] shadow-lg animate-fade-in ${POSICAO[position]}`}
         >
           {label}
         </div>
