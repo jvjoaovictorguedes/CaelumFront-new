@@ -140,6 +140,7 @@ export default function EvolutionsPanel({ characterId }: { characterId: number }
               <ItemIcon
                 imagemUrl={resolveMediaUrl(evolucao.imagem_url)}
                 nome={evolucao.nome}
+                position="bottom"
                 className="h-14 w-14 shrink-0 rounded-lg border border-white/10 bg-black/30"
                 imgClassName="h-full w-full object-cover"
                 fallback={
