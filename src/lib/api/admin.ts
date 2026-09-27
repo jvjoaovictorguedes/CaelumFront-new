@@ -531,6 +531,42 @@ export async function duplicarMonstroAdmin(id: number): Promise<AdventureMonster
   return resposta.data.data.monstro;
 }
 
+// Simulador de Balanceamento (Admin Aventura) — roda N combates PvE
+// reais (mesmas fórmulas do jogo) entre um personagem e um monstro
+// escolhidos. Ver adventureBalanceSimulationService.js no backend.
+export interface SimulacaoBalanceamentoResultadoApi {
+  personagem: {
+    id: number;
+    nome: string;
+    classe: string | null;
+    vida_maxima: number;
+    mana_maxima: number;
+    quantidade_poderes: number;
+  };
+  monstro: { id: number; nome: string; nivel: number | null; vida_maxima: number; dano_min: number; dano_max: number };
+  quantidade_simulacoes: number;
+  taxa_vitoria_pct: number;
+  vitorias: number;
+  derrotas: number;
+  combates_sem_vencedor: number;
+  turnos_medios_vitoria: number;
+  turnos_medios_derrota: number;
+  dano_medio_causado_por_combate: number;
+  dano_medio_recebido_por_combate: number;
+  vida_media_restante_ao_vencer_pct: number;
+}
+export async function simularBalanceamentoAdventureAdmin(payload: {
+  id_personagem: number;
+  id_monstro: number;
+  quantidade?: number;
+}): Promise<SimulacaoBalanceamentoResultadoApi> {
+  const resposta = await axiosInstance.post<{ data: SimulacaoBalanceamentoResultadoApi }>(
+    "/admin/adventure/balance/simulate",
+    payload,
+  );
+  return resposta.data.data;
+}
+
 export async function listarAparicoesAdmin(idArea?: number): Promise<AdventureZoneMonsterApi[]> {
   const resposta = await axiosInstance.get<{ data: { aparicoes: AdventureZoneMonsterApi[] } }>("/admin/adventure/zone-monsters", {
     params: idArea ? { idArea } : undefined,
