@@ -5,6 +5,7 @@ import axiosInstance from "@/utils/axiosIntance";
 import { useCharacter } from "@/contexts/CharacterContext";
 import { formatarTier } from "@/utils/equipmentTier";
 import { resolveMediaUrl } from "@/utils/media-url";
+import ItemDescriptionTooltip from "@/components/Tooltip/ItemDescriptionTooltip";
 
 interface WeaponPropertiesApi {
   dano_min: number;
@@ -30,6 +31,7 @@ interface ItemApi {
   raridade: string;
   tier_equipamento: number | null;
   imagem_url?: string | null;
+  descricao?: string | null;
   weaponProperties?: WeaponPropertiesApi | null;
   armorProperties?: ArmorPropertiesApi | null;
 }
@@ -99,6 +101,14 @@ const CORES_RARIDADE: Record<string, string> = {
   Mitico: "text-red-400",
 };
 
+const NOME_ATRIBUTO: Record<string, string> = {
+  Forca: "Força",
+  Vitalidade: "Vitalidade",
+  Inteligencia: "Inteligência",
+  Agilidade: "Agilidade",
+  Velocidade: "Velocidade",
+};
+
 const OPCOES_RARIDADE = ["Comum", "Incomum", "Raro", "Epico", "Lendario", "Mitico"] as const;
 
 // Fallback quando o item não tem imagem cadastrada — mesmo glifo por
@@ -117,7 +127,7 @@ const ICONE_POR_TIPO: Record<string, string> = {
 function IconeItem({ item }: { item: ItemApi }) {
   const imagemResolvida = resolveMediaUrl(item.imagem_url);
   return (
-    <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-black/30 transition duration-150 hover:scale-125">
+    <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-black/30">
       {imagemResolvida ? (
         <img src={imagemResolvida} alt={item.nome} className="h-full w-full object-contain p-1" />
       ) : (
@@ -182,6 +192,11 @@ function PropriedadesEquipamento({ item, instancia }: { item: ItemApi; instancia
       <p className="mt-1 text-xs text-white/80">
         <span className="font-bold text-[#F3B43F]">Dano efetivo:</span> {efetivo.dano_min}–{efetivo.dano_max}{" "}
         ({efetivo.tipo_dano === "Fisico" ? "Físico" : "Mágico"})
+        {efetivo.valor_bonus_atributo > 0 && (
+          <>
+            {" · "}+{efetivo.valor_bonus_atributo} {NOME_ATRIBUTO[efetivo.bonus_atributo] ?? efetivo.bonus_atributo}
+          </>
+        )}
       </p>
     );
   }
@@ -451,25 +466,45 @@ function AbaComprar({ characterId }: { characterId: number }) {
 
               return (
                 <div key={listing.id} className="rounded-xl border border-white/10 bg-[#3a2f24] p-3">
-                  <div className="flex items-start gap-3">
-                    <IconeItem item={listing.item} />
-                    <div className="min-w-0 flex-1">
-                      <p className="font-bold">
-                        {listing.item.nome}
-                        {listing.instancia ? ` +${listing.instancia.refinamento}` : ""}
-                      </p>
-                      <p className="flex flex-wrap items-center gap-1.5">
-                        <span className={`text-xs font-bold ${CORES_RARIDADE[listing.item.raridade] ?? "text-white/70"}`}>
-                          {listing.item.raridade} · {listing.item.tipo_item}
-                        </span>
-                        {formatarTier(listing.item.tier_equipamento) && (
-                          <span className="rounded-full border border-[#F3B43F]/60 bg-black/30 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[#F3B43F]">
-                            {formatarTier(listing.item.tier_equipamento)}
-                          </span>
+                  <ItemDescriptionTooltip
+                    className="relative block w-full cursor-help"
+                    label={
+                      <>
+                        {resolveMediaUrl(listing.item.imagem_url) && (
+                          <img
+                            src={resolveMediaUrl(listing.item.imagem_url)!}
+                            alt={listing.item.nome}
+                            className="mx-auto mb-2 h-28 w-28 rounded-lg bg-black/20 object-contain p-1"
+                          />
                         )}
-                      </p>
+                        <p className="mb-1 font-bold">
+                          {listing.item.nome}
+                          {listing.instancia ? ` +${listing.instancia.refinamento}` : ""}
+                        </p>
+                        <p>{listing.item.descricao?.trim() || "Sem descrição."}</p>
+                      </>
+                    }
+                  >
+                    <div className="flex items-start gap-3">
+                      <IconeItem item={listing.item} />
+                      <div className="min-w-0 flex-1">
+                        <p className="font-bold">
+                          {listing.item.nome}
+                          {listing.instancia ? ` +${listing.instancia.refinamento}` : ""}
+                        </p>
+                        <p className="flex flex-wrap items-center gap-1.5">
+                          <span className={`text-xs font-bold ${CORES_RARIDADE[listing.item.raridade] ?? "text-white/70"}`}>
+                            {listing.item.raridade} · {listing.item.tipo_item}
+                          </span>
+                          {formatarTier(listing.item.tier_equipamento) && (
+                            <span className="rounded-full border border-[#F3B43F]/60 bg-black/30 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[#F3B43F]">
+                              {formatarTier(listing.item.tier_equipamento)}
+                            </span>
+                          )}
+                        </p>
+                      </div>
                     </div>
-                  </div>
+                  </ItemDescriptionTooltip>
                   {listing.instancia && <PropriedadesEquipamento item={listing.item} instancia={listing.instancia} />}
                   <p className="mt-2 text-sm text-white/70">
                     Vendedor: {listing.vendedor?.nome ?? "?"} ·{" "}

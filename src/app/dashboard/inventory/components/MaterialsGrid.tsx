@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import axiosInstance from "@/utils/axiosIntance";
 import { resolveMediaUrl } from "@/utils/media-url";
+import ItemIcon from "@/components/Item/ItemIcon";
 
 interface ItemInfo {
   id: number;
@@ -27,20 +28,6 @@ const CORES_RARIDADE: Record<string, string> = {
   Mitico: "border-red-500/60",
 };
 
-function ItemThumb({ item }: { item: ItemInfo }) {
-  const src = resolveMediaUrl(item.imagem_url);
-  if (src) {
-    return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img src={src} alt={item.nome} className="h-full w-full rounded-lg object-contain p-1" />
-    );
-  }
-  return (
-    <div className="flex h-full w-full items-center justify-center rounded-lg text-lg font-bold text-[#F3B43F]/80">
-      {item.nome.charAt(0).toUpperCase()}
-    </div>
-  );
-}
 
 export default function MaterialsGrid({ characterId }: { characterId: number }) {
   const [itens, setItens] = useState<InventarioEntry[]>([]);
@@ -115,9 +102,16 @@ function MaterialCard({ entrada }: { entrada: InventarioEntry }) {
         CORES_RARIDADE[entrada.Item.raridade] ?? "border-white/20"
       }`}
     >
-      <div className="h-full w-full overflow-hidden rounded-lg">
-        <ItemThumb item={entrada.Item} />
-      </div>
+      <ItemIcon
+        imagemUrl={resolveMediaUrl(entrada.Item.imagem_url)}
+        nome={entrada.Item.nome}
+        permiteClique={false}
+        fallback={
+          <div className="flex h-full w-full items-center justify-center text-lg font-bold text-[#F3B43F]/80">
+            {entrada.Item.nome.charAt(0).toUpperCase()}
+          </div>
+        }
+      />
       {/* Badge fora do wrapper com overflow-hidden acima — senão o
           offset negativo (-bottom-1/-right-1) fica cortado pelo
           próprio quadrado do item. */}

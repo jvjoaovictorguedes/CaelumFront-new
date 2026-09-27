@@ -50,6 +50,12 @@ interface OfertaApi {
   ordem: number;
   missao: MissaoDeRankApi;
   ja_aceita: boolean;
+  // null = nunca aceitou essa oferta. Preenchido em qualquer outro caso
+  // (inclusive "Resgatado") — sem isso, uma oferta já concluída E
+  // resgatada voltava a mostrar "Aceitar" como se nada tivesse
+  // acontecido (bug reportado: jogador via "Aceitar" numa oferta que
+  // já tinha entregue e resgatado).
+  status_contrato: "Ativo" | "Concluido" | "Expirado" | "Resgatado" | "Falhou" | null;
 }
 
 interface ContratoApi {
@@ -80,6 +86,18 @@ interface OverviewApi {
   provacao_ativa: ContratoApi | null;
   cooldown_provacao_restante_ms: number;
 }
+
+// Rótulo do botão de uma oferta já usada nesta rotação — "Já aceito"
+// sozinho escondia o que realmente aconteceu (bug reportado: jogador
+// já tinha entregue e resgatado a recompensa, mas o card voltava a
+// mostrar "Aceitar" como se nada tivesse acontecido).
+const ROTULO_STATUS_OFERTA: Record<NonNullable<OfertaApi["status_contrato"]>, string> = {
+  Ativo: "Em andamento",
+  Concluido: "Aguardando resgate",
+  Resgatado: "Concluído",
+  Expirado: "Expirado",
+  Falhou: "Falhou",
+};
 
 function formatarExpiracao(expiraEm: string | null) {
   if (!expiraEm) return null;
@@ -392,7 +410,11 @@ export default function AdventureGuildPanel() {
                         disabled={oferta.ja_aceita || processando === chave}
                         className="mt-2 w-full rounded-lg bg-[#F3B43F] px-3 py-1.5 text-xs font-bold text-black transition hover:bg-[#e0a52f] disabled:opacity-50"
                       >
-                        {oferta.ja_aceita ? "Já aceito" : processando === chave ? "Aceitando..." : "Aceitar"}
+                        {oferta.status_contrato
+                          ? (ROTULO_STATUS_OFERTA[oferta.status_contrato] ?? "Já aceito")
+                          : processando === chave
+                            ? "Aceitando..."
+                            : "Aceitar"}
                       </button>
                     </div>
                   );
