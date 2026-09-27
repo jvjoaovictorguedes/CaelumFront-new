@@ -7,6 +7,7 @@ import {
   atualizarLootAdmin,
   atualizarMonstroAdmin,
   atualizarZonaAdmin,
+  buscarPersonagensAdmin,
   criarAparicaoAdmin,
   criarLootAdmin,
   criarMonstroAdmin,
@@ -17,14 +18,17 @@ import {
   listarMonstrosAdmin,
   listarZonasAdmin,
   mensagemDeErroAdmin,
+  simularBalanceamentoAdventureAdmin,
   type AdventureMonsterApi,
   type AdventureMonsterLootApi,
   type AdventureZoneApi,
   type AdventureZoneMonsterApi,
+  type GrantSearchResultApi,
+  type SimulacaoBalanceamentoResultadoApi,
 } from "@/lib/api/admin";
 import { ItemSelect, formatarItemComId, useItensParaSelecaoAdmin } from "@/components/admin/ItemPicker";
 
-type Aba = "zonas" | "monstros" | "aparicoes" | "drops";
+type Aba = "zonas" | "monstros" | "aparicoes" | "drops" | "simulador";
 
 const CATEGORIAS_LOOT = ["Principal", "Secundario", "Especial"] as const;
 
@@ -722,6 +726,191 @@ function DropsTab() {
   );
 }
 
+function SimuladorTab() {
+  const [monstros, setMonstros] = useState<AdventureMonsterApi[]>([]);
+  const [idMonstro, setIdMonstro] = useState<number | "">("");
+  const [termoPersonagem, setTermoPersonagem] = useState("");
+  const [resultadosBusca, setResultadosBusca] = useState<GrantSearchResultApi[]>([]);
+  const [personagemSelecionado, setPersonagemSelecionado] = useState<GrantSearchResultApi | null>(null);
+  const [buscando, setBuscando] = useState(false);
+  const [quantidade, setQuantidade] = useState("200");
+  const [simulando, setSimulando] = useState(false);
+  const [resultado, setResultado] = useState<SimulacaoBalanceamentoResultadoApi | null>(null);
+  const [erro, setErro] = useState("");
+
+  useEffect(() => {
+    listarMonstrosAdmin()
+      .then(setMonstros)
+      .catch(() => {});
+  }, []);
+
+  async function buscarPersonagem(evento: React.FormEvent) {
+    evento.preventDefault();
+    setBuscando(true);
+    setErro("");
+    try {
+      setResultadosBusca(await buscarPersonagensAdmin(termoPersonagem));
+    } catch (error) {
+      setErro(mensagemDeErroAdmin(error, "Não foi possível buscar."));
+    } finally {
+      setBuscando(false);
+    }
+  }
+
+  async function simular() {
+    if (!personagemSelecionado || !idMonstro) return;
+    setSimulando(true);
+    setErro("");
+    setResultado(null);
+    try {
+      setResultado(
+        await simularBalanceamentoAdventureAdmin({
+          id_personagem: personagemSelecionado.id,
+          id_monstro: Number(idMonstro),
+          quantidade: quantidade ? Number(quantidade) : undefined,
+        }),
+      );
+    } catch (error) {
+      setErro(mensagemDeErroAdmin(error, "Não foi possível simular os combates."));
+    } finally {
+      setSimulando(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      <p className="text-xs text-white/50">
+        Roda N combates PvE de verdade (mesmas fórmulas do jogo — dano, esquiva, mitigação de defesa, decisão de
+        habilidade) entre um personagem e um monstro escolhidos, sem afetar o personagem de verdade. Não simula
+        efeitos de status (queimadura, atordoamento etc.), cooldown, consumíveis nem buffs de Taverna/Guilda —
+        suficiente pra calibrar vida/dano base do monstro.
+      </p>
+
+      <div className="rounded-2xl border-2 border-[#F3B43F]/40 bg-[#292018]/80 p-4">
+        <p className="mb-2 text-xs font-bold uppercase text-[#F3B43F]/80">1. Personagem</p>
+        <form onSubmit={buscarPersonagem} className="flex gap-2">
+          <input
+            value={termoPersonagem}
+            onChange={(e) => setTermoPersonagem(e.target.value)}
+            placeholder="Nome do personagem ou username..."
+            className="flex-1 rounded-lg border border-white/20 bg-black/30 px-3 py-2 text-sm text-white"
+          />
+          <button type="submit" disabled={buscando} className="rounded-lg bg-[#BC8418] px-4 py-2 text-sm font-bold text-black hover:bg-[#a5710f] disabled:opacity-50">
+            {buscando ? "Buscando..." : "Buscar"}
+          </button>
+        </form>
+
+        {resultadosBusca.length > 0 && (
+          <div className="mt-2 flex flex-col gap-1">
+            {resultadosBusca.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => {
+                  setPersonagemSelecionado(p);
+                  setResultadosBusca([]);
+                  setResultado(null);
+                }}
+                className="flex items-center justify-between rounded-lg bg-black/20 px-3 py-2 text-left text-sm text-white hover:bg-white/10"
+              >
+                <span>
+                  <span className="font-bold text-[#F3B43F]">{p.nome}</span> · nível {p.nivel}{" "}
+                  {p.username && <span className="text-white/50">· @{p.username}</span>}
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {personagemSelecionado && (
+          <p className="mt-2 text-sm text-white/70">
+            Selecionado: <span className="font-bold text-[#F3B43F]">{personagemSelecionado.nome}</span> (nível{" "}
+            {personagemSelecionado.nivel})
+          </p>
+        )}
+      </div>
+
+      <div className="rounded-2xl border-2 border-[#F3B43F]/40 bg-[#292018]/80 p-4">
+        <p className="mb-2 text-xs font-bold uppercase text-[#F3B43F]/80">2. Monstro e quantidade de combates</p>
+        <div className="flex flex-wrap gap-2">
+          <select
+            value={idMonstro}
+            onChange={(e) => setIdMonstro(e.target.value ? Number(e.target.value) : "")}
+            className="flex-1 rounded-lg border border-white/20 bg-black/30 px-3 py-2 text-sm text-white"
+          >
+            <option value="">Escolha um monstro...</option>
+            {monstros.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.nome} (nível {m.nivel ?? "?"})
+              </option>
+            ))}
+          </select>
+          <input
+            type="number"
+            min={1}
+            max={1000}
+            value={quantidade}
+            onChange={(e) => setQuantidade(e.target.value)}
+            placeholder="Combates (padrão 200)"
+            className="w-48 rounded-lg border border-white/20 bg-black/30 px-3 py-2 text-sm text-white"
+          />
+        </div>
+
+        <button
+          type="button"
+          onClick={simular}
+          disabled={!personagemSelecionado || !idMonstro || simulando}
+          className="mt-3 w-full rounded-lg bg-[#BC8418] px-4 py-2 text-sm font-bold text-black hover:bg-[#a5710f] disabled:opacity-50"
+        >
+          {simulando ? "Simulando..." : "Simular"}
+        </button>
+      </div>
+
+      {erro && <p className="rounded-lg bg-black/50 px-3 py-2 text-sm text-red-400">{erro}</p>}
+
+      {resultado && (
+        <div className="rounded-2xl border-2 border-[#F3B43F] bg-[#292018] p-4 text-white">
+          <p className="font-imFeel text-lg text-[#F3B43F]">
+            {resultado.personagem.nome} vs {resultado.monstro.nome} — {resultado.quantidade_simulacoes} combates
+          </p>
+          <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
+            <div className="rounded-lg bg-black/30 p-3 text-center">
+              <p className="text-2xl font-bold text-[#F3B43F]">{resultado.taxa_vitoria_pct}%</p>
+              <p className="text-[10px] uppercase text-white/50">Taxa de vitória</p>
+            </div>
+            <div className="rounded-lg bg-black/30 p-3 text-center">
+              <p className="text-2xl font-bold text-white">{resultado.vitorias}</p>
+              <p className="text-[10px] uppercase text-white/50">Vitórias</p>
+            </div>
+            <div className="rounded-lg bg-black/30 p-3 text-center">
+              <p className="text-2xl font-bold text-white">{resultado.derrotas}</p>
+              <p className="text-[10px] uppercase text-white/50">Derrotas</p>
+            </div>
+            <div className="rounded-lg bg-black/30 p-3 text-center">
+              <p className="text-2xl font-bold text-white">{resultado.turnos_medios_vitoria}</p>
+              <p className="text-[10px] uppercase text-white/50">Turnos médios (vitória)</p>
+            </div>
+            <div className="rounded-lg bg-black/30 p-3 text-center">
+              <p className="text-2xl font-bold text-white">{resultado.dano_medio_recebido_por_combate}</p>
+              <p className="text-[10px] uppercase text-white/50">Dano médio recebido</p>
+            </div>
+            <div className="rounded-lg bg-black/30 p-3 text-center">
+              <p className="text-2xl font-bold text-white">{resultado.vida_media_restante_ao_vencer_pct}%</p>
+              <p className="text-[10px] uppercase text-white/50">Vida restante ao vencer</p>
+            </div>
+          </div>
+          {resultado.combates_sem_vencedor > 0 && (
+            <p className="mt-3 text-xs text-yellow-400">
+              {resultado.combates_sem_vencedor} combate(s) não terminaram dentro do limite de turnos de segurança —
+              indica um confronto muito equilibrado ou travado (ex.: personagem sem dano ofensivo nenhum).
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function AdminAdventureClient() {
   const [aba, setAba] = useState<Aba>("zonas");
 
@@ -741,6 +930,7 @@ export default function AdminAdventureClient() {
             { chave: "monstros", label: "Monstros" },
             { chave: "aparicoes", label: "Aparições" },
             { chave: "drops", label: "Drops" },
+            { chave: "simulador", label: "Simulador" },
           ] as const
         ).map(({ chave, label }) => (
           <button
@@ -758,6 +948,7 @@ export default function AdminAdventureClient() {
       {aba === "monstros" && <MonstrosTab />}
       {aba === "aparicoes" && <AparicoesTab />}
       {aba === "drops" && <DropsTab />}
+      {aba === "simulador" && <SimuladorTab />}
     </div>
   );
 }
