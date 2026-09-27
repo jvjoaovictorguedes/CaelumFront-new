@@ -6,7 +6,7 @@ import { resolveMediaUrl } from "@/utils/media-url";
 import { useCharacter } from "@/contexts/CharacterContext";
 import { useToast } from "@/contexts/ToastContext";
 import { agruparInstancias } from "@/utils/agruparInstancias";
-import ItemArtHoverPreview from "@/components/Item/ItemArtHoverPreview";
+import ItemIcon from "@/components/Item/ItemIcon";
 
 interface Instancia {
   id: number;
@@ -297,18 +297,17 @@ export default function RefinementPanel({ nivelForja, onProgressoMudou }: { nive
                     selecionadaAtual ? "border-[#F3B43F]" : `${bordaPorQualidade(instancia.raridade)} hover:border-[#F3B43F]/70`
                   } ${marcoVisual(instancia.refinamento)}`}
                 >
-                  <div className="h-12 w-12 shrink-0 overflow-hidden rounded-lg border border-white/10 bg-[#1c150f]">
-                    <ItemArtHoverPreview imagemUrl={src} nome={instancia.nome} permiteClique={false} className="relative block h-full w-full">
-                      {src ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={src} alt={instancia.nome} className="h-full w-full object-contain p-1" />
-                      ) : (
-                        <div className="flex h-full w-full items-center justify-center text-sm font-bold text-[#F3B43F]/80">
-                          {instancia.nome.charAt(0)}
-                        </div>
-                      )}
-                    </ItemArtHoverPreview>
-                  </div>
+                  <ItemIcon
+                    imagemUrl={src}
+                    nome={instancia.nome}
+                    permiteClique={false}
+                    className="h-12 w-12 shrink-0 rounded-lg border border-white/10 bg-[#1c150f]"
+                    fallback={
+                      <div className="flex h-full w-full items-center justify-center text-sm font-bold text-[#F3B43F]/80">
+                        {instancia.nome.charAt(0)}
+                      </div>
+                    }
+                  />
                   <div className="min-w-0">
                     <p className="truncate text-sm font-bold">
                       {instancia.nome}
