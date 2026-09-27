@@ -2544,3 +2544,46 @@ export async function atualizarStatusManutencaoAdmin(payload: { enabled: boolean
   const resposta = await axiosInstance.patch<{ data: MaintenanceStatusApi }>("/admin/maintenance", payload);
   return resposta.data.data;
 }
+
+// Painel Administrativo de Expedição — Balanceamento. Uma tela só que
+// junta o balanceamento de Expedição (tempo/drops/progressão + a
+// Emboscada que mora dentro dela), Aventura (perigo) e Aventura em
+// Grupo (escala/limites) — mesmo formato { atual, padrao } por grupo já
+// usado no balanceamento da Forja.
+export interface ExpeditionBalanceGrupoApi<T = Record<string, unknown>> {
+  atual: T;
+  padrao: T;
+}
+export interface ExpeditionBalanceCompletoApi {
+  "expedition.cooldown": ExpeditionBalanceGrupoApi<{ TEMPO_COLETA_MS: number }>;
+  "expedition.progression": ExpeditionBalanceGrupoApi<{
+    XP_NECESSARIO_POR_ETAPA: Record<string, number>;
+    XP_POR_RESULTADO: Record<string, number>;
+  }>;
+  "expedition.drops": ExpeditionBalanceGrupoApi<{
+    CHANCE_POR_NIVEL_PPM: Record<string, Record<string, number>>;
+    QUANTIDADE_POR_NIVEL: Record<string, [number, number]>;
+  }>;
+  "expedition.ambush": ExpeditionBalanceGrupoApi<{ CHANCE_MONSTRO_PPM: number }>;
+  "adventure.danger": ExpeditionBalanceGrupoApi<{ MEDIO: number; ALTO: number }>;
+  "party.balance": ExpeditionBalanceGrupoApi<{
+    TAMANHO_MAXIMO_GRUPO: number;
+    TAMANHO_MINIMO_GRUPO: number;
+    PRAZO_CONVITE_MS: number;
+    PRAZO_TURNO_MS: number;
+    MAX_RODADAS: number;
+    FATOR_DIFICULDADE_VIDA_POR_EXTRA: number;
+    FATOR_DIFICULDADE_DANO_POR_EXTRA: number;
+  }>;
+}
+export async function obterExpeditionBalanceAdmin(): Promise<ExpeditionBalanceCompletoApi> {
+  const resposta = await axiosInstance.get<{ data: ExpeditionBalanceCompletoApi }>("/admin/expedition/balance");
+  return resposta.data.data;
+}
+export async function atualizarExpeditionBalanceAdmin(
+  grupo: keyof ExpeditionBalanceCompletoApi,
+  valores: Record<string, unknown>,
+): Promise<ExpeditionBalanceGrupoApi> {
+  const resposta = await axiosInstance.put<{ data: ExpeditionBalanceGrupoApi }>(`/admin/expedition/balance/${grupo}`, valores);
+  return resposta.data.data;
+}
