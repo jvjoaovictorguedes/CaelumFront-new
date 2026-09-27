@@ -8,8 +8,9 @@ import {
   obterExpeditionBalanceAdmin,
   type ExpeditionBalanceCompletoApi,
 } from "@/lib/api/admin";
+import { SimuladorBalanceamento } from "@/components/admin/SimuladorBalanceamento";
 
-type Aba = "expedicao" | "aventura" | "grupo";
+type Aba = "expedicao" | "aventura" | "grupo" | "simulador";
 
 const CARD = "rounded-2xl border-2 border-[#F3B43F]/40 bg-[#292018]/80 p-5";
 const BTN = "rounded-lg bg-[#BC8418] px-4 py-2 text-sm font-bold text-black hover:bg-[#a5710f] disabled:opacity-50";
@@ -42,6 +43,7 @@ export default function AdminExpeditionClient() {
     ["expedicao", "Expedição"],
     ["aventura", "Aventura"],
     ["grupo", "Aventura em Grupo"],
+    ["simulador", "Simulador"],
   ];
 
   return (
@@ -50,10 +52,11 @@ export default function AdminExpeditionClient() {
         <Link href="/dashboard/admin" className="text-sm text-[#F3B43F]/80 hover:underline">
           ← Painel Administrativo
         </Link>
-        <h1 className="mt-1 font-imFeel text-3xl text-[#F3B43F]">Expedição</h1>
+        <h1 className="mt-1 font-imFeel text-3xl text-[#F3B43F]">PVE</h1>
         <p className="mt-1 text-sm text-white/60">
-          Balanceamento de Expedição (tempo/drops/progressão/emboscada), do perigo de Aventura e da escala de
-          Aventura em Grupo — tudo numa tela só pra facilitar comparar e ajustar junto.
+          Tudo que envolve monstro numa tela só: ajuste de Expedição (tempo/drops/progressão/emboscada), perigo de
+          Aventura e escala de Aventura em Grupo — e o Simulador pra testar o resultado desses ajustes em N combates
+          reais antes de assumir que funcionou.
         </p>
       </div>
 
@@ -72,7 +75,9 @@ export default function AdminExpeditionClient() {
         ))}
       </div>
 
-      {carregando ? (
+      {aba === "simulador" ? (
+        <SimuladorBalanceamento />
+      ) : carregando ? (
         <p className="text-sm text-white/60">Carregando...</p>
       ) : !dados ? (
         <p className="text-sm text-red-400">{erro}</p>
