@@ -532,9 +532,15 @@ export async function duplicarMonstroAdmin(id: number): Promise<AdventureMonster
 }
 
 // Simulador de Balanceamento (Admin Aventura) — roda N combates PvE
-// reais (mesmas fórmulas do jogo) entre um personagem e um monstro
-// escolhidos. Ver adventureBalanceSimulationService.js no backend.
+// reais (mesmas fórmulas do jogo) entre um personagem e um ou mais
+// monstros. Ver adventureBalanceSimulationService.js no backend. Três
+// modos: "zona" (Modo Aventura solo), "expedicao" (interrupção de
+// monstro da coleta) e "grupo" (Aventura em Party) — cada um devolve um
+// subconjunto diferente de campos (união de todos aqui, os que não se
+// aplicam ao modo simplesmente não vêm no payload).
+export type ModoSimulacaoBalanceamento = "zona" | "expedicao" | "grupo";
 export interface SimulacaoBalanceamentoResultadoApi {
+  modo: ModoSimulacaoBalanceamento;
   personagem: {
     id: number;
     nome: string;
@@ -543,21 +549,37 @@ export interface SimulacaoBalanceamentoResultadoApi {
     mana_maxima: number;
     quantidade_poderes: number;
   };
-  monstro: { id: number; nome: string; nivel: number | null; vida_maxima: number; dano_min: number; dano_max: number };
+  // "zona" | "grupo"
+  monstro?: { id: number; nome: string; nivel: number | null; vida_maxima: number; dano_min: number; dano_max: number };
+  // "expedicao"
+  regiao_expedicao?: { id: number; nome: string; profissao: string; nivel_minimo: number };
+  monstro_gerado?: { nivel_forcado: number; vida_maxima_media: number; dano_base_medio: number };
+  // "grupo"
+  tamanho_grupo?: number;
   quantidade_simulacoes: number;
   taxa_vitoria_pct: number;
   vitorias: number;
   derrotas: number;
   combates_sem_vencedor: number;
-  turnos_medios_vitoria: number;
-  turnos_medios_derrota: number;
-  dano_medio_causado_por_combate: number;
-  dano_medio_recebido_por_combate: number;
+  // "zona" | "expedicao"
+  turnos_medios_vitoria?: number;
+  turnos_medios_derrota?: number;
+  dano_medio_causado_por_combate?: number;
+  dano_medio_recebido_por_combate?: number;
+  // "grupo"
+  rodadas_medias_vitoria?: number;
+  rodadas_medias_derrota?: number;
+  dano_medio_causado_pelo_grupo_por_combate?: number;
+  dano_medio_recebido_pelo_grupo_por_combate?: number;
+  sobreviventes_medios_ao_vencer?: number;
   vida_media_restante_ao_vencer_pct: number;
 }
 export async function simularBalanceamentoAdventureAdmin(payload: {
+  modo?: ModoSimulacaoBalanceamento;
   id_personagem: number;
-  id_monstro: number;
+  id_monstro?: number;
+  id_regiao_expedicao?: number;
+  tamanho_grupo?: number;
   quantidade?: number;
 }): Promise<SimulacaoBalanceamentoResultadoApi> {
   const resposta = await axiosInstance.post<{ data: SimulacaoBalanceamentoResultadoApi }>(
@@ -565,6 +587,19 @@ export async function simularBalanceamentoAdventureAdmin(payload: {
     payload,
   );
   return resposta.data.data;
+}
+
+export interface ExpeditionRegionAdminApi {
+  id: number;
+  nome: string;
+  profissao: "Mineracao" | "Silvicultura" | "Exploracao";
+  nivel_minimo: number;
+}
+export async function listarRegioesExpedicaoAdmin(): Promise<ExpeditionRegionAdminApi[]> {
+  const resposta = await axiosInstance.get<{ data: { regioes: ExpeditionRegionAdminApi[] } }>(
+    "/admin/adventure/expedition-regions",
+  );
+  return resposta.data.data.regioes;
 }
 
 export async function listarAparicoesAdmin(idArea?: number): Promise<AdventureZoneMonsterApi[]> {
