@@ -5,6 +5,7 @@ import axiosInstance from "@/utils/axiosIntance";
 import { useCharacter } from "@/contexts/CharacterContext";
 import { formatarTier } from "@/utils/equipmentTier";
 import { resolveMediaUrl } from "@/utils/media-url";
+import ItemDescriptionTooltip from "@/components/Tooltip/ItemDescriptionTooltip";
 
 interface WeaponPropertiesApi {
   dano_min: number;
@@ -30,6 +31,7 @@ interface ItemApi {
   raridade: string;
   tier_equipamento: number | null;
   imagem_url?: string | null;
+  descricao?: string | null;
   weaponProperties?: WeaponPropertiesApi | null;
   armorProperties?: ArmorPropertiesApi | null;
 }
@@ -451,25 +453,38 @@ function AbaComprar({ characterId }: { characterId: number }) {
 
               return (
                 <div key={listing.id} className="rounded-xl border border-white/10 bg-[#3a2f24] p-3">
-                  <div className="flex items-start gap-3">
-                    <IconeItem item={listing.item} />
-                    <div className="min-w-0 flex-1">
-                      <p className="font-bold">
-                        {listing.item.nome}
-                        {listing.instancia ? ` +${listing.instancia.refinamento}` : ""}
-                      </p>
-                      <p className="flex flex-wrap items-center gap-1.5">
-                        <span className={`text-xs font-bold ${CORES_RARIDADE[listing.item.raridade] ?? "text-white/70"}`}>
-                          {listing.item.raridade} · {listing.item.tipo_item}
-                        </span>
-                        {formatarTier(listing.item.tier_equipamento) && (
-                          <span className="rounded-full border border-[#F3B43F]/60 bg-black/30 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[#F3B43F]">
-                            {formatarTier(listing.item.tier_equipamento)}
+                  <ItemDescriptionTooltip
+                    className="relative block w-full cursor-help"
+                    label={
+                      <>
+                        <p className="mb-1 font-bold">
+                          {listing.item.nome}
+                          {listing.instancia ? ` +${listing.instancia.refinamento}` : ""}
+                        </p>
+                        <p>{listing.item.descricao?.trim() || "Sem descrição."}</p>
+                      </>
+                    }
+                  >
+                    <div className="flex items-start gap-3">
+                      <IconeItem item={listing.item} />
+                      <div className="min-w-0 flex-1">
+                        <p className="font-bold">
+                          {listing.item.nome}
+                          {listing.instancia ? ` +${listing.instancia.refinamento}` : ""}
+                        </p>
+                        <p className="flex flex-wrap items-center gap-1.5">
+                          <span className={`text-xs font-bold ${CORES_RARIDADE[listing.item.raridade] ?? "text-white/70"}`}>
+                            {listing.item.raridade} · {listing.item.tipo_item}
                           </span>
-                        )}
-                      </p>
+                          {formatarTier(listing.item.tier_equipamento) && (
+                            <span className="rounded-full border border-[#F3B43F]/60 bg-black/30 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[#F3B43F]">
+                              {formatarTier(listing.item.tier_equipamento)}
+                            </span>
+                          )}
+                        </p>
+                      </div>
                     </div>
-                  </div>
+                  </ItemDescriptionTooltip>
                   {listing.instancia && <PropriedadesEquipamento item={listing.item} instancia={listing.instancia} />}
                   <p className="mt-2 text-sm text-white/70">
                     Vendedor: {listing.vendedor?.nome ?? "?"} ·{" "}
