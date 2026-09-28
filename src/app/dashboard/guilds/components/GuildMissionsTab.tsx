@@ -1,7 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { io, type Socket } from "socket.io-client";
 import axiosInstance from "@/utils/axiosIntance";
+
+function socketUrlFromApiUrl(apiUrl: string) {
+  return apiUrl.replace(/\/api\/?$/, "");
+}
 
 interface MissaoApi {
   categoria: "Diaria" | "Semanal" | "Mensal" | "Rank";
@@ -49,6 +54,36 @@ export default function GuildMissionsTab({ idGuild }: { idGuild: number }) {
   useEffect(() => {
     carregar();
   }, [carregar]);
+
+  // Sem isso a tela só buscava progresso uma vez ao abrir — o backend já
+  // emite "guild:mission:update" toda vez que QUALQUER membro progride
+  // (matar inimigo, expedição, forja, PvP, etc.), mas ninguém escutava,
+  // então quem já estava com a aba aberta via progresso sempre "zerado"
+  // até fechar e abrir de novo. Mesma sala/handshake de GuildMuralTab.tsx.
+  useEffect(() => {
+    const baseUrl = socketUrlFromApiUrl(process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api");
+    const socket: Socket = io(baseUrl, { transports: ["websocket", "polling"] });
+
+    socket.on("connect", () => {
+      axiosInstance
+        .get<{ data?: { ticket?: string } }>("/users/socket-ticket")
+        .then((resp) => {
+          const ticket = resp.data?.data?.ticket;
+          if (!ticket) return;
+          socket.emit("guild:identificar", { ticket });
+          socket.emit("guild:join-room", {}, () => {});
+        })
+        .catch(() => {});
+    });
+
+    socket.on("guild:mission:update", () => {
+      carregar();
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, [idGuild, carregar]);
 
   if (carregando) {
     return (
