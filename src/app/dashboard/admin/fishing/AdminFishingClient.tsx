@@ -1332,9 +1332,17 @@ function AbaTorneios({ onErro }: { onErro: (m: string) => void }) {
     carregar();
   }, [carregar]);
 
+  // `<input type="datetime-local">` mostra/recebe hora LOCAL do navegador,
+  // sem timezone — toISOString() sempre devolve UTC, então usá-lo aqui
+  // fazia o campo mostrar a hora errada (deslocada pelo fuso, ex.: 3h a
+  // mais no Brasil) toda vez que o admin abria pra editar, e cada save
+  // reaplicava esse deslocamento. Monta a string a partir dos getters
+  // locais (getHours/getMinutes, não getUTCHours/getUTCMinutes).
   function paraInputLocal(iso?: string) {
     if (!iso) return "";
-    return new Date(iso).toISOString().slice(0, 16);
+    const d = new Date(iso);
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
   }
 
   function abrirCriacao() {
