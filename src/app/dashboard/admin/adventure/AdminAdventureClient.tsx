@@ -211,6 +211,7 @@ function MonstrosTab() {
       velocidade: 2,
       xp_recompensa: 20,
       ouro_recompensa: 10,
+      defesa: 0,
       ativo: true,
     });
     setMostrarForm(true);
@@ -275,7 +276,7 @@ function MonstrosTab() {
                   {monstro.nome} <span className="text-xs text-white/50">(nível {monstro.nivel ?? "?"})</span>
                 </p>
                 <p className="text-xs text-white/50">
-                  Vida {monstro.vida_maxima ?? "?"} · Dano {monstro.dano_min ?? "?"}-{monstro.dano_max ?? "?"} · XP {monstro.xp_recompensa ?? "?"} · Ouro {monstro.ouro_recompensa ?? "?"}
+                  Vida {monstro.vida_maxima ?? "?"} · Defesa {monstro.defesa ?? 0} · Dano {monstro.dano_min ?? "?"}-{monstro.dano_max ?? "?"} · XP {monstro.xp_recompensa ?? "?"} · Ouro {monstro.ouro_recompensa ?? "?"}
                 </p>
               </div>
               <div className="flex shrink-0 flex-wrap justify-end gap-2 text-sm">
@@ -330,6 +331,16 @@ function MonstrosTab() {
               <label className="flex flex-col gap-1 text-xs">
                 Dano máximo
                 <input type="number" min={0} step="1" value={form.dano_max ?? 3} onChange={(e) => setForm((f) => ({ ...f, dano_max: Number(e.target.value) }))} className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm" />
+              </label>
+              <label className="flex flex-col gap-1 text-xs">
+                Defesa
+                <input type="number" min={0} step="1" value={form.defesa ?? 0} onChange={(e) => setForm((f) => ({ ...f, defesa: Number(e.target.value) }))} className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm" />
+                {/* Mitigação só de leitura (§5.4) — mesma constante do backend
+                    (CONSTANTE_MITIGACAO_DEFESA=50 em combatFormulas.js), nunca
+                    reimplementa o cálculo de Poder em si, só essa preview simples. */}
+                <span className="text-[10px] text-white/40">
+                  Mitigação aprox.: {(((form.defesa ?? 0) / ((form.defesa ?? 0) + 50)) * 100).toFixed(1)}%
+                </span>
               </label>
               <label className="flex flex-col gap-1 text-xs">
                 Agilidade

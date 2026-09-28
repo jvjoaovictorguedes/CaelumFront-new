@@ -470,6 +470,10 @@ export interface AdventureMonsterApi {
   velocidade: number | null;
   xp_recompensa: number | null;
   ouro_recompensa: number | null;
+  // Especificação "Admin de Aventura + Defesa/Poder de Monstros" v3 —
+  // mesma regra de mitigação do motor de combate (aplicarMitigacaoDeDefesa
+  // no backend); nunca calculada/duplicada aqui no frontend.
+  defesa: number;
   ativo: boolean;
 }
 
