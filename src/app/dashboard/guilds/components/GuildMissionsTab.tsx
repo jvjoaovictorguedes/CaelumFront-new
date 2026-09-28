@@ -1,12 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { io, type Socket } from "socket.io-client";
 import axiosInstance from "@/utils/axiosIntance";
-
-function socketUrlFromApiUrl(apiUrl: string) {
-  return apiUrl.replace(/\/api\/?$/, "");
-}
+import { useGuildSocket } from "@/contexts/GuildSocketContext";
 
 interface MissaoApi {
   categoria: "Diaria" | "Semanal" | "Mensal" | "Rank";
@@ -33,6 +29,7 @@ const LABEL_CATEGORIA: Record<MissaoApi["categoria"], string> = {
 };
 
 export default function GuildMissionsTab({ idGuild }: { idGuild: number }) {
+  const { socket } = useGuildSocket();
   const [missoes, setMissoes] = useState<MissaoApi[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [mensagem, setMensagem] = useState("");
@@ -59,31 +56,15 @@ export default function GuildMissionsTab({ idGuild }: { idGuild: number }) {
   // emite "guild:mission:update" toda vez que QUALQUER membro progride
   // (matar inimigo, expedição, forja, PvP, etc.), mas ninguém escutava,
   // então quem já estava com a aba aberta via progresso sempre "zerado"
-  // até fechar e abrir de novo. Mesma sala/handshake de GuildMuralTab.tsx.
+  // até fechar e abrir de novo. O socket em si (conexão + entrar na
+  // sala) é compartilhado por GuildSocketProvider — aqui só escuta.
   useEffect(() => {
-    const baseUrl = socketUrlFromApiUrl(process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api");
-    const socket: Socket = io(baseUrl, { transports: ["websocket", "polling"] });
-
-    socket.on("connect", () => {
-      axiosInstance
-        .get<{ data?: { ticket?: string } }>("/users/socket-ticket")
-        .then((resp) => {
-          const ticket = resp.data?.data?.ticket;
-          if (!ticket) return;
-          socket.emit("guild:identificar", { ticket });
-          socket.emit("guild:join-room", {}, () => {});
-        })
-        .catch(() => {});
-    });
-
-    socket.on("guild:mission:update", () => {
-      carregar();
-    });
-
+    if (!socket) return;
+    socket.on("guild:mission:update", carregar);
     return () => {
-      socket.disconnect();
+      socket.off("guild:mission:update", carregar);
     };
-  }, [idGuild, carregar]);
+  }, [socket, carregar]);
 
   if (carregando) {
     return (
