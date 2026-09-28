@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import axiosInstance from "@/utils/axiosIntance";
 import { resolveMediaUrl } from "@/utils/media-url";
+import { GuildSocketProvider } from "@/contexts/GuildSocketContext";
 import type { Cargo, GuildResumo, MembroGuild, Permissao } from "./types";
 import { PERMISSOES } from "./types";
 import GuildMembersTab from "./GuildMembersTab";
@@ -275,13 +276,18 @@ export default function GuildDashboard({
           onMudou={recarregarGuild}
         />
       )}
-      {aba === "missoes" && <GuildMissionsTab idGuild={guild.id} />}
+      {/* GuildSocketProvider fica FORA do if de cada aba (mas dentro do
+          dashboard da guilda) de propósito: conecta/entra na sala UMA vez
+          enquanto o jogador estiver vendo essa guilda, sobrevivendo à
+          troca entre Missões/Chat/Mural — trocar de aba não deveria
+          reconectar o socket do zero. */}
+      <GuildSocketProvider idGuild={guild.id}>
+        {aba === "missoes" && <GuildMissionsTab idGuild={guild.id} />}
+        {aba === "chat" && <GuildChatTab characterId={characterId} characterNome={characterNome} />}
+        {aba === "mural" && <GuildMuralTab idGuild={guild.id} pode={pode} />}
+      </GuildSocketProvider>
       {aba === "beneficios" && <GuildBenefitsTab idGuild={guild.id} pode={pode} />}
       {aba === "boss" && <GuildBossTab idGuild={guild.id} pode={pode} />}
-      {aba === "chat" && (
-        <GuildChatTab characterId={characterId} characterNome={characterNome} idGuild={guild.id} />
-      )}
-      {aba === "mural" && <GuildMuralTab idGuild={guild.id} pode={pode} />}
       {aba === "tesouro" && (
         <GuildTreasuryTab guild={guild} characterId={characterId} pode={pode} onMudou={recarregarGuild} />
       )}
