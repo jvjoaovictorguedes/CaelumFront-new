@@ -475,6 +475,10 @@ export interface AdventureMonsterApi {
   // no backend); nunca calculada/duplicada aqui no frontend.
   defesa: number;
   ativo: boolean;
+  // Calculado no backend por linha da listagem (nunca persistido, §3.2/
+  // §9) — presente em GET /admin/adventure/monsters; ausente em
+  // respostas de criar/atualizar que não recalculam a lista inteira.
+  combat_power?: number;
 }
 
 export interface AdventureZoneMonsterApi {
@@ -535,6 +539,64 @@ export async function duplicarMonstroAdmin(id: number): Promise<AdventureMonster
   return resposta.data.data.monstro;
 }
 
+// Endpoints agregados (Especificação "Admin de Aventura + Defesa/Poder
+// de Monstros" v3 §2.4/§4.2/§7.3) — ZoneEditor/MonsterEditor editam
+// tudo localmente e mandam UMA sincronização ao Salvar, em vez de um
+// PATCH por linha do roster/loot.
+export interface AdventureMonsterDetailApi {
+  monstro: AdventureMonsterApi;
+  combat_power: {
+    version: number;
+    combatPower: number;
+    danoMedio?: number;
+    dpr: number;
+    mitigacao?: number;
+    ehp: number;
+    utilityFactor: number;
+  };
+  loot: AdventureMonsterLootApi[];
+  zonas: { id_area: number; nome_zona: string | null; tipo_aparicao: "Comum" | "Raro"; peso_aparicao: number; ativo: boolean }[];
+}
+
+export async function buscarDetalheMonstroAdmin(id: number): Promise<AdventureMonsterDetailApi> {
+  const resposta = await axiosInstance.get<{ data: AdventureMonsterDetailApi }>(`/admin/adventure/monsters/${id}`);
+  return resposta.data.data;
+}
+
+export interface RosterZonaItemPayload {
+  id_monstro: number;
+  tipo_aparicao: "Comum" | "Raro";
+  peso_aparicao: number;
+  nivel_jogador_minimo: number;
+  ativo: boolean;
+}
+
+export async function sincronizarRosterZonaAdmin(idZona: number, monsters: RosterZonaItemPayload[]): Promise<AdventureZoneMonsterApi[]> {
+  const resposta = await axiosInstance.put<{ data: { roster: AdventureZoneMonsterApi[] } }>(
+    `/admin/adventure/zones/${idZona}/monsters`,
+    { monsters },
+  );
+  return resposta.data.data.roster;
+}
+
+export interface LootMonstroItemPayload {
+  id?: number;
+  id_item: number;
+  chance_ppm: number;
+  quantidade_min: number;
+  quantidade_max: number;
+  categoria: "Principal" | "Secundario" | "Especial";
+  ativo: boolean;
+}
+
+export async function sincronizarLootMonstroAdmin(idMonstro: number, loot: LootMonstroItemPayload[]): Promise<AdventureMonsterLootApi[]> {
+  const resposta = await axiosInstance.put<{ data: { loot: AdventureMonsterLootApi[] } }>(
+    `/admin/adventure/monsters/${idMonstro}/loot`,
+    { loot },
+  );
+  return resposta.data.data.loot;
+}
+
 // Simulador de Balanceamento (Admin Aventura) — roda N combates PvE
 // reais (mesmas fórmulas do jogo) entre um personagem e um ou mais
 // monstros. Ver adventureBalanceSimulationService.js no backend. Três
@@ -554,7 +616,16 @@ export interface SimulacaoBalanceamentoResultadoApi {
     quantidade_poderes: number;
   };
   // "zona" | "grupo"
-  monstro?: { id: number; nome: string; nivel: number | null; vida_maxima: number; dano_min: number; dano_max: number };
+  monstro?: {
+    id: number;
+    nome: string;
+    nivel: number | null;
+    vida_maxima: number;
+    dano_min: number;
+    dano_max: number;
+    defesa?: number;
+    combat_power?: number;
+  };
   // "expedicao"
   regiao_expedicao?: { id: number; nome: string; profissao: string; nivel_minimo: number };
   monstro_gerado?: { nivel_forcado: number; vida_maxima_media: number; dano_base_medio: number };

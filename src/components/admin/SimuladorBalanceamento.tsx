@@ -27,7 +27,11 @@ const ROTULO_MODO_SIMULACAO: Record<ModoSimulacaoBalanceamento, string> = {
   grupo: "Aventura em Party",
 };
 
-export function SimuladorBalanceamento() {
+// preSelecao: MonsterEditor manda { idMonstro, ticket } pelo botão
+// "Simular este monstro" (§8.2) — `ticket` só existe pra forçar o
+// useEffect a reaplicar mesmo clicando duas vezes seguidas no MESMO
+// monstro (idMonstro sozinho não mudaria de valor entre cliques).
+export function SimuladorBalanceamento({ preSelecao }: { preSelecao?: { idMonstro: number; ticket: number } } = {}) {
   const [modo, setModo] = useState<ModoSimulacaoBalanceamento>("zona");
   const [monstros, setMonstros] = useState<AdventureMonsterApi[]>([]);
   const [regioes, setRegioes] = useState<ExpeditionRegionAdminApi[]>([]);
@@ -51,6 +55,15 @@ export function SimuladorBalanceamento() {
       .then(setRegioes)
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (!preSelecao) return;
+    setModo("zona");
+    setIdMonstro(preSelecao.idMonstro);
+    setResultado(null);
+    setErro("");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [preSelecao?.ticket]);
 
   function trocarModo(novoModo: ModoSimulacaoBalanceamento) {
     setModo(novoModo);
