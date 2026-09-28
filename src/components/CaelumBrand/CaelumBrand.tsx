@@ -60,10 +60,10 @@ export function CaelumBrasao({
 }) {
   return (
     <Image
-      src="/brand/caelum-crest-web.jpg"
+      src="/brand/caelum-crest-web.png"
       alt="Brasão de Caelum"
-      width={600}
-      height={664}
+      width={887}
+      height={439}
       priority
       className={`w-auto drop-shadow-2xl ${TAMANHOS_BRASAO[tamanho]} ${className}`}
     />
