@@ -7,6 +7,7 @@ import BalcaoDeEspoliosPanel from "./BalcaoDeEspoliosPanel";
 import MuralDeCacadasPanel from "./MuralDeCacadasPanel";
 import WorldBossArena from "./WorldBossArena";
 import GuildJournalPanel from "./GuildJournalPanel";
+import { obterGuildJournalCompleto } from "@/lib/api/guildJournal";
 
 type Aba = "Diaria" | "Semanal" | "Mensal" | "Rank" | "Marco" | "Balcao" | "Cacadas" | "AmeacaMundial" | "Jornal";
 
@@ -158,6 +159,22 @@ export default function AdventureGuildPanel() {
   const [mensagem, setMensagem] = useState("");
   const [processando, setProcessando] = useState<string | null>(null);
   const [agora, setAgora] = useState(() => Date.now());
+  // Notificação do Jornal da Guilda (badge na aba) — carregada à parte
+  // da aba em si, pra aparecer mesmo com o jogador em outra aba. Zerada
+  // por GuildJournalPanel assim que a aba "Jornal" é realmente aberta.
+  const [journalNaoLidas, setJournalNaoLidas] = useState(0);
+
+  useEffect(() => {
+    let cancelado = false;
+    obterGuildJournalCompleto()
+      .then((resposta) => {
+        if (!cancelado) setJournalNaoLidas(resposta.quantidade_nao_lida);
+      })
+      .catch((error) => console.error("Erro ao buscar notificações do Jornal da Guilda:", error));
+    return () => {
+      cancelado = true;
+    };
+  }, []);
 
   useEffect(() => {
     const intervalo = setInterval(() => setAgora(Date.now()), 1000);
@@ -273,11 +290,16 @@ export default function AdventureGuildPanel() {
             key={a}
             type="button"
             onClick={() => setAba(a)}
-            className={`rounded-lg px-3 py-1.5 text-sm font-bold transition ${
+            className={`relative rounded-lg px-3 py-1.5 text-sm font-bold transition ${
               aba === a ? "bg-[#F3B43F] text-black" : "bg-black/20 text-white/70 hover:text-white"
             }`}
           >
             {ROTULO_ABA[a]}
+            {a === "Jornal" && journalNaoLidas > 0 && (
+              <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full border-2 border-[#292018] bg-red-600 px-1 text-[10px] font-bold leading-none text-white">
+                {journalNaoLidas > 9 ? "9+" : journalNaoLidas}
+              </span>
+            )}
           </button>
         ))}
       </div>
@@ -287,7 +309,9 @@ export default function AdventureGuildPanel() {
       {!carregando && aba === "Balcao" && <BalcaoDeEspoliosPanel />}
       {!carregando && aba === "Cacadas" && <MuralDeCacadasPanel />}
       {!carregando && aba === "AmeacaMundial" && <WorldBossArena />}
-      {!carregando && aba === "Jornal" && <GuildJournalPanel />}
+      {!carregando && aba === "Jornal" && (
+        <GuildJournalPanel onVisto={() => setJournalNaoLidas(0)} />
+      )}
 
       {!carregando && aba !== "Rank" && aba !== "Balcao" && aba !== "Cacadas" && aba !== "AmeacaMundial" && aba !== "Jornal" && (
         <div className="flex flex-col gap-2">
