@@ -3265,3 +3265,107 @@ export async function atualizarAlchemyRecipeAdmin(id: number, payload: PayloadAl
   const resposta = await axiosInstance.patch<{ data: { receita: AlchemyRecipeAdminApi } }>(`/admin/alchemy/recipes/${id}`, payload);
   return resposta.data.data.receita;
 }
+
+// Painel Administrativo — Guilda: Balanceamento (guildConfig.js via
+// GameSetting, mesmo formato { atual, padrao } por grupo já usado em
+// Forja/Expedição) + os 3 catálogos geridos aqui (Níveis/Boss por Rank/
+// Missões). Permissões/Cargos (GuildRolePermission) NÃO entram aqui —
+// são por guilda, configurados pelos próprios oficiais dentro do jogo,
+// não um parâmetro global de admin.
+export interface GuildBalanceGrupoApi<T = Record<string, unknown>> {
+  atual: T;
+  padrao: T;
+}
+export interface GuildBuffNivelApi {
+  bonusPercentual?: number;
+  bonusPontosPercentuais?: number;
+  custo: number;
+  nivelGuildaMinimo: number;
+}
+export interface GuildBalanceCompletoApi {
+  "guild.ranks": GuildBalanceGrupoApi<Record<string, number>>;
+  "guild.carencia": GuildBalanceGrupoApi<{ CARENCIA_NOVO_MEMBRO_MS: number }>;
+  "guild.buffs": GuildBalanceGrupoApi<{
+    XP: Record<string, GuildBuffNivelApi>;
+    GOLD: Record<string, GuildBuffNivelApi>;
+    FORJA: Record<string, GuildBuffNivelApi>;
+  }>;
+  "guild.contribuicao": GuildBalanceGrupoApi<{
+    PONTOS_CONTRIBUICAO: Record<string, number>;
+    XP_GUILDA_MISSAO_RANK_MIN: number;
+    XP_GUILDA_MISSAO_RANK_MAX: number;
+  }>;
+  "guild.boss": GuildBalanceGrupoApi<{
+    BOSS_FRACAO_IGUALITARIA: number;
+    BOSS_FRACAO_PROPORCIONAL: number;
+    BOSS_AO_VIVO_TAMANHO_MAXIMO: number;
+    BOSS_AO_VIVO_TAMANHO_MINIMO: number;
+    BOSS_AO_VIVO_PRAZO_TURNO_MS: number;
+    BOSS_AO_VIVO_FATOR_ESCALADA_DANO: number;
+    BOSS_AO_VIVO_MAX_RODADAS: number;
+  }>;
+}
+export async function obterGuildBalanceAdmin(): Promise<GuildBalanceCompletoApi> {
+  const resposta = await axiosInstance.get<{ data: GuildBalanceCompletoApi }>("/admin/guild/balance");
+  return resposta.data.data;
+}
+export async function atualizarGuildBalanceAdmin(
+  grupo: keyof GuildBalanceCompletoApi,
+  valores: Record<string, unknown>,
+): Promise<GuildBalanceGrupoApi> {
+  const resposta = await axiosInstance.put<{ data: GuildBalanceGrupoApi }>(`/admin/guild/balance/${grupo}`, valores);
+  return resposta.data.data;
+}
+
+export interface GuildLevelConfigApi {
+  nivel: number;
+  xp_para_proximo_nivel: number | null;
+  limite_membros: number;
+}
+export async function listarGuildLevelsAdmin(): Promise<GuildLevelConfigApi[]> {
+  const resposta = await axiosInstance.get<{ data: GuildLevelConfigApi[] }>("/admin/guild/levels");
+  return resposta.data.data;
+}
+export async function salvarGuildLevelAdmin(payload: GuildLevelConfigApi): Promise<GuildLevelConfigApi> {
+  const resposta = await axiosInstance.post<{ data: GuildLevelConfigApi }>("/admin/guild/levels", payload);
+  return resposta.data.data;
+}
+
+export interface GuildBossConfigAdminApi {
+  id: number;
+  rank: string;
+  nome_chefe: string;
+  descricao: string;
+  vida_total: number;
+  defesa: number;
+  janela_horas: number;
+  custo_liberacao: number;
+  xp_guilda_concedido: number;
+  pool_dinheiro_total: number;
+  pool_xp_total: number;
+  dano_base_ataque: number;
+  premio_maior_dano: number;
+  imagem_url: string | null;
+}
+export type PayloadGuildBossConfigAdmin = Partial<Omit<GuildBossConfigAdminApi, "id">>;
+export async function listarGuildBossesAdmin(): Promise<GuildBossConfigAdminApi[]> {
+  const resposta = await axiosInstance.get<{ data: GuildBossConfigAdminApi[] }>("/admin/guild/bosses");
+  return resposta.data.data;
+}
+export async function criarGuildBossAdmin(payload: PayloadGuildBossConfigAdmin): Promise<GuildBossConfigAdminApi> {
+  const resposta = await axiosInstance.post<{ data: GuildBossConfigAdminApi }>("/admin/guild/bosses", payload);
+  return resposta.data.data;
+}
+export async function atualizarGuildBossAdmin(
+  id: number,
+  payload: PayloadGuildBossConfigAdmin,
+): Promise<GuildBossConfigAdminApi> {
+  const resposta = await axiosInstance.patch<{ data: GuildBossConfigAdminApi }>(`/admin/guild/bosses/${id}`, payload);
+  return resposta.data.data;
+}
+
+// Missões de Guilda (GuildMission) NÃO entram aqui — já têm CRUD
+// completo (list/create/update/duplicate) em listarMissoesGuildaAdmin/
+// criarMissaoGuildaAdmin/atualizarMissaoGuildaAdmin/duplicarMissaoGuildaAdmin
+// (ver acima), servido pela aba "Missões de Guilda" de
+// /dashboard/admin/missions.
