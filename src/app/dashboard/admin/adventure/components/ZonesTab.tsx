@@ -40,7 +40,7 @@ export function ZonesTab() {
   }, [carregar]);
 
   function abrirCriacaoRapida() {
-    setFormRapido({ nome: "", descricao: "", nivel_monstro_min: 1, nivel_monstro_max: 5, imagem_url: "", ordem: zonas.length + 1, ativa: true });
+    setFormRapido({ nome: "", descricao: "", nivel_monstro_min: 1, nivel_monstro_max: 5, nivel_jogador_minimo: 1, imagem_url: "", ordem: zonas.length + 1, ativa: true });
     setMostrarCriacaoRapida(true);
   }
 
@@ -92,7 +92,8 @@ export function ZonesTab() {
                   {zona.ordem}. {zona.nome}{" "}
                   <span className="text-xs text-white/50">
                     (nível {zona.nivel_monstro_min}-{zona.nivel_monstro_max})
-                  </span>
+                  </span>{" "}
+                  <span className="text-xs font-bold text-[#F3B43F]">Requer nível {zona.nivel_jogador_minimo}</span>
                 </p>
                 <p className="truncate text-xs text-white/50">{zona.descricao}</p>
               </div>
@@ -124,11 +125,11 @@ export function ZonesTab() {
             </label>
             <div className="flex gap-2">
               <label className="flex flex-1 flex-col gap-1 text-xs">
-                Nível mín.
+                Nível mín. dos monstros
                 <input type="number" required value={formRapido.nivel_monstro_min ?? 1} onChange={(e) => setFormRapido((f) => ({ ...f, nivel_monstro_min: Number(e.target.value) }))} className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm" />
               </label>
               <label className="flex flex-1 flex-col gap-1 text-xs">
-                Nível máx.
+                Nível máx. dos monstros
                 <input type="number" required value={formRapido.nivel_monstro_max ?? 5} onChange={(e) => setFormRapido((f) => ({ ...f, nivel_monstro_max: Number(e.target.value) }))} className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm" />
               </label>
               <label className="flex flex-1 flex-col gap-1 text-xs">
@@ -136,6 +137,17 @@ export function ZonesTab() {
                 <input type="number" value={formRapido.ordem ?? 0} onChange={(e) => setFormRapido((f) => ({ ...f, ordem: Number(e.target.value) }))} className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm" />
               </label>
             </div>
+            <label className="flex flex-col gap-1 text-xs">
+              <span className="font-bold text-[#F3B43F]">Nível mínimo pra ENTRAR na zona</span>
+              <input
+                type="number"
+                min={1}
+                required
+                value={formRapido.nivel_jogador_minimo ?? 1}
+                onChange={(e) => setFormRapido((f) => ({ ...f, nivel_jogador_minimo: Number(e.target.value) }))}
+                className="rounded-lg border-2 border-[#F3B43F]/50 bg-black/30 px-2 py-1.5 text-sm"
+              />
+            </label>
             <label className="flex flex-col gap-1 text-xs">
               Imagem (URL)
               <input value={formRapido.imagem_url ?? ""} onChange={(e) => setFormRapido((f) => ({ ...f, imagem_url: e.target.value }))} className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm" />

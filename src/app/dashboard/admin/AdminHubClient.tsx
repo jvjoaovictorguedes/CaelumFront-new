@@ -46,6 +46,7 @@ const CATEGORIAS: CategoriaAdmin[] = [
       { titulo: "Forja", descricao: "Blueprints, barras, pergaminhos e balanceamento de fundição/fabricação/refinamento.", href: "/dashboard/admin/forge", permissaoQualquerUma: ["forge.manage", "forge.balance"] },
       { titulo: "PVE", descricao: "Tudo de monstro: balanceamento de Aventura, Expedição/Emboscada e Aventura em Grupo, mais o Simulador de combate dos três.", href: "/dashboard/admin/expedition", permissao: "expedition.balance" },
       { titulo: "Proezas Únicas", descricao: "Easter eggs de vencedor único, seus Legados, triggers e histórico de reparos.", href: "/dashboard/admin/unique-feats", permissao: "uniquefeats.manage" },
+      { titulo: "Classes", descricao: "Identidade, árvore de evolução em 2 estágios, requisitos, habilidades e efeitos.", href: "/dashboard/admin/classes", permissao: "classes.manage" },
     ],
   },
   {

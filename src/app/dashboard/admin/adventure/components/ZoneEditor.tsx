@@ -32,6 +32,7 @@ export function ZoneEditor({ zona, onFechar, onSalvo }: { zona: AdventureZoneApi
   const [erro, setErro] = useState("");
   const [salvando, setSalvando] = useState(false);
   const [sujo, setSujo] = useState(false);
+  const [idMonstroNovo, setIdMonstroNovo] = useState<number | "">("");
 
   const carregar = useCallback(async () => {
     setCarregando(true);
@@ -82,12 +83,12 @@ export function ZoneEditor({ zona, onFechar, onSalvo }: { zona: AdventureZoneApi
   );
 
   function adicionarMonstro() {
-    const alvo = monstrosDisponiveis[0];
-    if (!alvo) return;
+    if (idMonstroNovo === "") return;
     setRoster((r) => [
       ...r,
-      { chaveLocal: novaChave(), id_monstro: alvo.id, tipo_aparicao: "Comum", peso_aparicao: 100, nivel_jogador_minimo: 1, ativo: true },
+      { chaveLocal: novaChave(), id_monstro: idMonstroNovo, tipo_aparicao: "Comum", peso_aparicao: 100, nivel_jogador_minimo: 1, ativo: true },
     ]);
+    setIdMonstroNovo("");
     marcarSujo();
   }
 
@@ -144,11 +145,11 @@ export function ZoneEditor({ zona, onFechar, onSalvo }: { zona: AdventureZoneApi
           </label>
           <div className="flex gap-2">
             <label className="flex flex-1 flex-col gap-1 text-xs">
-              Nível mín.
+              Nível mín. dos monstros
               <input type="number" value={form.nivel_monstro_min ?? 1} onChange={(e) => atualizarCampoZona("nivel_monstro_min", Number(e.target.value))} className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm" />
             </label>
             <label className="flex flex-1 flex-col gap-1 text-xs">
-              Nível máx.
+              Nível máx. dos monstros
               <input type="number" value={form.nivel_monstro_max ?? 5} onChange={(e) => atualizarCampoZona("nivel_monstro_max", Number(e.target.value))} className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm" />
             </label>
             <label className="flex flex-1 flex-col gap-1 text-xs">
@@ -156,6 +157,20 @@ export function ZoneEditor({ zona, onFechar, onSalvo }: { zona: AdventureZoneApi
               <input type="number" value={form.ordem ?? 0} onChange={(e) => atualizarCampoZona("ordem", Number(e.target.value))} className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm" />
             </label>
           </div>
+          <p className="text-[10px] text-white/40">
+            Nível mín./máx. dos monstros é só indicativo (badge de perigo pro jogador) — quem de fato TRAVA a
+            entrada na zona é o campo abaixo.
+          </p>
+          <label className="flex flex-col gap-1 text-xs">
+            <span className="font-bold text-[#F3B43F]">Nível mínimo pra ENTRAR na zona</span>
+            <input
+              type="number"
+              min={1}
+              value={form.nivel_jogador_minimo ?? 1}
+              onChange={(e) => atualizarCampoZona("nivel_jogador_minimo", Number(e.target.value))}
+              className="rounded-lg border-2 border-[#F3B43F]/50 bg-black/30 px-2 py-1.5 text-sm"
+            />
+          </label>
           <label className="flex flex-col gap-1 text-xs">
             Imagem (URL)
             <input value={form.imagem_url ?? ""} onChange={(e) => atualizarCampoZona("imagem_url", e.target.value)} className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm" />
@@ -228,9 +243,24 @@ export function ZoneEditor({ zona, onFechar, onSalvo }: { zona: AdventureZoneApi
               </table>
             </div>
           )}
-          <button type="button" onClick={adicionarMonstro} disabled={!monstrosDisponiveis.length} className="mt-1 self-start rounded-lg border border-[#F3B43F]/40 px-3 py-1.5 text-xs font-bold text-[#F3B43F] hover:bg-[#F3B43F]/10 disabled:opacity-40">
-            + Adicionar monstro
-          </button>
+          <div className="mt-1 flex flex-wrap items-center gap-2">
+            <select
+              value={idMonstroNovo}
+              onChange={(e) => setIdMonstroNovo(e.target.value ? Number(e.target.value) : "")}
+              className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-xs"
+            >
+              <option value="">Escolha um monstro...</option>
+              {monstrosDisponiveis.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.nome}
+                </option>
+              ))}
+            </select>
+            <button type="button" onClick={adicionarMonstro} disabled={idMonstroNovo === ""} className="self-start rounded-lg border border-[#F3B43F]/40 px-3 py-1.5 text-xs font-bold text-[#F3B43F] hover:bg-[#F3B43F]/10 disabled:opacity-40">
+              + Adicionar monstro
+            </button>
+            {!monstrosDisponiveis.length && <span className="text-[10px] text-white/40">Todos os monstros já estão vinculados a esta zona.</span>}
+          </div>
         </section>
 
         <div className="mt-1 flex justify-end gap-2">

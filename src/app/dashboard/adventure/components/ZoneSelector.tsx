@@ -12,6 +12,12 @@ export interface ZonaApi {
   imagem_url: string | null;
   nivel_recomendado: string;
   perigo: "BAIXO" | "MEDIO" | "ALTO" | "EXTREMO";
+  // Gate de ENTRADA de verdade (pedido do jogador) — diferente do badge
+  // de perigo acima, que é só indicativo. O backend também revalida
+  // isso em /adventure/zones/:id/enter, nunca confia só nesta checagem
+  // do lado do cliente.
+  nivel_jogador_minimo: number;
+  bloqueada_por_nivel: boolean;
 }
 
 const CORES_PERIGO: Record<ZonaApi["perigo"], string> = {
@@ -29,8 +35,12 @@ const LABEL_PERIGO: Record<ZonaApi["perigo"], string> = {
 };
 
 // Tela de seleção de Área de Caça (§34 da spec) — o botão de entrar
-// NUNCA fica desabilitado por causa do indicador de perigo (§5): é só
+// NUNCA fica desabilitado por causa do indicador de PERIGO (§5): é só
 // um aviso, a decisão de entrar numa zona "forte demais" é do jogador.
+// nivel_jogador_minimo é outra coisa — um gate de verdade (pedido do
+// jogador), o backend REJEITA a entrada abaixo dele, então aqui o botão
+// fica desabilitado com uma mensagem clara em vez de deixar o jogador
+// levar um erro genérico ao tentar.
 export default function ZoneSelector({ zonas }: { zonas: ZonaApi[] }) {
   const router = useRouter();
   const [entrandoEm, setEntrandoEm] = useState<number | null>(null);
@@ -86,16 +96,24 @@ export default function ZoneSelector({ zonas }: { zonas: ZonaApi[] }) {
               <p className="mb-1 text-xs font-bold uppercase tracking-wide text-[#F3B43F]/80">
                 Nível recomendado: {zona.nivel_recomendado}
               </p>
+              <p className={`mb-1 text-xs font-bold uppercase tracking-wide ${zona.bloqueada_por_nivel ? "text-red-400" : "text-white/50"}`}>
+                Requer nível {zona.nivel_jogador_minimo}+ pra entrar
+              </p>
               {zona.descricao && <p className="text-sm text-white/70">{zona.descricao}</p>}
             </div>
 
             <button
               type="button"
-              disabled={entrandoEm === zona.id}
+              disabled={entrandoEm === zona.id || zona.bloqueada_por_nivel}
               onClick={() => entrar(zona.id)}
-              className="mt-4 rounded-lg bg-[#BC8418] px-4 py-2 font-bold text-black transition hover:bg-[#a5710f] disabled:opacity-60"
+              title={zona.bloqueada_por_nivel ? `Você precisa ser nível ${zona.nivel_jogador_minimo} pra entrar aqui.` : undefined}
+              className="mt-4 rounded-lg bg-[#BC8418] px-4 py-2 font-bold text-black transition hover:bg-[#a5710f] disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {entrandoEm === zona.id ? "Entrando..." : "Entrar"}
+              {entrandoEm === zona.id
+                ? "Entrando..."
+                : zona.bloqueada_por_nivel
+                  ? `Requer nível ${zona.nivel_jogador_minimo}`
+                  : "Entrar"}
             </button>
           </div>
         ))}

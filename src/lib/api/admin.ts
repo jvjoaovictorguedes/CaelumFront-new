@@ -448,6 +448,11 @@ export interface AdventureZoneApi {
   descricao: string | null;
   nivel_monstro_min: number;
   nivel_monstro_max: number;
+  // Gate de ENTRADA de verdade (diferente de nivel_monstro_min/max
+  // acima, que é só a faixa de nível dos monstros da zona) — abaixo
+  // deste nível o personagem não consegue nem entrar (backend valida
+  // de novo, nunca confia só no formulário).
+  nivel_jogador_minimo: number;
   imagem_url: string | null;
   ordem: number;
   ativa: boolean;
@@ -555,7 +560,15 @@ export interface AdventureMonsterDetailApi {
     utilityFactor: number;
   };
   loot: AdventureMonsterLootApi[];
-  zonas: { id_area: number; nome_zona: string | null; tipo_aparicao: "Comum" | "Raro"; peso_aparicao: number; ativo: boolean }[];
+  zonas: {
+    id: number;
+    id_area: number;
+    nome_zona: string | null;
+    tipo_aparicao: "Comum" | "Raro";
+    peso_aparicao: number;
+    nivel_jogador_minimo: number;
+    ativo: boolean;
+  }[];
 }
 
 export async function buscarDetalheMonstroAdmin(id: number): Promise<AdventureMonsterDetailApi> {
@@ -692,9 +705,12 @@ export async function atualizarAparicaoAdmin(id: number, payload: Partial<Advent
   return resposta.data.data.aparicao;
 }
 
-export async function listarLootAdmin(idMonstro?: number): Promise<AdventureMonsterLootApi[]> {
+export async function listarLootAdmin(idMonstro?: number, idItem?: number): Promise<AdventureMonsterLootApi[]> {
+  const params: Record<string, number> = {};
+  if (idMonstro) params.idMonstro = idMonstro;
+  if (idItem) params.idItem = idItem;
   const resposta = await axiosInstance.get<{ data: { loot: AdventureMonsterLootApi[] } }>("/admin/adventure/loot", {
-    params: idMonstro ? { idMonstro } : undefined,
+    params: Object.keys(params).length ? params : undefined,
   });
   return resposta.data.data.loot;
 }
@@ -3525,4 +3541,250 @@ export async function duplicarWikiArtigoAdmin(id: number): Promise<WikiArticleAd
 }
 export async function excluirWikiArtigoAdmin(id: number): Promise<void> {
   await axiosInstance.delete(`/admin/wiki/${id}`);
+}
+
+// ===================================================================
+// Classes V2 (Painel Admin de Classes) — identidade/gameplay de Classe,
+// árvore de evolução em 2 estágios, requisitos/habilidades/efeitos
+// extensíveis, validador de integridade e simulador. Montado sob
+// /admin/classes (permissão "classes.manage").
+export type AtributoClasseApi = "Forca" | "Vitalidade" | "Agilidade" | "Inteligencia" | "Velocidade";
+
+export interface ClassAdminApi {
+  id: number;
+  nome: string;
+  descricao: string | null;
+  multiplicador_vida_por_nivel: number;
+  multiplicador_mana_por_nivel: number;
+  multiplicador_dano_fisico: number;
+  multiplicador_dano_magico: number;
+  imagem_url: string | null;
+  raro: boolean;
+  slug: string | null;
+  icone_url: string | null;
+  banner_url: string | null;
+  ativo: boolean;
+  disponivel_criacao: boolean;
+  papel: string | null;
+  atributo_principal: AtributoClasseApi | null;
+  atributo_secundario: AtributoClasseApi | null;
+  ordem_exibicao: number;
+  total_caminhos_estagio1?: number;
+  total_caminhos_estagio2?: number;
+}
+
+export interface PayloadAtualizarClasseAdmin {
+  descricao?: string;
+  imagem_url?: string | null;
+  multiplicador_vida_por_nivel?: number;
+  multiplicador_mana_por_nivel?: number;
+  multiplicador_dano_fisico?: number;
+  multiplicador_dano_magico?: number;
+  slug?: string;
+  icone_url?: string | null;
+  banner_url?: string | null;
+  ativo?: boolean;
+  disponivel_criacao?: boolean;
+  papel?: string;
+  atributo_principal?: AtributoClasseApi;
+  atributo_secundario?: AtributoClasseApi;
+  ordem_exibicao?: number;
+}
+
+export type TipoRequisitoEvolucaoApi =
+  | "LEVEL"
+  | "GOLD"
+  | "ITEM"
+  | "MONSTER_KILL"
+  | "ADVENTURE_GUILD_RANK"
+  | "ACHIEVEMENT"
+  | "REPUTATION"
+  | "QUEST";
+
+export interface ClassEvolutionRequirementAdminApi {
+  id: number;
+  id_evolucao: number;
+  tipo: TipoRequisitoEvolucaoApi;
+  quantidade: number;
+  reference_id: number | null;
+  reference_key: string | null;
+  ordem: number;
+  item: ItemResumoApi | null;
+}
+
+export interface ClassEvolutionAbilityAdminApi {
+  id: number;
+  id_evolucao: number;
+  id_power: number;
+  auto_conceder: boolean;
+  ativar_se_houver_slot: boolean;
+  power: { id: number; nome: string; tipo_poder: string; acquisition_scope: string } | null;
+}
+
+export type EffectKeyEvolucaoApi =
+  | "RAGE_STACK"
+  | "LIFESTEAL"
+  | "LOW_HP_DAMAGE"
+  | "DAMAGE_REDUCTION"
+  | "MANA_COST_REDUCTION"
+  | "COOLDOWN_REDUCTION"
+  | "CRITICAL_CHANCE"
+  | "CRITICAL_DAMAGE"
+  | "DODGE_BONUS"
+  | "HEALING_BONUS"
+  | "SHIELD_ON_CAST";
+
+export interface ClassEvolutionEffectAdminApi {
+  id: number;
+  id_evolucao: number;
+  effect_key: EffectKeyEvolucaoApi;
+  valor: number;
+  ativo: boolean;
+}
+
+export interface ClassEvolutionPathAdminApi {
+  id: number;
+  id_classe: number;
+  slug: string;
+  nome: string;
+  descricao: string;
+  estagio: number;
+  id_evolucao_pai: number | null;
+  ativo: boolean;
+  icone_url: string | null;
+  imagem_url: string | null;
+  bonus_forca: number;
+  bonus_vitalidade: number;
+  bonus_agilidade: number;
+  bonus_inteligencia: number;
+  bonus_velocidade: number;
+  ordem: number;
+  requisitos: ClassEvolutionRequirementAdminApi[];
+  habilidadesConcedidas: ClassEvolutionAbilityAdminApi[];
+  efeitos: ClassEvolutionEffectAdminApi[];
+}
+
+export interface PayloadCaminhoAdmin {
+  slug?: string;
+  nome?: string;
+  descricao?: string;
+  estagio?: number;
+  id_evolucao_pai?: number | null;
+  ativo?: boolean;
+  icone_url?: string | null;
+  imagem_url?: string | null;
+  bonus_forca?: number;
+  bonus_vitalidade?: number;
+  bonus_agilidade?: number;
+  bonus_inteligencia?: number;
+  bonus_velocidade?: number;
+  ordem?: number;
+}
+
+export interface PayloadRequisitoAdmin {
+  tipo?: TipoRequisitoEvolucaoApi;
+  quantidade?: number;
+  reference_id?: number | null;
+  reference_key?: string | null;
+  ordem?: number;
+}
+
+export interface PayloadHabilidadeEvolucaoAdmin {
+  id_power?: number;
+  auto_conceder?: boolean;
+  ativar_se_houver_slot?: boolean;
+}
+
+export interface PayloadEfeitoEvolucaoAdmin {
+  effect_key?: EffectKeyEvolucaoApi;
+  valor?: number;
+  ativo?: boolean;
+}
+
+export interface EfeitoCatalogoAdminApi {
+  effect_key: EffectKeyEvolucaoApi;
+  implementado: boolean;
+}
+
+export interface ProblemaValidadorClassesApi {
+  nivel: "erro" | "aviso";
+  entidade: string;
+  id: number;
+  mensagem: string;
+}
+
+export interface ResultadoValidadorClassesApi {
+  total_problemas: number;
+  total_erros: number;
+  problemas: ProblemaValidadorClassesApi[];
+}
+
+export interface ResultadoSimuladorClassesApi {
+  classe: { id: number; nome: string };
+  caminho_estagio1: { id: number; nome: string } | null;
+  caminho_estagio2: { id: number; nome: string } | null;
+  bonus_total: { forca: number; vitalidade: number; agilidade: number; inteligencia: number; velocidade: number; defesa: number };
+  habilidades_concedidas: { id_power: number; nome: string | null }[];
+}
+
+export async function listarClassesAdmin(): Promise<ClassAdminApi[]> {
+  const resposta = await axiosInstance.get<{ data: { classes: ClassAdminApi[] } }>("/admin/classes");
+  return resposta.data.data.classes;
+}
+export async function buscarClasseAdmin(id: number): Promise<{ classe: ClassAdminApi; caminhos: ClassEvolutionPathAdminApi[] }> {
+  const resposta = await axiosInstance.get<{ data: { classe: ClassAdminApi; caminhos: ClassEvolutionPathAdminApi[] } }>(`/admin/classes/${id}`);
+  return resposta.data.data;
+}
+export async function atualizarClasseAdmin(id: number, payload: PayloadAtualizarClasseAdmin): Promise<ClassAdminApi> {
+  const resposta = await axiosInstance.patch<{ data: { classe: ClassAdminApi } }>(`/admin/classes/${id}`, payload);
+  return resposta.data.data.classe;
+}
+
+export async function criarCaminhoEvolucaoAdmin(idClasse: number, payload: PayloadCaminhoAdmin): Promise<ClassEvolutionPathAdminApi> {
+  const resposta = await axiosInstance.post<{ data: { caminho: ClassEvolutionPathAdminApi } }>(`/admin/classes/${idClasse}/evolution-paths`, payload);
+  return resposta.data.data.caminho;
+}
+export async function atualizarCaminhoEvolucaoAdmin(id: number, payload: PayloadCaminhoAdmin): Promise<ClassEvolutionPathAdminApi> {
+  const resposta = await axiosInstance.patch<{ data: { caminho: ClassEvolutionPathAdminApi } }>(`/admin/classes/evolution-paths/${id}`, payload);
+  return resposta.data.data.caminho;
+}
+export async function excluirCaminhoEvolucaoAdmin(id: number): Promise<void> {
+  await axiosInstance.delete(`/admin/classes/evolution-paths/${id}`);
+}
+
+export async function criarRequisitoEvolucaoAdmin(idEvolucao: number, payload: PayloadRequisitoAdmin): Promise<ClassEvolutionRequirementAdminApi> {
+  const resposta = await axiosInstance.post<{ data: { requisito: ClassEvolutionRequirementAdminApi } }>(`/admin/classes/evolution-paths/${idEvolucao}/requirements`, payload);
+  return resposta.data.data.requisito;
+}
+export async function excluirRequisitoEvolucaoAdmin(id: number): Promise<void> {
+  await axiosInstance.delete(`/admin/classes/requirements/${id}`);
+}
+
+export async function criarHabilidadeEvolucaoAdmin(idEvolucao: number, payload: PayloadHabilidadeEvolucaoAdmin): Promise<ClassEvolutionAbilityAdminApi> {
+  const resposta = await axiosInstance.post<{ data: { habilidade: ClassEvolutionAbilityAdminApi } }>(`/admin/classes/evolution-paths/${idEvolucao}/abilities`, payload);
+  return resposta.data.data.habilidade;
+}
+export async function excluirHabilidadeEvolucaoAdmin(id: number): Promise<void> {
+  await axiosInstance.delete(`/admin/classes/abilities/${id}`);
+}
+
+export async function catalogoEfeitosEvolucaoAdmin(): Promise<EfeitoCatalogoAdminApi[]> {
+  const resposta = await axiosInstance.get<{ data: { efeitos: EfeitoCatalogoAdminApi[] } }>("/admin/classes/effects/catalog");
+  return resposta.data.data.efeitos;
+}
+export async function criarEfeitoEvolucaoAdmin(idEvolucao: number, payload: PayloadEfeitoEvolucaoAdmin): Promise<ClassEvolutionEffectAdminApi> {
+  const resposta = await axiosInstance.post<{ data: { efeito: ClassEvolutionEffectAdminApi } }>(`/admin/classes/evolution-paths/${idEvolucao}/effects`, payload);
+  return resposta.data.data.efeito;
+}
+export async function excluirEfeitoEvolucaoAdmin(id: number): Promise<void> {
+  await axiosInstance.delete(`/admin/classes/effects/${id}`);
+}
+
+export async function validarClassesAdmin(): Promise<ResultadoValidadorClassesApi> {
+  const resposta = await axiosInstance.get<{ data: ResultadoValidadorClassesApi }>("/admin/classes/validator");
+  return resposta.data.data;
+}
+export async function simularEvolucaoClasseAdmin(payload: { id_classe: number; id_caminho_estagio1?: number; id_caminho_estagio2?: number }): Promise<ResultadoSimuladorClassesApi> {
+  const resposta = await axiosInstance.post<{ data: ResultadoSimuladorClassesApi }>("/admin/classes/simulator", payload);
+  return resposta.data.data;
 }
