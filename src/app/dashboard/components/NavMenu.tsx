@@ -8,6 +8,7 @@ import { CaelumBrasao } from "@/components/CaelumBrand/CaelumBrand";
 import OnlinePlayersBadge from "./OnlinePlayersBadge";
 import PatchNotesBell from "./PatchNotesBell";
 import SidebarHealthBar from "./SidebarHealthBar";
+import SocialLinks from "./SocialLinks";
 import { useMessagesSocket } from "@/contexts/MessagesSocketContext";
 import { useCharacter } from "@/contexts/CharacterContext";
 import AvatarXpRing from "./AvatarXpRing";
@@ -159,6 +160,7 @@ export default function NavMenu({
           <div className="absolute right-2 top-0">
             <PatchNotesBell />
           </div>
+          <SocialLinks />
           <CaelumBrasao tamanho="xs" />
           <div className="relative mb-8 flex items-center justify-center">
             {character && (
