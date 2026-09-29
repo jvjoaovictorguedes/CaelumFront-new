@@ -63,7 +63,15 @@ export interface PerfilProgressao {
   rank_aventureiro: { rank: string; contratos_concluidos: number };
   reputacao_comercial: { pontos: number; nivel: number; titulo: string; encomendas_concluidas: number };
   reputacao_cacador: { pontos: number; nivel: number; titulo: string; cacadas_concluidas: number };
-  forja: { nivel: number };
+  forja: {
+    nivel: number;
+    titulo: string;
+    experiencia: number;
+    xp_proximo_nivel: number | null;
+    receitas_conhecidas: number;
+    receitas_lendarias: number;
+    equipamentos_fabricados: number;
+  };
   expedicao: { mineracao: number; silvicultura: number; exploracao: number };
 }
 

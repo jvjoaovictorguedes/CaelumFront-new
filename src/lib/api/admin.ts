@@ -2896,6 +2896,7 @@ export interface ForgeSimulacaoRefinamentoApi {
   chance_base_percentual: number;
   bonus_forja_percentual: number;
   bonus_pergaminho_percentual: number;
+  bonus_ferramenta_percentual: number;
   chance_final_percentual: number;
   cap_percentual: number;
   custo_gold: number;
@@ -2905,7 +2906,7 @@ export interface ForgeSimulacaoRefinamentoApi {
   bonus_atributo_apos_sucesso_percentual: number | null;
   pergaminho_aplicado: { id_item: number; nome: string; bonus_percentual: number } | null;
 }
-export async function previewForgeRefinamentoAdmin(payload: { categoria: string; qualidade: string; refinamentoAtual: number; nivelForja: number; idItemPergaminho?: number | null; tierEquipamento?: number }): Promise<ForgeSimulacaoRefinamentoApi> {
+export async function previewForgeRefinamentoAdmin(payload: { categoria: string; qualidade: string; refinamentoAtual: number; nivelForja: number; idItemPergaminho?: number | null; tierEquipamento?: number; bonusFerramentaPercentual?: number }): Promise<ForgeSimulacaoRefinamentoApi> {
   const resposta = await axiosInstance.post<{ data: ForgeSimulacaoRefinamentoApi }>("/admin/forge/balance/preview-refinement", payload);
   return resposta.data.data;
 }
@@ -2932,10 +2933,108 @@ export interface ForgeMetricasApi {
   refinoPorAlvo: Array<{ alvo: number; tentativas: number; taxa_sucesso_observada: number }>;
   pergaminhosUsados: Array<{ id_item_pergaminho: number; nome: string | null; total: number }>;
   goldRemovido: { gold_removido_24h: number; gold_removido_7d: number; gold_removido_total: number };
+  profissaoFerreiro?: {
+    receitas_aprendidas_por_raridade: Array<{ raridade: string; total: number }>;
+    receitas_aprendidas_por_origem: Array<{ origem: string; total: number }>;
+    ferramentas_equipadas: { fole: number; martelo: number; tenaz: number };
+    blueprints_por_modo: Array<{ modo: string; total: number }>;
+  };
 }
 export async function obterForgeMetricasAdmin(): Promise<ForgeMetricasApi> {
   const resposta = await axiosInstance.get<{ data: ForgeMetricasApi }>("/admin/forge/metrics");
   return resposta.data.data;
+}
+
+// ---------------------------------------------------------------------
+// Profissão de Ferreiro — Receitas (§14.1) e Ferramentas de Ferraria
+// (§14). Dentro do mesmo admin.ts por convenção do projeto (Forja/Guild/
+// Wiki nunca ganham um arquivo de API próprio).
+// ---------------------------------------------------------------------
+
+export type RaridadeReceitaAdmin = "Comum" | "Raro" | "Lendario";
+
+export interface ForgeRecipeAdminApi {
+  id: number;
+  id_blueprint: number;
+  id_item: number;
+  raridade_receita: RaridadeReceitaAdmin;
+  negociavel: boolean;
+  consome_ao_aprender: boolean;
+  ativo: boolean;
+  pista_publica: string | null;
+  blueprint?: { id: number; nome: string; nivel_forja_minimo: number; categoria_equipamento: string; modo_desbloqueio: "Auto" | "Receita" };
+  item?: { id: number; nome: string; imagem_url: string | null };
+}
+
+export interface PayloadForgeRecipeAdmin {
+  id_blueprint?: number;
+  id_item?: number;
+  raridade_receita?: RaridadeReceitaAdmin;
+  negociavel?: boolean;
+  consome_ao_aprender?: boolean;
+  ativo?: boolean;
+  pista_publica?: string | null;
+}
+
+export async function listarForgeReceitasAdmin(raridade?: RaridadeReceitaAdmin): Promise<ForgeRecipeAdminApi[]> {
+  const resposta = await axiosInstance.get<{ data: { itens: ForgeRecipeAdminApi[] } }>("/admin/forge/recipes", {
+    params: raridade ? { raridade } : undefined,
+  });
+  return resposta.data.data.itens;
+}
+export async function criarForgeReceitaAdmin(payload: PayloadForgeRecipeAdmin): Promise<ForgeRecipeAdminApi> {
+  const resposta = await axiosInstance.post<{ data: { receita: ForgeRecipeAdminApi } }>("/admin/forge/recipes", payload);
+  return resposta.data.data.receita;
+}
+export async function atualizarForgeReceitaAdmin(id: number, payload: PayloadForgeRecipeAdmin): Promise<ForgeRecipeAdminApi> {
+  const resposta = await axiosInstance.put<{ data: { receita: ForgeRecipeAdminApi } }>(`/admin/forge/recipes/${id}`, payload);
+  return resposta.data.data.receita;
+}
+export async function setForgeBlueprintUnlockModeAdmin(
+  idBlueprint: number,
+  modoDesbloqueio: "Auto" | "Receita",
+  grandfatherElegiveis = false,
+): Promise<{ blueprint: ForgeBlueprintApi; personagens_grandfathered: number }> {
+  const resposta = await axiosInstance.put<{ data: { blueprint: ForgeBlueprintApi; personagens_grandfathered: number } }>(
+    `/admin/forge/blueprints/${idBlueprint}/unlock-mode`,
+    { modo_desbloqueio: modoDesbloqueio, grandfather_elegiveis: grandfatherElegiveis },
+  );
+  return resposta.data.data;
+}
+
+export type SlotFerrariaAdmin = "Fole" | "Martelo" | "Tenaz";
+export type ForgeToolEffectKey = "SMELTING_BONUS_BAR_PPM" | "CRAFTING_QUALITY_BONUS_PPM" | "REFINEMENT_SUCCESS_BONUS_PPM";
+
+export interface ForgeToolAdminApi {
+  id_item: number;
+  slot: SlotFerrariaAdmin;
+  nivel_ferreiro_minimo: number;
+  ativo: boolean;
+  item?: { id: number; nome: string; imagem_url: string | null };
+  efeitos: { id: number; effect_key: ForgeToolEffectKey; valor_ppm: number }[];
+}
+
+export interface PayloadForgeToolAdmin {
+  id_item?: number;
+  slot?: SlotFerrariaAdmin;
+  nivel_ferreiro_minimo?: number;
+  ativo?: boolean;
+  efeitos?: { effect_key: ForgeToolEffectKey; valor_ppm: number }[];
+}
+
+export async function listarForgeFerramentasAdmin(ativo?: boolean): Promise<ForgeToolAdminApi[]> {
+  const resposta = await axiosInstance.get<{ data: { itens: ForgeToolAdminApi[] } }>("/admin/forge/tools", {
+    params: ativo === undefined ? undefined : { ativo },
+  });
+  return resposta.data.data.itens;
+}
+export async function criarForgeFerramentaAdmin(payload: PayloadForgeToolAdmin): Promise<ForgeToolAdminApi> {
+  const resposta = await axiosInstance.post<{ data: { ferramenta: ForgeToolAdminApi } }>("/admin/forge/tools", payload);
+  return resposta.data.data.ferramenta;
+}
+export async function atualizarForgeFerramentaAdmin(idItem: number, payload: PayloadForgeToolAdmin): Promise<ForgeToolAdminApi> {
+  const resposta = await axiosInstance.put<{ data: { ferramenta: ForgeToolAdminApi } }>(`/admin/forge/tools/${idItem}`, payload);
+  return resposta.data.data.ferramenta;
 }
 
 // ---------------------------------------------------------------------

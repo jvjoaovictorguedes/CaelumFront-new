@@ -6,20 +6,25 @@ import SmeltingPanel from "./SmeltingPanel";
 import CraftingPanel from "./CraftingPanel";
 import RefinementPanel from "./RefinementPanel";
 import CauldronPanel from "./CauldronPanel";
+import BlacksmithingPanel from "./BlacksmithingPanel";
+import BlacksmithSkillsPanel from "./BlacksmithSkillsPanel";
 
 export interface ProgressoForja {
   nivel: number;
   experiencia: number;
   xp_proximo_nivel: number | null;
+  titulo?: string;
 }
 
-type Aba = "fabricacao" | "fundicao" | "refinamento" | "caldeirao";
+type Aba = "fabricacao" | "fundicao" | "refinamento" | "caldeirao" | "ferraria" | "habilidades";
 
 const ABAS: { chave: Aba; rotulo: string }[] = [
   { chave: "fabricacao", rotulo: "Fabricação" },
   { chave: "fundicao", rotulo: "Fundição" },
   { chave: "refinamento", rotulo: "Refinamento" },
   { chave: "caldeirao", rotulo: "Caldeirão" },
+  { chave: "ferraria", rotulo: "Ferraria" },
+  { chave: "habilidades", rotulo: "Habilidades de Ferreiro" },
 ];
 
 export default function ForgeClient() {
@@ -60,7 +65,9 @@ export default function ForgeClient() {
       {aba !== "caldeirao" && (
         <div className="rounded-2xl border-2 border-[#F3B43F] bg-[#292018]/90 p-5 text-white shadow-xl">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="text-sm uppercase tracking-widest text-[#F3B43F]">Forja — Nível {nivel} / 10</p>
+            <p className="text-sm uppercase tracking-widest text-[#F3B43F]">
+              {progresso?.titulo ? `Ferreiro Nv. ${nivel} — ${progresso.titulo}` : `Forja — Nível ${nivel} / 10`}
+            </p>
             <p className="text-xs text-white/60">
               XP {xp.toLocaleString("pt-BR")} / {xpProximo ? xpProximo.toLocaleString("pt-BR") : "MAX"}
             </p>
@@ -92,6 +99,8 @@ export default function ForgeClient() {
       {aba === "fundicao" && <SmeltingPanel nivelForja={nivel} onProgressoMudou={carregarProgresso} />}
       {aba === "refinamento" && <RefinementPanel nivelForja={nivel} onProgressoMudou={carregarProgresso} />}
       {aba === "caldeirao" && <CauldronPanel />}
+      {aba === "ferraria" && <BlacksmithingPanel nivelForja={nivel} onProgressoMudou={carregarProgresso} />}
+      {aba === "habilidades" && <BlacksmithSkillsPanel nivelForja={nivel} onProgressoMudou={carregarProgresso} />}
     </div>
   );
 }

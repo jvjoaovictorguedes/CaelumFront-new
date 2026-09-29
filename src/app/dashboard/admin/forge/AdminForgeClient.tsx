@@ -36,7 +36,20 @@ import {
   salvarForgeBarraAdmin,
   salvarForgeRaridadeOverrideAdmin,
   validarForgeBlueprintAdmin,
+  listarForgeReceitasAdmin,
+  criarForgeReceitaAdmin,
+  atualizarForgeReceitaAdmin,
+  setForgeBlueprintUnlockModeAdmin,
+  listarForgeFerramentasAdmin,
+  criarForgeFerramentaAdmin,
+  atualizarForgeFerramentaAdmin,
   type AdminItemApi,
+  type ForgeRecipeAdminApi,
+  type PayloadForgeRecipeAdmin,
+  type RaridadeReceitaAdmin,
+  type ForgeToolAdminApi,
+  type SlotFerrariaAdmin,
+  type ForgeToolEffectKey,
   type ForgeBalanceCompletoApi,
   type ForgeBarraLinhaApi,
   type ForgeBlueprintApi,
@@ -70,7 +83,7 @@ function overridesFormVazio(): Record<ForgeQualidade, Record<string, string>> {
   return Object.fromEntries(FORGE_QUALIDADES.map((q) => [q, {}])) as Record<ForgeQualidade, Record<string, string>>;
 }
 
-type Aba = "visao" | "blueprints" | "barras" | "pergaminhos" | "refinamento" | "balanceamento" | "metricas";
+type Aba = "visao" | "blueprints" | "barras" | "pergaminhos" | "receitas" | "ferramentas" | "refinamento" | "balanceamento" | "metricas";
 
 const CARD = "rounded-2xl border-2 border-[#F3B43F]/40 bg-[#292018]/80 p-5";
 const BTN = "rounded-lg bg-[#BC8418] px-4 py-2 text-sm font-bold text-black hover:bg-[#a5710f] disabled:opacity-50";
@@ -85,6 +98,8 @@ export default function AdminForgeClient({ podeBalancear }: { podeBalancear: boo
     ["blueprints", "Blueprints", true],
     ["barras", "Fundição/Barras", true],
     ["pergaminhos", "Pergaminhos", true],
+    ["receitas", "Receitas", true],
+    ["ferramentas", "Ferramentas", true],
     ["refinamento", "Refinamento", podeBalancear],
     ["balanceamento", "Progressão & Tempos", podeBalancear],
     ["metricas", "Métricas", podeBalancear],
@@ -123,6 +138,8 @@ export default function AdminForgeClient({ podeBalancear }: { podeBalancear: boo
       {aba === "blueprints" && <AbaBlueprints />}
       {aba === "barras" && <AbaBarras />}
       {aba === "pergaminhos" && <AbaPergaminhos />}
+      {aba === "receitas" && <AbaReceitas />}
+      {aba === "ferramentas" && <AbaFerramentas />}
       {aba === "refinamento" && podeBalancear && <AbaRefinamento />}
       {aba === "balanceamento" && podeBalancear && <AbaBalanceamento />}
       {aba === "metricas" && podeBalancear && <AbaMetricas />}
@@ -925,6 +942,355 @@ function AbaPergaminhos() {
 }
 
 // ---------------------------------------------------------------------
+// Profissão de Ferreiro §14.1 — Receitas (conhecimento sobre um
+// Blueprint já existente — nunca duplica ingredientes/resultado/Tier).
+// ---------------------------------------------------------------------
+function receitaFormVazio(): { raridade_receita: RaridadeReceitaAdmin; negociavel: boolean; consome_ao_aprender: boolean; ativo: boolean; pista_publica: string } {
+  return { raridade_receita: "Comum", negociavel: true, consome_ao_aprender: true, ativo: true, pista_publica: "" };
+}
+
+const COR_RARIDADE_RECEITA_ADMIN: Record<RaridadeReceitaAdmin, string> = {
+  Comum: "text-white/60",
+  Raro: "text-[#60A5FA]",
+  Lendario: "text-[#FB923C]",
+};
+
+function AbaReceitas() {
+  const [itens, setItens] = useState<ForgeRecipeAdminApi[]>([]);
+  const [carregando, setCarregando] = useState(true);
+  const [erro, setErro] = useState("");
+  const [mensagem, setMensagem] = useState("");
+  const [editandoId, setEditandoId] = useState<number | null>(null);
+  const [form, setForm] = useState(receitaFormVazio());
+  const [idBlueprintNovo, setIdBlueprintNovo] = useState("");
+  const [itemNovo, setItemNovo] = useState<AdminItemApi | null>(null);
+  const [seletorAberto, setSeletorAberto] = useState(false);
+  const [mostrarForm, setMostrarForm] = useState(false);
+  const [salvando, setSalvando] = useState(false);
+
+  const carregar = useCallback(async () => {
+    setCarregando(true); setErro("");
+    try { setItens(await listarForgeReceitasAdmin()); } catch (error) { setErro(mensagemDeErroAdmin(error, "Não foi possível carregar as Receitas.")); } finally { setCarregando(false); }
+  }, []);
+  useEffect(() => { carregar(); }, [carregar]);
+
+  function abrirCriacao() { setEditandoId(null); setForm(receitaFormVazio()); setIdBlueprintNovo(""); setItemNovo(null); setMostrarForm(true); setMensagem(""); }
+  function abrirEdicao(r: ForgeRecipeAdminApi) {
+    setEditandoId(r.id);
+    setForm({ raridade_receita: r.raridade_receita, negociavel: r.negociavel, consome_ao_aprender: r.consome_ao_aprender, ativo: r.ativo, pista_publica: r.pista_publica ?? "" });
+    setMostrarForm(true); setMensagem("");
+  }
+
+  async function salvar(e: React.FormEvent) {
+    e.preventDefault();
+    setSalvando(true); setMensagem("");
+    try {
+      const payload: PayloadForgeRecipeAdmin = { ...form, pista_publica: form.pista_publica || null };
+      if (editandoId) {
+        await atualizarForgeReceitaAdmin(editandoId, payload);
+        setMensagem("Receita atualizada.");
+      } else {
+        const idBlueprint = Number(idBlueprintNovo);
+        if (!Number.isInteger(idBlueprint) || idBlueprint <= 0) { setMensagem("Informe o ID do Blueprint."); setSalvando(false); return; }
+        if (!itemNovo) { setMensagem('Selecione o Item de Receita (tipo "Receita").'); setSalvando(false); return; }
+        await criarForgeReceitaAdmin({ ...payload, id_blueprint: idBlueprint, id_item: itemNovo.id });
+        setMensagem("Receita criada.");
+      }
+      setMostrarForm(false);
+      await carregar();
+    } catch (error) { setMensagem(mensagemDeErroAdmin(error, "Não foi possível salvar.")); } finally { setSalvando(false); }
+  }
+
+  // §16 — nunca trocar todos os Blueprints pra "exige Receita" sem plano
+  // de migração; grandfathering explícito (nunca automático) concede o
+  // desbloqueio a quem já tinha Nível de Ferreiro suficiente ontem.
+  async function alternarModoDesbloqueio(r: ForgeRecipeAdminApi) {
+    const modoAtual = r.blueprint?.modo_desbloqueio ?? "Auto";
+    const novoModo = modoAtual === "Auto" ? "Receita" : "Auto";
+    try {
+      if (novoModo === "Receita") {
+        const grandfather = window.confirm(
+          `Isso vai exigir a Receita "${r.blueprint?.nome ?? ""}" pra fabricar esse Blueprint.\n\nConceder o desbloqueio automaticamente a personagens que já têm Nível de Ferreiro suficiente (evita bloquear quem já conseguia fabricar)?`,
+        );
+        const resultado = await setForgeBlueprintUnlockModeAdmin(r.id_blueprint, "Receita", grandfather);
+        setMensagem(`Modo de desbloqueio atualizado. ${resultado.personagens_grandfathered} personagem(ns) receberam o desbloqueio automaticamente.`);
+      } else {
+        await setForgeBlueprintUnlockModeAdmin(r.id_blueprint, "Auto");
+        setMensagem("Modo de desbloqueio voltou a Auto.");
+      }
+      await carregar();
+    } catch (error) { setErro(mensagemDeErroAdmin(error, "Não foi possível mudar o modo de desbloqueio.")); }
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-white/60">{itens.length} Receita(s)</p>
+        <button type="button" onClick={abrirCriacao} className={BTN}>+ Nova Receita</button>
+      </div>
+      {erro && <p className="rounded-lg bg-black/50 px-3 py-2 text-sm text-red-400">{erro}</p>}
+      {mensagem && !mostrarForm && <p className="rounded-lg bg-black/50 px-3 py-2 text-sm text-[#F3B43F]">{mensagem}</p>}
+
+      <div className="overflow-x-auto rounded-2xl border-2 border-[#F3B43F]/40 bg-[#292018]/80">
+        <table className="w-full text-left text-sm text-white">
+          <thead>
+            <tr className="border-b border-white/10 text-xs uppercase text-white/50">
+              <th className="px-3 py-2">Blueprint</th>
+              <th className="px-3 py-2">Item</th>
+              <th className="px-3 py-2">Raridade</th>
+              <th className="px-3 py-2">Nv. necessário</th>
+              <th className="px-3 py-2">Modo</th>
+              <th className="px-3 py-2">Status</th>
+              <th className="px-3 py-2">Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            {carregando ? (
+              <tr><td colSpan={7} className="px-3 py-4 text-center text-white/50">Carregando...</td></tr>
+            ) : itens.length === 0 ? (
+              <tr><td colSpan={7} className="px-3 py-4 text-center text-white/50">Nenhuma Receita cadastrada.</td></tr>
+            ) : (
+              itens.map((r) => (
+                <tr key={r.id} className="border-b border-white/5">
+                  <td className="px-3 py-2 font-bold">{r.blueprint?.nome ?? `Blueprint #${r.id_blueprint}`}</td>
+                  <td className="px-3 py-2">{r.item?.nome ?? `Item #${r.id_item}`}</td>
+                  <td className={`px-3 py-2 font-bold ${COR_RARIDADE_RECEITA_ADMIN[r.raridade_receita]}`}>{r.raridade_receita}</td>
+                  <td className="px-3 py-2">{r.blueprint?.nivel_forja_minimo ?? "—"}</td>
+                  <td className="px-3 py-2">
+                    <button
+                      type="button"
+                      onClick={() => alternarModoDesbloqueio(r)}
+                      className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${
+                        r.blueprint?.modo_desbloqueio === "Receita" ? "bg-[#F3B43F]/20 text-[#F3B43F]" : "bg-white/10 text-white/50"
+                      }`}
+                    >
+                      {r.blueprint?.modo_desbloqueio === "Receita" ? "Exige Receita" : "Auto"}
+                    </button>
+                  </td>
+                  <td className="px-3 py-2">
+                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${r.ativo ? "bg-green-500/20 text-green-300" : "bg-white/10 text-white/50"}`}>
+                      {r.ativo ? "Ativa" : "Inativa"}
+                    </span>
+                  </td>
+                  <td className="px-3 py-2"><button type="button" onClick={() => abrirEdicao(r)} className="text-[#F3B43F] hover:underline">Editar</button></td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {mostrarForm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={() => setMostrarForm(false)}>
+          <form onSubmit={salvar} onClick={(e) => e.stopPropagation()} className="flex max-h-[85vh] w-full max-w-md flex-col gap-3 overflow-y-auto rounded-2xl border-2 border-[#F3B43F] bg-[#292018] p-5 text-white shadow-2xl">
+            <p className="font-imFeel text-xl text-[#F3B43F]">{editandoId ? "Editar Receita" : "Nova Receita"}</p>
+            {mensagem && <p className="text-sm text-[#F3B43F]">{mensagem}</p>}
+            {!editandoId && (
+              <>
+                <label className="flex flex-col gap-1 text-xs">
+                  ID do Blueprint
+                  <input type="number" min={1} className={INPUT} value={idBlueprintNovo} onChange={(e) => setIdBlueprintNovo(e.target.value)} />
+                </label>
+                <div>
+                  <p className="mb-1 text-xs">Item de Receita (tipo &quot;Receita&quot;)</p>
+                  {itemNovo ? <p className="text-sm">{itemNovo.nome} (#{itemNovo.id})</p> : <p className="text-xs text-white/50">Nenhum selecionado</p>}
+                  <button type="button" onClick={() => setSeletorAberto(true)} className="text-xs text-[#F3B43F] hover:underline">Selecionar Item</button>
+                </div>
+              </>
+            )}
+            <label className="flex flex-col gap-1 text-xs">
+              Raridade da Receita
+              <select className={INPUT} value={form.raridade_receita} onChange={(e) => setForm((f) => ({ ...f, raridade_receita: e.target.value as RaridadeReceitaAdmin }))}>
+                <option value="Comum">Comum</option>
+                <option value="Raro">Raro</option>
+                <option value="Lendario">Lendário</option>
+              </select>
+            </label>
+            <label className="flex items-center gap-2 text-xs">
+              <input type="checkbox" checked={form.negociavel} onChange={(e) => setForm((f) => ({ ...f, negociavel: e.target.checked }))} /> Negociável no Mercado
+            </label>
+            <label className="flex items-center gap-2 text-xs">
+              <input type="checkbox" checked={form.consome_ao_aprender} onChange={(e) => setForm((f) => ({ ...f, consome_ao_aprender: e.target.checked }))} /> Consumir item ao aprender
+            </label>
+            <label className="flex items-center gap-2 text-xs">
+              <input type="checkbox" checked={form.ativo} onChange={(e) => setForm((f) => ({ ...f, ativo: e.target.checked }))} /> Ativa
+            </label>
+            <label className="flex flex-col gap-1 text-xs">
+              Pista pública (opcional)
+              <input className={INPUT} value={form.pista_publica} onChange={(e) => setForm((f) => ({ ...f, pista_publica: e.target.value }))} />
+            </label>
+            <div className="mt-2 flex justify-end gap-2">
+              <button type="button" onClick={() => setMostrarForm(false)} className={BTN_GHOST}>Cancelar</button>
+              <button type="submit" disabled={salvando} className={BTN}>{salvando ? "Salvando..." : "Salvar"}</button>
+            </div>
+          </form>
+        </div>
+      )}
+      <SeletorItem aberto={seletorAberto} onFechar={() => setSeletorAberto(false)} onSelecionar={setItemNovo} tipoItem="Receita" />
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------
+// Profissão de Ferreiro §14/§6 — Ferramentas (Fole/Martelo/Tenaz).
+// ---------------------------------------------------------------------
+const EFFECT_KEY_POR_SLOT: Record<SlotFerrariaAdmin, ForgeToolEffectKey> = {
+  Fole: "SMELTING_BONUS_BAR_PPM",
+  Martelo: "CRAFTING_QUALITY_BONUS_PPM",
+  Tenaz: "REFINEMENT_SUCCESS_BONUS_PPM",
+};
+const NOME_SLOT_ADMIN: Record<SlotFerrariaAdmin, string> = {
+  Fole: "Fole — Fundição",
+  Martelo: "Martelo — Fabricação",
+  Tenaz: "Tenaz — Refinamento",
+};
+
+function ferramentaFormVazio(): { slot: SlotFerrariaAdmin; nivel_ferreiro_minimo: number; ativo: boolean; bonus_pp: number } {
+  return { slot: "Fole", nivel_ferreiro_minimo: 1, ativo: true, bonus_pp: 5 };
+}
+
+function AbaFerramentas() {
+  const [itens, setItens] = useState<ForgeToolAdminApi[]>([]);
+  const [carregando, setCarregando] = useState(true);
+  const [erro, setErro] = useState("");
+  const [mensagem, setMensagem] = useState("");
+  const [editandoId, setEditandoId] = useState<number | null>(null);
+  const [form, setForm] = useState(ferramentaFormVazio());
+  const [itemNovo, setItemNovo] = useState<AdminItemApi | null>(null);
+  const [seletorAberto, setSeletorAberto] = useState(false);
+  const [mostrarForm, setMostrarForm] = useState(false);
+  const [salvando, setSalvando] = useState(false);
+
+  const carregar = useCallback(async () => {
+    setCarregando(true); setErro("");
+    try { setItens(await listarForgeFerramentasAdmin()); } catch (error) { setErro(mensagemDeErroAdmin(error, "Não foi possível carregar as ferramentas.")); } finally { setCarregando(false); }
+  }, []);
+  useEffect(() => { carregar(); }, [carregar]);
+
+  function abrirCriacao() { setEditandoId(null); setForm(ferramentaFormVazio()); setItemNovo(null); setMostrarForm(true); setMensagem(""); }
+  function abrirEdicao(t: ForgeToolAdminApi) {
+    setEditandoId(t.id_item);
+    const efeito = t.efeitos[0];
+    setForm({ slot: t.slot, nivel_ferreiro_minimo: t.nivel_ferreiro_minimo, ativo: t.ativo, bonus_pp: efeito ? efeito.valor_ppm / 10_000 : 5 });
+    setMostrarForm(true); setMensagem("");
+  }
+
+  async function salvar(e: React.FormEvent) {
+    e.preventDefault();
+    setSalvando(true); setMensagem("");
+    try {
+      const efeitos = [{ effect_key: EFFECT_KEY_POR_SLOT[form.slot], valor_ppm: Math.round(form.bonus_pp * 10_000) }];
+      if (editandoId) {
+        await atualizarForgeFerramentaAdmin(editandoId, { slot: form.slot, nivel_ferreiro_minimo: form.nivel_ferreiro_minimo, ativo: form.ativo, efeitos });
+        setMensagem("Ferramenta atualizada.");
+      } else {
+        if (!itemNovo) { setMensagem('Selecione o Item da ferramenta (tipo "Ferramenta").'); setSalvando(false); return; }
+        await criarForgeFerramentaAdmin({ id_item: itemNovo.id, slot: form.slot, nivel_ferreiro_minimo: form.nivel_ferreiro_minimo, ativo: form.ativo, efeitos });
+        setMensagem("Ferramenta criada.");
+      }
+      setMostrarForm(false);
+      await carregar();
+    } catch (error) { setMensagem(mensagemDeErroAdmin(error, "Não foi possível salvar.")); } finally { setSalvando(false); }
+  }
+
+  async function alternarAtivo(t: ForgeToolAdminApi) {
+    try { await atualizarForgeFerramentaAdmin(t.id_item, { ativo: !t.ativo }); await carregar(); } catch (error) { setErro(mensagemDeErroAdmin(error, "Não foi possível mudar o status.")); }
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-white/60">{itens.length} ferramenta(s)</p>
+        <button type="button" onClick={abrirCriacao} className={BTN}>+ Nova ferramenta</button>
+      </div>
+      {erro && <p className="rounded-lg bg-black/50 px-3 py-2 text-sm text-red-400">{erro}</p>}
+
+      <div className="overflow-x-auto rounded-2xl border-2 border-[#F3B43F]/40 bg-[#292018]/80">
+        <table className="w-full text-left text-sm text-white">
+          <thead>
+            <tr className="border-b border-white/10 text-xs uppercase text-white/50">
+              <th className="px-3 py-2">Item</th>
+              <th className="px-3 py-2">Slot</th>
+              <th className="px-3 py-2">Bônus</th>
+              <th className="px-3 py-2">Nv. mín.</th>
+              <th className="px-3 py-2">Status</th>
+              <th className="px-3 py-2">Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            {carregando ? (
+              <tr><td colSpan={6} className="px-3 py-4 text-center text-white/50">Carregando...</td></tr>
+            ) : itens.length === 0 ? (
+              <tr><td colSpan={6} className="px-3 py-4 text-center text-white/50">Nenhuma ferramenta cadastrada.</td></tr>
+            ) : (
+              itens.map((t) => (
+                <tr key={t.id_item} className="border-b border-white/5">
+                  <td className="px-3 py-2 font-bold">{t.item?.nome ?? `Item #${t.id_item}`}</td>
+                  <td className="px-3 py-2">{NOME_SLOT_ADMIN[t.slot]}</td>
+                  <td className="px-3 py-2">{t.efeitos.map((e) => `+${(e.valor_ppm / 10_000).toFixed(1)} p.p.`).join(", ") || "—"}</td>
+                  <td className="px-3 py-2">{t.nivel_ferreiro_minimo}</td>
+                  <td className="px-3 py-2">
+                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${t.ativo ? "bg-green-500/20 text-green-300" : "bg-white/10 text-white/50"}`}>
+                      {t.ativo ? "Ativa" : "Inativa"}
+                    </span>
+                  </td>
+                  <td className="px-3 py-2">
+                    <div className="flex flex-wrap gap-2">
+                      <button type="button" onClick={() => abrirEdicao(t)} className="text-[#F3B43F] hover:underline">Editar</button>
+                      <button type="button" onClick={() => alternarAtivo(t)} className="text-white/70 hover:underline">{t.ativo ? "Desativar" : "Reativar"}</button>
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {mostrarForm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={() => setMostrarForm(false)}>
+          <form onSubmit={salvar} onClick={(e) => e.stopPropagation()} className="flex max-h-[85vh] w-full max-w-md flex-col gap-3 overflow-y-auto rounded-2xl border-2 border-[#F3B43F] bg-[#292018] p-5 text-white shadow-2xl">
+            <p className="font-imFeel text-xl text-[#F3B43F]">{editandoId ? "Editar ferramenta" : "Nova ferramenta"}</p>
+            {mensagem && <p className="text-sm text-[#F3B43F]">{mensagem}</p>}
+            {!editandoId && (
+              <div>
+                <p className="mb-1 text-xs">Item da ferramenta (tipo &quot;Ferramenta&quot;)</p>
+                {itemNovo ? <p className="text-sm">{itemNovo.nome} (#{itemNovo.id})</p> : <p className="text-xs text-white/50">Nenhum selecionado</p>}
+                <button type="button" onClick={() => setSeletorAberto(true)} className="text-xs text-[#F3B43F] hover:underline">Selecionar Item</button>
+              </div>
+            )}
+            <label className="flex flex-col gap-1 text-xs">
+              Slot
+              <select className={INPUT} value={form.slot} onChange={(e) => setForm((f) => ({ ...f, slot: e.target.value as SlotFerrariaAdmin }))}>
+                <option value="Fole">Fole — Fundição</option>
+                <option value="Martelo">Martelo — Fabricação</option>
+                <option value="Tenaz">Tenaz — Refinamento</option>
+              </select>
+            </label>
+            <label className="flex flex-col gap-1 text-xs">
+              Nível de Ferreiro mínimo
+              <input type="number" min={1} max={10} className={INPUT} value={form.nivel_ferreiro_minimo} onChange={(e) => setForm((f) => ({ ...f, nivel_ferreiro_minimo: Number(e.target.value) }))} />
+            </label>
+            <label className="flex flex-col gap-1 text-xs">
+              Bônus (pontos percentuais)
+              <input type="number" min={0} step={0.1} className={INPUT} value={form.bonus_pp} onChange={(e) => setForm((f) => ({ ...f, bonus_pp: Number(e.target.value) }))} />
+            </label>
+            <label className="flex items-center gap-2 text-xs">
+              <input type="checkbox" checked={form.ativo} onChange={(e) => setForm((f) => ({ ...f, ativo: e.target.checked }))} /> Ativa
+            </label>
+            <div className="mt-2 flex justify-end gap-2">
+              <button type="button" onClick={() => setMostrarForm(false)} className={BTN_GHOST}>Cancelar</button>
+              <button type="submit" disabled={salvando} className={BTN}>{salvando ? "Salvando..." : "Salvar"}</button>
+            </div>
+          </form>
+        </div>
+      )}
+      <SeletorItem aberto={seletorAberto} onFechar={() => setSeletorAberto(false)} onSelecionar={setItemNovo} tipoItem="Ferramenta" />
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------
 // Refinamento — Simulador obrigatório (§9.1), backend real
 // ---------------------------------------------------------------------
 function AbaRefinamento() {
@@ -932,13 +1298,14 @@ function AbaRefinamento() {
   const [qualidade, setQualidade] = useState<ForgeQualidade>("Raro");
   const [refinamentoAtual, setRefinamentoAtual] = useState(0);
   const [nivelForja, setNivelForja] = useState(5);
+  const [bonusFerramentaPercentual, setBonusFerramentaPercentual] = useState(0);
   const [resultado, setResultado] = useState<ForgeSimulacaoRefinamentoApi | null>(null);
   const [erro, setErro] = useState("");
   const [carregando, setCarregando] = useState(false);
 
   async function simular() {
     setCarregando(true); setErro("");
-    try { setResultado(await previewForgeRefinamentoAdmin({ categoria, qualidade, refinamentoAtual, nivelForja })); } catch (error) { setErro(mensagemDeErroAdmin(error, "Não foi possível simular.")); } finally { setCarregando(false); }
+    try { setResultado(await previewForgeRefinamentoAdmin({ categoria, qualidade, refinamentoAtual, nivelForja, bonusFerramentaPercentual })); } catch (error) { setErro(mensagemDeErroAdmin(error, "Não foi possível simular.")); } finally { setCarregando(false); }
   }
 
   return (
@@ -951,6 +1318,10 @@ function AbaRefinamento() {
           <label className="flex flex-col gap-1 text-xs">Qualidade<select className={INPUT} value={qualidade} onChange={(e) => setQualidade(e.target.value as ForgeQualidade)}>{FORGE_QUALIDADES.map((q) => <option key={q} value={q}>{q}</option>)}</select></label>
           <label className="flex flex-col gap-1 text-xs">Refino atual (0-9)<input type="number" min={0} max={9} className={INPUT} value={refinamentoAtual} onChange={(e) => setRefinamentoAtual(Number(e.target.value))} /></label>
           <label className="flex flex-col gap-1 text-xs">Nível de Forja (1-10)<input type="number" min={1} max={10} className={INPUT} value={nivelForja} onChange={(e) => setNivelForja(Number(e.target.value))} /></label>
+          <label className="flex flex-col gap-1 text-xs">
+            Bônus de Tenaz (p.p.)
+            <input type="number" min={0} step={0.1} className={INPUT} value={bonusFerramentaPercentual} onChange={(e) => setBonusFerramentaPercentual(Number(e.target.value))} />
+          </label>
         </div>
         <div className="mt-3"><button type="button" onClick={simular} disabled={carregando} className={BTN}>{carregando ? "Calculando..." : "Simular"}</button></div>
         {erro && <p className="mt-2 text-sm text-red-400">{erro}</p>}
@@ -963,6 +1334,7 @@ function AbaRefinamento() {
             <p>Chance base: {resultado.chance_base_percentual.toFixed(2)}%</p>
             <p>Bônus Forja: +{resultado.bonus_forja_percentual.toFixed(2)}%</p>
             <p>Bônus pergaminho: +{resultado.bonus_pergaminho_percentual.toFixed(2)}%</p>
+            <p>Bônus ferramenta (Tenaz): +{resultado.bonus_ferramenta_percentual.toFixed(2)}%</p>
             <p className="font-bold text-[#F3B43F]">Chance final: {resultado.chance_final_percentual.toFixed(2)}%</p>
             <p>Cap vigente: {resultado.cap_percentual.toFixed(2)}%</p>
             <p>Custo: {resultado.custo_gold} Gold</p>
@@ -1255,6 +1627,45 @@ function AbaMetricas() {
           <ul className="mt-2 space-y-1 text-sm text-white/80">{dados.refinoPorAlvo.map((r) => <li key={r.alvo} className="flex justify-between"><span>+{r.alvo}</span><span>{r.tentativas} tentativas · {(r.taxa_sucesso_observada * 100).toFixed(1)}% sucesso</span></li>)}</ul>
         )}
       </div>
+      {dados.profissaoFerreiro && (
+        <div className={CARD}>
+          <p className="font-imFeel text-lg text-[#F3B43F]">Profissão de Ferreiro — adoção</p>
+          <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div>
+              <p className="text-xs uppercase text-white/50">Receitas aprendidas por raridade</p>
+              {dados.profissaoFerreiro.receitas_aprendidas_por_raridade.length === 0 ? (
+                <p className="text-sm text-white/50">Sem dados ainda.</p>
+              ) : (
+                <ul className="text-sm text-white/80">{dados.profissaoFerreiro.receitas_aprendidas_por_raridade.map((r) => <li key={r.raridade}>{r.raridade}: {r.total}</li>)}</ul>
+              )}
+            </div>
+            <div>
+              <p className="text-xs uppercase text-white/50">Receitas aprendidas por origem</p>
+              {dados.profissaoFerreiro.receitas_aprendidas_por_origem.length === 0 ? (
+                <p className="text-sm text-white/50">Sem dados ainda.</p>
+              ) : (
+                <ul className="text-sm text-white/80">{dados.profissaoFerreiro.receitas_aprendidas_por_origem.map((r) => <li key={r.origem}>{r.origem}: {r.total}</li>)}</ul>
+              )}
+            </div>
+            <div>
+              <p className="text-xs uppercase text-white/50">Ferramentas equipadas (Ferraria)</p>
+              <ul className="text-sm text-white/80">
+                <li>Fole: {dados.profissaoFerreiro.ferramentas_equipadas.fole}</li>
+                <li>Martelo: {dados.profissaoFerreiro.ferramentas_equipadas.martelo}</li>
+                <li>Tenaz: {dados.profissaoFerreiro.ferramentas_equipadas.tenaz}</li>
+              </ul>
+            </div>
+            <div>
+              <p className="text-xs uppercase text-white/50">Blueprints por modo de desbloqueio</p>
+              {dados.profissaoFerreiro.blueprints_por_modo.length === 0 ? (
+                <p className="text-sm text-white/50">Sem dados ainda.</p>
+              ) : (
+                <ul className="text-sm text-white/80">{dados.profissaoFerreiro.blueprints_por_modo.map((b) => <li key={b.modo}>{b.modo}: {b.total}</li>)}</ul>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
       <p className="text-xs text-white/40">
         Escopo reduzido nesta V1: &quot;materiais consumidos&quot; linha-a-linha e &quot;tempo médio até coleta&quot; não são instrumentados (ver relatório de entrega).
       </p>

@@ -30,7 +30,23 @@ export default function ProgressionSummary({ progression }: { progression: Perfi
         label="Reputação de Caçador"
         valor={`${progression.reputacao_cacador.titulo} (${progression.reputacao_cacador.cacadas_concluidas} caçadas)`}
       />
-      <LinhaDeProgresso label="Forja" valor={`Nv. ${progression.forja.nivel}`} />
+      <LinhaDeProgresso
+        label="Ferreiro"
+        valor={`${progression.forja.titulo} (Nv. ${progression.forja.nivel})`}
+      />
+      <LinhaDeProgresso
+        label="XP de Ferreiro"
+        valor={
+          progression.forja.xp_proximo_nivel != null
+            ? `${progression.forja.experiencia} / ${progression.forja.xp_proximo_nivel}`
+            : "Nível máximo"
+        }
+      />
+      <LinhaDeProgresso
+        label="Receitas conhecidas"
+        valor={`${progression.forja.receitas_conhecidas} (${progression.forja.receitas_lendarias} lendárias)`}
+      />
+      <LinhaDeProgresso label="Equipamentos fabricados" valor={String(progression.forja.equipamentos_fabricados)} />
       <LinhaDeProgresso label="Mineração" valor={`Nv. ${progression.expedicao.mineracao}`} />
       <LinhaDeProgresso label="Silvicultura" valor={`Nv. ${progression.expedicao.silvicultura}`} />
       <LinhaDeProgresso label="Exploração" valor={`Nv. ${progression.expedicao.exploracao}`} />
