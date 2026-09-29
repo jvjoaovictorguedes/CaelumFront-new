@@ -104,6 +104,8 @@ export interface WorldBossPoderApi {
   dano_base: number;
   cooldown: number | null;
   nivel_habilidade: number;
+  escala_atributo?: string;
+  valor_escala?: number;
 }
 
 export interface WorldBossLutadorApi {

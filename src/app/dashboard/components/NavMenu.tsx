@@ -155,12 +155,12 @@ export default function NavMenu({
           menuAberto ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        <div className="flex w-full flex-col items-center justify-center gap-3 border-b border-black/50 pb-4">
-          <div className="flex w-full items-center justify-center gap-2">
-            <CaelumBrasao tamanho="xs" />
+        <div className="relative flex w-full flex-col items-center justify-center gap-3 border-b border-black/50 pb-4">
+          <div className="absolute right-2 top-0">
             <PatchNotesBell />
           </div>
-          <div className="relative flex items-center justify-center">
+          <CaelumBrasao tamanho="xs" />
+          <div className="relative mb-8 flex items-center justify-center">
             {character && (
               <AvatarXpRing nivel={character.nivel} experiencia={character.experiencia ?? 0} />
             )}

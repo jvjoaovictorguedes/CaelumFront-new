@@ -1033,7 +1033,7 @@ export interface MediaAssetApi {
   id: number;
   grupo: string;
   versao: number;
-  categoria: "Item" | "Power" | "Monster" | "EquipmentSet" | "Musica" | "Outro";
+  categoria: "Item" | "Power" | "Monster" | "EquipmentSet" | "Musica" | "Outro" | "Avatar";
   tipo: MediaAssetTipoApi;
   nome_arquivo_original: string | null;
   mime: string;
@@ -1043,6 +1043,11 @@ export interface MediaAssetApi {
   descricao: string | null;
   ativo: boolean;
   id_admin_criador: number | null;
+  // Só relevante pra categoria "Avatar" — null = liberado pra qualquer
+  // personagem; preenchido = só quem É daquela raça/classe pode
+  // escolher esse avatar no AvatarPickerModal.
+  restrito_raca_id: number | null;
+  restrito_classe_id: number | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -1301,6 +1306,53 @@ export interface GrantResultApi {
 export async function concederPremiacaoAdmin(idPersonagem: number, payload: PayloadGrantAdmin): Promise<GrantResultApi> {
   const resposta = await axiosInstance.post<{ data: GrantResultApi }>(`/admin/grants/${idPersonagem}`, payload);
   return resposta.data.data;
+}
+
+// Painel Administrativo — Códigos de Resgate. Recompensa reaproveita o
+// mesmo formato de PayloadGrantAdmin (ouro/xp/itens), sem "motivo".
+export interface RecompensaCodigoApi {
+  ouro?: number;
+  xp?: number;
+  itens?: { id_item: number; quantidade: number; raridade?: string; refinamento?: number }[];
+}
+export interface RedemptionCodeApi {
+  id: number;
+  codigo: string;
+  recompensa: RecompensaCodigoApi;
+  expira_em: string;
+  ativo: boolean;
+  id_admin_criador: number | null;
+  createdAt: string;
+  updatedAt: string;
+  total_resgates: number;
+}
+export interface PayloadCriarRedemptionCode {
+  codigo: string;
+  recompensa: RecompensaCodigoApi;
+  expira_em: string;
+}
+export interface PayloadAtualizarRedemptionCode {
+  ativo?: boolean;
+  expira_em?: string;
+  recompensa?: RecompensaCodigoApi;
+}
+export async function listarRedemptionCodesAdmin(): Promise<RedemptionCodeApi[]> {
+  const resposta = await axiosInstance.get<{ data: { codigos: RedemptionCodeApi[] } }>("/admin/redemption-codes");
+  return resposta.data.data.codigos;
+}
+export async function criarRedemptionCodeAdmin(payload: PayloadCriarRedemptionCode): Promise<RedemptionCodeApi> {
+  const resposta = await axiosInstance.post<{ data: { codigo: RedemptionCodeApi } }>("/admin/redemption-codes", payload);
+  return resposta.data.data.codigo;
+}
+export async function atualizarRedemptionCodeAdmin(
+  id: number,
+  payload: PayloadAtualizarRedemptionCode,
+): Promise<RedemptionCodeApi> {
+  const resposta = await axiosInstance.patch<{ data: { codigo: RedemptionCodeApi } }>(
+    `/admin/redemption-codes/${id}`,
+    payload,
+  );
+  return resposta.data.data.codigo;
 }
 
 // Proezas Únicas — ver bloco completo (catálogo/Legados/Triggers/
@@ -1998,7 +2050,7 @@ export async function simularBalanceamentoWorldBossAdmin(
 // Painel Administrativo — Pesca & Navegação: Zonas, Espécies, Pool
 // (zona x espécie), Portos, Iscas e Afinidades. Vara de Pesca já é
 // gerenciada dentro do admin de Itens (tipo "Ferramenta").
-interface ItemResumoApi {
+export interface ItemResumoApi {
   id: number;
   nome: string;
   raridade?: string;
@@ -3146,4 +3198,71 @@ export async function atualizarExpeditionBalanceAdmin(
 ): Promise<ExpeditionBalanceGrupoApi> {
   const resposta = await axiosInstance.put<{ data: ExpeditionBalanceGrupoApi }>(`/admin/expedition/balance/${grupo}`, valores);
   return resposta.data.data;
+}
+
+// Painel Administrativo — Alquimia (Caldeirão): CRUD de receitas +
+// ingredientes. id_item_resultado/id_item são resolvidos em lote pelo
+// backend (sem include/alias — mesma convenção do resto do domínio de
+// Alquimia), nunca via join do Sequelize.
+export type AlchemyCategoriaReceita = "POCAO" | "ANTIDOTO" | "TONICO" | "ELIXIR" | "PREPARADO";
+export type AlchemyModoDesbloqueio = "NIVEL" | "DESCOBERTA";
+
+export interface AlchemyRecipeIngredienteAdminApi {
+  id: number;
+  id_recipe: number;
+  id_item: number;
+  quantidade: number;
+  item: ItemResumoApi | null;
+}
+
+export interface PayloadAlchemyRecipeIngredienteAdmin {
+  id_item: number;
+  quantidade: number;
+}
+
+export interface AlchemyRecipeAdminApi {
+  id: number;
+  key: string;
+  nome: string;
+  descricao: string | null;
+  categoria: AlchemyCategoriaReceita;
+  id_item_resultado: number;
+  quantidade_resultado: number;
+  nivel_alquimia_minimo: number;
+  xp_alquimia: number;
+  custo_ouro: number;
+  modo_desbloqueio: AlchemyModoDesbloqueio;
+  ativo: boolean;
+  ordem: number;
+  item_resultado: ItemResumoApi | null;
+  ingredientes: AlchemyRecipeIngredienteAdminApi[];
+}
+
+export interface PayloadAlchemyRecipeAdmin {
+  key?: string;
+  nome?: string;
+  descricao?: string | null;
+  categoria?: AlchemyCategoriaReceita;
+  id_item_resultado?: number;
+  quantidade_resultado?: number;
+  nivel_alquimia_minimo?: number;
+  xp_alquimia?: number;
+  custo_ouro?: number;
+  modo_desbloqueio?: AlchemyModoDesbloqueio;
+  ativo?: boolean;
+  ordem?: number;
+  ingredientes?: PayloadAlchemyRecipeIngredienteAdmin[];
+}
+
+export async function listarAlchemyRecipesAdmin(): Promise<AlchemyRecipeAdminApi[]> {
+  const resposta = await axiosInstance.get<{ data: { receitas: AlchemyRecipeAdminApi[] } }>("/admin/alchemy/recipes");
+  return resposta.data.data.receitas;
+}
+export async function criarAlchemyRecipeAdmin(payload: PayloadAlchemyRecipeAdmin): Promise<AlchemyRecipeAdminApi> {
+  const resposta = await axiosInstance.post<{ data: { receita: AlchemyRecipeAdminApi } }>("/admin/alchemy/recipes", payload);
+  return resposta.data.data.receita;
+}
+export async function atualizarAlchemyRecipeAdmin(id: number, payload: PayloadAlchemyRecipeAdmin): Promise<AlchemyRecipeAdminApi> {
+  const resposta = await axiosInstance.patch<{ data: { receita: AlchemyRecipeAdminApi } }>(`/admin/alchemy/recipes/${id}`, payload);
+  return resposta.data.data.receita;
 }

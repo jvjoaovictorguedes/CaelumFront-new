@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useSearchParams } from "next/navigation";
+import { useEffect, useState, type ReactNode } from "react";
 
 type AbaId =
   | "equipamentos"
@@ -35,6 +36,18 @@ export default function CharacterTabs({
   informacoes: ReactNode;
 }) {
   const [abaAtiva, setAbaAtiva] = useState<AbaId>("equipamentos");
+  const searchParams = useSearchParams();
+
+  // Permite deep-link direto pra uma aba (ex.: ?tab=status), usado pelo
+  // aviso de "pontos pra distribuir" no menu lateral — sem isso, o link
+  // sempre caía na aba Equipamentos e o jogador tinha que clicar em
+  // Status por conta própria.
+  useEffect(() => {
+    const aba = searchParams.get("tab");
+    if (aba && ABAS.some((a) => a.id === aba)) {
+      setAbaAtiva(aba as AbaId);
+    }
+  }, [searchParams]);
 
   const conteudoPorAba: Record<AbaId, ReactNode> = {
     equipamentos,

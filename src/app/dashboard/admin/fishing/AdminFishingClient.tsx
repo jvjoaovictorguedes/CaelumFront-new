@@ -501,6 +501,7 @@ function AbaPool({ onErro }: { onErro: (m: string) => void }) {
   const [especies, setEspecies] = useState<FishingSpeciesAdminApi[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [mostrarForm, setMostrarForm] = useState(false);
+  const [editando, setEditando] = useState<FishingPoolAdminApi | null>(null);
   const [salvando, setSalvando] = useState(false);
   const [form, setForm] = useState<PayloadFishingPoolAdmin>({ encounter_weight: 100 });
   // Chance de encontro CALCULADA pelo backend (Pesca v3 §5.1/§10.1/§12.1)
@@ -536,7 +537,18 @@ function AbaPool({ onErro }: { onErro: (m: string) => void }) {
   }, [carregar]);
 
   function abrirCriacao() {
-    setForm({ id_zone: zonas[0]?.id, id_species: especies[0]?.id, encounter_weight: 100 });
+    setEditando(null);
+    setForm({ id_zone: zonas[0]?.id, id_species: especies[0]?.id, encounter_weight: 100, nivel_pesca_minimo: null });
+    setMostrarForm(true);
+  }
+
+  // Pesca v3 §8.1 — "editor da zona deve permitir... editar
+  // encounter_weight, nível mínimo e ativo": o vínculo zona × espécie
+  // precisa continuar editável depois de criado, não só criável/
+  // ativável.
+  function abrirEdicao(item: FishingPoolAdminApi) {
+    setEditando(item);
+    setForm({ encounter_weight: item.encounter_weight, nivel_pesca_minimo: item.nivel_pesca_minimo, ativo: item.ativo });
     setMostrarForm(true);
   }
 
@@ -551,11 +563,20 @@ function AbaPool({ onErro }: { onErro: (m: string) => void }) {
     e.preventDefault();
     setSalvando(true);
     try {
-      await criarFishingPoolAdmin(form);
+      if (editando) {
+        await atualizarFishingPoolAdmin(editando.id, {
+          encounter_weight: form.encounter_weight,
+          nivel_pesca_minimo: form.nivel_pesca_minimo,
+          ativo: form.ativo,
+        });
+      } else {
+        await criarFishingPoolAdmin(form);
+      }
       setMostrarForm(false);
+      setEditando(null);
       await carregar();
     } catch (error) {
-      onErro(mensagemDeErroAdmin(error, "Não foi possível criar o vínculo."));
+      onErro(mensagemDeErroAdmin(error, editando ? "Não foi possível salvar o vínculo." : "Não foi possível criar o vínculo."));
     } finally {
       setSalvando(false);
     }
@@ -582,15 +603,16 @@ function AbaPool({ onErro }: { onErro: (m: string) => void }) {
               <th className="px-3 py-2">Zona</th>
               <th className="px-3 py-2">Espécie</th>
               <th className="px-3 py-2">Peso do encontro</th>
+              <th className="px-3 py-2">Nv. mínimo</th>
               <th className="px-3 py-2">Status</th>
               <th className="px-3 py-2">Ações</th>
             </tr>
           </thead>
           <tbody>
             {carregando ? (
-              <tr><td colSpan={5} className="px-3 py-4 text-center text-white/50">Carregando...</td></tr>
+              <tr><td colSpan={6} className="px-3 py-4 text-center text-white/50">Carregando...</td></tr>
             ) : pool.length === 0 ? (
-              <tr><td colSpan={5} className="px-3 py-4 text-center text-white/50">Nenhum vínculo cadastrado.</td></tr>
+              <tr><td colSpan={6} className="px-3 py-4 text-center text-white/50">Nenhum vínculo cadastrado.</td></tr>
             ) : (
               pool.map((item) => (
                 <tr key={item.id} className="border-b border-white/5">
@@ -604,12 +626,14 @@ function AbaPool({ onErro }: { onErro: (m: string) => void }) {
                       </span>
                     )}
                   </td>
+                  <td className="px-3 py-2">{item.nivel_pesca_minimo ?? "—"}</td>
                   <td className="px-3 py-2">
                     <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${item.ativo ? "bg-green-500/20 text-green-300" : "bg-white/10 text-white/60"}`}>
                       {item.ativo ? "Ativo" : "Inativo"}
                     </span>
                   </td>
-                  <td className="px-3 py-2">
+                  <td className="px-3 py-2 flex gap-3">
+                    <button type="button" onClick={() => abrirEdicao(item)} className="text-[#F3B43F] hover:underline">Editar</button>
                     <button type="button" onClick={() => alternarAtivo(item)} className="text-white/70 hover:underline">{item.ativo ? "Desativar" : "Ativar"}</button>
                   </td>
                 </tr>
@@ -620,24 +644,50 @@ function AbaPool({ onErro }: { onErro: (m: string) => void }) {
       </div>
 
       {mostrarForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={() => setMostrarForm(false)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={() => { setMostrarForm(false); setEditando(null); }}>
           <form onSubmit={salvar} onClick={(e) => e.stopPropagation()} className="flex w-full max-w-md flex-col gap-3 rounded-2xl border-2 border-[#F3B43F] bg-[#292018] p-5 text-white shadow-2xl">
-            <p className="font-imFeel text-xl text-[#F3B43F]">Novo vínculo zona × espécie</p>
-            <label className="flex flex-col gap-1 text-xs">Zona
-              <Select required value={form.id_zone ?? ""} onChange={(e) => setForm((f) => ({ ...f, id_zone: Number(e.target.value) }))}>
-                {zonas.map((z) => <option key={z.id} value={z.id}>{z.nome}</option>)}
-              </Select>
-            </label>
-            <label className="flex flex-col gap-1 text-xs">Espécie
-              <Select required value={form.id_species ?? ""} onChange={(e) => setForm((f) => ({ ...f, id_species: Number(e.target.value) }))}>
-                {especies.map((e) => <option key={e.id} value={e.id}>{e.item ? formatarItemComId(e.item.nome, e.id) : e.key}</option>)}
-              </Select>
-            </label>
+            <p className="font-imFeel text-xl text-[#F3B43F]">
+              {editando ? "Editar vínculo zona × espécie" : "Novo vínculo zona × espécie"}
+            </p>
+            {editando ? (
+              <p className="text-sm text-white/70">
+                {editando.FishingZone?.nome ?? `Zona #${editando.id_zone}`} ×{" "}
+                {editando.species?.item ? formatarItemComId(editando.species.item.nome, editando.species.id) : `Espécie #${editando.id_species}`}
+                <span className="block text-xs text-white/40">Zona e espécie não podem ser trocadas depois de criado — exclua/desative e crie um vínculo novo se precisar de outra combinação.</span>
+              </p>
+            ) : (
+              <>
+                <label className="flex flex-col gap-1 text-xs">Zona
+                  <Select required value={form.id_zone ?? ""} onChange={(e) => setForm((f) => ({ ...f, id_zone: Number(e.target.value) }))}>
+                    {zonas.map((z) => <option key={z.id} value={z.id}>{z.nome}</option>)}
+                  </Select>
+                </label>
+                <label className="flex flex-col gap-1 text-xs">Espécie
+                  <Select required value={form.id_species ?? ""} onChange={(e) => setForm((f) => ({ ...f, id_species: Number(e.target.value) }))}>
+                    {especies.map((e) => <option key={e.id} value={e.id}>{e.item ? formatarItemComId(e.item.nome, e.id) : e.key}</option>)}
+                  </Select>
+                </label>
+              </>
+            )}
             <label className="flex flex-col gap-1 text-xs">Peso do encontro (relativo, {'>'} 0)
               <Input type="number" min={1} value={form.encounter_weight ?? 100} onChange={(e) => setForm((f) => ({ ...f, encounter_weight: Number(e.target.value) }))} />
             </label>
+            <label className="flex flex-col gap-1 text-xs">Nível de Pesca mínimo (vazio = sem exigência própria, só a da zona)
+              <Input
+                type="number"
+                min={1}
+                value={form.nivel_pesca_minimo ?? ""}
+                onChange={(e) => setForm((f) => ({ ...f, nivel_pesca_minimo: e.target.value === "" ? null : Number(e.target.value) }))}
+              />
+            </label>
+            {editando && (
+              <label className="flex items-center gap-2 text-xs">
+                <input type="checkbox" checked={form.ativo ?? true} onChange={(e) => setForm((f) => ({ ...f, ativo: e.target.checked }))} />
+                Ativo (aparece no sorteio real)
+              </label>
+            )}
             <div className="mt-2 flex justify-end gap-2">
-              <button type="button" onClick={() => setMostrarForm(false)} className="rounded-lg border border-white/20 px-4 py-2 text-sm text-white/70 hover:bg-white/10">Cancelar</button>
+              <button type="button" onClick={() => { setMostrarForm(false); setEditando(null); }} className="rounded-lg border border-white/20 px-4 py-2 text-sm text-white/70 hover:bg-white/10">Cancelar</button>
               <BotaoSalvar disabled={salvando} />
             </div>
           </form>

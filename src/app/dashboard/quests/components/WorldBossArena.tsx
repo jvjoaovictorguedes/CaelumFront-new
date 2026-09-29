@@ -278,6 +278,9 @@ export default function WorldBossArena() {
               const restante = turnosRestantes(cooldowns, poder.id);
               const semMana = lutador ? lutador.mana_atual < poder.custo_mana : false;
               const bloqueado = restante > 0 || semMana;
+              const infoEscala = poder.escala_atributo
+                ? ` · Escala com ${poder.escala_atributo}${poder.valor_escala ? ` (x${poder.valor_escala})` : ""}`
+                : "";
               return (
                 <button
                   key={poder.id}
@@ -285,7 +288,7 @@ export default function WorldBossArena() {
                   disabled={agindo || bloqueado}
                   onClick={() => usarPoder(poder)}
                   className="relative rounded-lg border border-[#F3B43F]/60 px-4 py-2 text-sm font-bold text-[#F3B43F] transition hover:bg-[#F3B43F]/10 disabled:opacity-50"
-                  title={restante > 0 ? `Em cooldown: ${restante} turno(s)` : `Custo: ${poder.custo_mana} mana`}
+                  title={restante > 0 ? `Em cooldown: ${restante} turno(s)` : `Custo: ${poder.custo_mana} mana${infoEscala}`}
                 >
                   {poder.nome} ({poder.custo_mana} mana)
                   {restante > 0 && (
