@@ -5,20 +5,26 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   atualizarCaminhoEvolucaoAdmin,
   atualizarClasseAdmin,
+  atualizarLootAdmin,
   buscarClasseAdmin,
   catalogoEfeitosEvolucaoAdmin,
   criarCaminhoEvolucaoAdmin,
   criarEfeitoEvolucaoAdmin,
   criarHabilidadeEvolucaoAdmin,
+  criarLootAdmin,
   criarRequisitoEvolucaoAdmin,
   excluirCaminhoEvolucaoAdmin,
   excluirEfeitoEvolucaoAdmin,
   excluirHabilidadeEvolucaoAdmin,
   excluirRequisitoEvolucaoAdmin,
   listarClassesAdmin,
+  listarLootAdmin,
+  listarMonstrosAdmin,
   mensagemDeErroAdmin,
   simularEvolucaoClasseAdmin,
   validarClassesAdmin,
+  type AdventureMonsterApi,
+  type AdventureMonsterLootApi,
   type AtributoClasseApi,
   type ClassAdminApi,
   type ClassEvolutionPathAdminApi,
@@ -612,14 +618,19 @@ function PainelRequisitos({ caminho, onRecarregar, setErro }: { caminho: ClassEv
   return (
     <div className="rounded-lg border border-white/10 bg-black/30 p-2">
       <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wide text-white/50">Requisitos</p>
-      <div className="flex flex-col gap-1 text-xs">
+      <div className="flex flex-col gap-1.5 text-xs">
         {caminho.requisitos.length === 0 && <p className="text-white/40">Nenhum — evoluir pra cá é sempre liberado.</p>}
         {caminho.requisitos.map((req) => (
-          <div key={req.id} className="flex items-center justify-between gap-2">
-            <span>
-              {ROTULO_TIPO_REQUISITO[req.tipo]}: {req.tipo === "ITEM" ? `${req.quantidade}x ${req.item?.nome ?? `#${req.reference_id}`}` : req.tipo === "GOLD" ? req.quantidade : req.tipo === "LEVEL" ? req.quantidade : req.reference_key ?? req.quantidade}
-            </span>
-            <button type="button" onClick={() => remover(req.id)} className="text-red-400 hover:underline">Remover</button>
+          <div key={req.id} className="border-b border-white/5 pb-1.5 last:border-0 last:pb-0">
+            <div className="flex items-center justify-between gap-2">
+              <span>
+                {ROTULO_TIPO_REQUISITO[req.tipo]}: {req.tipo === "ITEM" ? `${req.quantidade}x ${req.item?.nome ?? `#${req.reference_id}`}` : req.tipo === "GOLD" ? req.quantidade : req.tipo === "LEVEL" ? req.quantidade : req.reference_key ?? req.quantidade}
+              </span>
+              <button type="button" onClick={() => remover(req.id)} className="text-red-400 hover:underline">Remover</button>
+            </div>
+            {req.tipo === "ITEM" && req.reference_id && (
+              <PainelDropDoItem idItem={req.reference_id} nomeItem={req.item?.nome ?? `Item #${req.reference_id}`} setErro={setErro} />
+            )}
           </div>
         ))}
       </div>
@@ -641,6 +652,114 @@ function PainelRequisitos({ caminho, onRecarregar, setErro }: { caminho: ClassEv
           <Input type="number" min={1} value={quantidade} onChange={(e) => setQuantidade(Number(e.target.value))} className="w-16 text-[11px]" />
         )}
         <Botao type="button" onClick={adicionar} disabled={salvando || tipo === "REPUTATION" || tipo === "QUEST"} className="text-[11px]">+ Adicionar</Botao>
+      </div>
+    </div>
+  );
+}
+
+// Configura ONDE um item exigido por um requisito ITEM realmente cai —
+// reaproveita o mesmo AdventureMonsterLoot (§20/§21) da Aventura, nunca
+// duplica um sistema de drop próprio de Classes. Sem isso, um item
+// Mítico exigido pra evoluir só teria a chance genérica gigantesca de
+// qualquer Material Mítico do jogo (ver dropService.js) — aqui o admin
+// escolhe monstro + % de verdade, curado, igual qualquer outro drop.
+function PainelDropDoItem({ idItem, nomeItem, setErro }: { idItem: number; nomeItem: string; setErro: (s: string) => void }) {
+  const [drops, setDrops] = useState<AdventureMonsterLootApi[]>([]);
+  const [monstros, setMonstros] = useState<AdventureMonsterApi[]>([]);
+  const [carregando, setCarregando] = useState(true);
+  const [idMonstro, setIdMonstro] = useState<number | "">("");
+  const [percentual, setPercentual] = useState(5);
+  const [salvando, setSalvando] = useState(false);
+
+  const carregar = useCallback(async () => {
+    setCarregando(true);
+    try {
+      const [lista, catalogo] = await Promise.all([listarLootAdmin(undefined, idItem), listarMonstrosAdmin()]);
+      setDrops(lista);
+      setMonstros(catalogo);
+    } catch (e) {
+      setErro(mensagemDeErroAdmin(e, "Não foi possível carregar onde este item dropa."));
+    } finally {
+      setCarregando(false);
+    }
+  }, [idItem, setErro]);
+
+  useEffect(() => {
+    carregar();
+  }, [carregar]);
+
+  async function adicionar() {
+    if (idMonstro === "") return;
+    setSalvando(true);
+    setErro("");
+    try {
+      await criarLootAdmin({ id_monstro: idMonstro, id_item: idItem, chance_ppm: Math.max(1, Math.round(percentual * 10000)) });
+      setIdMonstro("");
+      await carregar();
+    } catch (e) {
+      setErro(mensagemDeErroAdmin(e, "Não foi possível configurar o drop."));
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  async function alternarAtivo(drop: AdventureMonsterLootApi) {
+    try {
+      await atualizarLootAdmin(drop.id, { ativo: !drop.ativo });
+      await carregar();
+    } catch (e) {
+      setErro(mensagemDeErroAdmin(e, "Não foi possível mudar o status do drop."));
+    }
+  }
+
+  const monstrosDisponiveis = monstros.filter((m) => !drops.some((d) => d.id_monstro === m.id));
+
+  return (
+    <div className="ml-1 mt-1.5 rounded-lg border border-dashed border-[#F3B43F]/30 bg-black/20 p-2">
+      <p className="mb-1 text-[10px] font-bold uppercase tracking-wide text-[#F3B43F]/70">
+        Onde &quot;{nomeItem}&quot; dropa
+      </p>
+      {carregando ? (
+        <p className="text-[10px] text-white/40">Carregando...</p>
+      ) : drops.length === 0 ? (
+        <p className="text-[10px] text-white/40">
+          Nenhum monstro configurado ainda — esse item só sai pelo pool genérico (chance mínima) ou concessão
+          administrativa até você adicionar um drop curado abaixo.
+        </p>
+      ) : (
+        <div className="mb-1.5 flex flex-col gap-0.5 text-[10px]">
+          {drops.map((d) => (
+            <div key={d.id} className="flex items-center justify-between gap-2">
+              <span className={d.ativo ? "text-white/80" : "text-white/30 line-through"}>
+                {d.AdventureMonster?.nome ?? `Monstro #${d.id_monstro}`} — {(d.chance_ppm / 10000).toFixed(2)}% por vitória
+              </span>
+              <button type="button" onClick={() => alternarAtivo(d)} className="text-white/50 hover:underline">
+                {d.ativo ? "Desativar" : "Ativar"}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+      <div className="flex flex-wrap items-end gap-1.5">
+        <Select value={idMonstro} onChange={(e) => setIdMonstro(e.target.value ? Number(e.target.value) : "")} className="text-[10px]">
+          <option value="">Monstro...</option>
+          {monstrosDisponiveis.map((m) => <option key={m.id} value={m.id}>{m.nome}</option>)}
+        </Select>
+        <label className="flex items-center gap-1 text-[10px] text-white/50">
+          <input
+            type="number"
+            min={0.01}
+            max={100}
+            step={0.01}
+            value={percentual}
+            onChange={(e) => setPercentual(Number(e.target.value))}
+            className="w-16 rounded border border-white/20 bg-black/30 px-1.5 py-1"
+          />
+          %
+        </label>
+        <Botao type="button" onClick={adicionar} disabled={salvando || idMonstro === ""} className="text-[10px]">
+          + Configurar drop
+        </Botao>
       </div>
     </div>
   );

@@ -32,6 +32,7 @@ export function ZoneEditor({ zona, onFechar, onSalvo }: { zona: AdventureZoneApi
   const [erro, setErro] = useState("");
   const [salvando, setSalvando] = useState(false);
   const [sujo, setSujo] = useState(false);
+  const [idMonstroNovo, setIdMonstroNovo] = useState<number | "">("");
 
   const carregar = useCallback(async () => {
     setCarregando(true);
@@ -82,12 +83,12 @@ export function ZoneEditor({ zona, onFechar, onSalvo }: { zona: AdventureZoneApi
   );
 
   function adicionarMonstro() {
-    const alvo = monstrosDisponiveis[0];
-    if (!alvo) return;
+    if (idMonstroNovo === "") return;
     setRoster((r) => [
       ...r,
-      { chaveLocal: novaChave(), id_monstro: alvo.id, tipo_aparicao: "Comum", peso_aparicao: 100, nivel_jogador_minimo: 1, ativo: true },
+      { chaveLocal: novaChave(), id_monstro: idMonstroNovo, tipo_aparicao: "Comum", peso_aparicao: 100, nivel_jogador_minimo: 1, ativo: true },
     ]);
+    setIdMonstroNovo("");
     marcarSujo();
   }
 
@@ -242,9 +243,24 @@ export function ZoneEditor({ zona, onFechar, onSalvo }: { zona: AdventureZoneApi
               </table>
             </div>
           )}
-          <button type="button" onClick={adicionarMonstro} disabled={!monstrosDisponiveis.length} className="mt-1 self-start rounded-lg border border-[#F3B43F]/40 px-3 py-1.5 text-xs font-bold text-[#F3B43F] hover:bg-[#F3B43F]/10 disabled:opacity-40">
-            + Adicionar monstro
-          </button>
+          <div className="mt-1 flex flex-wrap items-center gap-2">
+            <select
+              value={idMonstroNovo}
+              onChange={(e) => setIdMonstroNovo(e.target.value ? Number(e.target.value) : "")}
+              className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-xs"
+            >
+              <option value="">Escolha um monstro...</option>
+              {monstrosDisponiveis.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.nome}
+                </option>
+              ))}
+            </select>
+            <button type="button" onClick={adicionarMonstro} disabled={idMonstroNovo === ""} className="self-start rounded-lg border border-[#F3B43F]/40 px-3 py-1.5 text-xs font-bold text-[#F3B43F] hover:bg-[#F3B43F]/10 disabled:opacity-40">
+              + Adicionar monstro
+            </button>
+            {!monstrosDisponiveis.length && <span className="text-[10px] text-white/40">Todos os monstros já estão vinculados a esta zona.</span>}
+          </div>
         </section>
 
         <div className="mt-1 flex justify-end gap-2">

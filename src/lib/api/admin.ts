@@ -560,7 +560,15 @@ export interface AdventureMonsterDetailApi {
     utilityFactor: number;
   };
   loot: AdventureMonsterLootApi[];
-  zonas: { id_area: number; nome_zona: string | null; tipo_aparicao: "Comum" | "Raro"; peso_aparicao: number; ativo: boolean }[];
+  zonas: {
+    id: number;
+    id_area: number;
+    nome_zona: string | null;
+    tipo_aparicao: "Comum" | "Raro";
+    peso_aparicao: number;
+    nivel_jogador_minimo: number;
+    ativo: boolean;
+  }[];
 }
 
 export async function buscarDetalheMonstroAdmin(id: number): Promise<AdventureMonsterDetailApi> {
@@ -697,9 +705,12 @@ export async function atualizarAparicaoAdmin(id: number, payload: Partial<Advent
   return resposta.data.data.aparicao;
 }
 
-export async function listarLootAdmin(idMonstro?: number): Promise<AdventureMonsterLootApi[]> {
+export async function listarLootAdmin(idMonstro?: number, idItem?: number): Promise<AdventureMonsterLootApi[]> {
+  const params: Record<string, number> = {};
+  if (idMonstro) params.idMonstro = idMonstro;
+  if (idItem) params.idItem = idItem;
   const resposta = await axiosInstance.get<{ data: { loot: AdventureMonsterLootApi[] } }>("/admin/adventure/loot", {
-    params: idMonstro ? { idMonstro } : undefined,
+    params: Object.keys(params).length ? params : undefined,
   });
   return resposta.data.data.loot;
 }

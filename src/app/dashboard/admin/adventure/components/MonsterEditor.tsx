@@ -2,12 +2,16 @@
 
 import { useCallback, useEffect, useState } from "react";
 import {
+  atualizarAparicaoAdmin,
   atualizarMonstroAdmin,
   buscarDetalheMonstroAdmin,
+  criarAparicaoAdmin,
+  listarZonasAdmin,
   mensagemDeErroAdmin,
   sincronizarLootMonstroAdmin,
   type AdventureMonsterApi,
   type AdventureMonsterDetailApi,
+  type AdventureZoneApi,
   type LootMonstroItemPayload,
 } from "@/lib/api/admin";
 import { ItemSelect, formatarItemComId, useItensParaSelecaoAdmin } from "@/components/admin/ItemPicker";
@@ -26,8 +30,16 @@ function novaChave() {
 // estado local intermediário — cada campo já é a fonte de verdade,
 // PATCH único no Salvar) + Drops (estado local, sincronização em lote,
 // mesmo padrão do ZoneEditor) + Poder (só leitura, calculado pelo
-// backend) + Aparições (só leitura — editar vínculo de zona é trabalho
-// do ZoneEditor, nunca duplicado aqui).
+// backend) + Aparições.
+//
+// Pedido do jogador: monstro não pode ficar "preso" às zonas que já
+// tinha — o admin precisa poder vincular qualquer monstro (novo ou
+// antigo) a qualquer zona (nova ou antiga) sem precisar sair daqui e
+// abrir o ZoneEditor. Por isso Aparições deixou de ser só leitura: cada
+// vínculo já existente é editável/desativável na hora (chamada direta,
+// sem esperar o "Salvar monstro" geral) e há um "+ Adicionar zona" que
+// lista TODAS as zonas ainda não vinculadas a este monstro — inclusive
+// zonas recém-criadas, que antes só apareciam pelo lado do ZoneEditor.
 export function MonsterEditor({
   idMonstro,
   onFechar,
@@ -42,18 +54,22 @@ export function MonsterEditor({
   const [detalhe, setDetalhe] = useState<AdventureMonsterDetailApi | null>(null);
   const [form, setForm] = useState<Partial<AdventureMonsterApi>>({});
   const [drops, setDrops] = useState<LinhaLoot[]>([]);
+  const [zonasCatalogo, setZonasCatalogo] = useState<AdventureZoneApi[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
   const [salvando, setSalvando] = useState(false);
   const [sujo, setSujo] = useState(false);
+  const [idZonaNova, setIdZonaNova] = useState<number | "">("");
+  const [salvandoZona, setSalvandoZona] = useState(false);
   const { itens: itensDisponiveis } = useItensParaSelecaoAdmin();
 
   const carregar = useCallback(async () => {
     setCarregando(true);
     setErro("");
     try {
-      const d = await buscarDetalheMonstroAdmin(idMonstro);
+      const [d, zonas] = await Promise.all([buscarDetalheMonstroAdmin(idMonstro), listarZonasAdmin()]);
       setDetalhe(d);
+      setZonasCatalogo(zonas);
       setForm(d.monstro);
       setDrops(
         d.loot.map((l) => ({
@@ -107,6 +123,44 @@ export function MonsterEditor({
   function removerDrop(chave: string) {
     setDrops((d) => d.filter((l) => l.chaveLocal !== chave));
     marcarSujo();
+  }
+
+  const zonasDisponiveis = (zonasCatalogo ?? []).filter((z) => !detalhe?.zonas.some((v) => v.id_area === z.id));
+
+  // Só atualiza `detalhe.zonas` (nunca form/drops/sujo) — recarregar o
+  // detalhe inteiro aqui apagaria edições ainda não salvas nas outras
+  // seções (Geral/Combate/Recompensas/Drops), já que elas só persistem
+  // no "Salvar monstro". Vínculo de zona, por sua vez, é persistido na
+  // hora (mesma decisão do PainelDropDoItem em Classes: são registros
+  // independentes id_area+id_monstro, não um formulário só).
+  async function recarregarZonas() {
+    const d = await buscarDetalheMonstroAdmin(idMonstro);
+    setDetalhe((atual) => (atual ? { ...atual, zonas: d.zonas } : atual));
+  }
+
+  async function adicionarZona() {
+    if (idZonaNova === "") return;
+    setSalvandoZona(true);
+    setErro("");
+    try {
+      await criarAparicaoAdmin({ id_area: idZonaNova, id_monstro: idMonstro, tipo_aparicao: "Comum", peso_aparicao: 100, nivel_jogador_minimo: 1, ativo: true });
+      setIdZonaNova("");
+      await recarregarZonas();
+    } catch (error) {
+      setErro(mensagemDeErroAdmin(error, "Não foi possível vincular o monstro a essa zona."));
+    } finally {
+      setSalvandoZona(false);
+    }
+  }
+
+  async function atualizarVinculoZona(idVinculo: number, patch: Partial<{ tipo_aparicao: "Comum" | "Raro"; peso_aparicao: number; nivel_jogador_minimo: number; ativo: boolean }>) {
+    setErro("");
+    try {
+      await atualizarAparicaoAdmin(idVinculo, patch);
+      await recarregarZonas();
+    } catch (error) {
+      setErro(mensagemDeErroAdmin(error, "Não foi possível atualizar o vínculo com a zona."));
+    }
   }
 
   function fechar() {
@@ -302,18 +356,90 @@ export function MonsterEditor({
               </button>
             </section>
 
-            {!!detalhe?.zonas.length && (
-              <section className="flex flex-col gap-2 rounded-xl border border-white/10 bg-black/20 p-3">
-                <p className="text-xs font-bold uppercase text-white/50">Aparições (só leitura — edite em Zonas)</p>
-                <ul className="flex flex-col gap-1 text-xs text-white/70">
-                  {detalhe.zonas.map((z) => (
-                    <li key={z.id_area} className={!z.ativo ? "opacity-50" : ""}>
-                      {z.nome_zona ?? `Zona #${z.id_area}`} · {z.tipo_aparicao} · peso {z.peso_aparicao} {!z.ativo && "(inativo)"}
-                    </li>
+            <section className="flex flex-col gap-2 rounded-xl border border-white/10 bg-black/20 p-3">
+              <p className="text-xs font-bold uppercase text-white/50">Aparições (zonas onde este monstro aparece)</p>
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[480px] text-left text-xs">
+                  <thead>
+                    <tr className="text-white/50">
+                      <th className="pb-1 pr-2">Zona</th>
+                      <th className="pb-1 pr-2">Tipo</th>
+                      <th className="pb-1 pr-2">Peso</th>
+                      <th className="pb-1 pr-2">Nv. mín.</th>
+                      <th className="pb-1 pr-2">Ativo</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(detalhe?.zonas ?? []).map((z) => (
+                      <tr key={z.id} className={`border-t border-white/10 ${!z.ativo ? "opacity-50" : ""}`}>
+                        <td className="py-1 pr-2 font-bold">{z.nome_zona ?? `Zona #${z.id_area}`}</td>
+                        <td className="py-1 pr-2">
+                          <select
+                            value={z.tipo_aparicao}
+                            onChange={(e) => atualizarVinculoZona(z.id, { tipo_aparicao: e.target.value as "Comum" | "Raro" })}
+                            className="rounded border border-white/20 bg-black/30 px-1 py-0.5"
+                          >
+                            <option value="Comum">Comum</option>
+                            <option value="Raro">Raro</option>
+                          </select>
+                        </td>
+                        <td className="py-1 pr-2">
+                          <input
+                            type="number"
+                            min={1}
+                            defaultValue={z.peso_aparicao}
+                            onBlur={(e) => atualizarVinculoZona(z.id, { peso_aparicao: Number(e.target.value) })}
+                            className="w-16 rounded border border-white/20 bg-black/30 px-1 py-0.5"
+                          />
+                        </td>
+                        <td className="py-1 pr-2">
+                          <input
+                            type="number"
+                            min={1}
+                            defaultValue={z.nivel_jogador_minimo}
+                            onBlur={(e) => atualizarVinculoZona(z.id, { nivel_jogador_minimo: Number(e.target.value) })}
+                            className="w-14 rounded border border-white/20 bg-black/30 px-1 py-0.5"
+                          />
+                        </td>
+                        <td className="py-1 pr-2">
+                          <input type="checkbox" checked={z.ativo} onChange={(e) => atualizarVinculoZona(z.id, { ativo: e.target.checked })} />
+                        </td>
+                      </tr>
+                    ))}
+                    {!detalhe?.zonas.length && (
+                      <tr>
+                        <td colSpan={5} className="py-3 text-center text-white/40">
+                          Nenhuma zona vinculada ainda.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <select
+                  value={idZonaNova}
+                  onChange={(e) => setIdZonaNova(e.target.value ? Number(e.target.value) : "")}
+                  className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-xs"
+                >
+                  <option value="">Escolha uma zona...</option>
+                  {zonasDisponiveis.map((z) => (
+                    <option key={z.id} value={z.id}>
+                      {z.nome}
+                    </option>
                   ))}
-                </ul>
-              </section>
-            )}
+                </select>
+                <button
+                  type="button"
+                  onClick={adicionarZona}
+                  disabled={salvandoZona || idZonaNova === ""}
+                  className="rounded-lg border border-[#F3B43F]/40 px-3 py-1.5 text-xs font-bold text-[#F3B43F] hover:bg-[#F3B43F]/10 disabled:opacity-40"
+                >
+                  {salvandoZona ? "Vinculando..." : "+ Adicionar zona"}
+                </button>
+                {!zonasDisponiveis.length && <span className="text-[10px] text-white/40">Já vinculado a todas as zonas existentes.</span>}
+              </div>
+            </section>
           </div>
 
           {detalhe && <CombatPowerCard combatPower={detalhe.combat_power} onSimular={() => onSimular(idMonstro)} />}
