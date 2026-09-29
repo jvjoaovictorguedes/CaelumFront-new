@@ -1823,6 +1823,96 @@ export async function atualizarFishingPoolAdmin(id: number, payload: Partial<Pay
   return resposta.data.data.item;
 }
 
+// Chance de encontro calculada (Pesca v3 §5.1/§10.1) — nunca digitada à
+// mão; sempre recalculada pela mesma função do sorteio real.
+export interface FishingChanceEncontroApi {
+  id_species: number;
+  nome: string;
+  peso_efetivo: number;
+  chance: number;
+}
+export async function previewFishingChancePoolAdmin(
+  idZone: number,
+  params?: { nivelPesca?: number; idBaitItem?: number | null },
+): Promise<FishingChanceEncontroApi[]> {
+  const resposta = await axiosInstance.get<{ data: { chances: FishingChanceEncontroApi[] } }>(
+    `/admin/fishing/pool/chance/${idZone}`,
+    { params: { nivelPesca: params?.nivelPesca, idBaitItem: params?.idBaitItem ?? undefined } },
+  );
+  return resposta.data.data.chances;
+}
+
+// Varas de Pesca (read-only — Pesca v3 §8.3, fonte de verdade continua
+// no Admin de Itens).
+export interface FishingRodPropertiesApi {
+  forca_linha: number;
+  controle: number;
+  recolhimento: number;
+  precisao: number;
+  estabilidade: number;
+  nivel_pesca_minimo: number;
+}
+export interface FishingRodAdminApi {
+  id_item: number;
+  nome: string;
+  raridade: string;
+  propriedades_base: FishingRodPropertiesApi;
+}
+export async function listarFishingRodsAdmin(): Promise<FishingRodAdminApi[]> {
+  const resposta = await axiosInstance.get<{ data: { varas: FishingRodAdminApi[] } }>("/admin/fishing/rods");
+  return resposta.data.data.varas;
+}
+
+// Simulador / Balanceador (Pesca v3 §9/§10/§13.4) — reutiliza o
+// fishingEngine real no backend, nunca uma fórmula paralela aqui.
+export interface FishingSimulacaoResultadoApi {
+  simulacoes: number;
+  taxa_captura: number;
+  taxa_broken_line: number;
+  taxa_timeout: number;
+  passos_medio_captura: number | null;
+  tensao_maxima_media: number;
+}
+export interface FishingSimulacaoApi {
+  especie: { id: number; key: string; comportamento_key: ComportamentoEspecie; dificuldade_base: number };
+  vara: { id_item: number; nome: string; refinamento: number };
+  nivel_pesca: number;
+  breakdown_stats: {
+    base: FishingRodPropertiesApi;
+    com_refinamento: FishingRodPropertiesApi;
+    com_proficiencia: FishingRodPropertiesApi;
+  };
+  resultado: FishingSimulacaoResultadoApi;
+}
+export async function simularFishingBalanceamentoAdmin(payload: {
+  idSpecies: number;
+  idRodItem: number;
+  refinamentoVara?: number;
+  nivelPesca?: number;
+  numSimulacoes?: number;
+}): Promise<FishingSimulacaoApi> {
+  const resposta = await axiosInstance.post<{ data: FishingSimulacaoApi }>("/admin/fishing/balance/simulate", payload);
+  return resposta.data.data;
+}
+
+export interface FishingMatrizLinhaApi {
+  id_species: number;
+  nome: string;
+  taxa_captura: number;
+  passos_medio_captura: number | null;
+}
+export async function simularFishingMatrizAdmin(params: {
+  idRodItem: number;
+  refinamentoVara?: number;
+  nivelPesca?: number;
+  numSimulacoes?: number;
+}): Promise<FishingMatrizLinhaApi[]> {
+  const resposta = await axiosInstance.get<{ data: { matriz: FishingMatrizLinhaApi[] } }>("/admin/fishing/balance/matrix", {
+    params,
+  });
+  return resposta.data.data.matriz;
+}
+
 export interface FishingPortAdminApi {
   id: number;
   key: string;

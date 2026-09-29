@@ -31,11 +31,19 @@ import {
   listarMarineRoutesAdmin,
   listarVesselsAdmin,
   mensagemDeErroAdmin,
+  previewFishingChancePoolAdmin,
+  listarFishingRodsAdmin,
+  simularFishingBalanceamentoAdmin,
+  simularFishingMatrizAdmin,
   type ComportamentoEspecie,
   type FishingAffinityAdminApi,
   type FishingBaitAdminApi,
   type FishingPoolAdminApi,
   type FishingPortAdminApi,
+  type FishingRodAdminApi,
+  type FishingRodPropertiesApi,
+  type FishingSimulacaoApi,
+  type FishingMatrizLinhaApi,
   type FishingSpeciesAdminApi,
   type FishingTournamentAdminApi,
   type FishingZoneAdminApi,
@@ -54,8 +62,8 @@ import {
 } from "@/lib/api/admin";
 import { ItemSelect, formatarItemComId, useItensParaSelecaoAdmin } from "@/components/admin/ItemPicker";
 
-type Aba = "Zonas" | "Especies" | "Pool" | "Portos" | "Iscas" | "Afinidades" | "Embarcacoes" | "Rotas" | "Torneios";
-const ABAS: Aba[] = ["Zonas", "Especies", "Pool", "Portos", "Iscas", "Afinidades", "Embarcacoes", "Rotas", "Torneios"];
+type Aba = "Zonas" | "Especies" | "Pool" | "Portos" | "Iscas" | "Afinidades" | "Varas" | "Balanceamento" | "Embarcacoes" | "Rotas" | "Torneios";
+const ABAS: Aba[] = ["Zonas", "Especies", "Pool", "Portos", "Iscas", "Afinidades", "Varas", "Balanceamento", "Embarcacoes", "Rotas", "Torneios"];
 const ROTULO_ABA: Record<Aba, string> = {
   Zonas: "Zonas",
   Especies: "Espécies",
@@ -63,6 +71,8 @@ const ROTULO_ABA: Record<Aba, string> = {
   Portos: "Portos",
   Iscas: "Iscas",
   Afinidades: "Afinidades (Isca × Espécie)",
+  Varas: "Varas",
+  Balanceamento: "Balanceamento",
   Embarcacoes: "Embarcações",
   Rotas: "Rotas Marítimas",
   Torneios: "Torneios",
@@ -140,6 +150,8 @@ export default function AdminFishingClient() {
       {aba === "Portos" && <AbaPortos onErro={setErro} />}
       {aba === "Iscas" && <AbaIscas onErro={setErro} />}
       {aba === "Afinidades" && <AbaAfinidades onErro={setErro} />}
+      {aba === "Varas" && <AbaVaras onErro={setErro} />}
+      {aba === "Balanceamento" && <AbaBalanceamento onErro={setErro} />}
       {aba === "Embarcacoes" && <AbaEmbarcacoes onErro={setErro} />}
       {aba === "Rotas" && <AbaRotas onErro={setErro} />}
       {aba === "Torneios" && <AbaTorneios onErro={setErro} />}
@@ -491,6 +503,11 @@ function AbaPool({ onErro }: { onErro: (m: string) => void }) {
   const [mostrarForm, setMostrarForm] = useState(false);
   const [salvando, setSalvando] = useState(false);
   const [form, setForm] = useState<PayloadFishingPoolAdmin>({ encounter_weight: 100 });
+  // Chance de encontro CALCULADA pelo backend (Pesca v3 §5.1/§10.1/§12.1)
+  // — nunca uma fórmula duplicada aqui: reusa a mesma
+  // fishingEncounterService.calcularPesosDoPool do sorteio real, já
+  // considerando nível mínimo elegível. Chave "idZone:idSpecies".
+  const [chances, setChances] = useState<Map<string, number>>(new Map());
 
   const carregar = useCallback(async () => {
     setCarregando(true);
@@ -499,6 +516,14 @@ function AbaPool({ onErro }: { onErro: (m: string) => void }) {
       setPool(p);
       setZonas(z);
       setEspecies(e);
+
+      const idsZona = Array.from(new Set(p.map((item) => item.id_zone)));
+      const porZona = await Promise.all(idsZona.map((idZone) => previewFishingChancePoolAdmin(idZone, { nivelPesca: 1 })));
+      const mapa = new Map<string, number>();
+      idsZona.forEach((idZone, i) => {
+        for (const entrada of porZona[i]) mapa.set(`${idZone}:${entrada.id_species}`, entrada.chance);
+      });
+      setChances(mapa);
     } catch (error) {
       onErro(mensagemDeErroAdmin(error, "Não foi possível carregar o pool."));
     } finally {
@@ -515,26 +540,11 @@ function AbaPool({ onErro }: { onErro: (m: string) => void }) {
     setMostrarForm(true);
   }
 
-  // % de chance de cada espécie DENTRO da zona — espelha exatamente a
-  // fórmula de sorteio do backend (fishingEncounterService.sortearPonderado):
-  // peso / soma dos pesos ATIVOS da mesma zona, sem considerar afinidade
-  // de isca (isso é só um multiplicador que entra na hora da pescaria, a
-  // % aqui é a base "sem isca" — ver AbaAfinidades pro efeito da isca).
-  // Puramente derivado do que já foi carregado — nunca persistido.
-  const totalAtivoPorZona = useMemo(() => {
-    const totais = new Map<number, number>();
-    for (const item of pool) {
-      if (!item.ativo) continue;
-      totais.set(item.id_zone, (totais.get(item.id_zone) ?? 0) + item.encounter_weight);
-    }
-    return totais;
-  }, [pool]);
-
   function chancePercentual(item: FishingPoolAdminApi): string | null {
     if (!item.ativo) return null;
-    const total = totalAtivoPorZona.get(item.id_zone) ?? 0;
-    if (total <= 0) return null;
-    return `≈${((item.encounter_weight / total) * 100).toFixed(1)}%`;
+    const chance = chances.get(`${item.id_zone}:${item.id_species}`);
+    if (chance == null) return null;
+    return `${(chance * 100).toFixed(1)}%`;
   }
 
   async function salvar(e: React.FormEvent) {
@@ -589,7 +599,7 @@ function AbaPool({ onErro }: { onErro: (m: string) => void }) {
                   <td className="px-3 py-2">
                     {item.encounter_weight}
                     {chancePercentual(item) && (
-                      <span className="ml-2 text-xs font-bold text-sky-300" title="Chance aproximada de aparição dentro da zona (peso ÷ soma dos pesos ativos da zona), sem contar afinidade de isca.">
+                      <span className="ml-2 text-xs font-bold text-sky-300" title="Chance calculada pelo backend (Nível de Pesca 1, sem isca de preview) — mesma função usada no sorteio real do jogador.">
                         {chancePercentual(item)} de chance nessa zona
                       </span>
                     )}
@@ -634,6 +644,252 @@ function AbaPool({ onErro }: { onErro: (m: string) => void }) {
         </div>
       )}
     </Secao>
+  );
+}
+
+// ----------------------------------------------------------------- VARAS
+// Read-only (Pesca v3 §8.3) — a fonte de verdade continua no Admin de
+// Itens (FishingRodProperties fica junto do Item tipo "Ferramenta");
+// isto é só uma visão de comparação pro contexto de balanceamento da
+// Pesca, sem duplicar o CRUD.
+function AbaVaras({ onErro }: { onErro: (m: string) => void }) {
+  const [varas, setVaras] = useState<FishingRodAdminApi[]>([]);
+  const [carregando, setCarregando] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      setCarregando(true);
+      try {
+        setVaras(await listarFishingRodsAdmin());
+      } catch (error) {
+        onErro(mensagemDeErroAdmin(error, "Não foi possível carregar as varas."));
+      } finally {
+        setCarregando(false);
+      }
+    })();
+  }, [onErro]);
+
+  return (
+    <Secao titulo="Varas de Pesca (comparação — editar em Painel Administrativo → Itens)">
+      <div className="overflow-x-auto rounded-xl border border-white/10">
+        <table className="w-full text-left text-sm text-white">
+          <thead>
+            <tr className="border-b border-white/10 text-xs uppercase text-white/50">
+              <th className="px-3 py-2">Vara</th>
+              <th className="px-3 py-2">Força da linha</th>
+              <th className="px-3 py-2">Controle</th>
+              <th className="px-3 py-2">Recolhimento</th>
+              <th className="px-3 py-2">Precisão</th>
+              <th className="px-3 py-2">Estabilidade</th>
+              <th className="px-3 py-2">Nv. mínimo</th>
+            </tr>
+          </thead>
+          <tbody>
+            {carregando ? (
+              <tr><td colSpan={7} className="px-3 py-4 text-center text-white/50">Carregando...</td></tr>
+            ) : varas.length === 0 ? (
+              <tr><td colSpan={7} className="px-3 py-4 text-center text-white/50">Nenhuma vara cadastrada (crie um Item tipo Ferramenta com propriedades de vara).</td></tr>
+            ) : (
+              varas.map((v) => (
+                <tr key={v.id_item} className="border-b border-white/5">
+                  <td className="px-3 py-2 font-bold">{formatarItemComId(v.nome, v.id_item)}</td>
+                  <td className="px-3 py-2">{v.propriedades_base.forca_linha}</td>
+                  <td className="px-3 py-2">{v.propriedades_base.controle}</td>
+                  <td className="px-3 py-2">{v.propriedades_base.recolhimento}</td>
+                  <td className="px-3 py-2">{v.propriedades_base.precisao}</td>
+                  <td className="px-3 py-2">{v.propriedades_base.estabilidade}</td>
+                  <td className="px-3 py-2">{v.propriedades_base.nivel_pesca_minimo}</td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </Secao>
+  );
+}
+
+// -------------------------------------------------------- BALANCEAMENTO
+// Simulador/Balanceador (Pesca v3 §9/§10/§13.4) — chama o backend, que
+// reutiliza o fishingEngine real; esta tela NUNCA calcula chance de
+// captura sozinha.
+function AbaBalanceamento({ onErro }: { onErro: (m: string) => void }) {
+  const [especies, setEspecies] = useState<FishingSpeciesAdminApi[]>([]);
+  const [varas, setVaras] = useState<FishingRodAdminApi[]>([]);
+  const [carregandoCatalogo, setCarregandoCatalogo] = useState(true);
+
+  const [idSpecies, setIdSpecies] = useState<number | "">("");
+  const [idRodItem, setIdRodItem] = useState<number | "">("");
+  const [refinamentoVara, setRefinamentoVara] = useState(0);
+  const [nivelPesca, setNivelPesca] = useState(1);
+  const [numSimulacoes, setNumSimulacoes] = useState(1000);
+  const [simulando, setSimulando] = useState(false);
+  const [resultado, setResultado] = useState<FishingSimulacaoApi | null>(null);
+
+  const [matriz, setMatriz] = useState<FishingMatrizLinhaApi[] | null>(null);
+  const [carregandoMatriz, setCarregandoMatriz] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      setCarregandoCatalogo(true);
+      try {
+        const [e, v] = await Promise.all([listarFishingSpeciesAdmin(), listarFishingRodsAdmin()]);
+        setEspecies(e);
+        setVaras(v);
+        if (e[0]) setIdSpecies(e[0].id);
+        if (v[0]) setIdRodItem(v[0].id_item);
+      } catch (error) {
+        onErro(mensagemDeErroAdmin(error, "Não foi possível carregar espécies/varas pro simulador."));
+      } finally {
+        setCarregandoCatalogo(false);
+      }
+    })();
+  }, [onErro]);
+
+  async function simular(e: React.FormEvent) {
+    e.preventDefault();
+    if (!idSpecies || !idRodItem) return;
+    setSimulando(true);
+    setResultado(null);
+    try {
+      const r = await simularFishingBalanceamentoAdmin({
+        idSpecies: Number(idSpecies),
+        idRodItem: Number(idRodItem),
+        refinamentoVara,
+        nivelPesca,
+        numSimulacoes,
+      });
+      setResultado(r);
+    } catch (error) {
+      onErro(mensagemDeErroAdmin(error, "Não foi possível simular essa combinação."));
+    } finally {
+      setSimulando(false);
+    }
+  }
+
+  async function carregarMatriz() {
+    if (!idRodItem) return;
+    setCarregandoMatriz(true);
+    setMatriz(null);
+    try {
+      const m = await simularFishingMatrizAdmin({ idRodItem: Number(idRodItem), refinamentoVara, nivelPesca, numSimulacoes: 300 });
+      setMatriz(m.sort((a, b) => b.taxa_captura - a.taxa_captura));
+    } catch (error) {
+      onErro(mensagemDeErroAdmin(error, "Não foi possível calcular a matriz dessa vara."));
+    } finally {
+      setCarregandoMatriz(false);
+    }
+  }
+
+  const linhasBreakdown: { rotulo: string; campo: keyof FishingRodPropertiesApi }[] = [
+    { rotulo: "Força da linha", campo: "forca_linha" },
+    { rotulo: "Controle", campo: "controle" },
+    { rotulo: "Recolhimento", campo: "recolhimento" },
+    { rotulo: "Precisão", campo: "precisao" },
+    { rotulo: "Estabilidade", campo: "estabilidade" },
+  ];
+
+  return (
+    <div className="flex flex-col gap-4">
+      <Secao titulo="Simulador de captura (vara × espécie × Nível de Pesca)">
+        {carregandoCatalogo ? (
+          <p className="text-sm text-white/50">Carregando catálogo...</p>
+        ) : (
+          <form onSubmit={simular} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+            <label className="flex flex-col gap-1 text-xs">Espécie
+              <Select required value={idSpecies} onChange={(e) => setIdSpecies(Number(e.target.value))}>
+                {especies.map((e) => <option key={e.id} value={e.id}>{e.item ? formatarItemComId(e.item.nome, e.id) : e.key}</option>)}
+              </Select>
+            </label>
+            <label className="flex flex-col gap-1 text-xs">Vara
+              <Select required value={idRodItem} onChange={(e) => setIdRodItem(Number(e.target.value))}>
+                {varas.map((v) => <option key={v.id_item} value={v.id_item}>{formatarItemComId(v.nome, v.id_item)}</option>)}
+              </Select>
+            </label>
+            <label className="flex flex-col gap-1 text-xs">Refinamento
+              <Input type="number" min={0} max={15} value={refinamentoVara} onChange={(e) => setRefinamentoVara(Number(e.target.value))} />
+            </label>
+            <label className="flex flex-col gap-1 text-xs">Nível de Pesca (preview)
+              <Input type="number" min={1} max={25} value={nivelPesca} onChange={(e) => setNivelPesca(Number(e.target.value))} />
+            </label>
+            <label className="flex flex-col gap-1 text-xs">Simulações
+              <Select value={numSimulacoes} onChange={(e) => setNumSimulacoes(Number(e.target.value))}>
+                <option value={1000}>1.000</option>
+                <option value={5000}>5.000</option>
+                <option value={10000}>10.000</option>
+              </Select>
+            </label>
+            <div className="col-span-full">
+              <BotaoSalvar disabled={simulando} />
+              {simulando && <span className="ml-2 text-xs text-white/50">Simulando (reusa o motor real, pode levar alguns segundos)...</span>}
+            </div>
+          </form>
+        )}
+
+        {resultado && (
+          <div className="mt-4 grid gap-4 lg:grid-cols-2">
+            <div className="rounded-xl border border-white/10 bg-black/30 p-3">
+              <p className="mb-2 text-xs font-bold uppercase text-white/50">Resultado ({resultado.resultado.simulacoes} simulações)</p>
+              <p className="text-2xl font-imFeel text-emerald-400">{(resultado.resultado.taxa_captura * 100).toFixed(1)}% de captura</p>
+              <p className="text-xs text-white/60">Linha arrebentada: {(resultado.resultado.taxa_broken_line * 100).toFixed(1)}% · Sem resolver no teto de segurança: {(resultado.resultado.taxa_timeout * 100).toFixed(1)}%</p>
+              {resultado.resultado.passos_medio_captura != null && (
+                <p className="mt-1 text-xs text-white/60">Passos médios até capturar: {resultado.resultado.passos_medio_captura}</p>
+              )}
+              <p className="text-xs text-white/60">Tensão máxima média atingida: {resultado.resultado.tensao_maxima_media}</p>
+            </div>
+            <div className="rounded-xl border border-white/10 bg-black/30 p-3">
+              <p className="mb-2 text-xs font-bold uppercase text-white/50">Breakdown de atributos (base → refinamento → proficiência)</p>
+              <table className="w-full text-left text-xs text-white/80">
+                <tbody>
+                  {linhasBreakdown.map(({ rotulo, campo }) => (
+                    <tr key={campo} className="border-b border-white/5">
+                      <td className="py-1 pr-2 font-bold">{rotulo}</td>
+                      <td className="py-1 pr-2">{resultado.breakdown_stats.base[campo]}</td>
+                      <td className="py-1 pr-2 text-white/50">→</td>
+                      <td className="py-1 pr-2">{resultado.breakdown_stats.com_refinamento[campo]}</td>
+                      <td className="py-1 pr-2 text-white/50">→</td>
+                      <td className="py-1 font-bold text-[#F3B43F]">{resultado.breakdown_stats.com_proficiencia[campo]}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </Secao>
+
+      <Secao titulo="Matriz rápida (essa vara contra todas as espécies ativas)">
+        <button type="button" onClick={carregarMatriz} disabled={carregandoMatriz || !idRodItem} className="mb-3 rounded-lg bg-[#BC8418] px-4 py-2 text-sm font-bold text-black hover:bg-[#a5710f] disabled:opacity-50">
+          {carregandoMatriz ? "Calculando..." : "Calcular matriz pra essa vara"}
+        </button>
+        {matriz && (
+          <div className="overflow-x-auto rounded-xl border border-white/10">
+            <table className="w-full text-left text-sm text-white">
+              <thead>
+                <tr className="border-b border-white/10 text-xs uppercase text-white/50">
+                  <th className="px-3 py-2">Espécie</th>
+                  <th className="px-3 py-2">Taxa de captura</th>
+                  <th className="px-3 py-2">Passos médios</th>
+                </tr>
+              </thead>
+              <tbody>
+                {matriz.length === 0 ? (
+                  <tr><td colSpan={3} className="px-3 py-4 text-center text-white/50">Nenhuma espécie ativa cadastrada.</td></tr>
+                ) : (
+                  matriz.map((linha) => (
+                    <tr key={linha.id_species} className="border-b border-white/5">
+                      <td className="px-3 py-2">{linha.nome}</td>
+                      <td className="px-3 py-2 font-bold text-emerald-400">{(linha.taxa_captura * 100).toFixed(1)}%</td>
+                      <td className="px-3 py-2">{linha.passos_medio_captura ?? "—"}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Secao>
+    </div>
   );
 }
 
