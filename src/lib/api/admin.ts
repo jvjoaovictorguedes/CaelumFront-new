@@ -448,6 +448,11 @@ export interface AdventureZoneApi {
   descricao: string | null;
   nivel_monstro_min: number;
   nivel_monstro_max: number;
+  // Gate de ENTRADA de verdade (diferente de nivel_monstro_min/max
+  // acima, que é só a faixa de nível dos monstros da zona) — abaixo
+  // deste nível o personagem não consegue nem entrar (backend valida
+  // de novo, nunca confia só no formulário).
+  nivel_jogador_minimo: number;
   imagem_url: string | null;
   ordem: number;
   ativa: boolean;

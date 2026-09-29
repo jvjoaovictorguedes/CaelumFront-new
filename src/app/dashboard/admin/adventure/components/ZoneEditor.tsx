@@ -144,11 +144,11 @@ export function ZoneEditor({ zona, onFechar, onSalvo }: { zona: AdventureZoneApi
           </label>
           <div className="flex gap-2">
             <label className="flex flex-1 flex-col gap-1 text-xs">
-              Nível mín.
+              Nível mín. dos monstros
               <input type="number" value={form.nivel_monstro_min ?? 1} onChange={(e) => atualizarCampoZona("nivel_monstro_min", Number(e.target.value))} className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm" />
             </label>
             <label className="flex flex-1 flex-col gap-1 text-xs">
-              Nível máx.
+              Nível máx. dos monstros
               <input type="number" value={form.nivel_monstro_max ?? 5} onChange={(e) => atualizarCampoZona("nivel_monstro_max", Number(e.target.value))} className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm" />
             </label>
             <label className="flex flex-1 flex-col gap-1 text-xs">
@@ -156,6 +156,20 @@ export function ZoneEditor({ zona, onFechar, onSalvo }: { zona: AdventureZoneApi
               <input type="number" value={form.ordem ?? 0} onChange={(e) => atualizarCampoZona("ordem", Number(e.target.value))} className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm" />
             </label>
           </div>
+          <p className="text-[10px] text-white/40">
+            Nível mín./máx. dos monstros é só indicativo (badge de perigo pro jogador) — quem de fato TRAVA a
+            entrada na zona é o campo abaixo.
+          </p>
+          <label className="flex flex-col gap-1 text-xs">
+            <span className="font-bold text-[#F3B43F]">Nível mínimo pra ENTRAR na zona</span>
+            <input
+              type="number"
+              min={1}
+              value={form.nivel_jogador_minimo ?? 1}
+              onChange={(e) => atualizarCampoZona("nivel_jogador_minimo", Number(e.target.value))}
+              className="rounded-lg border-2 border-[#F3B43F]/50 bg-black/30 px-2 py-1.5 text-sm"
+            />
+          </label>
           <label className="flex flex-col gap-1 text-xs">
             Imagem (URL)
             <input value={form.imagem_url ?? ""} onChange={(e) => atualizarCampoZona("imagem_url", e.target.value)} className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm" />

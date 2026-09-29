@@ -287,7 +287,7 @@ export default function PartyAdventureSection({ zonas }: { zonas: ZonaApi[] }) {
               <option value="">Escolha a área de caça...</option>
               {zonas.map((zona) => (
                 <option key={zona.id} value={zona.id}>
-                  {zona.nome}
+                  {zona.nome} (requer nível {zona.nivel_jogador_minimo}+ pra todo mundo do grupo)
                 </option>
               ))}
             </select>
