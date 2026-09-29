@@ -155,7 +155,7 @@ export default function FishingClient() {
         const nomePeixe = r.nome_especie ?? "peixe";
         mostrarSucesso(`Você capturou: ${nomePeixe} (${r.weight_g}g)! +${r.xp} XP de Pesca.${r.primeira_descoberta ? " Nova espécie descoberta!" : ""}`);
       } else if (atualizada.fase === "WAITING_BITE" && sessao?.fase !== "WAITING_BITE") {
-        mostrarInfo("Linha lançada! Fique de olho e continue clicando em \"Fisgar!\" até o peixe morder.");
+        mostrarInfo("Linha lançada! Fique de olho na água — o botão avisa assim que o peixe morder.");
       } else if (FASES_TERMINAIS.has(atualizada.fase) && atualizada.fase !== "CAUGHT") {
         mostrarInfo(`Sessão encerrada: ${atualizada.resultado?.motivo ?? atualizada.fase}.`);
       }
@@ -347,6 +347,14 @@ export default function FishingClient() {
   );
 }
 
+// Espelham fishingConfig.js — só pra escala visual das barras/faixa ideal
+// (não é fórmula de resultado: servidor continua 100% autoritativo sobre
+// tensão/progresso/captura, spec Pesca v3 §12.1).
+const TENSAO_MAXIMA_UI = 1000;
+const ZONA_IDEAL_MIN_UI = 350;
+const ZONA_IDEAL_MAX_UI = 650;
+const PROGRESSO_PARA_CAPTURA_UI = 800;
+
 function FishingArena({
   sessao,
   ocupado,
@@ -365,8 +373,27 @@ function FishingArena({
   onNovaSessao: () => void;
 }) {
   const terminal = FASES_TERMINAIS.has(sessao.fase);
-  const tensaoPct = Math.min(100, (sessao.tensao / 1000) * 100);
-  const progressoPct = Math.min(100, (sessao.progresso / 1000) * 100);
+  const tensaoPct = Math.min(100, (sessao.tensao / TENSAO_MAXIMA_UI) * 100);
+  const progressoPct = Math.min(100, (sessao.progresso / PROGRESSO_PARA_CAPTURA_UI) * 100);
+  const naZonaIdeal = sessao.tensao >= ZONA_IDEAL_MIN_UI && sessao.tensao <= ZONA_IDEAL_MAX_UI;
+  const zonaIdealEsquerda = (ZONA_IDEAL_MIN_UI / TENSAO_MAXIMA_UI) * 100;
+  const zonaIdealLargura = ((ZONA_IDEAL_MAX_UI - ZONA_IDEAL_MIN_UI) / TENSAO_MAXIMA_UI) * 100;
+
+  // Fase de fisgada sem spam (spec Pesca v3 §3.5): o backend já manda
+  // mordida_disponivel_em/janela_mordida_expira_em — em vez de instruir o
+  // jogador a ficar clicando "Fisgar!" o tempo todo, mostra um estado de
+  // espera claro e só destaca a ação quando a mordida já pode acontecer.
+  const [agora, setAgora] = useState(() => Date.now());
+  useEffect(() => {
+    if (sessao.fase !== "WAITING_BITE") return;
+    const intervalo = setInterval(() => setAgora(Date.now()), 200);
+    return () => clearInterval(intervalo);
+  }, [sessao.fase]);
+
+  const mordidaDisponivelEm = sessao.mordida_disponivel_em ? new Date(sessao.mordida_disponivel_em).getTime() : null;
+  const janelaExpiraEm = sessao.janela_mordida_expira_em ? new Date(sessao.janela_mordida_expira_em).getTime() : null;
+  const mordeu = mordidaDisponivelEm != null && agora >= mordidaDisponivelEm;
+  const janelaRestanteMs = mordeu && janelaExpiraEm != null ? Math.max(0, janelaExpiraEm - agora) : null;
 
   return (
     <div className="rounded-xl border border-sky-500/30 bg-sky-950/30 p-4 text-white">
@@ -375,18 +402,29 @@ function FishingArena({
       {!terminal && (
         <>
           <div className="mb-3">
-            <p className="mb-1 text-xs uppercase text-white/50">Tensão da linha</p>
-            <div className="h-4 w-full overflow-hidden rounded-full bg-white/10">
+            <p className="mb-1 text-xs uppercase text-white/50">
+              Tensão da linha
+              {sessao.fase === "FIGHTING" && (
+                <span className={naZonaIdeal ? "ml-2 text-emerald-400" : "text-white/40"}>
+                  {naZonaIdeal ? "· Na zona ideal (+15% progresso)" : "· Faixa ideal destacada abaixo"}
+                </span>
+              )}
+            </p>
+            <div className="relative h-4 w-full overflow-hidden rounded-full bg-white/10">
+              {/* Faixa ideal (spec §3.3) — sempre visível, é o alvo de habilidade */}
               <div
-                className={`h-full transition-all ${tensaoPct > 80 ? "bg-red-500" : tensaoPct > 50 ? "bg-amber-400" : "bg-sky-400"}`}
+                className="absolute inset-y-0 bg-emerald-500/25"
+                style={{ left: `${zonaIdealEsquerda}%`, width: `${zonaIdealLargura}%` }}
+              />
+              <div
+                className={`relative h-full transition-all ${tensaoPct > 80 ? "bg-red-500" : tensaoPct > 50 ? "bg-amber-400" : "bg-sky-400"}`}
                 style={{ width: `${tensaoPct}%` }}
               />
             </div>
             {sessao.fase === "FIGHTING" && (
               <p className="mt-1 text-xs text-white/50">
-                A tensão sobe quando você recolhe a linha (ON) e desce quando você solta (OFF). Se a tensão encher
-                (barra fica vermelha), a linha arrebenta e o peixe escapa — alterne entre Recolher e Soltar pra manter
-                a tensão controlada enquanto avança.
+                A tensão sobe quando você recolhe (ON) e desce quando solta (OFF). Recolher dentro da faixa verde dá
+                bônus de progresso. Se a tensão encher (barra vermelha), a linha arrebenta e o peixe escapa.
               </p>
             )}
           </div>
@@ -409,8 +447,14 @@ function FishingArena({
               </button>
             )}
             {sessao.fase === "WAITING_BITE" && (
-              <button className="rounded bg-amber-600 px-4 py-2 disabled:opacity-50" disabled={ocupado} onClick={onHook}>
-                Fisgar!
+              <button
+                className={`rounded px-4 py-2 font-bold disabled:opacity-50 ${
+                  mordeu ? "animate-pulse bg-amber-500 text-black" : "bg-white/10 text-white/60"
+                }`}
+                disabled={ocupado || !mordeu}
+                onClick={onHook}
+              >
+                {mordeu ? "MORDEU! FISGAR!" : "Aguardando mordida…"}
               </button>
             )}
             {sessao.fase === "FIGHTING" && (
@@ -437,9 +481,9 @@ function FishingArena({
           </div>
           {sessao.fase === "WAITING_BITE" && (
             <p className="mt-3 text-xs text-amber-300/90">
-              Fique de olho na água: o peixe pode morder a qualquer momento e você só tem uma janela curta pra fisgar.
-              Continue clicando em <span className="font-bold">Fisgar!</span> até o peixe morder — clicar cedo demais
-              não tem problema, só não pode demorar depois que ele morder.
+              {mordeu
+                ? `O peixe mordeu! Fisgue agora${janelaRestanteMs != null ? ` (${(janelaRestanteMs / 1000).toFixed(1)}s restantes)` : ""}.`
+                : "Fique de olho na água — o peixe pode morder a qualquer momento. Não precisa ficar clicando: o botão avisa assim que for a hora."}
             </p>
           )}
         </>

@@ -12,6 +12,7 @@ export default function FishingAlmanaque() {
   const [especies, setEspecies] = useState<AlmanacEspecie[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
+  const [selecionada, setSelecionada] = useState<AlmanacEspecie | null>(null);
 
   useEffect(() => {
     let ativo = true;
@@ -54,10 +55,12 @@ export default function FishingAlmanaque() {
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
         {especies.map((e) => (
-          <div
+          <button
+            type="button"
             key={e.id}
+            onClick={() => e.descoberto && setSelecionada(e)}
             className={`relative rounded-xl border p-3 text-center ${
-              e.descoberto ? "border-sky-500/40 bg-black/30" : "border-white/10 bg-black/50"
+              e.descoberto ? "cursor-pointer border-sky-500/40 bg-black/30 hover:bg-black/50" : "cursor-default border-white/10 bg-black/50"
             }`}
           >
             {e.lendario && e.descoberto && (
@@ -78,16 +81,63 @@ export default function FishingAlmanaque() {
             </p>
             {e.descoberto ? (
               <div className="mt-1 text-[11px] text-white/60">
+                <p>{e.comportamento?.nome}</p>
                 <p>Capturados: {e.total_capturado}</p>
                 <p>Maior peso: {e.maior_peso_g}g</p>
               </div>
             ) : (
               <p className="mt-1 text-[11px] text-white/30">Ainda não descoberta</p>
             )}
-          </div>
+          </button>
         ))}
         {especies.length === 0 && <p className="col-span-full text-white/50">Nenhuma espécie cadastrada ainda.</p>}
       </div>
+
+      {selecionada && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+          onClick={() => setSelecionada(null)}
+        >
+          <div
+            className="w-full max-w-sm rounded-xl border border-sky-500/40 bg-[#0b1b2b] p-5 text-white"
+            onClick={(ev) => ev.stopPropagation()}
+          >
+            <div className="mb-3 flex items-start justify-between">
+              <h3 className="font-imFeel text-xl text-sky-300">{selecionada.nome}</h3>
+              <button type="button" className="text-white/50 hover:text-white" onClick={() => setSelecionada(null)}>
+                ✕
+              </button>
+            </div>
+            <p className="text-sm text-white/70">
+              Comportamento: <span className="font-semibold text-white">{selecionada.comportamento?.nome}</span>
+            </p>
+            <p className="text-sm text-white/70">
+              Dificuldade: <span className="font-semibold text-white">{selecionada.dificuldade?.rotulo}</span>
+            </p>
+            <p className="text-sm text-white/70">
+              Peso conhecido: {selecionada.peso_min_g}g – {selecionada.peso_max_g}g
+            </p>
+            <div className="mt-3 rounded-lg bg-white/5 p-3">
+              <p className="text-xs uppercase tracking-wide text-sky-300">Comportamento</p>
+              <p className="text-sm text-white/80">{selecionada.comportamento?.descricao}</p>
+            </div>
+            <div className="mt-2 rounded-lg bg-white/5 p-3">
+              <p className="text-xs uppercase tracking-wide text-sky-300">Dica de pesca</p>
+              <p className="text-sm text-white/80">{selecionada.comportamento?.dica}</p>
+            </div>
+            <div className="mt-3 text-sm text-white/70">
+              <p>Capturados: {selecionada.total_capturado}</p>
+              <p>Maior exemplar: {selecionada.maior_peso_g}g</p>
+            </div>
+            {selecionada.zonas.length > 0 && (
+              <div className="mt-3 text-sm text-white/70">
+                <p className="text-xs uppercase tracking-wide text-sky-300">Encontrado em</p>
+                <p>{selecionada.zonas.map((z) => z.nome).join(", ")}</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

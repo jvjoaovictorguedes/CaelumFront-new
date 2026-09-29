@@ -109,8 +109,13 @@ export interface AlmanacEspecie {
   key: string;
   nome: string | null;
   descoberto: boolean;
+  comportamento: { key: string; nome: string; descricao: string; dica: string } | null;
+  dificuldade: { valor: number; rotulo: string } | null;
+  peso_min_g: number | null;
+  peso_max_g: number | null;
   total_capturado: number;
   maior_peso_g: number;
+  zonas: { id: number; nome: string }[];
   lendario: boolean;
 }
 
