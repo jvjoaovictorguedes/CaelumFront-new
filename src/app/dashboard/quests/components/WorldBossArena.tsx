@@ -224,7 +224,11 @@ export default function WorldBossArena() {
                 disabled={agindo || (lutador ? lutador.mana_atual < poder.custo_mana : false)}
                 onClick={() => usarPoder(poder)}
                 className="rounded-lg border border-[#F3B43F]/60 px-4 py-2 text-sm font-bold text-[#F3B43F] transition hover:bg-[#F3B43F]/10 disabled:opacity-50"
-                title={`Custo: ${poder.custo_mana} mana`}
+                title={
+                  poder.escala_atributo
+                    ? `Custo: ${poder.custo_mana} mana · Escala com ${poder.escala_atributo}${poder.valor_escala ? ` (x${poder.valor_escala})` : ""}`
+                    : `Custo: ${poder.custo_mana} mana`
+                }
               >
                 {poder.nome} ({poder.custo_mana} mana)
               </button>

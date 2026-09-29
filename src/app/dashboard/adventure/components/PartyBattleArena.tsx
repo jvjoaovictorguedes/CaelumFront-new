@@ -430,6 +430,8 @@ export default function PartyBattleArena() {
                 imagem_url: p.imagem_url,
                 custo_mana: p.custo_mana,
                 descricao: "",
+                escala_atributo: p.escala_atributo,
+                valor_escala: p.valor_escala,
               }))}
               onUsarPoder={(powerId) => agirGrupo("power", powerId)}
               consumiveis={meuMembro?.consumiveis ?? []}

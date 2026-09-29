@@ -1,10 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import axios from "axios";
 import axiosInstance from "@/utils/axiosIntance";
-import { AVATAR_CATALOGO } from "@/utils/media-url";
+import { AVATAR_CATALOGO, resolveMediaUrl } from "@/utils/media-url";
+
+interface OpcaoAvatar {
+  chave: string;
+  rotulo: string;
+  src: string;
+}
 
 export default function AvatarPickerModal({
   characterId,
@@ -18,6 +24,37 @@ export default function AvatarPickerModal({
   const router = useRouter();
   const [salvando, setSalvando] = useState<string | null>(null);
   const [erro, setErro] = useState("");
+  const [opcoes, setOpcoes] = useState<OpcaoAvatar[] | null>(null);
+
+  // Busca no servidor QUAIS avatares esse personagem específico pode
+  // escolher (raças base sempre livres + guerreiro/mago/celestial só se
+  // ele É de fato daquela classe/raça + extras do admin já filtrados) —
+  // nunca confiar só na validação do PATCH: sem isso o jogador via (e
+  // clicava em) opções que o servidor recusava na hora de salvar.
+  useEffect(() => {
+    let cancelado = false;
+    axiosInstance
+      .get<{ data: { estaticos: string[]; admin: { chave: string; src: string }[] } }>(
+        `/characters/${characterId}/avatares-disponiveis`,
+      )
+      .then((resposta) => {
+        if (cancelado) return;
+        const { estaticos, admin } = resposta.data.data;
+        const estaticosResolvidos = AVATAR_CATALOGO.filter((a) => estaticos.includes(a.chave));
+        const adminResolvidos = admin.map((a) => ({
+          chave: a.chave,
+          rotulo: a.chave,
+          src: resolveMediaUrl(a.src) ?? a.src,
+        }));
+        setOpcoes([...estaticosResolvidos, ...adminResolvidos]);
+      })
+      .catch(() => {
+        if (!cancelado) setErro("Não foi possível carregar os avatares disponíveis.");
+      });
+    return () => {
+      cancelado = true;
+    };
+  }, [characterId]);
 
   async function escolher(chave: string) {
     if (salvando) return;
@@ -61,8 +98,10 @@ export default function AvatarPickerModal({
           <p className="mb-3 rounded-lg bg-red-900/40 p-2 text-sm text-red-200">{erro}</p>
         )}
 
+        {opcoes === null && !erro && <p className="text-sm text-white/50">Carregando avatares...</p>}
+
         <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
-          {AVATAR_CATALOGO.map(({ chave, rotulo, src }) => (
+          {(opcoes ?? []).map(({ chave, rotulo, src }) => (
             <button
               key={chave}
               type="button"

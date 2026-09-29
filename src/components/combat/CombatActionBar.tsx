@@ -10,12 +10,22 @@
 import { resolveMediaUrl } from "@/utils/media-url";
 import ActionTooltip from "@/components/Tooltip/ActionTooltip";
 
+const NOME_ATRIBUTO: Record<string, string> = {
+  Forca: "Força",
+  Vitalidade: "Vitalidade",
+  Agilidade: "Agilidade",
+  Inteligencia: "Inteligência",
+  Velocidade: "Velocidade",
+};
+
 export interface PoderAcao {
   id: number;
   nome: string;
   imagem_url?: string | null;
   custo_mana: number;
   descricao?: string;
+  escala_atributo?: string;
+  valor_escala?: number;
 }
 
 export interface ConsumivelAcao {
@@ -92,6 +102,12 @@ export default function CombatActionBar({
                     <div>
                       <p className="font-bold">{poder.nome}</p>
                       <p className="text-xs">{poder.custo_mana} de mana</p>
+                      {poder.escala_atributo && (
+                        <p className="text-xs text-[#3a2f24]/80">
+                          Escala com {NOME_ATRIBUTO[poder.escala_atributo] ?? poder.escala_atributo}
+                          {poder.valor_escala ? ` (x${poder.valor_escala})` : ""}
+                        </p>
+                      )}
                       {poder.descricao && (
                         <p className="mt-1 text-xs text-[#3a2f24]/80">{poder.descricao}</p>
                       )}

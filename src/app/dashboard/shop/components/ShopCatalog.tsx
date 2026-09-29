@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import ShopItem, { type ShopItemData } from "./ShopItem";
 
-type Secao = "Equipamentos" | "Consumiveis" | "Materiais";
+type Secao = "Equipamentos" | "Ferramentas" | "Consumiveis" | "Materiais";
 
 // "Botas" é Armadura com slot_equipamento "Pes" — mesmo tipo_item das
 // peças de peito, só separadas aqui como filtro pra facilitar achar.
@@ -23,6 +23,7 @@ const SECOES: { chave: Secao; titulo: string; pertence: (item: ShopItemData) => 
       item.tipo_item === "Acessorio1" ||
       item.tipo_item === "Acessorio2",
   },
+  { chave: "Ferramentas", titulo: "Ferramentas", pertence: (item) => item.tipo_item === "Ferramenta" },
   { chave: "Consumiveis", titulo: "Consumíveis", pertence: (item) => item.tipo_item === "Consumivel" },
   { chave: "Materiais", titulo: "Materiais", pertence: (item) => item.tipo_item === "Material" },
 ];

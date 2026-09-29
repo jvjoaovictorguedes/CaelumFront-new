@@ -46,6 +46,8 @@ export interface WorldBossPoderApi {
   custo_mana: number;
   dano_base: number;
   nivel_habilidade: number;
+  escala_atributo?: string;
+  valor_escala?: number;
 }
 
 export interface WorldBossLutadorApi {
