@@ -4,38 +4,50 @@ import { useCallback, useEffect, useState } from "react";
 import axiosInstance from "@/utils/axiosIntance";
 import { useCharacter } from "@/contexts/CharacterContext";
 
+interface RequisitoEvolucao {
+  id: number;
+  tipo: string;
+  quantidade: number;
+  reference_id: number | null;
+  reference_key: string | null;
+  atendido: boolean;
+  atual: unknown;
+  meta: unknown;
+  rotulo: string;
+  naoImplementado?: boolean;
+}
+
 interface CaminhoEvolucao {
   id: number;
   nome: string;
   descricao: string;
-  nivel_necessario: number;
-  nome_item_requisito: string | null;
-  quantidade_item_requisito: number;
-  quantidade_no_inventario: number;
-  nome_monstro_alvo: string | null;
-  quantidade_monstro_necessaria: number | null;
-  quantidade_monstro_atual: number;
-  monstro_ok: boolean;
-  custo_ouro: number;
-  ouro_ok: boolean;
+  estagio: number;
+  id_evolucao_pai: number | null;
+  icone_url: string | null;
+  imagem_url: string | null;
   bonus_forca: number;
   bonus_vitalidade: number;
   bonus_agilidade: number;
   bonus_inteligencia: number;
   bonus_velocidade: number;
-  escolhido: boolean;
-  pode_evoluir: boolean;
-  nivel_ok: boolean;
-  item_ok: boolean;
+  requisitos: RequisitoEvolucao[];
+  atende_requisitos: boolean;
+}
+
+interface EstagioEvolucao {
+  disponivel?: boolean;
+  adquirida: boolean;
+  caminho_escolhido_id: number | null;
+  caminho_escolhido_nome: string | null;
+  opcoes: CaminhoEvolucao[];
 }
 
 interface StatusEvolucaoClasse {
   disponivel: boolean;
-  ja_evoluida?: boolean;
-  caminho_escolhido?: string | null;
-  nivel_atual?: number;
-  dinheiro_atual?: number;
-  caminhos?: CaminhoEvolucao[];
+  nivel_atual: number;
+  dinheiro_atual: number;
+  estagio_1: EstagioEvolucao;
+  estagio_2: EstagioEvolucao;
 }
 
 const LABEL_ATRIBUTO: Record<string, string> = {
@@ -52,11 +64,85 @@ function bonusResumo(caminho: CaminhoEvolucao) {
     .filter((b) => b.valor > 0);
 }
 
-// Evolução de CLASSE — árvore de caminhos exclusivos (o personagem
-// escolhe UM em definitivo). Diferente da árvore de Evolution logo
-// abaixo (aquela é por natureza mágica, comprada com ouro, cumulativa
-// em vários nós) — esta é nível alto + 1 Relíquia de Ascensão
-// específica do caminho, um "capstone" de fim de progressão.
+// Um card de caminho (estágio 1 OU 2) — evoluir() é injetado de fora
+// pra este componente não precisar saber em qual estágio está.
+function CardCaminho({
+  caminho,
+  escolhido,
+  bloqueado,
+  processando,
+  onEvoluir,
+}: {
+  caminho: CaminhoEvolucao;
+  escolhido: boolean;
+  bloqueado: boolean;
+  processando: boolean;
+  onEvoluir: () => void;
+}) {
+  return (
+    <div
+      className={`flex flex-1 flex-col gap-2 rounded-xl border-2 p-3 text-center transition ${
+        escolhido
+          ? "border-purple-400 bg-purple-950/50"
+          : bloqueado
+            ? "border-white/10 bg-black/20 opacity-50"
+            : "border-[#F3B43F]/50 bg-black/20"
+      }`}
+    >
+      <div className="mx-auto flex h-14 w-14 items-center justify-center overflow-hidden rounded-full border-2 border-[#F3B43F]/60 bg-[#292018] text-lg font-bold text-[#F3B43F]">
+        {caminho.icone_url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={caminho.icone_url} alt={caminho.nome} className="h-full w-full object-cover" />
+        ) : (
+          caminho.nome.charAt(0)
+        )}
+      </div>
+      <p className="font-imFeel text-base uppercase text-white">{caminho.nome}</p>
+      <p className="text-[11px] text-white/60">{caminho.descricao}</p>
+
+      <div className="flex flex-wrap justify-center gap-1.5 text-[10px]">
+        {bonusResumo(caminho).map((b) => (
+          <span key={b.label} className="rounded bg-[#F3B43F]/15 px-1.5 py-0.5 font-bold text-[#F3B43F]">
+            +{b.valor} {b.label}
+          </span>
+        ))}
+      </div>
+
+      {escolhido ? (
+        <p className="mt-1 text-[11px] font-bold uppercase text-purple-300">Caminho escolhido</p>
+      ) : (
+        <>
+          {caminho.requisitos.length > 0 && (
+            <div className="mt-1 rounded-lg border border-white/10 bg-black/30 p-2 text-left text-[10px]">
+              <p className="mb-1 font-bold uppercase tracking-wide text-white/50">Requisitos</p>
+              {caminho.requisitos.map((req) => (
+                <p key={req.id} className={req.atendido ? "text-green-400" : "text-white/60"}>
+                  {req.atendido ? "✓" : "✗"} {req.rotulo}
+                </p>
+              ))}
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={onEvoluir}
+            disabled={!caminho.atende_requisitos || processando || bloqueado}
+            className="mt-1 rounded-lg bg-purple-500/80 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-purple-500 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            {processando ? "Evoluindo..." : "Confirmar Evolução"}
+          </button>
+        </>
+      )}
+    </div>
+  );
+}
+
+// Evolução de CLASSE — árvore de caminhos exclusivos em 2 estágios
+// (Lv.40 e Lv.100): o personagem escolhe UM caminho de estágio 1 em
+// definitivo; se aquele caminho tiver filhos cadastrados, o estágio 2
+// libera exclusivamente entre eles. Diferente da árvore de Evolution
+// logo abaixo (aquela é por natureza mágica, comprada com ouro,
+// cumulativa em vários nós) — esta é um "capstone" de fim de
+// progressão, com bônus permanente de atributos.
 export default function ClassEvolutionCard({ characterId }: { characterId: number }) {
   const [status, setStatus] = useState<StatusEvolucaoClasse | null>(null);
   const [carregando, setCarregando] = useState(true);
@@ -104,7 +190,7 @@ export default function ClassEvolutionCard({ characterId }: { characterId: numbe
 
   if (carregando || !status?.disponivel) return null;
 
-  const caminhos = status.caminhos ?? [];
+  const { estagio_1: estagio1, estagio_2: estagio2 } = status;
 
   return (
     <div className="mb-5 rounded-xl border-2 border-purple-400/60 bg-gradient-to-b from-purple-950/40 to-[#3a2f24] p-4">
@@ -112,92 +198,68 @@ export default function ClassEvolutionCard({ characterId }: { characterId: numbe
         Evolução de Classe
       </p>
 
-      {status.ja_evoluida ? (
-        <p className="mb-4 text-sm text-white/80">
-          Seu personagem já evoluiu pra{" "}
-          <span className="font-bold text-purple-300">{status.caminho_escolhido}</span>. Um bônus
-          permanente de atributos já está ativo — não dá pra trocar de caminho depois.
+      {/* Estágio 1 — Lv.40 */}
+      <div className="mb-4">
+        <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-white/50">
+          Estágio 1 {estagio1.adquirida && estagio1.caminho_escolhido_nome ? `· ${estagio1.caminho_escolhido_nome}` : ""}
         </p>
-      ) : (
-        <p className="mb-4 text-sm text-white/80">
-          Ao alcançar nível alto o suficiente, escolha UM caminho em definitivo — cada um dá um
-          perfil de atributo diferente. Depois de escolher, não dá pra trocar.
-        </p>
-      )}
-
-      <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-start sm:justify-center">
-        {caminhos.map((caminho) => {
-          const bloqueadoPorEscolhaAlheia = Boolean(status.ja_evoluida) && !caminho.escolhido;
-          return (
-            <div
+        {estagio1.adquirida ? (
+          <p className="mb-3 text-sm text-white/80">
+            Seu personagem já evoluiu pra{" "}
+            <span className="font-bold text-purple-300">{estagio1.caminho_escolhido_nome}</span>. Um
+            bônus permanente de atributos já está ativo — não dá pra trocar de caminho depois.
+          </p>
+        ) : (
+          <p className="mb-3 text-sm text-white/80">
+            Ao alcançar nível alto o suficiente, escolha UM caminho em definitivo — cada um dá um
+            perfil de atributo diferente. Depois de escolher, não dá pra trocar.
+          </p>
+        )}
+        <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-start sm:justify-center">
+          {estagio1.opcoes.map((caminho) => (
+            <CardCaminho
               key={caminho.id}
-              className={`flex flex-1 flex-col gap-2 rounded-xl border-2 p-3 text-center transition ${
-                caminho.escolhido
-                  ? "border-purple-400 bg-purple-950/50"
-                  : bloqueadoPorEscolhaAlheia
-                    ? "border-white/10 bg-black/20 opacity-50"
-                    : "border-[#F3B43F]/50 bg-black/20"
-              }`}
-            >
-              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border-2 border-[#F3B43F]/60 bg-[#292018] text-lg font-bold text-[#F3B43F]">
-                {caminho.nome.charAt(0)}
-              </div>
-              <p className="font-imFeel text-base uppercase text-white">{caminho.nome}</p>
-              <p className="text-[11px] text-white/60">{caminho.descricao}</p>
-
-              <div className="flex flex-wrap justify-center gap-1.5 text-[10px]">
-                {bonusResumo(caminho).map((b) => (
-                  <span
-                    key={b.label}
-                    className="rounded bg-[#F3B43F]/15 px-1.5 py-0.5 font-bold text-[#F3B43F]"
-                  >
-                    +{b.valor} {b.label}
-                  </span>
-                ))}
-              </div>
-
-              {caminho.escolhido ? (
-                <p className="mt-1 text-[11px] font-bold uppercase text-purple-300">Caminho escolhido</p>
-              ) : (
-                <>
-                  <div className="mt-1 rounded-lg border border-white/10 bg-black/30 p-2 text-left text-[10px]">
-                    <p className="mb-1 font-bold uppercase tracking-wide text-white/50">Requisitos</p>
-                    <p className={caminho.nivel_ok ? "text-green-400" : "text-white/60"}>
-                      {caminho.nivel_ok ? "✓" : "✗"} Nível {caminho.nivel_necessario} (atual:{" "}
-                      {status.nivel_atual})
-                    </p>
-                    <p className={caminho.item_ok ? "text-green-400" : "text-white/60"}>
-                      {caminho.item_ok ? "✓" : "✗"} {caminho.nome_item_requisito} (
-                      {caminho.quantidade_no_inventario}/{caminho.quantidade_item_requisito})
-                    </p>
-                    {caminho.nome_monstro_alvo && (
-                      <p className={caminho.monstro_ok ? "text-green-400" : "text-white/60"}>
-                        {caminho.monstro_ok ? "✓" : "✗"} Derrotar {caminho.quantidade_monstro_necessaria}x{" "}
-                        {caminho.nome_monstro_alvo} ({caminho.quantidade_monstro_atual}/
-                        {caminho.quantidade_monstro_necessaria})
-                      </p>
-                    )}
-                    {caminho.custo_ouro > 0 && (
-                      <p className={caminho.ouro_ok ? "text-green-400" : "text-white/60"}>
-                        {caminho.ouro_ok ? "✓" : "✗"} {caminho.custo_ouro} de ouro (você tem{" "}
-                        {status.dinheiro_atual ?? 0})
-                      </p>
-                    )}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => evoluir(caminho)}
-                    disabled={!caminho.pode_evoluir || processandoId !== null || bloqueadoPorEscolhaAlheia}
-                    className="mt-1 rounded-lg bg-purple-500/80 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-purple-500 disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    {processandoId === caminho.id ? "Evoluindo..." : "Confirmar Evolução"}
-                  </button>
-                </>
-              )}
-            </div>
-          );
-        })}
+              caminho={caminho}
+              escolhido={caminho.id === estagio1.caminho_escolhido_id}
+              bloqueado={estagio1.adquirida && caminho.id !== estagio1.caminho_escolhido_id}
+              processando={processandoId === caminho.id}
+              onEvoluir={() => evoluir(caminho)}
+            />
+          ))}
+        </div>
       </div>
+
+      {/* Estágio 2 — Lv.100, só aparece depois do estágio 1 escolhido */}
+      {estagio1.adquirida && estagio2.disponivel && (
+        <div>
+          <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-white/50">
+            Estágio 2 {estagio2.adquirida && estagio2.caminho_escolhido_nome ? `· ${estagio2.caminho_escolhido_nome}` : ""}
+          </p>
+          {estagio2.adquirida ? (
+            <p className="mb-3 text-sm text-white/80">
+              Ascensão final conquistada:{" "}
+              <span className="font-bold text-purple-300">{estagio2.caminho_escolhido_nome}</span>.
+            </p>
+          ) : (
+            <p className="mb-3 text-sm text-white/80">
+              A ascensão final da sua linhagem — escolha entre os caminhos abaixo, exclusivos de quem
+              seguiu {estagio1.caminho_escolhido_nome}.
+            </p>
+          )}
+          <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-start sm:justify-center">
+            {estagio2.opcoes.map((caminho) => (
+              <CardCaminho
+                key={caminho.id}
+                caminho={caminho}
+                escolhido={caminho.id === estagio2.caminho_escolhido_id}
+                bloqueado={estagio2.adquirida && caminho.id !== estagio2.caminho_escolhido_id}
+                processando={processandoId === caminho.id}
+                onEvoluir={() => evoluir(caminho)}
+              />
+            ))}
+          </div>
+        </div>
+      )}
 
       {mensagem && <p className="mt-3 text-xs text-purple-200">{mensagem}</p>}
     </div>
