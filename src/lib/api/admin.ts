@@ -1532,6 +1532,13 @@ export interface WorldBossPhaseApi {
   hp_percentual_max: number;
   modificador_dano_percentual?: number;
   texto_alerta?: string | null;
+  // Ameaça Mundial V2 §5.1/§13.3 — modelo híbrido dano min/max + Fúria por fase.
+  dano_min?: number;
+  dano_max?: number;
+  furia_por_acao_pct?: number;
+  limite_furia_pct?: number | null;
+  intervalo_acao_ms?: number | null;
+  mana_ao_entrar?: number | null;
 }
 
 export interface WorldBossConfigApi {
@@ -1553,8 +1560,27 @@ export interface WorldBossConfigApi {
   gold_participacao: number;
   xp_participacao: number;
   min_dano_participacao: number | null;
+  // Ameaça Mundial V2 §4.1/§13.2 — Atributos.
+  nivel: number;
+  forca: number;
+  vitalidade: number;
+  agilidade: number;
+  inteligencia: number;
+  velocidade: number;
+  mana_maxima: number;
+  // §3.2/§13.2 — Combate em Tempo Real.
+  regeneracao_mana_por_acao: number;
+  intervalo_acao_ms: number;
+  // §8.2/§13.2 — regras de reentrada.
+  reentrada_permitida: boolean;
+  cooldown_reentrada_segundos: number;
   fases: WorldBossPhaseApi[];
   zonas: number[];
+  // Só presentes no GET /configs/:id (carregarComDetalhes) — nunca na
+  // listagem paginada nem no payload de criar/atualizar.
+  habilidades?: WorldBossAbilityApi[];
+  resistencias?: WorldBossStatusResistanceApi[];
+  recompensas_ranking?: WorldBossRankingRewardApi[];
 }
 
 // A listagem (GET /configs) nunca carrega fases/zonas completas — só
@@ -1582,6 +1608,17 @@ export interface PayloadWorldBossConfigAdmin {
   gold_participacao?: number;
   xp_participacao?: number;
   min_dano_participacao?: number | null;
+  nivel?: number;
+  forca?: number;
+  vitalidade?: number;
+  agilidade?: number;
+  inteligencia?: number;
+  velocidade?: number;
+  mana_maxima?: number;
+  regeneracao_mana_por_acao?: number;
+  intervalo_acao_ms?: number;
+  reentrada_permitida?: boolean;
+  cooldown_reentrada_segundos?: number;
   fases?: WorldBossPhaseApi[];
   zonas?: number[];
   ativo?: boolean;
@@ -1658,6 +1695,50 @@ export async function obterWorldBossMetricasAdmin(): Promise<WorldBossMetricsApi
   return resposta.data.data;
 }
 
+// Instância de status ativo no motor de combate (statusEffectService) —
+// mesma forma usada em todo o jogo (PvE solo, Guilda, agora o Boss
+// Global); nunca redefinida por domínio.
+export interface StatusEfeitoAtivoApi {
+  key: string;
+  sourceActorId?: number | string | null;
+  sourcePowerId?: number | null;
+  sourceItemId?: number | null;
+  remainingTurns: number;
+  stacks: number;
+  potency: number;
+  appliedAtTurn?: number;
+  target?: string;
+}
+
+// §10.2/§10.4 — mesma linha usada pelo ranking público (worldBossRankingService.
+// obterRanking); badges são cumulativos (0 a 3: MAIOR_DANO/GOLPE_FINAL/DESCOBRIDOR).
+export interface WorldBossRankingLinhaApi {
+  posicao: number;
+  character_id: number;
+  nome: string | null;
+  damage_total: number;
+  damage_percent: number;
+  badges: ("MAIOR_DANO" | "GOLPE_FINAL" | "DESCOBRIDOR")[];
+}
+
+// §13.7 — monitor ao vivo do relógio de combate (Etapa 3/5/6), plugado
+// dentro do status operacional já existente; null pra qualquer status
+// fora de ACTIVE.
+export interface WorldBossRuntimeV2Api {
+  mana_current: number;
+  mana_maxima: number | null;
+  boss_action_seq: number;
+  phase_action_seq: number;
+  furia_current_pct: number;
+  fase_atual: { ordem: number; nome_fase: string } | null;
+  next_action_at: string | null;
+  proxima_acao_em_ms: number | null;
+  cast_pendente: { power: { id: number; nome: string } | null; resolves_at: string } | null;
+  status_boss: StatusEfeitoAtivoApi[];
+  participantes: { ativos: number; derrotados: number; total: number };
+  ranking_ao_vivo: WorldBossRankingLinhaApi[];
+}
+
 export interface WorldBossStatusOperacionalApi {
   status: string;
   id?: number;
@@ -1668,14 +1749,17 @@ export interface WorldBossStatusOperacionalApi {
   discovery_threshold?: number | null;
   discovery_progress?: number;
   discoverer_character_id?: number | null;
+  descobridor?: { id: number; nome: string } | null;
   discovery_zone_id?: number | null;
   discovered_at?: string | null;
   auto_awaken_at?: string | null;
   activated_at?: string | null;
   final_blow_character_id?: number | null;
+  golpe_final_por?: { id: number; nome: string } | null;
   defeated_at?: string | null;
   next_eligible_at?: string | null;
   participation_rewards_status?: string;
+  runtime_v2?: WorldBossRuntimeV2Api | null;
 }
 
 export async function obterWorldBossStatusOperacionalAdmin(): Promise<WorldBossStatusOperacionalApi> {
@@ -1690,6 +1774,167 @@ export async function despertarWorldBossAdmin(payload: { motivo: string }): Prom
 }
 export async function cancelarCicloWorldBossAdmin(payload: { motivo: string }): Promise<void> {
   await axiosInstance.post("/admin/world-boss/current/cancel", payload);
+}
+
+// Ameaça Mundial V2 — Etapa 11 (§13.2/§13.5): Habilidades do Boss —
+// cada linha vincula um Power real do catálogo, com regras de alvo,
+// peso de uso, prioridade, tempo de conjuração e fases em que é
+// elegível (fases_permitidas null = elegível em toda fase).
+export type WorldBossTipoAlvoApi = "ALEATORIO" | "MAIOR_DANO" | "MENOR_VIDA" | "N_ALEATORIOS" | "TODOS" | "SELF";
+
+export interface WorldBossAbilityApi {
+  id: number;
+  id_world_boss_config: number;
+  id_power: number;
+  peso_uso: number;
+  prioridade: number;
+  fases_permitidas: number[] | null;
+  tipo_alvo: WorldBossTipoAlvoApi;
+  quantidade_alvos: number | null;
+  tempo_conjuracao_ms: number;
+  cooldown_override: number | null;
+  custo_mana_override: number | null;
+  escala_com_furia: boolean;
+  ativo: boolean;
+  Power?: PowerApi;
+}
+
+export interface PayloadWorldBossAbilityAdmin {
+  id_power: number;
+  peso_uso?: number;
+  prioridade?: number;
+  fases_permitidas?: number[] | null;
+  tipo_alvo?: WorldBossTipoAlvoApi;
+  quantidade_alvos?: number | null;
+  tempo_conjuracao_ms?: number;
+  cooldown_override?: number | null;
+  custo_mana_override?: number | null;
+  escala_com_furia?: boolean;
+  ativo?: boolean;
+}
+
+export async function listarHabilidadesWorldBossAdmin(idConfig: number): Promise<WorldBossAbilityApi[]> {
+  const resposta = await axiosInstance.get<{ data: { habilidades: WorldBossAbilityApi[] } }>(`/admin/world-boss/configs/${idConfig}/abilities`);
+  return resposta.data.data.habilidades;
+}
+export async function criarHabilidadeWorldBossAdmin(idConfig: number, payload: PayloadWorldBossAbilityAdmin): Promise<WorldBossAbilityApi> {
+  const resposta = await axiosInstance.post<{ data: { habilidade: WorldBossAbilityApi } }>(`/admin/world-boss/configs/${idConfig}/abilities`, payload);
+  return resposta.data.data.habilidade;
+}
+export async function atualizarHabilidadeWorldBossAdmin(idConfig: number, idHabilidade: number, payload: Partial<PayloadWorldBossAbilityAdmin>): Promise<WorldBossAbilityApi> {
+  const resposta = await axiosInstance.patch<{ data: { habilidade: WorldBossAbilityApi } }>(`/admin/world-boss/configs/${idConfig}/abilities/${idHabilidade}`, payload);
+  return resposta.data.data.habilidade;
+}
+export async function excluirHabilidadeWorldBossAdmin(idConfig: number, idHabilidade: number): Promise<void> {
+  await axiosInstance.delete(`/admin/world-boss/configs/${idConfig}/abilities/${idHabilidade}`);
+}
+
+// Resistências (WorldBossStatusResistance) — §7.1/§13.2. status_key
+// vem do catálogo compartilhado do motor de status (catalogoStatusAdmin,
+// já usado pelo painel de Powers); nunca uma lista redigitada aqui.
+export interface WorldBossStatusResistanceApi {
+  id: number;
+  id_world_boss_config: number;
+  status_key: string;
+  imune: boolean;
+  resistencia_pct: number;
+  ativo: boolean;
+}
+
+export interface PayloadWorldBossResistanceAdmin {
+  status_key: string;
+  imune?: boolean;
+  resistencia_pct?: number;
+  ativo?: boolean;
+}
+
+export async function listarResistenciasWorldBossAdmin(idConfig: number): Promise<WorldBossStatusResistanceApi[]> {
+  const resposta = await axiosInstance.get<{ data: { resistencias: WorldBossStatusResistanceApi[] } }>(`/admin/world-boss/configs/${idConfig}/resistances`);
+  return resposta.data.data.resistencias;
+}
+export async function criarResistenciaWorldBossAdmin(idConfig: number, payload: PayloadWorldBossResistanceAdmin): Promise<WorldBossStatusResistanceApi> {
+  const resposta = await axiosInstance.post<{ data: { resistencia: WorldBossStatusResistanceApi } }>(`/admin/world-boss/configs/${idConfig}/resistances`, payload);
+  return resposta.data.data.resistencia;
+}
+export async function atualizarResistenciaWorldBossAdmin(idConfig: number, idResistencia: number, payload: Partial<PayloadWorldBossResistanceAdmin>): Promise<WorldBossStatusResistanceApi> {
+  const resposta = await axiosInstance.patch<{ data: { resistencia: WorldBossStatusResistanceApi } }>(`/admin/world-boss/configs/${idConfig}/resistances/${idResistencia}`, payload);
+  return resposta.data.data.resistencia;
+}
+export async function excluirResistenciaWorldBossAdmin(idConfig: number, idResistencia: number): Promise<void> {
+  await axiosInstance.delete(`/admin/world-boss/configs/${idConfig}/resistances/${idResistencia}`);
+}
+
+// Recompensas de ranking (WorldBossRankingReward) — §11.3/§13.6. Cada
+// linha é uma FAIXA de posições (ex.: 1-1, 2-5) com gold/xp/item fixos;
+// a faixa que cobre a posição 1 é a recompensa de "Maior Dano".
+export interface WorldBossRankingRewardApi {
+  id: number;
+  id_world_boss_config: number;
+  posicao_inicio: number;
+  posicao_fim: number;
+  id_item: number | null;
+  quantidade: number;
+  gold: number;
+  xp: number;
+  ativo: boolean;
+  item?: { id: number; nome: string; imagem_url: string | null } | null;
+}
+
+export interface PayloadWorldBossRankingRewardAdmin {
+  posicao_inicio: number;
+  posicao_fim: number;
+  id_item?: number | null;
+  quantidade?: number;
+  gold?: number;
+  xp?: number;
+  ativo?: boolean;
+}
+
+export async function listarRecompensasRankingWorldBossAdmin(idConfig: number): Promise<WorldBossRankingRewardApi[]> {
+  const resposta = await axiosInstance.get<{ data: { recompensas: WorldBossRankingRewardApi[] } }>(`/admin/world-boss/configs/${idConfig}/ranking-rewards`);
+  return resposta.data.data.recompensas;
+}
+export async function criarRecompensaRankingWorldBossAdmin(idConfig: number, payload: PayloadWorldBossRankingRewardAdmin): Promise<WorldBossRankingRewardApi> {
+  const resposta = await axiosInstance.post<{ data: { recompensa: WorldBossRankingRewardApi } }>(`/admin/world-boss/configs/${idConfig}/ranking-rewards`, payload);
+  return resposta.data.data.recompensa;
+}
+export async function atualizarRecompensaRankingWorldBossAdmin(idConfig: number, idRecompensa: number, payload: Partial<PayloadWorldBossRankingRewardAdmin>): Promise<WorldBossRankingRewardApi> {
+  const resposta = await axiosInstance.patch<{ data: { recompensa: WorldBossRankingRewardApi } }>(`/admin/world-boss/configs/${idConfig}/ranking-rewards/${idRecompensa}`, payload);
+  return resposta.data.data.recompensa;
+}
+export async function excluirRecompensaRankingWorldBossAdmin(idConfig: number, idRecompensa: number): Promise<void> {
+  await axiosInstance.delete(`/admin/world-boss/configs/${idConfig}/ranking-rewards/${idRecompensa}`);
+}
+
+// Preview de dano server-side (§13.4) — reaproveita a MESMA fórmula do
+// relógio de combate real (worldBossRuntimeService.furiaPctDe); o
+// frontend nunca recalcula isso, só exibe o resultado devolvido aqui.
+export interface WorldBossPreviewDanoApi {
+  fase: { ordem: number; nome_fase: string; limite_furia_pct: number | null };
+  estimativas: { acao: number; furia_pct: number; dano_min: number; dano_max: number }[];
+}
+
+export async function previewDanoWorldBossAdmin(idConfig: number, payload: { faseOrdem?: number; acoes?: number[] } = {}): Promise<WorldBossPreviewDanoApi> {
+  const resposta = await axiosInstance.post<{ data: WorldBossPreviewDanoApi }>(`/admin/world-boss/configs/${idConfig}/preview-damage`, payload);
+  return resposta.data.data;
+}
+
+// Preview de dano/cura de UMA habilidade (§13.5) — reaproveita
+// calcularEfeitoPoderEsperado (mesma fórmula determinística do Power
+// Score) com os atributos atuais do Boss; nunca recalculado aqui.
+export interface WorldBossPreviewHabilidadeApi {
+  habilidade: { id: number; tipo_alvo: WorldBossTipoAlvoApi; tempo_conjuracao_ms: number; escala_com_furia: boolean; cooldown: number };
+  power: { id: number; nome: string; escala_atributo: string; valor_escala: number; custo_mana: number };
+  fase: { ordem: number; nome_fase: string; limite_furia_pct: number | null };
+  estimativas: { acao: number; furia_pct: number; dano: number; cura: number }[];
+}
+
+export async function previewHabilidadeWorldBossAdmin(
+  idConfig: number,
+  payload: { idAbility: number; faseOrdem?: number; acoes?: number[] },
+): Promise<WorldBossPreviewHabilidadeApi> {
+  const resposta = await axiosInstance.post<{ data: WorldBossPreviewHabilidadeApi }>(`/admin/world-boss/configs/${idConfig}/preview-ability`, payload);
+  return resposta.data.data;
 }
 
 // Painel Administrativo — Pesca & Navegação: Zonas, Espécies, Pool

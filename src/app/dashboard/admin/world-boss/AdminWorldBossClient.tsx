@@ -3,48 +3,27 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import {
-  atualizarWorldBossConfigAdmin,
-  atualizarWorldBossSettingsAdmin,
   cancelarCicloWorldBossAdmin,
-  criarWorldBossConfigAdmin,
   desativarWorldBossConfigAdmin,
   despertarWorldBossAdmin,
   duplicarWorldBossConfigAdmin,
   forcarDescobertaWorldBossAdmin,
   listarWorldBossConfigsAdmin,
   mensagemDeErroAdmin,
-  obterWorldBossConfigAdmin,
   obterWorldBossMetricasAdmin,
   obterWorldBossSettingsAdmin,
   obterWorldBossStatusOperacionalAdmin,
+  atualizarWorldBossSettingsAdmin,
   reativarWorldBossConfigAdmin,
-  type PayloadWorldBossConfigAdmin,
   type WorldBossConfigListItemApi,
   type WorldBossMetricsApi,
-  type WorldBossPhaseApi,
   type WorldBossSettingsApi,
   type WorldBossStatusOperacionalApi,
 } from "@/lib/api/admin";
-import { ItemSelect, useItensParaSelecaoAdmin } from "@/components/admin/ItemPicker";
+import WorldBossEditorDrawer from "./components/WorldBossEditorDrawer";
+import WorldBossLiveMonitor from "./components/WorldBossLiveMonitor";
 
 type Aba = "catalogo" | "ciclo" | "config" | "metricas";
-
-function configFormVazio(): PayloadWorldBossConfigAdmin {
-  return {
-    nome: "",
-    descricao: "",
-    vida_base: 1000000,
-    defesa: 0,
-    mensagem_descoberta: "",
-    mensagem_convocacao: "",
-    id_item_golpe_final: 0,
-    gold_descoberta: 0,
-    gold_participacao: 0,
-    xp_participacao: 0,
-    fases: [{ ordem: 1, nome_fase: "Fase 1", hp_percentual_max: 100 }],
-    zonas: [],
-  };
-}
 
 export default function AdminWorldBossClient() {
   const [aba, setAba] = useState<Aba>("catalogo");
@@ -91,13 +70,8 @@ function AbaCatalogo() {
   const [total, setTotal] = useState(0);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
-  const [mensagem, setMensagem] = useState("");
-  const [editandoId, setEditandoId] = useState<number | null>(null);
-  const [form, setForm] = useState<PayloadWorldBossConfigAdmin>(configFormVazio());
-  const { itens: itensDisponiveis } = useItensParaSelecaoAdmin();
-  const [salvando, setSalvando] = useState(false);
-  const [mostrarForm, setMostrarForm] = useState(false);
-  const [carregandoEdicao, setCarregandoEdicao] = useState(false);
+  const [editorAberto, setEditorAberto] = useState(false);
+  const [idConfigEditando, setIdConfigEditando] = useState<number | null>(null);
 
   const carregar = useCallback(async () => {
     setCarregando(true);
@@ -118,69 +92,12 @@ function AbaCatalogo() {
   }, [carregar]);
 
   function abrirCriacao() {
-    setEditandoId(null);
-    setForm(configFormVazio());
-    setMostrarForm(true);
-    setMensagem("");
+    setIdConfigEditando(null);
+    setEditorAberto(true);
   }
-  // A linha da tabela (WorldBossConfigListItemApi) só tem CONTAGEM de
-  // fases/zonas (evita N+1 no backend) — editar precisa do conteúdo de
-  // verdade, então busca o GET /configs/:id completo antes de abrir o
-  // formulário.
-  async function abrirEdicao(idConfig: number) {
-    setCarregandoEdicao(true);
-    setErro("");
-    try {
-      const config = await obterWorldBossConfigAdmin(idConfig);
-      setEditandoId(config.id);
-      setForm({
-        nome: config.nome,
-        descricao: config.descricao,
-        lore: config.lore ?? "",
-        imagem_url: config.imagem_url ?? "",
-        peso_selecao: config.peso_selecao,
-        vida_base: Number(config.vida_base),
-        defesa: config.defesa,
-        mensagem_descoberta: config.mensagem_descoberta,
-        mensagem_convocacao: config.mensagem_convocacao,
-        mensagem_fase_final: config.mensagem_fase_final ?? "",
-        mensagem_derrota: config.mensagem_derrota ?? "",
-        id_item_golpe_final: config.id_item_golpe_final,
-        gold_descoberta: config.gold_descoberta,
-        gold_participacao: config.gold_participacao,
-        xp_participacao: config.xp_participacao,
-        min_dano_participacao: config.min_dano_participacao,
-        fases: config.fases.map((f) => ({ ...f })),
-        zonas: [...config.zonas],
-      });
-      setMostrarForm(true);
-      setMensagem("");
-    } catch (error) {
-      setErro(mensagemDeErroAdmin(error, "Não foi possível carregar os detalhes."));
-    } finally {
-      setCarregandoEdicao(false);
-    }
-  }
-
-  async function salvar(evento: React.FormEvent) {
-    evento.preventDefault();
-    setSalvando(true);
-    setMensagem("");
-    try {
-      if (editandoId) {
-        await atualizarWorldBossConfigAdmin(editandoId, form);
-        setMensagem(`"${form.nome}" atualizada.`);
-      } else {
-        await criarWorldBossConfigAdmin(form);
-        setMensagem(`"${form.nome}" criada.`);
-      }
-      setMostrarForm(false);
-      await carregar();
-    } catch (error) {
-      setMensagem(mensagemDeErroAdmin(error, "Não foi possível salvar."));
-    } finally {
-      setSalvando(false);
-    }
+  function abrirEdicao(idConfig: number) {
+    setIdConfigEditando(idConfig);
+    setEditorAberto(true);
   }
 
   async function duplicar(config: WorldBossConfigListItemApi) {
@@ -199,22 +116,6 @@ function AbaCatalogo() {
     } catch (error) {
       setErro(mensagemDeErroAdmin(error, "Não foi possível mudar o status."));
     }
-  }
-
-  function atualizarFase(index: number, patch: Partial<WorldBossPhaseApi>) {
-    setForm((f) => ({
-      ...f,
-      fases: (f.fases ?? []).map((fase, i) => (i === index ? { ...fase, ...patch } : fase)),
-    }));
-  }
-  function adicionarFase() {
-    setForm((f) => ({
-      ...f,
-      fases: [...(f.fases ?? []), { ordem: (f.fases?.length ?? 0) + 1, nome_fase: "", hp_percentual_max: 50 }],
-    }));
-  }
-  function removerFase(index: number) {
-    setForm((f) => ({ ...f, fases: (f.fases ?? []).filter((_, i) => i !== index) }));
   }
 
   return (
@@ -259,7 +160,7 @@ function AbaCatalogo() {
                   </td>
                   <td className="px-3 py-2">
                     <div className="flex flex-wrap gap-2">
-                      <button type="button" disabled={carregandoEdicao} onClick={() => abrirEdicao(config.id)} className="text-[#F3B43F] hover:underline disabled:opacity-50">Editar</button>
+                      <button type="button" onClick={() => abrirEdicao(config.id)} className="text-[#F3B43F] hover:underline">Editar</button>
                       <button type="button" onClick={() => duplicar(config)} className="text-white/70 hover:underline">Duplicar</button>
                       <button type="button" onClick={() => alternarAtivo(config)} className="text-white/70 hover:underline">
                         {config.ativo ? "Desativar" : "Reativar"}
@@ -273,152 +174,12 @@ function AbaCatalogo() {
         </table>
       </div>
 
-      {mostrarForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={() => setMostrarForm(false)}>
-          <form
-            onSubmit={salvar}
-            onClick={(e) => e.stopPropagation()}
-            className="flex max-h-[85vh] w-full max-w-xl flex-col gap-3 overflow-y-auto rounded-2xl border-2 border-[#F3B43F] bg-[#292018] p-5 text-white shadow-2xl"
-          >
-            <p className="font-imFeel text-xl text-[#F3B43F]">{editandoId ? "Editar Ameaça Mundial" : "Nova Ameaça Mundial"}</p>
-            {mensagem && <p className="text-sm text-[#F3B43F]">{mensagem}</p>}
-
-            <label className="flex flex-col gap-1 text-xs">
-              Nome
-              <input required value={form.nome} onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))} className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm" />
-            </label>
-            <label className="flex flex-col gap-1 text-xs">
-              Descrição
-              <textarea required value={form.descricao} onChange={(e) => setForm((f) => ({ ...f, descricao: e.target.value }))} className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm" rows={2} />
-            </label>
-            <label className="flex flex-col gap-1 text-xs">
-              Lore (opcional)
-              <textarea value={form.lore ?? ""} onChange={(e) => setForm((f) => ({ ...f, lore: e.target.value }))} className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm" rows={2} />
-            </label>
-
-            <div className="flex gap-2">
-              <label className="flex flex-1 flex-col gap-1 text-xs">
-                Vida base
-                <input required type="number" min={1} value={form.vida_base} onChange={(e) => setForm((f) => ({ ...f, vida_base: Number(e.target.value) }))} className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm" />
-              </label>
-              <label className="flex flex-1 flex-col gap-1 text-xs">
-                Defesa
-                <input type="number" min={0} value={form.defesa ?? 0} onChange={(e) => setForm((f) => ({ ...f, defesa: Number(e.target.value) }))} className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm" />
-              </label>
-              <label className="flex flex-1 flex-col gap-1 text-xs">
-                Peso de seleção
-                <input type="number" min={1} value={form.peso_selecao ?? 1} onChange={(e) => setForm((f) => ({ ...f, peso_selecao: Number(e.target.value) }))} className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm" />
-              </label>
-            </div>
-
-            <label className="flex flex-col gap-1 text-xs">
-              Mensagem de descoberta
-              <input required value={form.mensagem_descoberta} onChange={(e) => setForm((f) => ({ ...f, mensagem_descoberta: e.target.value }))} className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm" />
-            </label>
-            <label className="flex flex-col gap-1 text-xs">
-              Mensagem de convocação
-              <input required value={form.mensagem_convocacao} onChange={(e) => setForm((f) => ({ ...f, mensagem_convocacao: e.target.value }))} className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm" />
-            </label>
-            <div className="flex gap-2">
-              <label className="flex flex-1 flex-col gap-1 text-xs">
-                Mensagem de fase final (opcional)
-                <input value={form.mensagem_fase_final ?? ""} onChange={(e) => setForm((f) => ({ ...f, mensagem_fase_final: e.target.value }))} className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm" />
-              </label>
-              <label className="flex flex-1 flex-col gap-1 text-xs">
-                Mensagem de derrota (opcional)
-                <input value={form.mensagem_derrota ?? ""} onChange={(e) => setForm((f) => ({ ...f, mensagem_derrota: e.target.value }))} className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm" />
-              </label>
-            </div>
-
-            <label className="flex flex-col gap-1 text-xs">
-              Item de Golpe Final
-              <ItemSelect
-                itens={itensDisponiveis}
-                value={form.id_item_golpe_final || ""}
-                onChange={(id) => setForm((f) => ({ ...f, id_item_golpe_final: id === "" ? 0 : id }))}
-                permitirVazio={false}
-              />
-            </label>
-
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-              <label className="flex flex-col gap-1 text-xs">
-                Gold descoberta
-                <input type="number" min={0} value={form.gold_descoberta ?? 0} onChange={(e) => setForm((f) => ({ ...f, gold_descoberta: Number(e.target.value) }))} className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm" />
-              </label>
-              <label className="flex flex-col gap-1 text-xs">
-                Gold participação
-                <input type="number" min={0} value={form.gold_participacao ?? 0} onChange={(e) => setForm((f) => ({ ...f, gold_participacao: Number(e.target.value) }))} className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm" />
-              </label>
-              <label className="flex flex-col gap-1 text-xs">
-                XP participação
-                <input type="number" min={0} value={form.xp_participacao ?? 0} onChange={(e) => setForm((f) => ({ ...f, xp_participacao: Number(e.target.value) }))} className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm" />
-              </label>
-              <label className="flex flex-col gap-1 text-xs">
-                Dano mín. p/ participação
-                <input
-                  type="number"
-                  min={0}
-                  placeholder="Qualquer dano"
-                  value={form.min_dano_participacao ?? ""}
-                  onChange={(e) => setForm((f) => ({ ...f, min_dano_participacao: e.target.value === "" ? null : Number(e.target.value) }))}
-                  className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm"
-                />
-              </label>
-            </div>
-
-            <div className="flex flex-col gap-2 rounded-lg border border-white/10 p-3">
-              <div className="flex items-center justify-between">
-                <p className="text-xs font-bold uppercase text-white/60">Fases (por % de HP restante)</p>
-                <button type="button" onClick={adicionarFase} className="text-xs text-[#F3B43F] hover:underline">+ Adicionar fase</button>
-              </div>
-              {(form.fases ?? []).map((fase, i) => (
-                <div key={i} className="flex items-end gap-2">
-                  <label className="flex w-14 flex-col gap-1 text-[10px]">
-                    Ordem
-                    <input type="number" min={1} value={fase.ordem} onChange={(e) => atualizarFase(i, { ordem: Number(e.target.value) })} className="rounded border border-white/20 bg-black/30 px-1.5 py-1 text-xs" />
-                  </label>
-                  <label className="flex flex-1 flex-col gap-1 text-[10px]">
-                    Nome
-                    <input value={fase.nome_fase} onChange={(e) => atualizarFase(i, { nome_fase: e.target.value })} className="rounded border border-white/20 bg-black/30 px-1.5 py-1 text-xs" />
-                  </label>
-                  <label className="flex w-20 flex-col gap-1 text-[10px]">
-                    HP% até
-                    <input type="number" min={1} max={100} value={fase.hp_percentual_max} onChange={(e) => atualizarFase(i, { hp_percentual_max: Number(e.target.value) })} className="rounded border border-white/20 bg-black/30 px-1.5 py-1 text-xs" />
-                  </label>
-                  <label className="flex w-20 flex-col gap-1 text-[10px]">
-                    Dano%
-                    <input type="number" min={0} value={fase.modificador_dano_percentual ?? 0} onChange={(e) => atualizarFase(i, { modificador_dano_percentual: Number(e.target.value) })} className="rounded border border-white/20 bg-black/30 px-1.5 py-1 text-xs" />
-                  </label>
-                  <button type="button" onClick={() => removerFase(i)} className="pb-1.5 text-xs text-red-400 hover:underline">Remover</button>
-                </div>
-              ))}
-            </div>
-
-            <label className="flex flex-col gap-1 text-xs">
-              IDs das zonas elegíveis pra descoberta (separados por vírgula — vazio = qualquer zona)
-              <input
-                value={(form.zonas ?? []).join(", ")}
-                onChange={(e) =>
-                  setForm((f) => ({
-                    ...f,
-                    zonas: e.target.value
-                      .split(",")
-                      .map((v) => Number(v.trim()))
-                      .filter((v) => Number.isInteger(v) && v > 0),
-                  }))
-                }
-                className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm"
-              />
-            </label>
-
-            <div className="mt-2 flex justify-end gap-2">
-              <button type="button" onClick={() => setMostrarForm(false)} className="rounded-lg border border-white/20 px-4 py-2 text-sm text-white/70 hover:bg-white/10">Cancelar</button>
-              <button type="submit" disabled={salvando} className="rounded-lg bg-[#BC8418] px-4 py-2 text-sm font-bold text-black hover:bg-[#a5710f] disabled:opacity-50">
-                {salvando ? "Salvando..." : "Salvar"}
-              </button>
-            </div>
-          </form>
-        </div>
+      {editorAberto && (
+        <WorldBossEditorDrawer
+          idConfigInicial={idConfigEditando}
+          onFechar={() => setEditorAberto(false)}
+          onSalvo={carregar}
+        />
       )}
     </div>
   );
@@ -447,6 +208,11 @@ function AbaCiclo() {
 
   useEffect(() => {
     carregar();
+    // §13.7 — monitor "ao vivo": repolling simples enquanto a aba está
+    // aberta (sem socket dedicado no admin, que já teria complexidade
+    // própria de reconexão só pra isso).
+    const intervalo = setInterval(carregar, 4000);
+    return () => clearInterval(intervalo);
   }, [carregar]);
 
   async function executar(acao: "descoberta" | "despertar" | "cancelar") {
@@ -492,8 +258,8 @@ function AbaCiclo() {
             {status!.hp_max !== undefined && <li>HP: {status!.hp_current?.toLocaleString("pt-BR")} / {status!.hp_max?.toLocaleString("pt-BR")}</li>}
             <li>Threshold de descoberta (SEGREDO): {status!.discovery_threshold ?? "—"}</li>
             <li>Progresso de descoberta: {status!.discovery_progress ?? 0}</li>
-            {status!.discoverer_character_id && <li>Descobridor: personagem #{status!.discoverer_character_id}</li>}
-            {status!.final_blow_character_id && <li>Golpe final: personagem #{status!.final_blow_character_id}</li>}
+            {status!.discoverer_character_id && <li>Descobridor: {status!.descobridor?.nome ?? `personagem #${status!.discoverer_character_id}`}</li>}
+            {status!.final_blow_character_id && <li>Golpe final: {status!.golpe_final_por?.nome ?? `personagem #${status!.final_blow_character_id}`}</li>}
             {status!.next_eligible_at && <li>Próximo elegível em: {new Date(status!.next_eligible_at).toLocaleString("pt-BR")}</li>}
             {status!.auto_awaken_at && <li>Auto-despertar em: {new Date(status!.auto_awaken_at).toLocaleString("pt-BR")}</li>}
             <li>Recompensas de participação: {status!.participation_rewards_status}</li>
@@ -501,6 +267,8 @@ function AbaCiclo() {
         )}
         <button type="button" onClick={carregar} className="mt-3 text-xs text-white/60 hover:underline">Atualizar</button>
       </div>
+
+      {status?.runtime_v2 && <WorldBossLiveMonitor runtime={status.runtime_v2} />}
 
       <div className="rounded-2xl border-2 border-[#F3B43F]/40 bg-[#292018]/80 p-5">
         <p className="font-imFeel text-xl text-[#F3B43F]">Ações (exigem motivo)</p>
