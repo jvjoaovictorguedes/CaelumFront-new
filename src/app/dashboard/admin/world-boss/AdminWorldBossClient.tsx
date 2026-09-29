@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
 import {
   cancelarCicloWorldBossAdmin,
   desativarWorldBossConfigAdmin,
@@ -16,6 +16,7 @@ import {
   atualizarWorldBossSettingsAdmin,
   reativarWorldBossConfigAdmin,
   type WorldBossConfigListItemApi,
+  type WorldBossMetricasDoEventoApi,
   type WorldBossMetricsApi,
   type WorldBossSettingsApi,
   type WorldBossStatusOperacionalApi,
@@ -411,6 +412,7 @@ function AbaMetricas() {
   const [metricas, setMetricas] = useState<WorldBossMetricsApi | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
+  const [linhaExpandida, setLinhaExpandida] = useState<number | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -460,23 +462,69 @@ function AbaMetricas() {
                   <th className="px-2 py-1">Descoberto</th>
                   <th className="px-2 py-1">Derrotado</th>
                   <th className="px-2 py-1">Recompensas</th>
+                  <th className="px-2 py-1"></th>
                 </tr>
               </thead>
               <tbody>
                 {metricas.historico.map((h) => (
-                  <tr key={h.id} className="border-b border-white/5">
-                    <td className="px-2 py-1 font-bold">{h.nome ?? "—"}</td>
-                    <td className="px-2 py-1">{h.status}</td>
-                    <td className="px-2 py-1">{h.discovered_at ? new Date(h.discovered_at).toLocaleString("pt-BR") : "—"}</td>
-                    <td className="px-2 py-1">{h.defeated_at ? new Date(h.defeated_at).toLocaleString("pt-BR") : "—"}</td>
-                    <td className="px-2 py-1">{h.participation_rewards_status}</td>
-                  </tr>
+                  <Fragment key={h.id}>
+                    <tr className="border-b border-white/5">
+                      <td className="px-2 py-1 font-bold">{h.nome ?? "—"}</td>
+                      <td className="px-2 py-1">{h.status}</td>
+                      <td className="px-2 py-1">{h.discovered_at ? new Date(h.discovered_at).toLocaleString("pt-BR") : "—"}</td>
+                      <td className="px-2 py-1">{h.defeated_at ? new Date(h.defeated_at).toLocaleString("pt-BR") : "—"}</td>
+                      <td className="px-2 py-1">{h.participation_rewards_status}</td>
+                      <td className="px-2 py-1">
+                        {h.metricas && (
+                          <button type="button" onClick={() => setLinhaExpandida(linhaExpandida === h.id ? null : h.id)} className="text-[#F3B43F] hover:underline">
+                            {linhaExpandida === h.id ? "Ocultar" : "Métricas"}
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                    {linhaExpandida === h.id && h.metricas && (
+                      <tr className="border-b border-white/5 bg-black/20">
+                        <td colSpan={6} className="px-2 py-3">
+                          <MetricasDoEvento metricas={h.metricas} />
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
                 ))}
               </tbody>
             </table>
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+// Ameaça Mundial V2 — Etapa 12 (§14.1): métricas pós-evento — nunca
+// recalculadas aqui, só exibidas exatamente como o backend devolve.
+function MetricasDoEvento({ metricas }: { metricas: WorldBossMetricasDoEventoApi }) {
+  return (
+    <div className="flex flex-col gap-2 text-xs text-white/80">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div><p className="text-[10px] uppercase text-white/40">Duração</p><p>{metricas.duracao_segundos !== null ? `${metricas.duracao_segundos}s` : "—"}</p></div>
+        <div><p className="text-[10px] uppercase text-white/40">Participantes / Derrotados</p><p>{metricas.participantes} / {metricas.derrotados}</p></div>
+        <div><p className="text-[10px] uppercase text-white/40">Taxa de sobrevivência</p><p>{metricas.taxa_sobrevivencia_pct ?? "—"}%</p></div>
+        <div><p className="text-[10px] uppercase text-white/40">Ações do Boss (total)</p><p>{metricas.boss_action_seq_final}</p></div>
+        <div><p className="text-[10px] uppercase text-white/40">Fúria máxima</p><p>{metricas.furia_maxima_pct ?? "—"}%</p></div>
+        <div><p className="text-[10px] uppercase text-white/40">Dano médio recebido/jogador</p><p>{metricas.dano_medio_recebido_por_jogador ?? "—"}</p></div>
+        <div><p className="text-[10px] uppercase text-white/40">DPS agregado dos jogadores</p><p>{metricas.dps_agregado_jogadores ?? "—"}</p></div>
+        <div><p className="text-[10px] uppercase text-white/40">Habilidade com mais derrotas</p><p>{metricas.habilidade_mais_derrotas ? `${metricas.habilidade_mais_derrotas.nome} (${metricas.habilidade_mais_derrotas.derrotas})` : "—"}</p></div>
+      </div>
+      {metricas.tempo_por_fase.length > 0 && (
+        <div>
+          <p className="mb-1 text-[10px] uppercase text-white/40">Tempo por fase</p>
+          <ul className="flex flex-wrap gap-2">
+            {metricas.tempo_por_fase.map((f) => (
+              <li key={f.ordem} className="rounded bg-black/30 px-2 py-1">{f.nome_fase}: {f.duracao_segundos !== null ? `${f.duracao_segundos}s` : "—"}</li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }

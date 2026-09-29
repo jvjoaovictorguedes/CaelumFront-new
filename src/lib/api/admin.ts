@@ -1675,6 +1675,22 @@ export async function atualizarWorldBossSettingsAdmin(payload: Partial<WorldBoss
   return resposta.data.data.settings;
 }
 
+// §14.1 — métricas pós-evento, só presentes (não-null) em ciclos DEFEATED
+// (um CANCELLED nunca chegou a ativar o relógio de combate).
+export interface WorldBossMetricasDoEventoApi {
+  duracao_segundos: number | null;
+  participantes: number;
+  derrotados: number;
+  taxa_sobrevivencia_pct: number | null;
+  boss_action_seq_final: number;
+  furia_maxima_pct: number | null;
+  dano_medio_recebido_por_jogador: number | null;
+  habilidade_mais_derrotas: { nome: string; derrotas: number } | null;
+  dps_agregado_jogadores: number | null;
+  tempo_por_fase: { ordem: number; nome_fase: string; duracao_segundos: number | null }[];
+  top_damage_character_id: number | null;
+}
+
 export interface WorldBossMetricsApi {
   encontrosElegiveisPorHora: { window_start: string; encontros_elegiveis: number }[];
   historico: {
@@ -1687,6 +1703,7 @@ export interface WorldBossMetricsApi {
     discoverer_character_id: number | null;
     final_blow_character_id: number | null;
     participation_rewards_status: string;
+    metricas: WorldBossMetricasDoEventoApi | null;
   }[];
 }
 
