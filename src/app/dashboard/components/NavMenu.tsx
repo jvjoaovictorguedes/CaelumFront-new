@@ -157,7 +157,7 @@ export default function NavMenu({
       >
         <div className="flex w-full flex-col items-center justify-center gap-3 border-b border-black/50 pb-4">
           <div className="flex w-full items-center justify-center gap-2">
-            <CaelumBrand tamanho="sm" variante="escuro" />
+            <CaelumBrand tamanho="sm" variante="escuro" comIcone={false} classNameTexto="text-base" />
             <PatchNotesBell />
           </div>
           <div className="relative flex items-center justify-center">

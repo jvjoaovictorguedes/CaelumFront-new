@@ -79,16 +79,25 @@ export default function CaelumBrand({
   // "escuro": marrom sólido — pro fundo já amarelo/dourado do menu
   // lateral, onde o degradê dourado sobre dourado quase não aparece.
   variante = "claro",
+  // O menu lateral é estreito e já mostra o brasão em outros lugares —
+  // o emblema pequeno ao lado do texto ali ficava apertado/redundante.
+  comIcone = true,
+  // Override pontual do tamanho do texto (ex.: menu lateral sem ícone,
+  // onde o "sm" padrão fica grande demais sozinho) — sobrescreve
+  // TAMANHOS[tamanho].texto quando informado.
+  classNameTexto,
   className = "",
 }: {
   tamanho?: keyof typeof TAMANHOS;
   variante?: "claro" | "escuro";
+  comIcone?: boolean;
+  classNameTexto?: string;
   className?: string;
 }) {
-  const { texto } = TAMANHOS[tamanho];
+  const texto = classNameTexto ?? TAMANHOS[tamanho].texto;
   return (
     <div className={`flex items-center justify-center gap-3 ${className}`}>
-      <CaelumEmblema tamanho={tamanho} />
+      {comIcone && <CaelumEmblema tamanho={tamanho} />}
       <span
         className={`font-imFeel ${texto} font-bold ${
           variante === "claro"

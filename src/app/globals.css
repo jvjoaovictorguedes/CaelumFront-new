@@ -41,7 +41,14 @@ body {
 }
 
 .homeMe {
-  background-image: url("../../public/images/homeMedieval.png");
+  /* Véu escuro por cima da foto (não mexe no arquivo de imagem) — só
+     pra dar contraste pro logo/formulário de login/registro/reset de
+     senha, que ficavam competindo com o fundo movimentado. Pra ajustar
+     a intensidade, só mudar o alpha do rgba abaixo (0 = sem véu,
+     1 = preto sólido). */
+  background-image:
+    linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)),
+    url("../../public/images/homeMedieval.png");
 }
 
 .homeDash {
