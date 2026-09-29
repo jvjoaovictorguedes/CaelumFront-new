@@ -264,24 +264,19 @@ export default function ExpeditionClient() {
       );
       const dados = resp.data.data;
 
-      // O cooldown foi consumido do mesmo jeito (ver expeditionService.
-      // coletar) mesmo sem ganhar recurso, então a barra/relógio da
-      // profissão ainda precisa refletir isso.
-      setProfissoes((atuais) =>
-        atuais.map((profissao) =>
-          profissao.tipo === regiao.profissao
-            ? { ...profissao, proxima_coleta_em: dados.proxima_coleta_em }
-            : profissao,
-        ),
-      );
-
-      if (dados.interrompida && dados.enemy) {
-        setRegiaoInterrompida(regiao);
-        setInimigoInterrupcao(dados.enemy);
-        return;
-      }
-
-      setResultado(dados);
+      // O cooldown é GLOBAL entre as 3 profissões (expeditionService.
+      // coletar grava o mesmo proxima_coleta_em nas 3 linhas de
+      // character_professions, não só na que coletou agora) — por isso
+      // essa atualização precisa valer pras 3 profissões no estado
+      // local, nunca só pra `regiao.profissao`. Aplicar só na coletada
+      // era o bug real reportado pelos jogadores: trocar de profissão
+      // logo depois de coletar mostrava o botão liberado (o local state
+      // das outras 2 ficava com o proxima_coleta_em antigo, já
+      // expirado), o clique batia no servidor e voltava "Essa profissão
+      // ainda está em cooldown" — e como a UI não tinha nenhum relógio
+      // rodando pra essas profissões "livres na aparência", o jogador
+      // achava que tinha esperado muito mais que o cooldown de verdade
+      // configurado no admin, só de tentar de novo sem feedback visual.
       setProfissoes((atuais) =>
         atuais.map((profissao) =>
           profissao.tipo === regiao.profissao
@@ -292,15 +287,35 @@ export default function ExpeditionClient() {
                 xp_proximo_nivel: dados.xp_proximo_nivel,
                 proxima_coleta_em: dados.proxima_coleta_em,
               }
-            : profissao,
+            : { ...profissao, proxima_coleta_em: dados.proxima_coleta_em },
         ),
       );
+
+      if (dados.interrompida && dados.enemy) {
+        setRegiaoInterrompida(regiao);
+        setInimigoInterrupcao(dados.enemy);
+        return;
+      }
+
+      setResultado(dados);
       if (dados.item_ganho) await refreshCharacter();
     } catch (error: unknown) {
-      const msg =
-        (error as { response?: { data?: { message?: string } } })?.response?.data?.message ??
-        "Não foi possível coletar nessa região.";
-      setErro(msg);
+      const dadosErro = (error as { response?: { data?: { message?: string; disponivelEmMs?: number } } })?.response
+        ?.data;
+      setErro(dadosErro?.message ?? "Não foi possível coletar nessa região.");
+
+      // 429 "ainda em cooldown" — o servidor manda quanto falta de
+      // verdade (cooldown GLOBAL, calculado no momento exato da
+      // rejeição). Sincroniza as 3 profissões com isso agora, senão a
+      // UI continua mostrando as outras 2 como livres (estado local
+      // desatualizado) até a próxima coleta bem-sucedida — o jogador
+      // clicava de novo, tomava o mesmo 429 e sentia um cooldown muito
+      // mais longo que o configurado, sem nenhum relógio visível
+      // contando o tempo de verdade.
+      if (typeof dadosErro?.disponivelEmMs === "number") {
+        const proximaColetaEm = new Date(Date.now() + dadosErro.disponivelEmMs).toISOString();
+        setProfissoes((atuais) => atuais.map((profissao) => ({ ...profissao, proxima_coleta_em: proximaColetaEm })));
+      }
     } finally {
       setColetandoRegiao(null);
     }
