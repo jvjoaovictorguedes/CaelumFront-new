@@ -40,6 +40,7 @@ const CATEGORIAS: CategoriaAdmin[] = [
       { titulo: "Taverna", descricao: "Cardápio, jogos de azar, descanso e métricas.", href: "/dashboard/admin/tavern", permissao: "tavern.manage" },
       { titulo: "Ameaça Mundial", descricao: "Catálogo de Boss Global, ciclo atual e métricas.", href: "/dashboard/admin/world-boss", permissao: "worldboss.manage" },
       { titulo: "Pesca & Navegação", descricao: "Zonas, espécies, pool de encontro, portos, iscas e afinidades.", href: "/dashboard/admin/fishing", permissao: "fishing.manage" },
+      { titulo: "Alquimia (Caldeirão)", descricao: "Receitas, ingredientes, custo e modo de desbloqueio.", href: "/dashboard/admin/alchemy", permissao: "alchemy.manage" },
       { titulo: "Forja", descricao: "Blueprints, barras, pergaminhos e balanceamento de fundição/fabricação/refinamento.", href: "/dashboard/admin/forge", permissaoQualquerUma: ["forge.manage", "forge.balance"] },
       { titulo: "PVE", descricao: "Tudo de monstro: balanceamento de Aventura, Expedição/Emboscada e Aventura em Grupo, mais o Simulador de combate dos três.", href: "/dashboard/admin/expedition", permissao: "expedition.balance" },
       { titulo: "Proezas Únicas", descricao: "Easter eggs de vencedor único, seus Legados, triggers e histórico de reparos.", href: "/dashboard/admin/unique-feats", permissao: "uniquefeats.manage" },

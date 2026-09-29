@@ -1695,7 +1695,7 @@ export async function cancelarCicloWorldBossAdmin(payload: { motivo: string }): 
 // Painel Administrativo — Pesca & Navegação: Zonas, Espécies, Pool
 // (zona x espécie), Portos, Iscas e Afinidades. Vara de Pesca já é
 // gerenciada dentro do admin de Itens (tipo "Ferramenta").
-interface ItemResumoApi {
+export interface ItemResumoApi {
   id: number;
   nome: string;
   raridade?: string;
@@ -2843,4 +2843,71 @@ export async function atualizarExpeditionBalanceAdmin(
 ): Promise<ExpeditionBalanceGrupoApi> {
   const resposta = await axiosInstance.put<{ data: ExpeditionBalanceGrupoApi }>(`/admin/expedition/balance/${grupo}`, valores);
   return resposta.data.data;
+}
+
+// Painel Administrativo — Alquimia (Caldeirão): CRUD de receitas +
+// ingredientes. id_item_resultado/id_item são resolvidos em lote pelo
+// backend (sem include/alias — mesma convenção do resto do domínio de
+// Alquimia), nunca via join do Sequelize.
+export type AlchemyCategoriaReceita = "POCAO" | "ANTIDOTO" | "TONICO" | "ELIXIR" | "PREPARADO";
+export type AlchemyModoDesbloqueio = "NIVEL" | "DESCOBERTA";
+
+export interface AlchemyRecipeIngredienteAdminApi {
+  id: number;
+  id_recipe: number;
+  id_item: number;
+  quantidade: number;
+  item: ItemResumoApi | null;
+}
+
+export interface PayloadAlchemyRecipeIngredienteAdmin {
+  id_item: number;
+  quantidade: number;
+}
+
+export interface AlchemyRecipeAdminApi {
+  id: number;
+  key: string;
+  nome: string;
+  descricao: string | null;
+  categoria: AlchemyCategoriaReceita;
+  id_item_resultado: number;
+  quantidade_resultado: number;
+  nivel_alquimia_minimo: number;
+  xp_alquimia: number;
+  custo_ouro: number;
+  modo_desbloqueio: AlchemyModoDesbloqueio;
+  ativo: boolean;
+  ordem: number;
+  item_resultado: ItemResumoApi | null;
+  ingredientes: AlchemyRecipeIngredienteAdminApi[];
+}
+
+export interface PayloadAlchemyRecipeAdmin {
+  key?: string;
+  nome?: string;
+  descricao?: string | null;
+  categoria?: AlchemyCategoriaReceita;
+  id_item_resultado?: number;
+  quantidade_resultado?: number;
+  nivel_alquimia_minimo?: number;
+  xp_alquimia?: number;
+  custo_ouro?: number;
+  modo_desbloqueio?: AlchemyModoDesbloqueio;
+  ativo?: boolean;
+  ordem?: number;
+  ingredientes?: PayloadAlchemyRecipeIngredienteAdmin[];
+}
+
+export async function listarAlchemyRecipesAdmin(): Promise<AlchemyRecipeAdminApi[]> {
+  const resposta = await axiosInstance.get<{ data: { receitas: AlchemyRecipeAdminApi[] } }>("/admin/alchemy/recipes");
+  return resposta.data.data.receitas;
+}
+export async function criarAlchemyRecipeAdmin(payload: PayloadAlchemyRecipeAdmin): Promise<AlchemyRecipeAdminApi> {
+  const resposta = await axiosInstance.post<{ data: { receita: AlchemyRecipeAdminApi } }>("/admin/alchemy/recipes", payload);
+  return resposta.data.data.receita;
+}
+export async function atualizarAlchemyRecipeAdmin(id: number, payload: PayloadAlchemyRecipeAdmin): Promise<AlchemyRecipeAdminApi> {
+  const resposta = await axiosInstance.patch<{ data: { receita: AlchemyRecipeAdminApi } }>(`/admin/alchemy/recipes/${id}`, payload);
+  return resposta.data.data.receita;
 }
