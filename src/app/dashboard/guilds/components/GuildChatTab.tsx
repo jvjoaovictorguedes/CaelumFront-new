@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { io, type Socket } from "socket.io-client";
-import axiosInstance from "@/utils/axiosIntance";
+import { useGuildSocket } from "@/contexts/GuildSocketContext";
 
 interface MensagemChat {
   idPersonagem: number;
@@ -11,104 +10,51 @@ interface MensagemChat {
   data: string;
 }
 
-function socketUrlFromApiUrl(apiUrl: string) {
-  return apiUrl.replace(/\/api\/?$/, "");
-}
-
 export default function GuildChatTab({
   characterId,
   characterNome,
-  idGuild,
 }: {
   characterId: number;
   characterNome: string;
-  idGuild: number;
 }) {
-  const socketRef = useRef<Socket | null>(null);
-  const [conectado, setConectado] = useState(false);
+  // Conexão + handshake (identificar/join-room) já feitos uma vez pelo
+  // GuildSocketProvider (ver rationale completo lá) — aqui só usa o
+  // socket já pronto, escuta os eventos de chat e lê o histórico que
+  // veio junto do join-room (só o join-room devolve ele).
+  const { socket, pronto, erro: erroConexao, resultadoJoinRoom } = useGuildSocket();
   const [mensagens, setMensagens] = useState<MensagemChat[]>([]);
   const [texto, setTexto] = useState("");
-  const [erroConexao, setErroConexao] = useState("");
+  const [erroEnvio, setErroEnvio] = useState("");
+  const historicoCarregado = useRef(false);
   const listaRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const baseUrl = socketUrlFromApiUrl(
-      process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api",
-    );
-    const socket = io(baseUrl, { transports: ["websocket", "polling"] });
-    socketRef.current = socket;
+    if (historicoCarregado.current) return;
+    const historico = resultadoJoinRoom?.historico as MensagemChat[] | undefined;
+    if (historico) {
+      setMensagens(historico);
+      historicoCarregado.current = true;
+    }
+  }, [resultadoJoinRoom]);
 
-    socket.on("connect", () => {
-      setErroConexao("");
-      // Igual ao PvP ao vivo: busca um ticket de curta duração (o JWT é
-      // httpOnly) em vez de mandar o characterId cru pro socket.
-      axiosInstance
-        .get<{ data?: { ticket?: string } }>("/users/socket-ticket")
-        .then((resp) => {
-          const ticket = resp.data?.data?.ticket;
-          if (!ticket) return;
-          // "guild:identificar", não "identificar" — esse socket é
-          // independente do socket do PvP ao vivo, e os dois módulos do
-          // backend compartilham o mesmo `io` (ver comentário em
-          // guildSocket.js). Usar o mesmo nome de evento fazia esse
-          // socket também "logar" no PvP ao vivo e derrubar a conexão
-          // de PvP de verdade do jogador só por abrir o chat da guilda.
-          //
-          // Só dispara "guild:join-room" DEPOIS do ack de
-          // "guild:identificar" — identificar consulta o banco (async)
-          // pra resolver o personagem a partir do ticket; disparar os
-          // dois eventos de uma vez (sem esperar) fazia join-room quase
-          // sempre correr na frente dessa consulta e falhar com
-          // "Identifique seu personagem antes.", e qualquer
-          // guild:message mandado em seguida (já que o botão só
-          // dependia do "connect" bruto do transporte) era descartado
-          // em silêncio — a causa raiz do chat não enviar mensagem.
-          socket.emit("guild:identificar", { ticket }, (respostaIdentificar: { erro?: string }) => {
-            if (respostaIdentificar?.erro) {
-              console.error("Erro ao identificar personagem no chat:", respostaIdentificar.erro);
-              setErroConexao("Não foi possível autenticar a conexão do chat.");
-              return;
-            }
-            socket.emit(
-              "guild:join-room",
-              {},
-              (resposta: { erro?: string; historico?: MensagemChat[] }) => {
-                if (resposta?.erro) {
-                  console.error("Erro ao entrar na sala de chat:", resposta.erro);
-                  setErroConexao(resposta.erro);
-                  return;
-                }
-                if (resposta?.historico) setMensagens(resposta.historico);
-                // Só agora a conexão está de fato pronta pra enviar
-                // mensagem — antes disso, mesmo com o transporte já
-                // conectado, o servidor ainda não tinha characterId nem
-                // sala setados.
-                setConectado(true);
-              },
-            );
-          });
-        })
-        .catch((erro) => {
-          console.error("Erro ao autenticar conexão de chat:", erro);
-          setErroConexao("Não foi possível autenticar a conexão do chat.");
-        });
-    });
-
-    socket.on("disconnect", () => setConectado(false));
-
-    socket.on("guild:message:new", (mensagem: MensagemChat) => {
+  useEffect(() => {
+    if (!socket) return;
+    const aoReceber = (mensagem: MensagemChat) => {
       setMensagens((atual) => [...atual, mensagem]);
-    });
-
-    socket.on("guild:erro", ({ mensagem }: { mensagem?: string }) => {
-      if (mensagem) setErroConexao(mensagem);
-    });
-
-    return () => {
-      socket.disconnect();
-      socketRef.current = null;
     };
-  }, [characterId, idGuild]);
+    // "guild:erro" é do backend inteiro de guilda (várias features usam),
+    // mas só o chat manda mensagem livre o suficiente pra estourar rate
+    // limit — por isso só essa aba escuta e mostra.
+    const aoDarErro = ({ mensagem }: { mensagem?: string }) => {
+      if (mensagem) setErroEnvio(mensagem);
+    };
+    socket.on("guild:message:new", aoReceber);
+    socket.on("guild:erro", aoDarErro);
+    return () => {
+      socket.off("guild:message:new", aoReceber);
+      socket.off("guild:erro", aoDarErro);
+    };
+  }, [socket]);
 
   useEffect(() => {
     listaRef.current?.scrollTo({ top: listaRef.current.scrollHeight });
@@ -117,8 +63,8 @@ export default function GuildChatTab({
   function enviar(event: React.FormEvent) {
     event.preventDefault();
     const mensagem = texto.trim();
-    if (!mensagem || !socketRef.current) return;
-    socketRef.current.emit("guild:message", { texto: mensagem });
+    if (!mensagem || !socket) return;
+    socket.emit("guild:message", { texto: mensagem });
     setTexto("");
   }
 
@@ -126,8 +72,8 @@ export default function GuildChatTab({
     <div className="flex flex-col rounded-2xl border-2 border-[#F3B43F] bg-[#292018]/90 p-5 text-white shadow-xl">
       <div className="mb-3 flex items-center justify-between">
         <p className="text-sm uppercase tracking-widest text-[#F3B43F]">Chat da guilda</p>
-        <span className={`text-xs ${conectado ? "text-green-400" : "text-red-400"}`}>
-          {conectado ? "conectado" : "conectando..."}
+        <span className={`text-xs ${pronto ? "text-green-400" : "text-red-400"}`}>
+          {pronto ? "conectado" : "conectando..."}
         </span>
       </div>
 
@@ -135,7 +81,7 @@ export default function GuildChatTab({
         ref={listaRef}
         className="mb-3 flex h-80 flex-col gap-2 overflow-y-auto rounded-lg border border-white/10 bg-black/30 p-3"
       >
-        {erroConexao && <p className="text-sm text-red-400">{erroConexao}</p>}
+        {(erroConexao || erroEnvio) && <p className="text-sm text-red-400">{erroConexao || erroEnvio}</p>}
         {mensagens.length === 0 ? (
           <p className="text-sm text-white/40">
             Nenhuma mensagem ainda esse mês. Seja o primeiro a falar!
@@ -167,12 +113,12 @@ export default function GuildChatTab({
           onChange={(e) => setTexto(e.target.value)}
           placeholder="Escreva uma mensagem..."
           maxLength={500}
-          disabled={!conectado}
+          disabled={!pronto}
           className="min-w-0 flex-1 rounded-lg border border-white/20 bg-black/30 px-3 py-2 text-white placeholder-white/40 outline-none focus:border-[#F3B43F] disabled:opacity-50"
         />
         <button
           type="submit"
-          disabled={!conectado || !texto.trim()}
+          disabled={!pronto || !texto.trim()}
           className="rounded-lg bg-[#BC8418] px-4 py-2 font-bold text-black hover:bg-[#a5710f] disabled:opacity-50"
         >
           Enviar

@@ -40,7 +40,9 @@ const CATEGORIAS: CategoriaAdmin[] = [
       { titulo: "Taverna", descricao: "Cardápio, jogos de azar, descanso e métricas.", href: "/dashboard/admin/tavern", permissao: "tavern.manage" },
       { titulo: "Ameaça Mundial", descricao: "Catálogo de Boss Global, ciclo atual e métricas.", href: "/dashboard/admin/world-boss", permissao: "worldboss.manage" },
       { titulo: "Pesca & Navegação", descricao: "Zonas, espécies, pool de encontro, portos, iscas e afinidades.", href: "/dashboard/admin/fishing", permissao: "fishing.manage" },
+      { titulo: "Alquimia (Caldeirão)", descricao: "Receitas, ingredientes, custo e modo de desbloqueio.", href: "/dashboard/admin/alchemy", permissao: "alchemy.manage" },
       { titulo: "Forja", descricao: "Blueprints, barras, pergaminhos e balanceamento de fundição/fabricação/refinamento.", href: "/dashboard/admin/forge", permissaoQualquerUma: ["forge.manage", "forge.balance"] },
+      { titulo: "PVE", descricao: "Tudo de monstro: balanceamento de Aventura, Expedição/Emboscada e Aventura em Grupo, mais o Simulador de combate dos três.", href: "/dashboard/admin/expedition", permissao: "expedition.balance" },
       { titulo: "Proezas Únicas", descricao: "Easter eggs de vencedor único, seus Legados, triggers e histórico de reparos.", href: "/dashboard/admin/unique-feats", permissao: "uniquefeats.manage" },
     ],
   },
@@ -50,6 +52,7 @@ const CATEGORIAS: CategoriaAdmin[] = [
       { titulo: "Busca", descricao: "Consultar jogador por nome/ID.", href: "/dashboard/admin/players", permissao: "players.view" },
       { titulo: "Inventário", descricao: "Correções administrativas de inventário.", href: "/dashboard/admin/inventory", permissao: "players.manage" },
       { titulo: "Premiações", descricao: "Conceder itens/equipamentos a um jogador.", href: "/dashboard/admin/grants", permissao: "players.reward" },
+      { titulo: "Referral", descricao: "Quem foi indicado, por quem, e quantas indicações cada indicador tem.", href: "/dashboard/admin/referrals", permissao: "referrals.view" },
     ],
   },
   {
@@ -65,6 +68,7 @@ const CATEGORIAS: CategoriaAdmin[] = [
     modulos: [
       { titulo: "Buff Global", descricao: "XP/Ouro/Drop de Aventura e XP de Expedição, por tempo limitado.", href: "/dashboard/admin/buffs", permissao: "events.manage" },
       { titulo: "Torneios", descricao: "Criar, iniciar e encerrar torneios.", href: "/dashboard/admin/tournaments", permissao: "tournaments.manage" },
+      { titulo: "Códigos de Resgate", descricao: "Criar códigos promocionais que jogadores resgatam por recompensas.", href: "/dashboard/admin/redemption-codes", permissao: "codes.manage" },
     ],
   },
   {

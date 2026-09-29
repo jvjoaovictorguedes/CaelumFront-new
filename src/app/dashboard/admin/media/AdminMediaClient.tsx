@@ -4,17 +4,21 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import {
   desativarMediaGrupoAdmin,
+  listarClassesPublicas,
   listarMediaGruposAdmin,
   listarMediaVersoesAdmin,
+  listarRacasPublicas,
   mensagemDeErroAdmin,
   reverterMediaVersaoAdmin,
+  type ClassPublicaApi,
   type MediaAssetApi,
   type MediaAssetTipoApi,
+  type RacePublicaApi,
 } from "@/lib/api/admin";
 import { resolveMediaUrl } from "@/utils/media-url";
 import { enviarMediaAdmin } from "./uploadMediaAction";
 
-const CATEGORIAS_IMAGEM = ["Item", "Power", "Monster", "EquipmentSet", "Outro"] as const;
+const CATEGORIAS_IMAGEM = ["Item", "Power", "Monster", "EquipmentSet", "Avatar", "Outro"] as const;
 const CATEGORIA_AUDIO = "Musica" as const;
 const ACCEPT_IMAGEM = "image/png,image/jpeg,image/webp,image/gif";
 const ACCEPT_AUDIO = "audio/mpeg,audio/mp3,audio/ogg,audio/wav,audio/x-wav";
@@ -46,6 +50,12 @@ function slugSugerido(nomeArquivo: string): string {
   return slug;
 }
 
+// "usados" cobre tanto os grupos já escolhidos NESTE mesmo lote quanto
+// os grupos que já existem no servidor (gruposExistentes) — sem os dois
+// juntos, um nome genérico de arquivo (ex.: "icone.png", "banner.jpg")
+// reaproveitava silenciosamente o slug de uma imagem antiga não
+// relacionada e virava uma NOVA VERSÃO dela, desativando a versão
+// antiga (bug relatado: "subi imagem nova e bugou as antigas").
 function slugUnicoNaLista(base: string, usados: Set<string>): string {
   let slug = base;
   let contador = 2;
@@ -55,6 +65,64 @@ function slugUnicoNaLista(base: string, usados: Set<string>): string {
     contador += 1;
   }
   return slug;
+}
+
+// Raças/classes pro seletor de restrição de avatar — só busca uma vez,
+// reaproveitado pelos dois formulários (enviar novo / nova versão).
+// Mesmas listas "públicas" já usadas em AdminPowersClient pra vincular
+// Power a raça/classe (raças raras como Celestial não aparecem aqui —
+// mesma limitação já existente naquela tela, não uma regressão desta).
+function useRacasEClasses() {
+  const [racas, setRacas] = useState<RacePublicaApi[]>([]);
+  const [classes, setClasses] = useState<ClassPublicaApi[]>([]);
+  useEffect(() => {
+    listarRacasPublicas().then(setRacas).catch(() => {});
+    listarClassesPublicas().then(setClasses).catch(() => {});
+  }, []);
+  return { racas, classes };
+}
+
+function SeletorRestricaoAvatar({
+  racas,
+  classes,
+  restritoRacaId,
+  restritoClasseId,
+  onMudarRaca,
+  onMudarClasse,
+}: {
+  racas: RacePublicaApi[];
+  classes: ClassPublicaApi[];
+  restritoRacaId: string;
+  restritoClasseId: string;
+  onMudarRaca: (v: string) => void;
+  onMudarClasse: (v: string) => void;
+}) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      <label className="flex flex-1 flex-col gap-1 text-[10px] text-white/60">
+        Restringir à raça (opcional)
+        <select value={restritoRacaId} onChange={(e) => onMudarRaca(e.target.value)} className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm">
+          <option value="">Qualquer raça</option>
+          {racas.map((r) => (
+            <option key={r.id} value={r.id}>
+              {r.nome_masculino}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="flex flex-1 flex-col gap-1 text-[10px] text-white/60">
+        Restringir à classe (opcional)
+        <select value={restritoClasseId} onChange={(e) => onMudarClasse(e.target.value)} className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm">
+          <option value="">Qualquer classe</option>
+          {classes.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.nome}
+            </option>
+          ))}
+        </select>
+      </label>
+    </div>
+  );
 }
 
 type StatusEnvio = "pendente" | "enviando" | "ok" | "erro";
@@ -77,6 +145,9 @@ function DetalheGrupo({ grupo, onFechar, onMudou }: { grupo: string; onFechar: (
   const [descricao, setDescricao] = useState("");
   const [arquivo, setArquivo] = useState<File | null>(null);
   const [enviando, setEnviando] = useState(false);
+  const [restritoRacaId, setRestritoRacaId] = useState("");
+  const [restritoClasseId, setRestritoClasseId] = useState("");
+  const { racas, classes } = useRacasEClasses();
 
   const tipoGrupo: MediaAssetTipoApi = versoes[0]?.tipo ?? "imagem";
   const categoriasDisponiveis: readonly string[] = tipoGrupo === "audio" ? [CATEGORIA_AUDIO] : CATEGORIAS_IMAGEM;
@@ -87,7 +158,11 @@ function DetalheGrupo({ grupo, onFechar, onMudou }: { grupo: string; onFechar: (
     try {
       const lista = await listarMediaVersoesAdmin(grupo);
       setVersoes(lista);
-      if (lista[0]) setCategoria(lista[0].categoria);
+      if (lista[0]) {
+        setCategoria(lista[0].categoria);
+        setRestritoRacaId(lista[0].restrito_raca_id != null ? String(lista[0].restrito_raca_id) : "");
+        setRestritoClasseId(lista[0].restrito_classe_id != null ? String(lista[0].restrito_classe_id) : "");
+      }
     } catch (error) {
       setErro(mensagemDeErroAdmin(error, "Não foi possível carregar as versões."));
     } finally {
@@ -113,6 +188,8 @@ function DetalheGrupo({ grupo, onFechar, onMudou }: { grupo: string; onFechar: (
       formData.append("categoria", categoria);
       formData.append("tipo", tipoGrupo);
       if (descricao) formData.append("descricao", descricao);
+      if (categoria === "Avatar" && restritoRacaId) formData.append("restrito_raca_id", restritoRacaId);
+      if (categoria === "Avatar" && restritoClasseId) formData.append("restrito_classe_id", restritoClasseId);
       formData.append("arquivo", arquivo);
       const resultado = await enviarMediaAdmin(formData);
       if (!resultado.success) {
@@ -201,6 +278,16 @@ function DetalheGrupo({ grupo, onFechar, onMudou }: { grupo: string; onFechar: (
               {enviando ? "Enviando..." : "+ Versão"}
             </button>
           </div>
+          {categoria === "Avatar" && (
+            <SeletorRestricaoAvatar
+              racas={racas}
+              classes={classes}
+              restritoRacaId={restritoRacaId}
+              restritoClasseId={restritoClasseId}
+              onMudarRaca={setRestritoRacaId}
+              onMudarClasse={setRestritoClasseId}
+            />
+          )}
           <textarea value={descricao} onChange={(e) => setDescricao(e.target.value)} placeholder="Descrição (opcional)" rows={2} className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm" />
         </div>
 
@@ -257,8 +344,26 @@ function ModalEnviarMidia({
   const [arquivos, setArquivos] = useState<ArquivoParaEnvio[]>([]);
   const [enviando, setEnviando] = useState(false);
   const [erroGeral, setErroGeral] = useState("");
+  const [restritoRacaId, setRestritoRacaId] = useState("");
+  const [restritoClasseId, setRestritoClasseId] = useState("");
+  const { racas, classes } = useRacasEClasses();
+  // Todo grupo já ativo no servidor, de QUALQUER categoria/tipo — busca
+  // uma vez, ao abrir o modal. "Cada arquivo vira um grupo próprio"
+  // (aviso abaixo) é sempre a intenção aqui, nunca versionar um grupo
+  // já existente (isso é o formulário dentro de DetalheGrupo); sem
+  // conferir contra o servidor, um nome de arquivo genérico (ex.:
+  // "icone.png", "banner.jpg") reaproveitava silenciosamente o slug de
+  // uma imagem antiga não relacionada, desativando-a — bug relatado
+  // ("subi imagem nova e bugou as antigas").
+  const [gruposExistentes, setGruposExistentes] = useState<Set<string>>(new Set());
 
   const categoriasDisponiveis: readonly string[] = tipo === "audio" ? [CATEGORIA_AUDIO] : CATEGORIAS_IMAGEM;
+
+  useEffect(() => {
+    listarMediaGruposAdmin({ porPagina: 10000 })
+      .then((resultado) => setGruposExistentes(new Set(resultado.itens.map((item) => item.grupo))))
+      .catch(() => {});
+  }, []);
 
   function mudarTipo(novoTipo: MediaAssetTipoApi) {
     setTipo(novoTipo);
@@ -268,7 +373,7 @@ function ModalEnviarMidia({
 
   function selecionarArquivos(lista: FileList | null) {
     if (!lista || lista.length === 0) return;
-    const usados = new Set<string>();
+    const usados = new Set<string>(gruposExistentes);
     const novos: ArquivoParaEnvio[] = Array.from(lista).map((file, i) => {
       const base = slugSugerido(file.name);
       const grupo = slugUnicoNaLista(base, usados);
@@ -301,6 +406,15 @@ function ModalEnviarMidia({
       setErroGeral("Dois arquivos não podem usar o mesmo identificador de grupo — ajuste antes de enviar.");
       return;
     }
+    const colisoes = arquivos.filter((a) => gruposExistentes.has(a.grupo.trim()));
+    if (colisoes.length > 0) {
+      setErroGeral(
+        `Identificador já usado por uma mídia existente: ${colisoes.map((a) => `"${a.grupo.trim()}" (${a.file.name})`).join(", ")}. ` +
+          "Escolha outro identificador — enviar assim SUBSTITUIRIA a imagem antiga em todo lugar que ela é usada. " +
+          "Se a intenção é atualizar aquela mídia específica, abra o grupo dela na lista e envie uma nova versão por lá.",
+      );
+      return;
+    }
 
     setEnviando(true);
     setErroGeral("");
@@ -316,6 +430,8 @@ function ModalEnviarMidia({
         formData.append("categoria", categoria);
         formData.append("tipo", tipo);
         if (descricao) formData.append("descricao", descricao);
+        if (categoria === "Avatar" && restritoRacaId) formData.append("restrito_raca_id", restritoRacaId);
+        if (categoria === "Avatar" && restritoClasseId) formData.append("restrito_classe_id", restritoClasseId);
         formData.append("arquivo", item.file);
         const resultado = await enviarMediaAdmin(formData);
         if (!resultado.success) {
@@ -364,6 +480,16 @@ function ModalEnviarMidia({
             ))}
           </select>
         </label>
+        {categoria === "Avatar" && (
+          <SeletorRestricaoAvatar
+            racas={racas}
+            classes={classes}
+            restritoRacaId={restritoRacaId}
+            restritoClasseId={restritoClasseId}
+            onMudarRaca={setRestritoRacaId}
+            onMudarClasse={setRestritoClasseId}
+          />
+        )}
         <label className="flex flex-col gap-1 text-xs">
           Descrição (opcional, aplicada a todos os arquivos deste envio)
           <textarea value={descricao} onChange={(e) => setDescricao(e.target.value)} disabled={enviando} rows={2} className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm" />
@@ -387,40 +513,50 @@ function ModalEnviarMidia({
 
         {arquivos.length > 0 && (
           <div className="flex flex-col gap-2 rounded-xl border border-white/10 p-2">
-            {arquivos.map((item) => (
-              <div key={item.id} className="flex flex-wrap items-center gap-2 rounded-lg bg-black/20 px-2 py-1.5 text-xs">
-                <span className="w-28 shrink-0 truncate text-white/60" title={item.file.name}>
-                  {item.file.name}
-                </span>
-                <input
-                  value={item.grupo}
-                  onChange={(e) => editarGrupo(item.id, e.target.value)}
-                  disabled={enviando || item.status === "ok"}
-                  className="min-w-0 flex-1 rounded-lg border border-white/20 bg-black/30 px-2 py-1 text-xs disabled:opacity-60"
-                />
-                <span
-                  className={
-                    item.status === "ok"
-                      ? "font-bold text-green-400"
-                      : item.status === "erro"
-                        ? "font-bold text-red-400"
-                        : item.status === "enviando"
-                          ? "text-[#F3B43F]"
-                          : "text-white/40"
-                  }
-                >
-                  {item.status === "pendente" && "aguardando"}
-                  {item.status === "enviando" && "enviando..."}
-                  {item.status === "ok" && `✓ ${item.mensagem}`}
-                  {item.status === "erro" && `✕ ${item.mensagem}`}
-                </span>
-                {item.status !== "enviando" && item.status !== "ok" && (
-                  <button type="button" onClick={() => removerArquivo(item.id)} className="shrink-0 text-white/50 hover:text-red-400">
-                    remover
-                  </button>
-                )}
-              </div>
-            ))}
+            {arquivos.map((item) => {
+              const colide = gruposExistentes.has(item.grupo.trim());
+              return (
+                <div key={item.id} className="flex flex-col gap-1">
+                  <div className="flex flex-wrap items-center gap-2 rounded-lg bg-black/20 px-2 py-1.5 text-xs">
+                    <span className="w-28 shrink-0 truncate text-white/60" title={item.file.name}>
+                      {item.file.name}
+                    </span>
+                    <input
+                      value={item.grupo}
+                      onChange={(e) => editarGrupo(item.id, e.target.value)}
+                      disabled={enviando || item.status === "ok"}
+                      className={`min-w-0 flex-1 rounded-lg border bg-black/30 px-2 py-1 text-xs disabled:opacity-60 ${colide ? "border-red-500" : "border-white/20"}`}
+                    />
+                    <span
+                      className={
+                        item.status === "ok"
+                          ? "font-bold text-green-400"
+                          : item.status === "erro"
+                            ? "font-bold text-red-400"
+                            : item.status === "enviando"
+                              ? "text-[#F3B43F]"
+                              : "text-white/40"
+                      }
+                    >
+                      {item.status === "pendente" && "aguardando"}
+                      {item.status === "enviando" && "enviando..."}
+                      {item.status === "ok" && `✓ ${item.mensagem}`}
+                      {item.status === "erro" && `✕ ${item.mensagem}`}
+                    </span>
+                    {item.status !== "enviando" && item.status !== "ok" && (
+                      <button type="button" onClick={() => removerArquivo(item.id)} className="shrink-0 text-white/50 hover:text-red-400">
+                        remover
+                      </button>
+                    )}
+                  </div>
+                  {colide && item.status === "pendente" && (
+                    <p className="px-2 text-[10px] font-bold text-red-400">
+                      Esse identificador já existe — enviar assim substitui a imagem antiga em todo lugar que ela é usada.
+                    </p>
+                  )}
+                </div>
+              );
+            })}
             {terminou && (
               <p className="text-xs font-bold text-[#F3B43F]">
                 Concluído: {ok} de {total} enviado(s) com sucesso{comErro > 0 ? `, ${comErro} com erro` : ""}.

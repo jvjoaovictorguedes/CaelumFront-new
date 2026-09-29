@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   FORGE_CATEGORIAS,
   FORGE_QUALIDADES,
@@ -19,6 +19,7 @@ import {
   excluirTodosForgeBlueprintsAdmin,
   listarForgeBarrasAdmin,
   listarForgeBlueprintsAdmin,
+  listarForgeProdutosAlquimiaAdmin,
   listarForgeRecursosAdmin,
   listarForgeScrollsAdmin,
   listarItensAdmin,
@@ -42,11 +43,13 @@ import {
   type ForgeBlueprintLinhaApi,
   type ForgeCategoria,
   type ForgeMetricasApi,
+  type ForgeProdutoAlquimiaApi,
   type ForgeQualidade,
   type ForgeRecursoApi,
   type ForgeRelatorioValidacaoApi,
   type ForgeScrollApi,
   type ForgeSimulacaoRefinamentoApi,
+  type ForgeTipoInsumo,
   type PayloadForgeBlueprintAdmin,
 } from "@/lib/api/admin";
 
@@ -375,7 +378,14 @@ function EditorBlueprint({ id, onFechar }: { id: number | null; onFechar: () => 
   // Reformulação V2 (Item Único por Equipamento) — só existe UM Item
   // resultado por blueprint, não mais um seletor por qualidade.
   const [seletorItemResultadoAberto, setSeletorItemResultadoAberto] = useState(false);
+  // Forja-Materiais: 3 fontes de ingrediente lógico — "recursos" traz
+  // TODAS as profissões (Mineração/Silvicultura/Exploração) de uma vez
+  // (sem filtro de profissao); "Barra" só é válida com recurso de
+  // Mineração (mesma regra que upsertBarraAdmin já impõe no backend),
+  // então o dropdown desse tipo filtra recursosMineracao localmente.
   const [recursos, setRecursos] = useState<ForgeRecursoApi[]>([]);
+  const [produtosAlquimia, setProdutosAlquimia] = useState<ForgeProdutoAlquimiaApi[]>([]);
+  const recursosMineracao = useMemo(() => recursos.filter((r) => r.profissao === "Mineracao"), [recursos]);
   const [previewDados, setPreviewDados] = useState<Awaited<ReturnType<typeof previewForgeBlueprintAdmin>> | null>(null);
   const [overridesForm, setOverridesForm] = useState<Record<ForgeQualidade, Record<string, string>>>(overridesFormVazio());
 
@@ -408,7 +418,8 @@ function EditorBlueprint({ id, onFechar }: { id: number | null; onFechar: () => 
   }, [id]);
 
   useEffect(() => { carregar(); }, [carregar]);
-  useEffect(() => { listarForgeRecursosAdmin("Mineracao").then(setRecursos).catch(() => setRecursos([])); }, []);
+  useEffect(() => { listarForgeRecursosAdmin().then(setRecursos).catch(() => setRecursos([])); }, []);
+  useEffect(() => { listarForgeProdutosAlquimiaAdmin().then(setProdutosAlquimia).catch(() => setProdutosAlquimia([])); }, []);
 
   async function salvarCamposBasicos() {
     setSalvando(true); setErro(""); setMensagem("");
@@ -536,17 +547,40 @@ function EditorBlueprint({ id, onFechar }: { id: number | null; onFechar: () => 
         <>
           <div className={CARD}>
             <p className="mb-3 font-imFeel text-xl text-[#F3B43F]">Ingredientes lógicos</p>
-            <p className="mb-2 text-xs text-white/50">O Admin escolhe o recurso lógico (Barra de Mineração) — o backend resolve o Item correto nas 6 qualidades.</p>
-            {(form.ingredientes ?? []).map((ing, idx) => (
-              <div key={idx} className="mb-2 flex flex-wrap items-center gap-2">
-                <select className={INPUT} value={ing.id_recurso} onChange={(e) => setForm((f) => ({ ...f, ingredientes: f.ingredientes!.map((x, i) => (i === idx ? { ...x, id_recurso: Number(e.target.value) } : x)) }))}>
-                  {recursos.map((r) => <option key={r.id} value={r.id}>{r.nome}</option>)}
-                </select>
-                <input type="number" min={1} className={`${INPUT} w-20`} value={ing.quantidade_base} onChange={(e) => setForm((f) => ({ ...f, ingredientes: f.ingredientes!.map((x, i) => (i === idx ? { ...x, quantidade_base: Number(e.target.value) } : x)) }))} />
-                <button type="button" onClick={() => setForm((f) => ({ ...f, ingredientes: f.ingredientes!.filter((_, i) => i !== idx) }))} className="text-xs text-red-400 hover:underline">Remover</button>
-              </div>
-            ))}
-            <button type="button" onClick={() => setForm((f) => ({ ...f, ingredientes: [...(f.ingredientes ?? []), { tipo_insumo: "Barra", id_recurso: recursos[0]?.id ?? 0, quantidade_base: 1 }] }))} className={BTN_GHOST}>+ Ingrediente</button>
+            <p className="mb-2 text-xs text-white/50">O Admin escolhe o tipo de insumo — Barra (só recurso de Mineração), Recurso de Expedição (Mineração/Silvicultura/Exploração) ou Produto do Caldeirão (Alquimia) — e o recurso lógico; o backend resolve o Item correto nas 6 qualidades (Produto do Caldeirão usa o mesmo Item nas 6).</p>
+            {(form.ingredientes ?? []).map((ing, idx) => {
+              const opcoesRecurso = ing.tipo_insumo === "Barra" ? recursosMineracao : recursos;
+              return (
+                <div key={idx} className="mb-2 flex flex-wrap items-center gap-2">
+                  <select
+                    className={INPUT}
+                    value={ing.tipo_insumo}
+                    onChange={(e) => {
+                      const novoTipo = e.target.value as ForgeTipoInsumo;
+                      const novoIdRecurso =
+                        novoTipo === "Barra" ? recursosMineracao[0]?.id ?? 0 : novoTipo === "ProdutoAlquimia" ? produtosAlquimia[0]?.id ?? 0 : recursos[0]?.id ?? 0;
+                      setForm((f) => ({ ...f, ingredientes: f.ingredientes!.map((x, i) => (i === idx ? { ...x, tipo_insumo: novoTipo, id_recurso: novoIdRecurso } : x)) }));
+                    }}
+                  >
+                    <option value="Barra">Barra (Mineração)</option>
+                    <option value="RecursoExpedicao">Recurso de Expedição</option>
+                    <option value="ProdutoAlquimia">Produto do Caldeirão</option>
+                  </select>
+                  {ing.tipo_insumo === "ProdutoAlquimia" ? (
+                    <select className={INPUT} value={ing.id_recurso} onChange={(e) => setForm((f) => ({ ...f, ingredientes: f.ingredientes!.map((x, i) => (i === idx ? { ...x, id_recurso: Number(e.target.value) } : x)) }))}>
+                      {produtosAlquimia.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
+                    </select>
+                  ) : (
+                    <select className={INPUT} value={ing.id_recurso} onChange={(e) => setForm((f) => ({ ...f, ingredientes: f.ingredientes!.map((x, i) => (i === idx ? { ...x, id_recurso: Number(e.target.value) } : x)) }))}>
+                      {opcoesRecurso.map((r) => <option key={r.id} value={r.id}>{r.nome} ({r.profissao})</option>)}
+                    </select>
+                  )}
+                  <input type="number" min={1} className={`${INPUT} w-20`} value={ing.quantidade_base} onChange={(e) => setForm((f) => ({ ...f, ingredientes: f.ingredientes!.map((x, i) => (i === idx ? { ...x, quantidade_base: Number(e.target.value) } : x)) }))} />
+                  <button type="button" onClick={() => setForm((f) => ({ ...f, ingredientes: f.ingredientes!.filter((_, i) => i !== idx) }))} className="text-xs text-red-400 hover:underline">Remover</button>
+                </div>
+              );
+            })}
+            <button type="button" onClick={() => setForm((f) => ({ ...f, ingredientes: [...(f.ingredientes ?? []), { tipo_insumo: "Barra", id_recurso: recursosMineracao[0]?.id ?? 0, quantidade_base: 1 }] }))} className={BTN_GHOST}>+ Ingrediente</button>
             <div className="mt-3 flex justify-end"><button type="button" disabled={salvando} onClick={salvarIngredientes} className={BTN}>Salvar ingredientes</button></div>
 
             {relatorio && (
@@ -968,6 +1002,8 @@ function AbaBalanceamento() {
   if (!dados) return <p className="text-sm text-red-400">{erro}</p>;
 
   const fabricacao = dados["forge.crafting"].atual as { CHANCE_QUALIDADE_SUPERIOR_FABRICACAO_PPM_POR_NIVEL: Record<string, Record<string, number>> };
+  const fundicao = dados["forge.smelting"].atual as { FRAGMENTOS_POR_BARRA: Record<string, number> };
+  const refinamento = dados["forge.refinement"].atual as { BONUS_ATRIBUTO_REFINAMENTO_PCT: Record<string, number> };
 
   async function salvarTabelaFabricacao(nivel: string, tabela: Record<string, number>) {
     setSalvando(true); setMensagem(""); setErro("");
@@ -982,6 +1018,20 @@ function AbaBalanceamento() {
     <div className="flex flex-col gap-4">
       {erro && <p className="rounded-lg bg-black/50 px-3 py-2 text-sm text-red-400">{erro}</p>}
       {mensagem && <p className="rounded-lg bg-black/50 px-3 py-2 text-sm text-[#F3B43F]">{mensagem}</p>}
+
+      <div className={CARD}>
+        <p className="mb-2 font-imFeel text-xl text-[#F3B43F]">Fundição — Fragmentos necessários por barra</p>
+        <p className="mb-2 text-xs text-white/50">Quantos fragmentos daquela qualidade o jogador precisa pra fundir 1 barra.</p>
+        <PainelFragmentosPorBarra tabelaInicial={fundicao.FRAGMENTOS_POR_BARRA} />
+      </div>
+
+      <div className={CARD}>
+        <p className="mb-2 font-imFeel text-xl text-[#F3B43F]">Refinamento — Bônus de atributo por nível</p>
+        <p className="mb-2 text-xs text-white/50">
+          Percentual acumulado aplicado ao atributo principal do equipamento em cada nível de refinamento (0 = sem refino).
+        </p>
+        <PainelBonusRefinamento tabelaInicial={refinamento.BONUS_ATRIBUTO_REFINAMENTO_PCT} />
+      </div>
 
       <div className={CARD}>
         <p className="mb-2 font-imFeel text-xl text-[#F3B43F]">RNG de Fabricação — soma por nível precisa fechar 1.000.000 PPM</p>
@@ -1002,6 +1052,89 @@ function AbaBalanceamento() {
         <p className="mb-2 text-xs text-white/50">NIVEL_MAXIMO não é editável na V1. Editar XP por etapa exige preview de impacto + confirmação.</p>
         <PainelProgressao onImpacto={setImpacto} impacto={impacto} />
       </div>
+    </div>
+  );
+}
+
+function PainelFragmentosPorBarra({ tabelaInicial }: { tabelaInicial: Record<string, number> }) {
+  const [tabela, setTabela] = useState(tabelaInicial);
+  const [salvando, setSalvando] = useState(false);
+  const [erro, setErro] = useState("");
+  const [mensagem, setMensagem] = useState("");
+
+  async function salvar() {
+    setSalvando(true); setErro(""); setMensagem("");
+    try {
+      await atualizarForgeBalanceAdmin("forge.smelting", { FRAGMENTOS_POR_BARRA: tabela });
+      setMensagem("Fragmentos por barra atualizados.");
+    } catch (error) { setErro(mensagemDeErroAdmin(error, "Não foi possível salvar.")); } finally { setSalvando(false); }
+  }
+
+  return (
+    <div>
+      <div className="flex flex-wrap gap-2">
+        {Object.entries(tabela).map(([qualidade, quantidade]) => (
+          <label key={qualidade} className="flex flex-col gap-1 text-xs">
+            {qualidade}
+            <input
+              type="number"
+              min={1}
+              className={`${INPUT} w-24`}
+              value={quantidade}
+              onChange={(e) => setTabela((t) => ({ ...t, [qualidade]: Math.max(1, Number(e.target.value) || 1) }))}
+            />
+          </label>
+        ))}
+      </div>
+      {erro && <p className="mt-2 text-sm text-red-400">{erro}</p>}
+      {mensagem && <p className="mt-2 text-sm text-[#F3B43F]">{mensagem}</p>}
+      <button type="button" disabled={salvando} onClick={salvar} className={`${BTN} mt-3`}>
+        {salvando ? "Salvando..." : "Salvar fragmentos por barra"}
+      </button>
+    </div>
+  );
+}
+
+function PainelBonusRefinamento({ tabelaInicial }: { tabelaInicial: Record<string, number> }) {
+  const [tabela, setTabela] = useState(tabelaInicial);
+  const [salvando, setSalvando] = useState(false);
+  const [erro, setErro] = useState("");
+  const [mensagem, setMensagem] = useState("");
+  const niveis = Object.keys(tabela).sort((a, b) => Number(a) - Number(b));
+
+  async function salvar() {
+    setSalvando(true); setErro(""); setMensagem("");
+    try {
+      await atualizarForgeBalanceAdmin("forge.refinement", { BONUS_ATRIBUTO_REFINAMENTO_PCT: tabela });
+      setMensagem("Bônus de refinamento atualizado.");
+    } catch (error) { setErro(mensagemDeErroAdmin(error, "Não foi possível salvar.")); } finally { setSalvando(false); }
+  }
+
+  return (
+    <div>
+      <div className="flex flex-wrap gap-2">
+        {niveis.map((nivel) => (
+          <label key={nivel} className="flex flex-col gap-1 text-xs">
+            +{nivel}
+            <div className="flex items-center gap-1">
+              <input
+                type="number"
+                min={0}
+                step={0.1}
+                className={`${INPUT} w-20`}
+                value={tabela[nivel]}
+                onChange={(e) => setTabela((t) => ({ ...t, [nivel]: Math.max(0, Number(e.target.value) || 0) }))}
+              />
+              <span className="text-white/50">%</span>
+            </div>
+          </label>
+        ))}
+      </div>
+      {erro && <p className="mt-2 text-sm text-red-400">{erro}</p>}
+      {mensagem && <p className="mt-2 text-sm text-[#F3B43F]">{mensagem}</p>}
+      <button type="button" disabled={salvando} onClick={salvar} className={`${BTN} mt-3`}>
+        {salvando ? "Salvando..." : "Salvar bônus de refinamento"}
+      </button>
     </div>
   );
 }

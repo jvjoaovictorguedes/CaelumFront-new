@@ -4,7 +4,10 @@
 // ataca por conta própria via REST (join/action/leave), sempre contra
 // o MESMO HP compartilhado por todo mundo. Sem contra-ataque do boss
 // (decisão de arquitetura do backend — worldBossCombatService.js) —
-// nunca arrisca vida entrando na luta.
+// nunca arrisca vida entrando na luta. Ameaça Mundial V2 (§18) acopla
+// aqui o relógio de combate ao vivo (Furia/fase/cast), cooldowns reais
+// de Powers, o feed de ações de TODO MUNDO (via WorldBossSocketContext)
+// e a tela de resultado final.
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useCharacter } from "@/contexts/CharacterContext";
 import { useWorldBossSocket } from "@/contexts/WorldBossSocketContext";
@@ -15,18 +18,44 @@ import {
   sairWorldBoss,
   usarPoderWorldBoss,
   type WorldBossAcaoResultado,
+  type WorldBossCooldownsApi,
   type WorldBossLutadorApi,
   type WorldBossPoderApi,
 } from "@/lib/api/worldBoss";
+import WorldBossCastCountdown from "./WorldBossCastCountdown";
+import WorldBossRankingPanel from "./WorldBossRankingPanel";
+import WorldBossResultScreen from "./WorldBossResultScreen";
 
-interface LinhaDeLog {
-  id: number;
-  texto: string;
-  dano: boolean;
+function turnosRestantes(cooldowns: WorldBossCooldownsApi, idPoder: number): number {
+  return Math.max(0, cooldowns[`power:${idPoder}`] ?? 0);
+}
+
+// Próxima ação do Boss em contagem regressiva local, a partir de um ms
+// autoritativo do servidor (proxima_acao_em_ms) — só anima a diferença
+// de tempo, nunca decide quando a ação de fato acontece.
+function useContagemRegressiva(msIniciais: number | null | undefined) {
+  const [restante, setRestante] = useState(msIniciais ?? null);
+  const baseRef = useRef({ valor: msIniciais ?? null, marcadoEm: Date.now() });
+
+  useEffect(() => {
+    baseRef.current = { valor: msIniciais ?? null, marcadoEm: Date.now() };
+    setRestante(msIniciais ?? null);
+  }, [msIniciais]);
+
+  useEffect(() => {
+    const intervalo = setInterval(() => {
+      const { valor, marcadoEm } = baseRef.current;
+      if (valor === null) return;
+      setRestante(Math.max(0, valor - (Date.now() - marcadoEm)));
+    }, 200);
+    return () => clearInterval(intervalo);
+  }, []);
+
+  return restante;
 }
 
 export default function WorldBossArena() {
-  const { status, recarregar } = useWorldBossSocket();
+  const { status, ranking, feed, faseAlerta, recarregar } = useWorldBossSocket();
   const { refreshCharacter } = useCharacter();
 
   const [emSessao, setEmSessao] = useState(false);
@@ -35,20 +64,21 @@ export default function WorldBossArena() {
   const [erro, setErro] = useState("");
   const [lutador, setLutador] = useState<WorldBossLutadorApi | null>(null);
   const [poderes, setPoderes] = useState<WorldBossPoderApi[]>([]);
-  const [log, setLog] = useState<LinhaDeLog[]>([]);
-  const proximoLogId = useRef(1);
+  const [cooldowns, setCooldowns] = useState<WorldBossCooldownsApi>({});
+  const [meuLog, setMeuLog] = useState<string[]>([]);
   const [hpAoVivo, setHpAoVivo] = useState<{ atual: number; max: number; percentual: number } | null>(null);
 
-  const adicionarLog = useCallback((texto: string, dano = false) => {
-    const id = proximoLogId.current++;
-    setLog((linhas) => [{ id, texto, dano }, ...linhas].slice(0, 30));
-  }, []);
+  const proximaAcaoRestante = useContagemRegressiva(status?.combate?.proxima_acao_em_ms);
 
   useEffect(() => {
     if (status?.hp_current !== undefined && status?.hp_max !== undefined) {
       setHpAoVivo({ atual: status.hp_current, max: status.hp_max, percentual: status.hp_percentual ?? 0 });
     }
   }, [status?.hp_current, status?.hp_max, status?.hp_percentual]);
+
+  const adicionarMeuLog = useCallback((texto: string) => {
+    setMeuLog((linhas) => [texto, ...linhas].slice(0, 15));
+  }, []);
 
   async function entrar() {
     setEntrando(true);
@@ -57,8 +87,9 @@ export default function WorldBossArena() {
       const resultado = await entrarWorldBoss();
       setLutador(resultado.lutador);
       setPoderes(resultado.poderes);
+      setCooldowns(resultado.cooldowns);
       setEmSessao(true);
-      adicionarLog("Você entrou na luta contra a Ameaça Mundial.");
+      adicionarMeuLog("Você entrou na luta contra a Ameaça Mundial.");
     } catch (error) {
       setErro(mensagemDeErroWorldBoss(error, "Não foi possível entrar na luta."));
     } finally {
@@ -77,19 +108,25 @@ export default function WorldBossArena() {
     setEmSessao(false);
     setLutador(null);
     setPoderes([]);
-    setLog([]);
+    setCooldowns({});
+    setMeuLog([]);
   }
 
   function aplicarResultado(resultado: WorldBossAcaoResultado) {
     setLutador((atual) => (atual ? { ...atual, ...resultado.lutador } : atual));
+    setCooldowns(resultado.cooldowns);
     setHpAoVivo({ atual: resultado.boss.hp_current, max: resultado.boss.hp_max, percentual: resultado.boss.hp_percentual });
-    if (resultado.esquivou) {
-      adicionarLog(`${resultado.nomeAcao}: a Ameaça Mundial esquivou.`);
+    if (resultado.bloqueado) {
+      adicionarMeuLog(`Você ficou impedido de agir (${resultado.motivoBloqueio ?? "controle de status"}).`);
+    } else if (resultado.morreuAntesDeAgir) {
+      adicionarMeuLog("Você foi derrotado antes de conseguir agir.");
+    } else if (resultado.esquivou) {
+      adicionarMeuLog(`${resultado.nomeAcao ?? "Ataque"}: a Ameaça Mundial esquivou.`);
     } else {
-      adicionarLog(`${resultado.nomeAcao}: ${resultado.dano.toLocaleString("pt-BR")} de dano.`, true);
+      adicionarMeuLog(`${resultado.nomeAcao ?? "Ataque"}: ${resultado.dano.toLocaleString("pt-BR")} de dano.`);
     }
     if (resultado.golpeFinal) {
-      adicionarLog("GOLPE FINAL! A Ameaça Mundial foi derrotada!");
+      adicionarMeuLog("GOLPE FINAL! A Ameaça Mundial foi derrotada!");
       setEmSessao(false);
       refreshCharacter();
     }
@@ -150,17 +187,12 @@ export default function WorldBossArena() {
   }
 
   if (status.status === "DEFEATED") {
-    return (
-      <div className="rounded-2xl border-2 border-[#F3B43F] bg-[#292018]/90 p-5 text-center text-white shadow-xl">
-        <h2 className="font-imFeel text-2xl text-[#F3B43F]">{status.nome} foi derrotada!</h2>
-        {status.mensagem_derrota && <p className="mt-2 text-white/80">{status.mensagem_derrota}</p>}
-        {status.golpe_final_por && <p className="mt-2 text-sm text-white/60">Golpe final de {status.golpe_final_por.nome}.</p>}
-      </div>
-    );
+    return <WorldBossResultScreen status={status} ranking={ranking} />;
   }
 
   // status === "ACTIVE"
   const hp = hpAoVivo ?? { atual: status.hp_current ?? 0, max: status.hp_max ?? 1, percentual: status.hp_percentual ?? 0 };
+  const castPendente = status.combate?.cast_pendente ?? null;
 
   return (
     <div className="flex flex-col gap-4">
@@ -168,7 +200,9 @@ export default function WorldBossArena() {
         <div className="flex items-center justify-between">
           <h2 className="font-imFeel text-2xl text-red-400">{status.nome}</h2>
           {status.fase_atual && (
-            <span className="rounded-full bg-red-900/60 px-3 py-1 text-xs font-bold uppercase text-red-200">{status.fase_atual.nome_fase}</span>
+            <span className={`rounded-full bg-red-900/60 px-3 py-1 text-xs font-bold uppercase text-red-200 ${faseAlerta ? "animate-pulse" : ""}`}>
+              {status.fase_atual.nome_fase}
+            </span>
           )}
         </div>
         <div className="mt-3 h-4 w-full overflow-hidden rounded-full border border-black/50 bg-black/40">
@@ -177,7 +211,30 @@ export default function WorldBossArena() {
         <p className="mt-1 text-right text-xs text-white/60">
           {hp.atual.toLocaleString("pt-BR")} / {hp.max.toLocaleString("pt-BR")} ({hp.percentual.toFixed(1)}%)
         </p>
-        {status.fase_atual?.texto_alerta && <p className="mt-2 text-sm italic text-red-300">{status.fase_atual.texto_alerta}</p>}
+        {faseAlerta?.texto_alerta && <p className="mt-2 animate-pulse text-sm italic text-red-300">{faseAlerta.texto_alerta}</p>}
+        {!faseAlerta && status.fase_atual?.texto_alerta && <p className="mt-2 text-sm italic text-red-300">{status.fase_atual.texto_alerta}</p>}
+
+        <div className="mt-3 flex flex-wrap items-center gap-4 text-xs text-white/70">
+          {status.combate && (
+            <span>
+              Fúria: <span className="font-bold text-orange-300">{status.combate.furia_atual_pct}%</span>
+            </span>
+          )}
+          {status.combate && (
+            <span>
+              Ação nº <span className="font-bold">{status.combate.boss_action_seq}</span>
+            </span>
+          )}
+        </div>
+
+        {castPendente?.power && (
+          <div className="mt-3">
+            <WorldBossCastCountdown nome={castPendente.power.nome} imagemUrl={castPendente.power.imagem_url} resolvesAt={castPendente.resolves_at} />
+          </div>
+        )}
+        {!castPendente && proximaAcaoRestante !== null && (
+          <p className="mt-2 text-xs text-white/50">Próxima ação do Boss em {(proximaAcaoRestante / 1000).toFixed(1)}s</p>
+        )}
       </div>
 
       {erro && <p className="rounded-lg bg-black/50 px-3 py-2 text-sm text-red-400">{erro}</p>}
@@ -217,18 +274,29 @@ export default function WorldBossArena() {
             >
               Ataque básico
             </button>
-            {poderes.map((poder) => (
-              <button
-                key={poder.id}
-                type="button"
-                disabled={agindo || (lutador ? lutador.mana_atual < poder.custo_mana : false)}
-                onClick={() => usarPoder(poder)}
-                className="rounded-lg border border-[#F3B43F]/60 px-4 py-2 text-sm font-bold text-[#F3B43F] transition hover:bg-[#F3B43F]/10 disabled:opacity-50"
-                title={`Custo: ${poder.custo_mana} mana`}
-              >
-                {poder.nome} ({poder.custo_mana} mana)
-              </button>
-            ))}
+            {poderes.map((poder) => {
+              const restante = turnosRestantes(cooldowns, poder.id);
+              const semMana = lutador ? lutador.mana_atual < poder.custo_mana : false;
+              const bloqueado = restante > 0 || semMana;
+              const infoEscala = poder.escala_atributo
+                ? ` · Escala com ${poder.escala_atributo}${poder.valor_escala ? ` (x${poder.valor_escala})` : ""}`
+                : "";
+              return (
+                <button
+                  key={poder.id}
+                  type="button"
+                  disabled={agindo || bloqueado}
+                  onClick={() => usarPoder(poder)}
+                  className="relative rounded-lg border border-[#F3B43F]/60 px-4 py-2 text-sm font-bold text-[#F3B43F] transition hover:bg-[#F3B43F]/10 disabled:opacity-50"
+                  title={restante > 0 ? `Em cooldown: ${restante} turno(s)` : `Custo: ${poder.custo_mana} mana${infoEscala}`}
+                >
+                  {poder.nome} ({poder.custo_mana} mana)
+                  {restante > 0 && (
+                    <span className="ml-1 rounded-full bg-black/60 px-1.5 py-0.5 text-[10px] text-white/70">{restante}</span>
+                  )}
+                </button>
+              );
+            })}
             <button
               type="button"
               onClick={sair}
@@ -238,19 +306,29 @@ export default function WorldBossArena() {
             </button>
           </div>
 
-          <div className="max-h-40 overflow-y-auto rounded-xl border border-white/10 bg-black/30 p-3 text-xs">
-            {log.length === 0 ? (
-              <p className="text-white/40">Nenhuma ação ainda.</p>
-            ) : (
-              log.map((linha) => (
-                <p key={linha.id} className={linha.dano ? "text-red-300" : "text-white/60"}>
-                  {linha.texto}
-                </p>
-              ))
-            )}
-          </div>
+          {meuLog.length > 0 && (
+            <div className="rounded-xl border border-[#F3B43F]/20 bg-black/20 p-2 text-xs text-[#F3B43F]/80">
+              {meuLog.map((linha, i) => <p key={i}>{linha}</p>)}
+            </div>
+          )}
         </div>
       )}
+
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className="max-h-48 overflow-y-auto rounded-xl border border-white/10 bg-black/30 p-3 text-xs">
+          <p className="mb-1 text-[10px] font-bold uppercase text-white/50">Combate</p>
+          {feed.length === 0 ? (
+            <p className="text-white/40">Nenhuma ação ainda.</p>
+          ) : (
+            feed.map((linha) => (
+              <p key={linha.id} className={linha.tipo === "dano" ? "text-red-300" : linha.tipo === "derrota" ? "text-red-400 font-bold" : linha.tipo === "cast" ? "text-orange-300" : linha.tipo === "fase" ? "text-[#F3B43F] font-bold" : "text-white/60"}>
+                {linha.texto}
+              </p>
+            ))
+          )}
+        </div>
+        <WorldBossRankingPanel ranking={ranking} />
+      </div>
     </div>
   );
 }

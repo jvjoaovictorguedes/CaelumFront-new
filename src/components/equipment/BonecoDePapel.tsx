@@ -218,7 +218,7 @@ export default function BonecoDePapel({
                   : itemNoSlot
                     ? `${bordaPorRaridade(itemNoSlot.raridade)} bg-[#1c150f]`
                     : "border-dashed border-white/40 bg-black/60"
-              } ${itemNoSlot ? "hover:scale-110" : ""}`}
+              }`}
             >
               {itemNoSlot && <ItemThumb item={itemNoSlot} className="h-full w-full p-2" />}
               {itemNoSlot && itemNoSlot.refinamento > 0 && (
@@ -236,6 +236,13 @@ export default function BonecoDePapel({
               <span className="block text-[9px] uppercase tracking-wide text-white/60">{label}</span>
               {itemNoSlot ? (
                 <>
+                  {resolveMediaUrl(itemNoSlot.imagem_url) && (
+                    <img
+                      src={resolveMediaUrl(itemNoSlot.imagem_url)!}
+                      alt={itemNoSlot.nome}
+                      className="mx-auto mb-1 h-24 w-24 rounded-lg bg-black/40 object-contain p-1"
+                    />
+                  )}
                   <span className="block text-[10px] font-bold leading-tight text-[#F3B43F]">
                     {itemNoSlot.nome}
                     {itemNoSlot.refinamento > 0 && ` +${itemNoSlot.refinamento}`}

@@ -1,13 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { io, type Socket } from "socket.io-client";
 import axiosInstance from "@/utils/axiosIntance";
+import { useGuildSocket } from "@/contexts/GuildSocketContext";
 import type { MensagemMural, Permissao } from "./types";
-
-function socketUrlFromApiUrl(apiUrl: string) {
-  return apiUrl.replace(/\/api\/?$/, "");
-}
 
 export default function GuildMuralTab({
   idGuild,
@@ -16,6 +12,7 @@ export default function GuildMuralTab({
   idGuild: number;
   pode: Record<Permissao, boolean>;
 }) {
+  const { socket } = useGuildSocket();
   const [mensagens, setMensagens] = useState<MensagemMural[] | null>(null);
   const [texto, setTexto] = useState("");
   const [enviando, setEnviando] = useState(false);
@@ -37,36 +34,24 @@ export default function GuildMuralTab({
   }, [idGuild]);
 
   // Atualização ao vivo pra quem já está com a aba de Mural aberta
-  // quando outro oficial/líder posta ou remove algo — mesma sala de
-  // socket que o chat da guilda já usa (guildSocket.js), só escutando
-  // os dois eventos novos do mural em vez de mandar "guild:message".
+  // quando outro oficial/líder posta ou remove algo — a conexão em si
+  // (+ entrar na sala da guilda) é compartilhada por GuildSocketProvider,
+  // aqui só escuta os dois eventos do mural.
   useEffect(() => {
-    const baseUrl = socketUrlFromApiUrl(process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api");
-    const socket: Socket = io(baseUrl, { transports: ["websocket", "polling"] });
-
-    socket.on("connect", () => {
-      axiosInstance
-        .get<{ data?: { ticket?: string } }>("/users/socket-ticket")
-        .then((resp) => {
-          const ticket = resp.data?.data?.ticket;
-          if (!ticket) return;
-          socket.emit("guild:identificar", { ticket });
-          socket.emit("guild:join-room", {}, () => {});
-        })
-        .catch(() => {});
-    });
-
-    socket.on("guild:mural:nova-mensagem", (mensagem: MensagemMural) => {
+    if (!socket) return;
+    const aoPostar = (mensagem: MensagemMural) => {
       setMensagens((atual) => (atual ? [mensagem, ...atual] : [mensagem]));
-    });
-    socket.on("guild:mural:mensagem-removida", ({ id }: { id: number }) => {
-      setMensagens((atual) => (atual ? atual.filter((m) => m.id !== id) : atual));
-    });
-
-    return () => {
-      socket.disconnect();
     };
-  }, [idGuild]);
+    const aoRemover = ({ id }: { id: number }) => {
+      setMensagens((atual) => (atual ? atual.filter((m) => m.id !== id) : atual));
+    };
+    socket.on("guild:mural:nova-mensagem", aoPostar);
+    socket.on("guild:mural:mensagem-removida", aoRemover);
+    return () => {
+      socket.off("guild:mural:nova-mensagem", aoPostar);
+      socket.off("guild:mural:mensagem-removida", aoRemover);
+    };
+  }, [socket]);
 
   async function postar(event: React.FormEvent) {
     event.preventDefault();

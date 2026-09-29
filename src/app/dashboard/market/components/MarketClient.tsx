@@ -5,6 +5,7 @@ import axiosInstance from "@/utils/axiosIntance";
 import { useCharacter } from "@/contexts/CharacterContext";
 import { formatarTier } from "@/utils/equipmentTier";
 import { resolveMediaUrl } from "@/utils/media-url";
+import ItemDescriptionTooltip from "@/components/Tooltip/ItemDescriptionTooltip";
 
 interface WeaponPropertiesApi {
   dano_min: number;
@@ -23,6 +24,20 @@ interface ArmorPropertiesApi {
   bonus_velocidade: number;
 }
 
+interface ConsumablePropertiesApi {
+  efeito_vida: number;
+  efeito_mana: number;
+}
+
+interface FishingRodPropertiesApi {
+  forca_linha: number;
+  controle: number;
+  recolhimento: number;
+  precisao: number;
+  estabilidade: number;
+  nivel_pesca_minimo: number;
+}
+
 interface ItemApi {
   id: number;
   nome: string;
@@ -30,8 +45,11 @@ interface ItemApi {
   raridade: string;
   tier_equipamento: number | null;
   imagem_url?: string | null;
+  descricao?: string | null;
   weaponProperties?: WeaponPropertiesApi | null;
   armorProperties?: ArmorPropertiesApi | null;
+  consumableProperties?: ConsumablePropertiesApi | null;
+  fishingRodProperties?: FishingRodPropertiesApi | null;
 }
 
 interface InstanciaListingApi {
@@ -99,6 +117,14 @@ const CORES_RARIDADE: Record<string, string> = {
   Mitico: "text-red-400",
 };
 
+const NOME_ATRIBUTO: Record<string, string> = {
+  Forca: "Força",
+  Vitalidade: "Vitalidade",
+  Inteligencia: "Inteligência",
+  Agilidade: "Agilidade",
+  Velocidade: "Velocidade",
+};
+
 const OPCOES_RARIDADE = ["Comum", "Incomum", "Raro", "Epico", "Lendario", "Mitico"] as const;
 
 // Fallback quando o item não tem imagem cadastrada — mesmo glifo por
@@ -117,7 +143,7 @@ const ICONE_POR_TIPO: Record<string, string> = {
 function IconeItem({ item }: { item: ItemApi }) {
   const imagemResolvida = resolveMediaUrl(item.imagem_url);
   return (
-    <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-black/30 transition duration-150 hover:scale-125">
+    <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-black/30">
       {imagemResolvida ? (
         <img src={imagemResolvida} alt={item.nome} className="h-full w-full object-contain p-1" />
       ) : (
@@ -182,6 +208,11 @@ function PropriedadesEquipamento({ item, instancia }: { item: ItemApi; instancia
       <p className="mt-1 text-xs text-white/80">
         <span className="font-bold text-[#F3B43F]">Dano efetivo:</span> {efetivo.dano_min}–{efetivo.dano_max}{" "}
         ({efetivo.tipo_dano === "Fisico" ? "Físico" : "Mágico"})
+        {efetivo.valor_bonus_atributo > 0 && (
+          <>
+            {" · "}+{efetivo.valor_bonus_atributo} {NOME_ATRIBUTO[efetivo.bonus_atributo] ?? efetivo.bonus_atributo}
+          </>
+        )}
       </p>
     );
   }
@@ -207,6 +238,94 @@ function PropriedadesEquipamento({ item, instancia }: { item: ItemApi; instancia
           </>
         )}
       </p>
+    );
+  }
+
+  return null;
+}
+
+// Bloco completo de atributos pra dentro do tooltip de descrição (§
+// pedido real: "já aparece o texto, mas falta o atributo") — cobre
+// arma/armadura (usando o efetivo já refinado quando a listagem for de
+// uma instância), consumível e vara de pesca, mesmo critério de
+// ListaDeAtributos em ShopItem.tsx. tipo_item decide qual bloco
+// mostrar, nunca só a presença do campo (item corrompido com uma
+// propriedade órfã no banco não pode aparecer com o atributo errado).
+function AtributosNoTooltip({ item, instancia }: { item: ItemApi; instancia?: InstanciaListingApi | null }) {
+  const efetivo = instancia?.propriedades_efetivas;
+
+  if (item.tipo_item === "Arma" && item.weaponProperties) {
+    const arma = efetivo ?? item.weaponProperties;
+    return (
+      <ul className="mt-2 space-y-0.5 border-t border-[#3a2f24]/30 pt-2 text-xs">
+        <li>
+          <span className="font-bold">{efetivo ? "Dano efetivo:" : "Dano:"}</span> {arma.dano_min}–{arma.dano_max}{" "}
+          ({arma.tipo_dano === "Fisico" ? "Físico" : "Mágico"})
+        </li>
+        {arma.valor_bonus_atributo > 0 && (
+          <li>
+            <span className="font-bold">+{arma.valor_bonus_atributo}</span> {NOME_ATRIBUTO[arma.bonus_atributo] ?? arma.bonus_atributo}
+          </li>
+        )}
+      </ul>
+    );
+  }
+
+  if (item.tipo_item !== "Consumivel" && item.armorProperties) {
+    const armor = efetivo ?? item.armorProperties;
+    const bonus = (
+      [
+        ["Força", armor.bonus_forca],
+        ["Vitalidade", armor.bonus_vitalidade],
+        ["Inteligência", armor.bonus_inteligencia],
+        ["Agilidade", armor.bonus_agilidade],
+        ["Velocidade", armor.bonus_velocidade],
+      ] as const
+    ).filter(([, valor]) => valor > 0);
+    return (
+      <ul className="mt-2 space-y-0.5 border-t border-[#3a2f24]/30 pt-2 text-xs">
+        <li>
+          <span className="font-bold">{efetivo ? "Defesa efetiva:" : "Defesa:"}</span> {armor.defesa}
+        </li>
+        {bonus.map(([nome, valor]) => (
+          <li key={nome}>
+            <span className="font-bold">+{valor}</span> {nome}
+          </li>
+        ))}
+      </ul>
+    );
+  }
+
+  if (item.consumableProperties) {
+    const consumivel = item.consumableProperties;
+    if (consumivel.efeito_vida <= 0 && consumivel.efeito_mana <= 0) return null;
+    return (
+      <ul className="mt-2 space-y-0.5 border-t border-[#3a2f24]/30 pt-2 text-xs">
+        {consumivel.efeito_vida > 0 && (
+          <li>
+            <span className="font-bold">+{consumivel.efeito_vida}%</span> Vida
+          </li>
+        )}
+        {consumivel.efeito_mana > 0 && (
+          <li>
+            <span className="font-bold">+{consumivel.efeito_mana}%</span> Mana
+          </li>
+        )}
+      </ul>
+    );
+  }
+
+  if (item.tipo_item === "Ferramenta" && item.fishingRodProperties) {
+    const vara = item.fishingRodProperties;
+    return (
+      <ul className="mt-2 space-y-0.5 border-t border-[#3a2f24]/30 pt-2 text-xs">
+        <li><span className="font-bold">Força da linha:</span> {vara.forca_linha}</li>
+        <li><span className="font-bold">Controle:</span> {vara.controle}</li>
+        <li><span className="font-bold">Recolhimento:</span> {vara.recolhimento}</li>
+        <li><span className="font-bold">Precisão:</span> {vara.precisao}</li>
+        <li><span className="font-bold">Estabilidade:</span> {vara.estabilidade}</li>
+        {vara.nivel_pesca_minimo > 1 && <li>Nível de pesca mínimo: {vara.nivel_pesca_minimo}</li>}
+      </ul>
     );
   }
 
@@ -451,25 +570,46 @@ function AbaComprar({ characterId }: { characterId: number }) {
 
               return (
                 <div key={listing.id} className="rounded-xl border border-white/10 bg-[#3a2f24] p-3">
-                  <div className="flex items-start gap-3">
-                    <IconeItem item={listing.item} />
-                    <div className="min-w-0 flex-1">
-                      <p className="font-bold">
-                        {listing.item.nome}
-                        {listing.instancia ? ` +${listing.instancia.refinamento}` : ""}
-                      </p>
-                      <p className="flex flex-wrap items-center gap-1.5">
-                        <span className={`text-xs font-bold ${CORES_RARIDADE[listing.item.raridade] ?? "text-white/70"}`}>
-                          {listing.item.raridade} · {listing.item.tipo_item}
-                        </span>
-                        {formatarTier(listing.item.tier_equipamento) && (
-                          <span className="rounded-full border border-[#F3B43F]/60 bg-black/30 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[#F3B43F]">
-                            {formatarTier(listing.item.tier_equipamento)}
-                          </span>
+                  <ItemDescriptionTooltip
+                    className="relative block w-full cursor-help"
+                    label={
+                      <>
+                        {resolveMediaUrl(listing.item.imagem_url) && (
+                          <img
+                            src={resolveMediaUrl(listing.item.imagem_url)!}
+                            alt={listing.item.nome}
+                            className="mx-auto mb-2 h-28 w-28 rounded-lg bg-black/20 object-contain p-1"
+                          />
                         )}
-                      </p>
+                        <p className="mb-1 font-bold">
+                          {listing.item.nome}
+                          {listing.instancia ? ` +${listing.instancia.refinamento}` : ""}
+                        </p>
+                        <p>{listing.item.descricao?.trim() || "Sem descrição."}</p>
+                        <AtributosNoTooltip item={listing.item} instancia={listing.instancia} />
+                      </>
+                    }
+                  >
+                    <div className="flex items-start gap-3">
+                      <IconeItem item={listing.item} />
+                      <div className="min-w-0 flex-1">
+                        <p className="font-bold">
+                          {listing.item.nome}
+                          {listing.instancia ? ` +${listing.instancia.refinamento}` : ""}
+                        </p>
+                        <p className="flex flex-wrap items-center gap-1.5">
+                          <span className={`text-xs font-bold ${CORES_RARIDADE[listing.item.raridade] ?? "text-white/70"}`}>
+                            {listing.item.raridade} · {listing.item.tipo_item}
+                          </span>
+                          {formatarTier(listing.item.tier_equipamento) && (
+                            <span className="rounded-full border border-[#F3B43F]/60 bg-black/30 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[#F3B43F]">
+                              {formatarTier(listing.item.tier_equipamento)}
+                            </span>
+                          )}
+                        </p>
+                      </div>
                     </div>
-                  </div>
+                  </ItemDescriptionTooltip>
                   {listing.instancia && <PropriedadesEquipamento item={listing.item} instancia={listing.instancia} />}
                   <p className="mt-2 text-sm text-white/70">
                     Vendedor: {listing.vendedor?.nome ?? "?"} ·{" "}

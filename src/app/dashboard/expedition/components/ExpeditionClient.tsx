@@ -5,6 +5,7 @@ import axiosInstance from "@/utils/axiosIntance";
 import { resolveMediaUrl } from "@/utils/media-url";
 import { useCharacter } from "@/contexts/CharacterContext";
 import CombatArena from "../../adventure/components/CombatArena";
+import ItemIcon from "@/components/Item/ItemIcon";
 
 type TipoProfissao = "Mineracao" | "Silvicultura" | "Exploracao";
 
@@ -138,18 +139,6 @@ function formatarTempo(ms: number) {
   return segundosRestantes > 0 ? `${minutos}min ${segundosRestantes}s` : `${minutos}min`;
 }
 
-function ImagemItem({ nome, imagem_url, className = "" }: { nome: string; imagem_url?: string | null; className?: string }) {
-  const src = resolveMediaUrl(imagem_url);
-  if (src) {
-    // eslint-disable-next-line @next/next/no-img-element
-    return <img src={src} alt={nome} className={`object-contain ${className}`} />;
-  }
-  return (
-    <div className={`flex items-center justify-center text-lg font-bold text-[#F3B43F]/80 ${className}`}>
-      {nome.charAt(0).toUpperCase()}
-    </div>
-  );
-}
 
 function BarraXp({ profissao }: { profissao: Profissao }) {
   const proximo = profissao.xp_proximo_nivel;
@@ -275,24 +264,19 @@ export default function ExpeditionClient() {
       );
       const dados = resp.data.data;
 
-      // O cooldown foi consumido do mesmo jeito (ver expeditionService.
-      // coletar) mesmo sem ganhar recurso, então a barra/relógio da
-      // profissão ainda precisa refletir isso.
-      setProfissoes((atuais) =>
-        atuais.map((profissao) =>
-          profissao.tipo === regiao.profissao
-            ? { ...profissao, proxima_coleta_em: dados.proxima_coleta_em }
-            : profissao,
-        ),
-      );
-
-      if (dados.interrompida && dados.enemy) {
-        setRegiaoInterrompida(regiao);
-        setInimigoInterrupcao(dados.enemy);
-        return;
-      }
-
-      setResultado(dados);
+      // O cooldown é GLOBAL entre as 3 profissões (expeditionService.
+      // coletar grava o mesmo proxima_coleta_em nas 3 linhas de
+      // character_professions, não só na que coletou agora) — por isso
+      // essa atualização precisa valer pras 3 profissões no estado
+      // local, nunca só pra `regiao.profissao`. Aplicar só na coletada
+      // era o bug real reportado pelos jogadores: trocar de profissão
+      // logo depois de coletar mostrava o botão liberado (o local state
+      // das outras 2 ficava com o proxima_coleta_em antigo, já
+      // expirado), o clique batia no servidor e voltava "Essa profissão
+      // ainda está em cooldown" — e como a UI não tinha nenhum relógio
+      // rodando pra essas profissões "livres na aparência", o jogador
+      // achava que tinha esperado muito mais que o cooldown de verdade
+      // configurado no admin, só de tentar de novo sem feedback visual.
       setProfissoes((atuais) =>
         atuais.map((profissao) =>
           profissao.tipo === regiao.profissao
@@ -303,15 +287,35 @@ export default function ExpeditionClient() {
                 xp_proximo_nivel: dados.xp_proximo_nivel,
                 proxima_coleta_em: dados.proxima_coleta_em,
               }
-            : profissao,
+            : { ...profissao, proxima_coleta_em: dados.proxima_coleta_em },
         ),
       );
+
+      if (dados.interrompida && dados.enemy) {
+        setRegiaoInterrompida(regiao);
+        setInimigoInterrupcao(dados.enemy);
+        return;
+      }
+
+      setResultado(dados);
       if (dados.item_ganho) await refreshCharacter();
     } catch (error: unknown) {
-      const msg =
-        (error as { response?: { data?: { message?: string } } })?.response?.data?.message ??
-        "Não foi possível coletar nessa região.";
-      setErro(msg);
+      const dadosErro = (error as { response?: { data?: { message?: string; disponivelEmMs?: number } } })?.response
+        ?.data;
+      setErro(dadosErro?.message ?? "Não foi possível coletar nessa região.");
+
+      // 429 "ainda em cooldown" — o servidor manda quanto falta de
+      // verdade (cooldown GLOBAL, calculado no momento exato da
+      // rejeição). Sincroniza as 3 profissões com isso agora, senão a
+      // UI continua mostrando as outras 2 como livres (estado local
+      // desatualizado) até a próxima coleta bem-sucedida — o jogador
+      // clicava de novo, tomava o mesmo 429 e sentia um cooldown muito
+      // mais longo que o configurado, sem nenhum relógio visível
+      // contando o tempo de verdade.
+      if (typeof dadosErro?.disponivelEmMs === "number") {
+        const proximaColetaEm = new Date(Date.now() + dadosErro.disponivelEmMs).toISOString();
+        setProfissoes((atuais) => atuais.map((profissao) => ({ ...profissao, proxima_coleta_em: proximaColetaEm })));
+      }
     } finally {
       setColetandoRegiao(null);
     }
@@ -411,13 +415,17 @@ export default function ExpeditionClient() {
         >
           {resultado.item_ganho ? (
             <div className="flex items-center gap-3">
-              <div className={`h-14 w-14 shrink-0 overflow-hidden rounded-lg border-2 bg-[#3a2f24] transition duration-150 hover:scale-125 ${bordaPorRaridade(resultado.item_ganho.raridade)}`}>
-                <ImagemItem
-                  nome={resultado.item_ganho.nome}
-                  imagem_url={resultado.item_ganho.imagem_url}
-                  className="h-full w-full p-1.5"
-                />
-              </div>
+              <ItemIcon
+                imagemUrl={resolveMediaUrl(resultado.item_ganho.imagem_url)}
+                nome={resultado.item_ganho.nome}
+                className={`h-14 w-14 shrink-0 rounded-lg border-2 bg-[#3a2f24] ${bordaPorRaridade(resultado.item_ganho.raridade)}`}
+                imgClassName="h-full w-full object-contain p-1.5"
+                fallback={
+                  <div className="flex h-full w-full items-center justify-center text-lg font-bold text-[#F3B43F]/80">
+                    {resultado.item_ganho.nome.charAt(0).toUpperCase()}
+                  </div>
+                }
+              />
               <div>
                 <p className={`text-xs uppercase tracking-widest ${textoPorRaridade(resultado.item_ganho.raridade)}`}>
                   {resultado.item_ganho.raridade}
@@ -462,9 +470,17 @@ export default function ExpeditionClient() {
                     }`}
                   >
                     <div className="flex items-center gap-3">
-                      <div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg border border-white/10 bg-[#1c150f] transition duration-150 hover:scale-125">
-                        <ImagemItem nome={regiao.nome} imagem_url={regiao.imagem_url} className="h-full w-full p-1.5" />
-                      </div>
+                      <ItemIcon
+                        imagemUrl={resolveMediaUrl(regiao.imagem_url)}
+                        nome={regiao.nome}
+                        className="h-14 w-14 shrink-0 rounded-lg border border-white/10 bg-[#1c150f]"
+                        imgClassName="h-full w-full object-contain p-1.5"
+                        fallback={
+                          <div className="flex h-full w-full items-center justify-center text-lg font-bold text-[#F3B43F]/80">
+                            {regiao.nome.charAt(0).toUpperCase()}
+                          </div>
+                        }
+                      />
                       <div className="min-w-0">
                         <p className="truncate text-sm font-bold">{regiao.nome}</p>
                         <p className="text-xs text-white/50">Nível mínimo {regiao.nivel_minimo}</p>

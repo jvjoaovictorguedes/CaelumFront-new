@@ -30,6 +30,15 @@ interface ConsumableProperties {
   efeito_mana: number;
 }
 
+interface FishingRodProperties {
+  forca_linha: number;
+  controle: number;
+  recolhimento: number;
+  precisao: number;
+  estabilidade: number;
+  nivel_pesca_minimo: number;
+}
+
 export interface ShopItemData {
   id: number;
   nome: string;
@@ -47,7 +56,8 @@ export interface ShopItemData {
     | "Acessorio1"
     | "Acessorio2"
     | "QuestItem"
-    | "Currencia";
+    | "Currencia"
+    | "Ferramenta";
   raridade?: string;
   disponivel_loja?: boolean;
   // Alias explícito do backend (src/models/associations.js) — não é
@@ -55,6 +65,7 @@ export interface ShopItemData {
   weaponProperties?: WeaponProperties | null;
   armorProperties?: ArmorProperties | null;
   consumableProperties?: ConsumableProperties | null;
+  fishingRodProperties?: FishingRodProperties | null;
 }
 
 interface PurchaseResponse {
@@ -118,6 +129,7 @@ const ICONE_POR_TIPO: Record<ShopItemData["tipo_item"], string> = {
   Acessorio2: "📿",
   QuestItem: "📜",
   Currencia: "🪙",
+  Ferramenta: "🎣",
 };
 
 // Classe -> atributo que ela mais aproveita. Guerreiro bate mais forte
@@ -225,6 +237,32 @@ function ListaDeAtributos({ item }: { item: ShopItemData }) {
     );
   }
 
+  if (item.tipo_item === "Ferramenta" && item.fishingRodProperties) {
+    const vara = item.fishingRodProperties;
+    return (
+      <ul className="mt-3 space-y-1 text-sm">
+        <li className="text-white/90">
+          <span className="font-bold text-[#F3B43F]">Força da linha:</span> {vara.forca_linha}
+        </li>
+        <li className="text-white/90">
+          <span className="font-bold text-[#F3B43F]">Controle:</span> {vara.controle}
+        </li>
+        <li className="text-white/90">
+          <span className="font-bold text-[#F3B43F]">Recolhimento:</span> {vara.recolhimento}
+        </li>
+        <li className="text-white/90">
+          <span className="font-bold text-[#F3B43F]">Precisão:</span> {vara.precisao}
+        </li>
+        <li className="text-white/90">
+          <span className="font-bold text-[#F3B43F]">Estabilidade:</span> {vara.estabilidade}
+        </li>
+        {vara.nivel_pesca_minimo > 1 && (
+          <li className="text-white/60">Nível de pesca mínimo: {vara.nivel_pesca_minimo}</li>
+        )}
+      </ul>
+    );
+  }
+
   return null;
 }
 
@@ -323,7 +361,7 @@ export default function ShopItem({
           <img
             src={imagemResolvida}
             alt={item.nome}
-            className="h-full w-full object-contain p-4 opacity-90 transition-transform duration-150 hover:scale-110"
+            className="h-full w-full object-contain p-4 opacity-90"
           />
         ) : (
           <span className="text-6xl" aria-hidden="true">

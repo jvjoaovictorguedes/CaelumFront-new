@@ -18,6 +18,7 @@ import {
 import { spriteFolderForClass, spriteForClass } from "./sprites/spriteForClass";
 import { resolveMediaUrl } from "@/utils/media-url";
 import { bordaPorRaridade } from "@/components/equipment/BonecoDePapel";
+import ItemIcon from "@/components/Item/ItemIcon";
 
 import { spriteFolderForEnemy, spriteForEnemy } from "./sprites/spriteForEnemy";
 
@@ -57,6 +58,8 @@ interface Power {
   dano_base: number;
   cura_base: number;
   imagem_url?: string | null;
+  escala_atributo?: string;
+  valor_escala?: number;
 }
 
 interface Ability {
@@ -1207,6 +1210,8 @@ export default function CombatArena({
               imagem_url: habilidade.Power.imagem_url,
               custo_mana: habilidade.Power.custo_mana,
               descricao: habilidade.Power.descricao,
+              escala_atributo: habilidade.Power.escala_atributo,
+              valor_escala: habilidade.Power.valor_escala,
             }))}
             onUsarPoder={(powerId) => executarAcao({ type: "power", powerId })}
             consumiveis={consumiveis}
@@ -1251,18 +1256,17 @@ export default function CombatArena({
                       title={`${espolio.nome} x${espolio.quantidade}`}
                       className={`flex items-center gap-2 rounded-lg border-2 bg-black/30 px-2 py-1 ${bordaPorRaridade(espolio.raridade)}`}
                     >
-                      {imagem ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={imagem}
-                          alt={espolio.nome}
-                          className="h-8 w-8 object-contain transition-transform duration-150 hover:scale-125"
-                        />
-                      ) : (
-                        <span className="text-lg" aria-hidden="true">
-                          📦
-                        </span>
-                      )}
+                      <ItemIcon
+                        imagemUrl={imagem}
+                        nome={espolio.nome}
+                        className="h-8 w-8"
+                        innerClassName=""
+                        fallback={
+                          <span className="text-lg" aria-hidden="true">
+                            📦
+                          </span>
+                        }
+                      />
                       <span className="text-xs font-bold text-white">
                         {espolio.nome} <span className="text-[#F3B43F]">x{espolio.quantidade}</span>
                       </span>

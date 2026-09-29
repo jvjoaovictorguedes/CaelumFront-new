@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import axiosInstance from "@/utils/axiosIntance";
 import { resolveMediaUrl } from "@/utils/media-url";
+import ItemIcon from "@/components/Item/ItemIcon";
 
 interface EvolucaoApi {
   id: number;
@@ -46,20 +47,6 @@ function BonusDaEvolucao({ evolucao }: { evolucao: EvolucaoApi }) {
   return <p className="text-xs text-white/60">Concede: {bonus.join(" · ")}</p>;
 }
 
-function EvolucaoThumb({ evolucao }: { evolucao: EvolucaoApi }) {
-  const src = resolveMediaUrl(evolucao.imagem_url);
-  if (src) {
-    return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img src={src} alt={evolucao.nome} className="h-full w-full rounded-lg object-cover" />
-    );
-  }
-  return (
-    <div className="flex h-full w-full items-center justify-center rounded-lg text-lg font-bold text-[#F3B43F]/80">
-      {evolucao.nome.charAt(0).toUpperCase()}
-    </div>
-  );
-}
 
 function motivoBloqueio(evolucao: EvolucaoApi) {
   if (!evolucao.pre_requisito_atendido) return "Requer a evolução anterior desta árvore";
@@ -150,9 +137,18 @@ export default function EvolutionsPanel({ characterId }: { characterId: number }
                     : "border-white/10 bg-black/20 opacity-70"
               }`}
             >
-              <div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg border border-white/10 bg-black/30">
-                <EvolucaoThumb evolucao={evolucao} />
-              </div>
+              <ItemIcon
+                imagemUrl={resolveMediaUrl(evolucao.imagem_url)}
+                nome={evolucao.nome}
+                position="bottom"
+                className="h-14 w-14 shrink-0 rounded-lg border border-white/10 bg-black/30"
+                imgClassName="h-full w-full object-cover"
+                fallback={
+                  <div className="flex h-full w-full items-center justify-center text-lg font-bold text-[#F3B43F]/80">
+                    {evolucao.nome.charAt(0).toUpperCase()}
+                  </div>
+                }
+              />
 
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">

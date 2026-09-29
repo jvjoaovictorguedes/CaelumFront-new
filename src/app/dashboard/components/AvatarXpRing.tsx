@@ -59,6 +59,12 @@ export default function AvatarXpRing({
       >
         {nivel}
       </div>
+      <div
+        className="absolute left-1/2 top-full z-10 mt-1 -translate-x-1/2 whitespace-nowrap rounded-full border border-[#F3B43F]/60 bg-[#292018]/90 px-2 py-0.5 font-imFeel text-xs font-bold leading-none text-[#F3B43F] shadow-lg"
+        title={`Nível ${nivel} — ${experiencia}/${experienciaNivel} XP`}
+      >
+        {experiencia}/{experienciaNivel}
+      </div>
     </>
   );
 }

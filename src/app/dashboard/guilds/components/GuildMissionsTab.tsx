@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import axiosInstance from "@/utils/axiosIntance";
+import { useGuildSocket } from "@/contexts/GuildSocketContext";
 
 interface MissaoApi {
   categoria: "Diaria" | "Semanal" | "Mensal" | "Rank";
@@ -28,6 +29,7 @@ const LABEL_CATEGORIA: Record<MissaoApi["categoria"], string> = {
 };
 
 export default function GuildMissionsTab({ idGuild }: { idGuild: number }) {
+  const { socket } = useGuildSocket();
   const [missoes, setMissoes] = useState<MissaoApi[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [mensagem, setMensagem] = useState("");
@@ -49,6 +51,20 @@ export default function GuildMissionsTab({ idGuild }: { idGuild: number }) {
   useEffect(() => {
     carregar();
   }, [carregar]);
+
+  // Sem isso a tela só buscava progresso uma vez ao abrir — o backend já
+  // emite "guild:mission:update" toda vez que QUALQUER membro progride
+  // (matar inimigo, expedição, forja, PvP, etc.), mas ninguém escutava,
+  // então quem já estava com a aba aberta via progresso sempre "zerado"
+  // até fechar e abrir de novo. O socket em si (conexão + entrar na
+  // sala) é compartilhado por GuildSocketProvider — aqui só escuta.
+  useEffect(() => {
+    if (!socket) return;
+    socket.on("guild:mission:update", carregar);
+    return () => {
+      socket.off("guild:mission:update", carregar);
+    };
+  }, [socket, carregar]);
 
   if (carregando) {
     return (

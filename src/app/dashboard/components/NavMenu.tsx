@@ -4,10 +4,11 @@ import { useRouter, usePathname } from "next/navigation";
 import { useState } from "react";
 import { getAvatarUrl, getClassPortrait } from "@/utils/media-url";
 import { logout } from "@/app/login/action";
-import CaelumBrand from "@/components/CaelumBrand/CaelumBrand";
+import { CaelumBrasao } from "@/components/CaelumBrand/CaelumBrand";
 import OnlinePlayersBadge from "./OnlinePlayersBadge";
 import PatchNotesBell from "./PatchNotesBell";
 import SidebarHealthBar from "./SidebarHealthBar";
+import SocialLinks from "./SocialLinks";
 import { useMessagesSocket } from "@/contexts/MessagesSocketContext";
 import { useCharacter } from "@/contexts/CharacterContext";
 import AvatarXpRing from "./AvatarXpRing";
@@ -155,12 +156,13 @@ export default function NavMenu({
           menuAberto ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        <div className="flex w-full flex-col items-center justify-center gap-3 border-b border-black/50 pb-4">
-          <div className="flex w-full items-center justify-center gap-2">
-            <CaelumBrand tamanho="sm" variante="escuro" />
+        <div className="relative flex w-full flex-col items-center justify-center gap-3 border-b border-black/50 pb-4">
+          <div className="absolute right-2 top-0">
             <PatchNotesBell />
           </div>
-          <div className="relative flex items-center justify-center">
+          <SocialLinks />
+          <CaelumBrasao tamanho="xs" />
+          <div className="relative mb-8 flex items-center justify-center">
             {character && (
               <AvatarXpRing nivel={character.nivel} experiencia={character.experiencia ?? 0} />
             )}

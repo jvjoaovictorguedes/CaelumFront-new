@@ -7,6 +7,7 @@ import BalcaoDeEspoliosPanel from "./BalcaoDeEspoliosPanel";
 import MuralDeCacadasPanel from "./MuralDeCacadasPanel";
 import WorldBossArena from "./WorldBossArena";
 import GuildJournalPanel from "./GuildJournalPanel";
+import { obterGuildJournalCompleto } from "@/lib/api/guildJournal";
 
 type Aba = "Diaria" | "Semanal" | "Mensal" | "Rank" | "Marco" | "Balcao" | "Cacadas" | "AmeacaMundial" | "Jornal";
 
@@ -50,6 +51,12 @@ interface OfertaApi {
   ordem: number;
   missao: MissaoDeRankApi;
   ja_aceita: boolean;
+  // null = nunca aceitou essa oferta. Preenchido em qualquer outro caso
+  // (inclusive "Resgatado") — sem isso, uma oferta já concluída E
+  // resgatada voltava a mostrar "Aceitar" como se nada tivesse
+  // acontecido (bug reportado: jogador via "Aceitar" numa oferta que
+  // já tinha entregue e resgatado).
+  status_contrato: "Ativo" | "Concluido" | "Expirado" | "Resgatado" | "Falhou" | null;
 }
 
 interface ContratoApi {
@@ -80,6 +87,18 @@ interface OverviewApi {
   provacao_ativa: ContratoApi | null;
   cooldown_provacao_restante_ms: number;
 }
+
+// Rótulo do botão de uma oferta já usada nesta rotação — "Já aceito"
+// sozinho escondia o que realmente aconteceu (bug reportado: jogador
+// já tinha entregue e resgatado a recompensa, mas o card voltava a
+// mostrar "Aceitar" como se nada tivesse acontecido).
+const ROTULO_STATUS_OFERTA: Record<NonNullable<OfertaApi["status_contrato"]>, string> = {
+  Ativo: "Em andamento",
+  Concluido: "Aguardando resgate",
+  Resgatado: "Concluído",
+  Expirado: "Expirado",
+  Falhou: "Falhou",
+};
 
 function formatarExpiracao(expiraEm: string | null) {
   if (!expiraEm) return null;
@@ -134,12 +153,33 @@ export default function AdventureGuildPanel() {
   const { refreshCharacter } = useCharacter();
   const [aba, setAba] = useState<Aba>("Diaria");
   const [overview, setOverview] = useState<OverviewApi | null>(null);
+  // Timestamp absoluto (não os ms restantes crus da API, que ficam
+  // desatualizados entre um fetch e outro) em que o cooldown da
+  // Provação libera — recalculado a cada `carregarOverview()`, contado
+  // ao vivo contra `agora` no render abaixo.
+  const [cooldownProvacaoLiberaEm, setCooldownProvacaoLiberaEm] = useState(0);
   const [missoesLivres, setMissoesLivres] = useState<MissaoLivreApi[] | null>(null);
   const [quadro, setQuadro] = useState<QuadroDeRankApi | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [mensagem, setMensagem] = useState("");
   const [processando, setProcessando] = useState<string | null>(null);
   const [agora, setAgora] = useState(() => Date.now());
+  // Notificação do Jornal da Guilda (badge na aba) — carregada à parte
+  // da aba em si, pra aparecer mesmo com o jogador em outra aba. Zerada
+  // por GuildJournalPanel assim que a aba "Jornal" é realmente aberta.
+  const [journalNaoLidas, setJournalNaoLidas] = useState(0);
+
+  useEffect(() => {
+    let cancelado = false;
+    obterGuildJournalCompleto()
+      .then((resposta) => {
+        if (!cancelado) setJournalNaoLidas(resposta.quantidade_nao_lida);
+      })
+      .catch((error) => console.error("Erro ao buscar notificações do Jornal da Guilda:", error));
+    return () => {
+      cancelado = true;
+    };
+  }, []);
 
   useEffect(() => {
     const intervalo = setInterval(() => setAgora(Date.now()), 1000);
@@ -148,7 +188,9 @@ export default function AdventureGuildPanel() {
 
   const carregarOverview = useCallback(async () => {
     const resp = await axiosInstance.get<{ data?: OverviewApi }>("/adventure-guild");
-    setOverview(resp.data?.data ?? null);
+    const dados = resp.data?.data ?? null;
+    setOverview(dados);
+    setCooldownProvacaoLiberaEm(dados && dados.cooldown_provacao_restante_ms > 0 ? Date.now() + dados.cooldown_provacao_restante_ms : 0);
   }, []);
 
   const carregarAba = useCallback(async (abaAtual: Aba) => {
@@ -255,11 +297,16 @@ export default function AdventureGuildPanel() {
             key={a}
             type="button"
             onClick={() => setAba(a)}
-            className={`rounded-lg px-3 py-1.5 text-sm font-bold transition ${
+            className={`relative rounded-lg px-3 py-1.5 text-sm font-bold transition ${
               aba === a ? "bg-[#F3B43F] text-black" : "bg-black/20 text-white/70 hover:text-white"
             }`}
           >
             {ROTULO_ABA[a]}
+            {a === "Jornal" && journalNaoLidas > 0 && (
+              <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full border-2 border-[#292018] bg-red-600 px-1 text-[10px] font-bold leading-none text-white">
+                {journalNaoLidas > 9 ? "9+" : journalNaoLidas}
+              </span>
+            )}
           </button>
         ))}
       </div>
@@ -269,7 +316,9 @@ export default function AdventureGuildPanel() {
       {!carregando && aba === "Balcao" && <BalcaoDeEspoliosPanel />}
       {!carregando && aba === "Cacadas" && <MuralDeCacadasPanel />}
       {!carregando && aba === "AmeacaMundial" && <WorldBossArena />}
-      {!carregando && aba === "Jornal" && <GuildJournalPanel />}
+      {!carregando && aba === "Jornal" && (
+        <GuildJournalPanel onVisto={() => setJournalNaoLidas(0)} />
+      )}
 
       {!carregando && aba !== "Rank" && aba !== "Balcao" && aba !== "Cacadas" && aba !== "AmeacaMundial" && aba !== "Jornal" && (
         <div className="flex flex-col gap-2">
@@ -341,20 +390,29 @@ export default function AdventureGuildPanel() {
             />
           )}
 
-          {!overview?.provacao_ativa && overview?.apto_para_promocao && (
-            <div className="rounded-xl border-2 border-[#F3B43F] bg-black/30 p-4 text-center">
-              <p className="font-imFeel text-xl">Você atingiu os requisitos deste Rank!</p>
-              <p className="mb-3 text-sm text-white/70">Complete sua Provação para avançar de Rank.</p>
-              <button
-                type="button"
-                onClick={iniciarProvacao}
-                disabled={processando === "trial-start"}
-                className="rounded-lg bg-[#F3B43F] px-4 py-2 font-bold text-black transition hover:bg-[#e0a52f] disabled:opacity-50"
-              >
-                {processando === "trial-start" ? "Iniciando..." : "Iniciar Provação"}
-              </button>
-            </div>
-          )}
+          {!overview?.provacao_ativa && overview?.apto_para_promocao && (() => {
+            const cooldownRestante = Math.max(0, cooldownProvacaoLiberaEm - agora);
+            const emCooldown = cooldownRestante > 0;
+            return (
+              <div className="rounded-xl border-2 border-[#F3B43F] bg-black/30 p-4 text-center">
+                <p className="font-imFeel text-xl">Você atingiu os requisitos deste Rank!</p>
+                <p className="mb-3 text-sm text-white/70">Complete sua Provação para avançar de Rank.</p>
+                {emCooldown && (
+                  <p className="mb-2 text-xs text-red-400">
+                    Você falhou a última Provação — tente de novo em {formatarContagem(cooldownRestante)}.
+                  </p>
+                )}
+                <button
+                  type="button"
+                  onClick={iniciarProvacao}
+                  disabled={processando === "trial-start" || emCooldown}
+                  className="rounded-lg bg-[#F3B43F] px-4 py-2 font-bold text-black transition hover:bg-[#e0a52f] disabled:opacity-50"
+                >
+                  {processando === "trial-start" ? "Iniciando..." : "Iniciar Provação"}
+                </button>
+              </div>
+            );
+          })()}
 
           {!overview?.provacao_ativa && !overview?.apto_para_promocao && (
             <div>
@@ -376,7 +434,11 @@ export default function AdventureGuildPanel() {
                         disabled={oferta.ja_aceita || processando === chave}
                         className="mt-2 w-full rounded-lg bg-[#F3B43F] px-3 py-1.5 text-xs font-bold text-black transition hover:bg-[#e0a52f] disabled:opacity-50"
                       >
-                        {oferta.ja_aceita ? "Já aceito" : processando === chave ? "Aceitando..." : "Aceitar"}
+                        {oferta.status_contrato
+                          ? (ROTULO_STATUS_OFERTA[oferta.status_contrato] ?? "Já aceito")
+                          : processando === chave
+                            ? "Aceitando..."
+                            : "Aceitar"}
                       </button>
                     </div>
                   );

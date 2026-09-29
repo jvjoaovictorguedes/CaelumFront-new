@@ -269,6 +269,46 @@ export async function excluirUsuariosEmLoteAdmin(ids: number[]): Promise<Resulta
   return resposta.data.data;
 }
 
+// Painel Administrativo — "Referral" (referrals.view, somente leitura).
+// Cada linha é uma conta indicada; indicadoPor.totalIndicacoes é a
+// contagem GLOBAL do indicador (repete o mesmo número em toda linha
+// daquele indicador de propósito — é assim que a tela mostra "esse
+// indicador trouxe N pessoas" sem precisar de uma tela separada).
+export interface IndicadoAdminApi {
+  id: number;
+  username: string;
+  email: string;
+  dataCriacao: string;
+  indicadoPor: {
+    id: number;
+    username: string;
+    totalIndicacoes: number;
+  };
+}
+
+export interface PaginaIndicadosAdminApi {
+  total: number;
+  pagina: number;
+  porPagina: number;
+  totalPaginas: number;
+  indicados: IndicadoAdminApi[];
+}
+
+export interface ResumoReferralAdminApi {
+  totalIndicados: number;
+  totalIndicadores: number;
+}
+
+export async function listarReferralsAdmin(params: { busca?: string; pagina?: number; porPagina?: number } = {}): Promise<PaginaIndicadosAdminApi> {
+  const resposta = await axiosInstance.get<{ data: PaginaIndicadosAdminApi }>("/admin/referrals", { params });
+  return resposta.data.data;
+}
+
+export async function obterResumoReferralAdmin(): Promise<ResumoReferralAdminApi> {
+  const resposta = await axiosInstance.get<{ data: ResumoReferralAdminApi }>("/admin/referrals/resumo");
+  return resposta.data.data;
+}
+
 // Painel Administrativo Fase 13 (§24) — Patch Notes sem migration.
 export interface PatchNoteApi {
   id: number;
@@ -430,7 +470,15 @@ export interface AdventureMonsterApi {
   velocidade: number | null;
   xp_recompensa: number | null;
   ouro_recompensa: number | null;
+  // Especificação "Admin de Aventura + Defesa/Poder de Monstros" v3 —
+  // mesma regra de mitigação do motor de combate (aplicarMitigacaoDeDefesa
+  // no backend); nunca calculada/duplicada aqui no frontend.
+  defesa: number;
   ativo: boolean;
+  // Calculado no backend por linha da listagem (nunca persistido, §3.2/
+  // §9) — presente em GET /admin/adventure/monsters; ausente em
+  // respostas de criar/atualizar que não recalculam a lista inteira.
+  combat_power?: number;
 }
 
 export interface AdventureZoneMonsterApi {
@@ -489,6 +537,144 @@ export async function atualizarMonstroAdmin(id: number, payload: Partial<Adventu
 export async function duplicarMonstroAdmin(id: number): Promise<AdventureMonsterApi> {
   const resposta = await axiosInstance.post<{ data: { monstro: AdventureMonsterApi } }>(`/admin/adventure/monsters/${id}/duplicate`);
   return resposta.data.data.monstro;
+}
+
+// Endpoints agregados (Especificação "Admin de Aventura + Defesa/Poder
+// de Monstros" v3 §2.4/§4.2/§7.3) — ZoneEditor/MonsterEditor editam
+// tudo localmente e mandam UMA sincronização ao Salvar, em vez de um
+// PATCH por linha do roster/loot.
+export interface AdventureMonsterDetailApi {
+  monstro: AdventureMonsterApi;
+  combat_power: {
+    version: number;
+    combatPower: number;
+    danoMedio?: number;
+    dpr: number;
+    mitigacao?: number;
+    ehp: number;
+    utilityFactor: number;
+  };
+  loot: AdventureMonsterLootApi[];
+  zonas: { id_area: number; nome_zona: string | null; tipo_aparicao: "Comum" | "Raro"; peso_aparicao: number; ativo: boolean }[];
+}
+
+export async function buscarDetalheMonstroAdmin(id: number): Promise<AdventureMonsterDetailApi> {
+  const resposta = await axiosInstance.get<{ data: AdventureMonsterDetailApi }>(`/admin/adventure/monsters/${id}`);
+  return resposta.data.data;
+}
+
+export interface RosterZonaItemPayload {
+  id_monstro: number;
+  tipo_aparicao: "Comum" | "Raro";
+  peso_aparicao: number;
+  nivel_jogador_minimo: number;
+  ativo: boolean;
+}
+
+export async function sincronizarRosterZonaAdmin(idZona: number, monsters: RosterZonaItemPayload[]): Promise<AdventureZoneMonsterApi[]> {
+  const resposta = await axiosInstance.put<{ data: { roster: AdventureZoneMonsterApi[] } }>(
+    `/admin/adventure/zones/${idZona}/monsters`,
+    { monsters },
+  );
+  return resposta.data.data.roster;
+}
+
+export interface LootMonstroItemPayload {
+  id?: number;
+  id_item: number;
+  chance_ppm: number;
+  quantidade_min: number;
+  quantidade_max: number;
+  categoria: "Principal" | "Secundario" | "Especial";
+  ativo: boolean;
+}
+
+export async function sincronizarLootMonstroAdmin(idMonstro: number, loot: LootMonstroItemPayload[]): Promise<AdventureMonsterLootApi[]> {
+  const resposta = await axiosInstance.put<{ data: { loot: AdventureMonsterLootApi[] } }>(
+    `/admin/adventure/monsters/${idMonstro}/loot`,
+    { loot },
+  );
+  return resposta.data.data.loot;
+}
+
+// Simulador de Balanceamento (Admin Aventura) — roda N combates PvE
+// reais (mesmas fórmulas do jogo) entre um personagem e um ou mais
+// monstros. Ver adventureBalanceSimulationService.js no backend. Três
+// modos: "zona" (Modo Aventura solo), "expedicao" (interrupção de
+// monstro da coleta) e "grupo" (Aventura em Party) — cada um devolve um
+// subconjunto diferente de campos (união de todos aqui, os que não se
+// aplicam ao modo simplesmente não vêm no payload).
+export type ModoSimulacaoBalanceamento = "zona" | "expedicao" | "grupo";
+export interface SimulacaoBalanceamentoResultadoApi {
+  modo: ModoSimulacaoBalanceamento;
+  personagem: {
+    id: number;
+    nome: string;
+    classe: string | null;
+    vida_maxima: number;
+    mana_maxima: number;
+    quantidade_poderes: number;
+  };
+  // "zona" | "grupo"
+  monstro?: {
+    id: number;
+    nome: string;
+    nivel: number | null;
+    vida_maxima: number;
+    dano_min: number;
+    dano_max: number;
+    defesa?: number;
+    combat_power?: number;
+  };
+  // "expedicao"
+  regiao_expedicao?: { id: number; nome: string; profissao: string; nivel_minimo: number };
+  monstro_gerado?: { nivel_forcado: number; vida_maxima_media: number; dano_base_medio: number };
+  // "grupo"
+  tamanho_grupo?: number;
+  quantidade_simulacoes: number;
+  taxa_vitoria_pct: number;
+  vitorias: number;
+  derrotas: number;
+  combates_sem_vencedor: number;
+  // "zona" | "expedicao"
+  turnos_medios_vitoria?: number;
+  turnos_medios_derrota?: number;
+  dano_medio_causado_por_combate?: number;
+  dano_medio_recebido_por_combate?: number;
+  // "grupo"
+  rodadas_medias_vitoria?: number;
+  rodadas_medias_derrota?: number;
+  dano_medio_causado_pelo_grupo_por_combate?: number;
+  dano_medio_recebido_pelo_grupo_por_combate?: number;
+  sobreviventes_medios_ao_vencer?: number;
+  vida_media_restante_ao_vencer_pct: number;
+}
+export async function simularBalanceamentoAdventureAdmin(payload: {
+  modo?: ModoSimulacaoBalanceamento;
+  id_personagem: number;
+  id_monstro?: number;
+  id_regiao_expedicao?: number;
+  tamanho_grupo?: number;
+  quantidade?: number;
+}): Promise<SimulacaoBalanceamentoResultadoApi> {
+  const resposta = await axiosInstance.post<{ data: SimulacaoBalanceamentoResultadoApi }>(
+    "/admin/adventure/balance/simulate",
+    payload,
+  );
+  return resposta.data.data;
+}
+
+export interface ExpeditionRegionAdminApi {
+  id: number;
+  nome: string;
+  profissao: "Mineracao" | "Silvicultura" | "Exploracao";
+  nivel_minimo: number;
+}
+export async function listarRegioesExpedicaoAdmin(): Promise<ExpeditionRegionAdminApi[]> {
+  const resposta = await axiosInstance.get<{ data: { regioes: ExpeditionRegionAdminApi[] } }>(
+    "/admin/adventure/expedition-regions",
+  );
+  return resposta.data.data.regioes;
 }
 
 export async function listarAparicoesAdmin(idArea?: number): Promise<AdventureZoneMonsterApi[]> {
@@ -847,7 +1033,7 @@ export interface MediaAssetApi {
   id: number;
   grupo: string;
   versao: number;
-  categoria: "Item" | "Power" | "Monster" | "EquipmentSet" | "Musica" | "Outro";
+  categoria: "Item" | "Power" | "Monster" | "EquipmentSet" | "Musica" | "Outro" | "Avatar";
   tipo: MediaAssetTipoApi;
   nome_arquivo_original: string | null;
   mime: string;
@@ -857,6 +1043,11 @@ export interface MediaAssetApi {
   descricao: string | null;
   ativo: boolean;
   id_admin_criador: number | null;
+  // Só relevante pra categoria "Avatar" — null = liberado pra qualquer
+  // personagem; preenchido = só quem É daquela raça/classe pode
+  // escolher esse avatar no AvatarPickerModal.
+  restrito_raca_id: number | null;
+  restrito_classe_id: number | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -1117,6 +1308,53 @@ export async function concederPremiacaoAdmin(idPersonagem: number, payload: Payl
   return resposta.data.data;
 }
 
+// Painel Administrativo — Códigos de Resgate. Recompensa reaproveita o
+// mesmo formato de PayloadGrantAdmin (ouro/xp/itens), sem "motivo".
+export interface RecompensaCodigoApi {
+  ouro?: number;
+  xp?: number;
+  itens?: { id_item: number; quantidade: number; raridade?: string; refinamento?: number }[];
+}
+export interface RedemptionCodeApi {
+  id: number;
+  codigo: string;
+  recompensa: RecompensaCodigoApi;
+  expira_em: string;
+  ativo: boolean;
+  id_admin_criador: number | null;
+  createdAt: string;
+  updatedAt: string;
+  total_resgates: number;
+}
+export interface PayloadCriarRedemptionCode {
+  codigo: string;
+  recompensa: RecompensaCodigoApi;
+  expira_em: string;
+}
+export interface PayloadAtualizarRedemptionCode {
+  ativo?: boolean;
+  expira_em?: string;
+  recompensa?: RecompensaCodigoApi;
+}
+export async function listarRedemptionCodesAdmin(): Promise<RedemptionCodeApi[]> {
+  const resposta = await axiosInstance.get<{ data: { codigos: RedemptionCodeApi[] } }>("/admin/redemption-codes");
+  return resposta.data.data.codigos;
+}
+export async function criarRedemptionCodeAdmin(payload: PayloadCriarRedemptionCode): Promise<RedemptionCodeApi> {
+  const resposta = await axiosInstance.post<{ data: { codigo: RedemptionCodeApi } }>("/admin/redemption-codes", payload);
+  return resposta.data.data.codigo;
+}
+export async function atualizarRedemptionCodeAdmin(
+  id: number,
+  payload: PayloadAtualizarRedemptionCode,
+): Promise<RedemptionCodeApi> {
+  const resposta = await axiosInstance.patch<{ data: { codigo: RedemptionCodeApi } }>(
+    `/admin/redemption-codes/${id}`,
+    payload,
+  );
+  return resposta.data.data.codigo;
+}
+
 // Proezas Únicas — ver bloco completo (catálogo/Legados/Triggers/
 // Histórico-Reparos) mais abaixo, na Fase 6 do Painel Administrativo.
 // Uma versão simplificada e conflitante (mesmos nomes de tipo, rotas
@@ -1346,6 +1584,13 @@ export interface WorldBossPhaseApi {
   hp_percentual_max: number;
   modificador_dano_percentual?: number;
   texto_alerta?: string | null;
+  // Ameaça Mundial V2 §5.1/§13.3 — modelo híbrido dano min/max + Fúria por fase.
+  dano_min?: number;
+  dano_max?: number;
+  furia_por_acao_pct?: number;
+  limite_furia_pct?: number | null;
+  intervalo_acao_ms?: number | null;
+  mana_ao_entrar?: number | null;
 }
 
 export interface WorldBossConfigApi {
@@ -1367,8 +1612,27 @@ export interface WorldBossConfigApi {
   gold_participacao: number;
   xp_participacao: number;
   min_dano_participacao: number | null;
+  // Ameaça Mundial V2 §4.1/§13.2 — Atributos.
+  nivel: number;
+  forca: number;
+  vitalidade: number;
+  agilidade: number;
+  inteligencia: number;
+  velocidade: number;
+  mana_maxima: number;
+  // §3.2/§13.2 — Combate em Tempo Real.
+  regeneracao_mana_por_acao: number;
+  intervalo_acao_ms: number;
+  // §8.2/§13.2 — regras de reentrada.
+  reentrada_permitida: boolean;
+  cooldown_reentrada_segundos: number;
   fases: WorldBossPhaseApi[];
   zonas: number[];
+  // Só presentes no GET /configs/:id (carregarComDetalhes) — nunca na
+  // listagem paginada nem no payload de criar/atualizar.
+  habilidades?: WorldBossAbilityApi[];
+  resistencias?: WorldBossStatusResistanceApi[];
+  recompensas_ranking?: WorldBossRankingRewardApi[];
 }
 
 // A listagem (GET /configs) nunca carrega fases/zonas completas — só
@@ -1396,6 +1660,17 @@ export interface PayloadWorldBossConfigAdmin {
   gold_participacao?: number;
   xp_participacao?: number;
   min_dano_participacao?: number | null;
+  nivel?: number;
+  forca?: number;
+  vitalidade?: number;
+  agilidade?: number;
+  inteligencia?: number;
+  velocidade?: number;
+  mana_maxima?: number;
+  regeneracao_mana_por_acao?: number;
+  intervalo_acao_ms?: number;
+  reentrada_permitida?: boolean;
+  cooldown_reentrada_segundos?: number;
   fases?: WorldBossPhaseApi[];
   zonas?: number[];
   ativo?: boolean;
@@ -1452,6 +1727,22 @@ export async function atualizarWorldBossSettingsAdmin(payload: Partial<WorldBoss
   return resposta.data.data.settings;
 }
 
+// §14.1 — métricas pós-evento, só presentes (não-null) em ciclos DEFEATED
+// (um CANCELLED nunca chegou a ativar o relógio de combate).
+export interface WorldBossMetricasDoEventoApi {
+  duracao_segundos: number | null;
+  participantes: number;
+  derrotados: number;
+  taxa_sobrevivencia_pct: number | null;
+  boss_action_seq_final: number;
+  furia_maxima_pct: number | null;
+  dano_medio_recebido_por_jogador: number | null;
+  habilidade_mais_derrotas: { nome: string; derrotas: number } | null;
+  dps_agregado_jogadores: number | null;
+  tempo_por_fase: { ordem: number; nome_fase: string; duracao_segundos: number | null }[];
+  top_damage_character_id: number | null;
+}
+
 export interface WorldBossMetricsApi {
   encontrosElegiveisPorHora: { window_start: string; encontros_elegiveis: number }[];
   historico: {
@@ -1464,12 +1755,57 @@ export interface WorldBossMetricsApi {
     discoverer_character_id: number | null;
     final_blow_character_id: number | null;
     participation_rewards_status: string;
+    metricas: WorldBossMetricasDoEventoApi | null;
   }[];
 }
 
 export async function obterWorldBossMetricasAdmin(): Promise<WorldBossMetricsApi> {
   const resposta = await axiosInstance.get<{ data: WorldBossMetricsApi }>("/admin/world-boss/metrics");
   return resposta.data.data;
+}
+
+// Instância de status ativo no motor de combate (statusEffectService) —
+// mesma forma usada em todo o jogo (PvE solo, Guilda, agora o Boss
+// Global); nunca redefinida por domínio.
+export interface StatusEfeitoAtivoApi {
+  key: string;
+  sourceActorId?: number | string | null;
+  sourcePowerId?: number | null;
+  sourceItemId?: number | null;
+  remainingTurns: number;
+  stacks: number;
+  potency: number;
+  appliedAtTurn?: number;
+  target?: string;
+}
+
+// §10.2/§10.4 — mesma linha usada pelo ranking público (worldBossRankingService.
+// obterRanking); badges são cumulativos (0 a 3: MAIOR_DANO/GOLPE_FINAL/DESCOBRIDOR).
+export interface WorldBossRankingLinhaApi {
+  posicao: number;
+  character_id: number;
+  nome: string | null;
+  damage_total: number;
+  damage_percent: number;
+  badges: ("MAIOR_DANO" | "GOLPE_FINAL" | "DESCOBRIDOR")[];
+}
+
+// §13.7 — monitor ao vivo do relógio de combate (Etapa 3/5/6), plugado
+// dentro do status operacional já existente; null pra qualquer status
+// fora de ACTIVE.
+export interface WorldBossRuntimeV2Api {
+  mana_current: number;
+  mana_maxima: number | null;
+  boss_action_seq: number;
+  phase_action_seq: number;
+  furia_current_pct: number;
+  fase_atual: { ordem: number; nome_fase: string } | null;
+  next_action_at: string | null;
+  proxima_acao_em_ms: number | null;
+  cast_pendente: { power: { id: number; nome: string } | null; resolves_at: string } | null;
+  status_boss: StatusEfeitoAtivoApi[];
+  participantes: { ativos: number; derrotados: number; total: number };
+  ranking_ao_vivo: WorldBossRankingLinhaApi[];
 }
 
 export interface WorldBossStatusOperacionalApi {
@@ -1482,14 +1818,17 @@ export interface WorldBossStatusOperacionalApi {
   discovery_threshold?: number | null;
   discovery_progress?: number;
   discoverer_character_id?: number | null;
+  descobridor?: { id: number; nome: string } | null;
   discovery_zone_id?: number | null;
   discovered_at?: string | null;
   auto_awaken_at?: string | null;
   activated_at?: string | null;
   final_blow_character_id?: number | null;
+  golpe_final_por?: { id: number; nome: string } | null;
   defeated_at?: string | null;
   next_eligible_at?: string | null;
   participation_rewards_status?: string;
+  runtime_v2?: WorldBossRuntimeV2Api | null;
 }
 
 export async function obterWorldBossStatusOperacionalAdmin(): Promise<WorldBossStatusOperacionalApi> {
@@ -1506,10 +1845,212 @@ export async function cancelarCicloWorldBossAdmin(payload: { motivo: string }): 
   await axiosInstance.post("/admin/world-boss/current/cancel", payload);
 }
 
+// Ameaça Mundial V2 — Etapa 11 (§13.2/§13.5): Habilidades do Boss —
+// cada linha vincula um Power real do catálogo, com regras de alvo,
+// peso de uso, prioridade, tempo de conjuração e fases em que é
+// elegível (fases_permitidas null = elegível em toda fase).
+export type WorldBossTipoAlvoApi = "ALEATORIO" | "MAIOR_DANO" | "MENOR_VIDA" | "N_ALEATORIOS" | "TODOS" | "SELF";
+
+export interface WorldBossAbilityApi {
+  id: number;
+  id_world_boss_config: number;
+  id_power: number;
+  peso_uso: number;
+  prioridade: number;
+  fases_permitidas: number[] | null;
+  tipo_alvo: WorldBossTipoAlvoApi;
+  quantidade_alvos: number | null;
+  tempo_conjuracao_ms: number;
+  cooldown_override: number | null;
+  custo_mana_override: number | null;
+  escala_com_furia: boolean;
+  ativo: boolean;
+  Power?: PowerApi;
+}
+
+export interface PayloadWorldBossAbilityAdmin {
+  id_power: number;
+  peso_uso?: number;
+  prioridade?: number;
+  fases_permitidas?: number[] | null;
+  tipo_alvo?: WorldBossTipoAlvoApi;
+  quantidade_alvos?: number | null;
+  tempo_conjuracao_ms?: number;
+  cooldown_override?: number | null;
+  custo_mana_override?: number | null;
+  escala_com_furia?: boolean;
+  ativo?: boolean;
+}
+
+export async function listarHabilidadesWorldBossAdmin(idConfig: number): Promise<WorldBossAbilityApi[]> {
+  const resposta = await axiosInstance.get<{ data: { habilidades: WorldBossAbilityApi[] } }>(`/admin/world-boss/configs/${idConfig}/abilities`);
+  return resposta.data.data.habilidades;
+}
+export async function criarHabilidadeWorldBossAdmin(idConfig: number, payload: PayloadWorldBossAbilityAdmin): Promise<WorldBossAbilityApi> {
+  const resposta = await axiosInstance.post<{ data: { habilidade: WorldBossAbilityApi } }>(`/admin/world-boss/configs/${idConfig}/abilities`, payload);
+  return resposta.data.data.habilidade;
+}
+export async function atualizarHabilidadeWorldBossAdmin(idConfig: number, idHabilidade: number, payload: Partial<PayloadWorldBossAbilityAdmin>): Promise<WorldBossAbilityApi> {
+  const resposta = await axiosInstance.patch<{ data: { habilidade: WorldBossAbilityApi } }>(`/admin/world-boss/configs/${idConfig}/abilities/${idHabilidade}`, payload);
+  return resposta.data.data.habilidade;
+}
+export async function excluirHabilidadeWorldBossAdmin(idConfig: number, idHabilidade: number): Promise<void> {
+  await axiosInstance.delete(`/admin/world-boss/configs/${idConfig}/abilities/${idHabilidade}`);
+}
+
+// Resistências (WorldBossStatusResistance) — §7.1/§13.2. status_key
+// vem do catálogo compartilhado do motor de status (catalogoStatusAdmin,
+// já usado pelo painel de Powers); nunca uma lista redigitada aqui.
+export interface WorldBossStatusResistanceApi {
+  id: number;
+  id_world_boss_config: number;
+  status_key: string;
+  imune: boolean;
+  resistencia_pct: number;
+  ativo: boolean;
+}
+
+export interface PayloadWorldBossResistanceAdmin {
+  status_key: string;
+  imune?: boolean;
+  resistencia_pct?: number;
+  ativo?: boolean;
+}
+
+export async function listarResistenciasWorldBossAdmin(idConfig: number): Promise<WorldBossStatusResistanceApi[]> {
+  const resposta = await axiosInstance.get<{ data: { resistencias: WorldBossStatusResistanceApi[] } }>(`/admin/world-boss/configs/${idConfig}/resistances`);
+  return resposta.data.data.resistencias;
+}
+export async function criarResistenciaWorldBossAdmin(idConfig: number, payload: PayloadWorldBossResistanceAdmin): Promise<WorldBossStatusResistanceApi> {
+  const resposta = await axiosInstance.post<{ data: { resistencia: WorldBossStatusResistanceApi } }>(`/admin/world-boss/configs/${idConfig}/resistances`, payload);
+  return resposta.data.data.resistencia;
+}
+export async function atualizarResistenciaWorldBossAdmin(idConfig: number, idResistencia: number, payload: Partial<PayloadWorldBossResistanceAdmin>): Promise<WorldBossStatusResistanceApi> {
+  const resposta = await axiosInstance.patch<{ data: { resistencia: WorldBossStatusResistanceApi } }>(`/admin/world-boss/configs/${idConfig}/resistances/${idResistencia}`, payload);
+  return resposta.data.data.resistencia;
+}
+export async function excluirResistenciaWorldBossAdmin(idConfig: number, idResistencia: number): Promise<void> {
+  await axiosInstance.delete(`/admin/world-boss/configs/${idConfig}/resistances/${idResistencia}`);
+}
+
+// Recompensas de ranking (WorldBossRankingReward) — §11.3/§13.6. Cada
+// linha é uma FAIXA de posições (ex.: 1-1, 2-5) com gold/xp/item fixos;
+// a faixa que cobre a posição 1 é a recompensa de "Maior Dano".
+export interface WorldBossRankingRewardApi {
+  id: number;
+  id_world_boss_config: number;
+  posicao_inicio: number;
+  posicao_fim: number;
+  id_item: number | null;
+  quantidade: number;
+  gold: number;
+  xp: number;
+  ativo: boolean;
+  item?: { id: number; nome: string; imagem_url: string | null } | null;
+}
+
+export interface PayloadWorldBossRankingRewardAdmin {
+  posicao_inicio: number;
+  posicao_fim: number;
+  id_item?: number | null;
+  quantidade?: number;
+  gold?: number;
+  xp?: number;
+  ativo?: boolean;
+}
+
+export async function listarRecompensasRankingWorldBossAdmin(idConfig: number): Promise<WorldBossRankingRewardApi[]> {
+  const resposta = await axiosInstance.get<{ data: { recompensas: WorldBossRankingRewardApi[] } }>(`/admin/world-boss/configs/${idConfig}/ranking-rewards`);
+  return resposta.data.data.recompensas;
+}
+export async function criarRecompensaRankingWorldBossAdmin(idConfig: number, payload: PayloadWorldBossRankingRewardAdmin): Promise<WorldBossRankingRewardApi> {
+  const resposta = await axiosInstance.post<{ data: { recompensa: WorldBossRankingRewardApi } }>(`/admin/world-boss/configs/${idConfig}/ranking-rewards`, payload);
+  return resposta.data.data.recompensa;
+}
+export async function atualizarRecompensaRankingWorldBossAdmin(idConfig: number, idRecompensa: number, payload: Partial<PayloadWorldBossRankingRewardAdmin>): Promise<WorldBossRankingRewardApi> {
+  const resposta = await axiosInstance.patch<{ data: { recompensa: WorldBossRankingRewardApi } }>(`/admin/world-boss/configs/${idConfig}/ranking-rewards/${idRecompensa}`, payload);
+  return resposta.data.data.recompensa;
+}
+export async function excluirRecompensaRankingWorldBossAdmin(idConfig: number, idRecompensa: number): Promise<void> {
+  await axiosInstance.delete(`/admin/world-boss/configs/${idConfig}/ranking-rewards/${idRecompensa}`);
+}
+
+// Preview de dano server-side (§13.4) — reaproveita a MESMA fórmula do
+// relógio de combate real (worldBossRuntimeService.furiaPctDe); o
+// frontend nunca recalcula isso, só exibe o resultado devolvido aqui.
+export interface WorldBossPreviewDanoApi {
+  fase: { ordem: number; nome_fase: string; limite_furia_pct: number | null };
+  estimativas: { acao: number; furia_pct: number; dano_min: number; dano_max: number }[];
+}
+
+export async function previewDanoWorldBossAdmin(idConfig: number, payload: { faseOrdem?: number; acoes?: number[] } = {}): Promise<WorldBossPreviewDanoApi> {
+  const resposta = await axiosInstance.post<{ data: WorldBossPreviewDanoApi }>(`/admin/world-boss/configs/${idConfig}/preview-damage`, payload);
+  return resposta.data.data;
+}
+
+// Preview de dano/cura de UMA habilidade (§13.5) — reaproveita
+// calcularEfeitoPoderEsperado (mesma fórmula determinística do Power
+// Score) com os atributos atuais do Boss; nunca recalculado aqui.
+export interface WorldBossPreviewHabilidadeApi {
+  habilidade: { id: number; tipo_alvo: WorldBossTipoAlvoApi; tempo_conjuracao_ms: number; escala_com_furia: boolean; cooldown: number };
+  power: { id: number; nome: string; escala_atributo: string; valor_escala: number; custo_mana: number };
+  fase: { ordem: number; nome_fase: string; limite_furia_pct: number | null };
+  estimativas: { acao: number; furia_pct: number; dano: number; cura: number }[];
+}
+
+export async function previewHabilidadeWorldBossAdmin(
+  idConfig: number,
+  payload: { idAbility: number; faseOrdem?: number; acoes?: number[] },
+): Promise<WorldBossPreviewHabilidadeApi> {
+  const resposta = await axiosInstance.post<{ data: WorldBossPreviewHabilidadeApi }>(`/admin/world-boss/configs/${idConfig}/preview-ability`, payload);
+  return resposta.data.data;
+}
+
+// Simulador de balanceamento (§14.2) — roda N combates sintéticos entre
+// o relógio real do Boss e UM perfil de personagem (HP/Defesa/
+// Agilidade); nunca simula o ataque dos jogadores contra o Boss (mede
+// a LETALIDADE do Boss, não o resultado de uma raid inteira).
+export interface WorldBossSimulacaoDanoPorFaseApi {
+  ordem: number;
+  nome_fase: string;
+  acoes_estimadas: number;
+  duracao_estimada_ms: number;
+  dano_medio: number;
+  dano_min: number;
+  dano_max: number;
+  alcancada_em_pct: number;
+}
+export interface WorldBossSimulacaoResultadoApi {
+  config: { id: number; nome: string };
+  personagem: { hp_maximo: number; defesa: number; agilidade: number };
+  quantidade_simulacoes: number;
+  taxa_sobrevivencia_pct: number;
+  acao_media_ate_derrotar: number | null;
+  fase_mais_letal: number | null;
+  furia_media_pct: number;
+  furia_maxima_pct: number;
+  mana_gasta_media: number;
+  frequencia_powers: { nome: string; usos_totais: number; usos_medios_por_simulacao: number }[];
+  dano_por_fase: WorldBossSimulacaoDanoPorFaseApi[];
+}
+
+export async function simularBalanceamentoWorldBossAdmin(
+  idConfig: number,
+  payload: {
+    personagem: { hp_maximo: number; defesa?: number; agilidade?: number };
+    dps_agregado?: number;
+    acoes_por_fase?: number;
+    quantidade_simulacoes?: number;
+  },
+): Promise<WorldBossSimulacaoResultadoApi> {
+  const resposta = await axiosInstance.post<{ data: WorldBossSimulacaoResultadoApi }>(`/admin/world-boss/configs/${idConfig}/simulate-balance`, payload);
+  return resposta.data.data;
+}
+
 // Painel Administrativo — Pesca & Navegação: Zonas, Espécies, Pool
 // (zona x espécie), Portos, Iscas e Afinidades. Vara de Pesca já é
 // gerenciada dentro do admin de Itens (tipo "Ferramenta").
-interface ItemResumoApi {
+export interface ItemResumoApi {
   id: number;
   nome: string;
   raridade?: string;
@@ -1635,6 +2176,96 @@ export async function criarFishingPoolAdmin(payload: PayloadFishingPoolAdmin): P
 export async function atualizarFishingPoolAdmin(id: number, payload: Partial<PayloadFishingPoolAdmin>): Promise<FishingPoolAdminApi> {
   const resposta = await axiosInstance.patch<{ data: { item: FishingPoolAdminApi } }>(`/admin/fishing/pool/${id}`, payload);
   return resposta.data.data.item;
+}
+
+// Chance de encontro calculada (Pesca v3 §5.1/§10.1) — nunca digitada à
+// mão; sempre recalculada pela mesma função do sorteio real.
+export interface FishingChanceEncontroApi {
+  id_species: number;
+  nome: string;
+  peso_efetivo: number;
+  chance: number;
+}
+export async function previewFishingChancePoolAdmin(
+  idZone: number,
+  params?: { nivelPesca?: number; idBaitItem?: number | null },
+): Promise<FishingChanceEncontroApi[]> {
+  const resposta = await axiosInstance.get<{ data: { chances: FishingChanceEncontroApi[] } }>(
+    `/admin/fishing/pool/chance/${idZone}`,
+    { params: { nivelPesca: params?.nivelPesca, idBaitItem: params?.idBaitItem ?? undefined } },
+  );
+  return resposta.data.data.chances;
+}
+
+// Varas de Pesca (read-only — Pesca v3 §8.3, fonte de verdade continua
+// no Admin de Itens).
+export interface FishingRodPropertiesApi {
+  forca_linha: number;
+  controle: number;
+  recolhimento: number;
+  precisao: number;
+  estabilidade: number;
+  nivel_pesca_minimo: number;
+}
+export interface FishingRodAdminApi {
+  id_item: number;
+  nome: string;
+  raridade: string;
+  propriedades_base: FishingRodPropertiesApi;
+}
+export async function listarFishingRodsAdmin(): Promise<FishingRodAdminApi[]> {
+  const resposta = await axiosInstance.get<{ data: { varas: FishingRodAdminApi[] } }>("/admin/fishing/rods");
+  return resposta.data.data.varas;
+}
+
+// Simulador / Balanceador (Pesca v3 §9/§10/§13.4) — reutiliza o
+// fishingEngine real no backend, nunca uma fórmula paralela aqui.
+export interface FishingSimulacaoResultadoApi {
+  simulacoes: number;
+  taxa_captura: number;
+  taxa_broken_line: number;
+  taxa_timeout: number;
+  passos_medio_captura: number | null;
+  tensao_maxima_media: number;
+}
+export interface FishingSimulacaoApi {
+  especie: { id: number; key: string; comportamento_key: ComportamentoEspecie; dificuldade_base: number };
+  vara: { id_item: number; nome: string; refinamento: number };
+  nivel_pesca: number;
+  breakdown_stats: {
+    base: FishingRodPropertiesApi;
+    com_refinamento: FishingRodPropertiesApi;
+    com_proficiencia: FishingRodPropertiesApi;
+  };
+  resultado: FishingSimulacaoResultadoApi;
+}
+export async function simularFishingBalanceamentoAdmin(payload: {
+  idSpecies: number;
+  idRodItem: number;
+  refinamentoVara?: number;
+  nivelPesca?: number;
+  numSimulacoes?: number;
+}): Promise<FishingSimulacaoApi> {
+  const resposta = await axiosInstance.post<{ data: FishingSimulacaoApi }>("/admin/fishing/balance/simulate", payload);
+  return resposta.data.data;
+}
+
+export interface FishingMatrizLinhaApi {
+  id_species: number;
+  nome: string;
+  taxa_captura: number;
+  passos_medio_captura: number | null;
+}
+export async function simularFishingMatrizAdmin(params: {
+  idRodItem: number;
+  refinamentoVara?: number;
+  nivelPesca?: number;
+  numSimulacoes?: number;
+}): Promise<FishingMatrizLinhaApi[]> {
+  const resposta = await axiosInstance.get<{ data: { matriz: FishingMatrizLinhaApi[] } }>("/admin/fishing/balance/matrix", {
+    params,
+  });
+  return resposta.data.data.matriz;
 }
 
 export interface FishingPortAdminApi {
@@ -1989,11 +2620,16 @@ export type ForgeCategoria = (typeof FORGE_CATEGORIAS)[number];
 export const FORGE_QUALIDADES = ["Comum", "Incomum", "Raro", "Epico", "Lendario", "Mitico"] as const;
 export type ForgeQualidade = (typeof FORGE_QUALIDADES)[number];
 
+// ProdutoAlquimia (Forja-Materiais): id_recurso passa a ser polimórfico —
+// AlchemyRecipe.id nesse tipo, ExpeditionResource.id nos outros dois.
+// Por isso não existe mais um "recurso" resolvido via association aqui;
+// o nome do recurso, quando precisar exibir, vem do backend já resolvido
+// (ex: nome_recurso no preview) em vez de um include fixo.
+export type ForgeTipoInsumo = "Barra" | "RecursoExpedicao" | "ProdutoAlquimia";
 export interface ForgeIngredienteApi {
-  tipo_insumo: "Barra" | "RecursoExpedicao";
+  tipo_insumo: ForgeTipoInsumo;
   id_recurso: number;
   quantidade_base: number;
-  recurso?: { id: number; nome: string; profissao: string };
 }
 
 // Reformulação V2 (Item Único por Equipamento, Raridade por Instância)
@@ -2068,7 +2704,7 @@ export interface PayloadForgeBlueprintAdmin {
   tier_equipamento?: number;
   multiplicador_tempo?: number;
   nivel_forja_minimo?: number;
-  ingredientes?: { tipo_insumo: "Barra" | "RecursoExpedicao"; id_recurso: number; quantidade_base: number }[];
+  ingredientes?: { tipo_insumo: ForgeTipoInsumo; id_recurso: number; quantidade_base: number }[];
   id_item_resultado?: number | null;
 }
 
@@ -2160,6 +2796,22 @@ export interface ForgeRecursoApi {
 export async function listarForgeRecursosAdmin(profissao?: string): Promise<ForgeRecursoApi[]> {
   const resposta = await axiosInstance.get<{ data: { recursos: ForgeRecursoApi[] } }>("/admin/forge/resources", { params: { profissao } });
   return resposta.data.data.recursos;
+}
+
+// Forja-Materiais: produtos do Caldeirão (Alquimia) elegíveis como
+// ingrediente ProdutoAlquimia — a Forja usa AlchemyRecipe.id como
+// id_recurso desse tipo (não confundir com ExpeditionResource.id, que
+// serve pra Barra/RecursoExpedicao).
+export interface ForgeProdutoAlquimiaApi {
+  id: number;
+  key: string;
+  nome: string;
+  categoria: string;
+  item_resultado: { id: number; nome: string; imagem_url: string | null } | null;
+}
+export async function listarForgeProdutosAlquimiaAdmin(): Promise<ForgeProdutoAlquimiaApi[]> {
+  const resposta = await axiosInstance.get<{ data: { produtos: ForgeProdutoAlquimiaApi[] } }>("/admin/forge/alchemy-products");
+  return resposta.data.data.produtos;
 }
 
 export interface ForgeBarraLinhaApi {
@@ -2503,4 +3155,114 @@ export async function obterStatusManutencaoAdmin(): Promise<MaintenanceStatusApi
 export async function atualizarStatusManutencaoAdmin(payload: { enabled: boolean; message?: string }): Promise<MaintenanceStatusApi> {
   const resposta = await axiosInstance.patch<{ data: MaintenanceStatusApi }>("/admin/maintenance", payload);
   return resposta.data.data;
+}
+
+// Painel Administrativo de Expedição — Balanceamento. Uma tela só que
+// junta o balanceamento de Expedição (tempo/drops/progressão + a
+// Emboscada que mora dentro dela), Aventura (perigo) e Aventura em
+// Grupo (escala/limites) — mesmo formato { atual, padrao } por grupo já
+// usado no balanceamento da Forja.
+export interface ExpeditionBalanceGrupoApi<T = Record<string, unknown>> {
+  atual: T;
+  padrao: T;
+}
+export interface ExpeditionBalanceCompletoApi {
+  "expedition.cooldown": ExpeditionBalanceGrupoApi<{ TEMPO_COLETA_MS: number }>;
+  "expedition.progression": ExpeditionBalanceGrupoApi<{
+    XP_NECESSARIO_POR_ETAPA: Record<string, number>;
+    XP_POR_RESULTADO: Record<string, number>;
+  }>;
+  "expedition.drops": ExpeditionBalanceGrupoApi<{
+    CHANCE_POR_NIVEL_PPM: Record<string, Record<string, number>>;
+    QUANTIDADE_POR_NIVEL: Record<string, [number, number]>;
+  }>;
+  "expedition.ambush": ExpeditionBalanceGrupoApi<{ CHANCE_MONSTRO_PPM: number }>;
+  "adventure.danger": ExpeditionBalanceGrupoApi<{ MEDIO: number; ALTO: number }>;
+  "party.balance": ExpeditionBalanceGrupoApi<{
+    TAMANHO_MAXIMO_GRUPO: number;
+    TAMANHO_MINIMO_GRUPO: number;
+    PRAZO_CONVITE_MS: number;
+    PRAZO_TURNO_MS: number;
+    MAX_RODADAS: number;
+    FATOR_DIFICULDADE_VIDA_POR_EXTRA: number;
+    FATOR_DIFICULDADE_DANO_POR_EXTRA: number;
+  }>;
+}
+export async function obterExpeditionBalanceAdmin(): Promise<ExpeditionBalanceCompletoApi> {
+  const resposta = await axiosInstance.get<{ data: ExpeditionBalanceCompletoApi }>("/admin/expedition/balance");
+  return resposta.data.data;
+}
+export async function atualizarExpeditionBalanceAdmin(
+  grupo: keyof ExpeditionBalanceCompletoApi,
+  valores: Record<string, unknown>,
+): Promise<ExpeditionBalanceGrupoApi> {
+  const resposta = await axiosInstance.put<{ data: ExpeditionBalanceGrupoApi }>(`/admin/expedition/balance/${grupo}`, valores);
+  return resposta.data.data;
+}
+
+// Painel Administrativo — Alquimia (Caldeirão): CRUD de receitas +
+// ingredientes. id_item_resultado/id_item são resolvidos em lote pelo
+// backend (sem include/alias — mesma convenção do resto do domínio de
+// Alquimia), nunca via join do Sequelize.
+export type AlchemyCategoriaReceita = "POCAO" | "ANTIDOTO" | "TONICO" | "ELIXIR" | "PREPARADO";
+export type AlchemyModoDesbloqueio = "NIVEL" | "DESCOBERTA";
+
+export interface AlchemyRecipeIngredienteAdminApi {
+  id: number;
+  id_recipe: number;
+  id_item: number;
+  quantidade: number;
+  item: ItemResumoApi | null;
+}
+
+export interface PayloadAlchemyRecipeIngredienteAdmin {
+  id_item: number;
+  quantidade: number;
+}
+
+export interface AlchemyRecipeAdminApi {
+  id: number;
+  key: string;
+  nome: string;
+  descricao: string | null;
+  categoria: AlchemyCategoriaReceita;
+  id_item_resultado: number;
+  quantidade_resultado: number;
+  nivel_alquimia_minimo: number;
+  xp_alquimia: number;
+  custo_ouro: number;
+  modo_desbloqueio: AlchemyModoDesbloqueio;
+  ativo: boolean;
+  ordem: number;
+  item_resultado: ItemResumoApi | null;
+  ingredientes: AlchemyRecipeIngredienteAdminApi[];
+}
+
+export interface PayloadAlchemyRecipeAdmin {
+  key?: string;
+  nome?: string;
+  descricao?: string | null;
+  categoria?: AlchemyCategoriaReceita;
+  id_item_resultado?: number;
+  quantidade_resultado?: number;
+  nivel_alquimia_minimo?: number;
+  xp_alquimia?: number;
+  custo_ouro?: number;
+  modo_desbloqueio?: AlchemyModoDesbloqueio;
+  ativo?: boolean;
+  ordem?: number;
+  ingredientes?: PayloadAlchemyRecipeIngredienteAdmin[];
+}
+
+export async function listarAlchemyRecipesAdmin(): Promise<AlchemyRecipeAdminApi[]> {
+  const resposta = await axiosInstance.get<{ data: { receitas: AlchemyRecipeAdminApi[] } }>("/admin/alchemy/recipes");
+  return resposta.data.data.receitas;
+}
+export async function criarAlchemyRecipeAdmin(payload: PayloadAlchemyRecipeAdmin): Promise<AlchemyRecipeAdminApi> {
+  const resposta = await axiosInstance.post<{ data: { receita: AlchemyRecipeAdminApi } }>("/admin/alchemy/recipes", payload);
+  return resposta.data.data.receita;
+}
+export async function atualizarAlchemyRecipeAdmin(id: number, payload: PayloadAlchemyRecipeAdmin): Promise<AlchemyRecipeAdminApi> {
+  const resposta = await axiosInstance.patch<{ data: { receita: AlchemyRecipeAdminApi } }>(`/admin/alchemy/recipes/${id}`, payload);
+  return resposta.data.data.receita;
 }

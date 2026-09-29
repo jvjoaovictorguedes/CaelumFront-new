@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import axiosInstance from "@/utils/axiosIntance";
 import { resolveMediaUrl } from "@/utils/media-url";
 import type { GuildResumo } from "./types";
@@ -17,21 +17,32 @@ export default function BuscarGuildas({
   const [buscando, setBuscando] = useState(false);
   const [mensagemPorGuild, setMensagemPorGuild] = useState<Record<number, string>>({});
 
-  async function buscar(event?: React.FormEvent) {
-    event?.preventDefault();
-    setBuscando(true);
-    try {
-      const resp = await axiosInstance.get<{ data?: { guilds?: GuildResumo[] } }>("/guilds", {
-        params: busca ? { busca } : undefined,
-      });
-      setGuildas(resp.data?.data?.guilds ?? []);
-    } catch (error) {
-      console.error("Erro ao buscar guildas:", error);
-      setGuildas([]);
-    } finally {
-      setBuscando(false);
-    }
-  }
+  const buscar = useCallback(
+    async (event?: React.FormEvent) => {
+      event?.preventDefault();
+      setBuscando(true);
+      try {
+        const resp = await axiosInstance.get<{ data?: { guilds?: GuildResumo[] } }>("/guilds", {
+          params: busca ? { busca } : undefined,
+        });
+        setGuildas(resp.data?.data?.guilds ?? []);
+      } catch (error) {
+        console.error("Erro ao buscar guildas:", error);
+        setGuildas([]);
+      } finally {
+        setBuscando(false);
+      }
+    },
+    [busca],
+  );
+
+  // Carrega todas as guildas assim que a aba abre — antes o jogador
+  // precisava clicar em "Buscar" (com o campo vazio) só pra ver que
+  // guildas existiam, o que parecia que nenhuma tinha sido criada.
+  useEffect(() => {
+    buscar();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- só na montagem, busca() com filtro digitado continua vindo do form
+  }, []);
 
   async function agir(guild: GuildResumo) {
     try {
@@ -75,7 +86,9 @@ export default function BuscarGuildas({
         </button>
       </form>
 
-      {guildas !== null && (
+      {guildas === null ? (
+        <p className="text-sm text-white/60">Carregando guildas...</p>
+      ) : (
         guildas.length === 0 ? (
           <p className="text-sm text-white/60">Nenhuma guilda encontrada.</p>
         ) : (

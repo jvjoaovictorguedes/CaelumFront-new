@@ -49,6 +49,11 @@ export function CaelumEmblema({ tamanho = "md" }: { tamanho?: keyof typeof TAMAN
 const TAMANHOS_BRASAO = {
   md: "h-20 sm:h-32 md:h-40 lg:h-56",
   sm: "h-14 sm:h-20 md:h-24 lg:h-32",
+  // Só pra cabeçalhos compactos ao lado de texto (menu lateral, card de
+  // boas-vindas do dashboard) — fixo e pequeno em toda tela, nunca
+  // cresce como "sm"/"md" crescem, senão estoura a altura da linha de
+  // texto ao lado e quebra o layout.
+  xs: "h-10 sm:h-12",
 } as const;
 
 export function CaelumBrasao({
@@ -60,10 +65,10 @@ export function CaelumBrasao({
 }) {
   return (
     <Image
-      src="/brand/caelum-crest-web.jpg"
+      src="/brand/caelum-crest-web.png"
       alt="Brasão de Caelum"
-      width={600}
-      height={664}
+      width={887}
+      height={439}
       priority
       className={`w-auto drop-shadow-2xl ${TAMANHOS_BRASAO[tamanho]} ${className}`}
     />
@@ -79,16 +84,25 @@ export default function CaelumBrand({
   // "escuro": marrom sólido — pro fundo já amarelo/dourado do menu
   // lateral, onde o degradê dourado sobre dourado quase não aparece.
   variante = "claro",
+  // O menu lateral é estreito e já mostra o brasão em outros lugares —
+  // o emblema pequeno ao lado do texto ali ficava apertado/redundante.
+  comIcone = true,
+  // Override pontual do tamanho do texto (ex.: menu lateral sem ícone,
+  // onde o "sm" padrão fica grande demais sozinho) — sobrescreve
+  // TAMANHOS[tamanho].texto quando informado.
+  classNameTexto,
   className = "",
 }: {
   tamanho?: keyof typeof TAMANHOS;
   variante?: "claro" | "escuro";
+  comIcone?: boolean;
+  classNameTexto?: string;
   className?: string;
 }) {
-  const { texto } = TAMANHOS[tamanho];
+  const texto = classNameTexto ?? TAMANHOS[tamanho].texto;
   return (
     <div className={`flex items-center justify-center gap-3 ${className}`}>
-      <CaelumEmblema tamanho={tamanho} />
+      {comIcone && <CaelumEmblema tamanho={tamanho} />}
       <span
         className={`font-imFeel ${texto} font-bold ${
           variante === "claro"
