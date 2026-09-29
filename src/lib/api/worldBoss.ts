@@ -147,7 +147,7 @@ export interface WorldBossAcaoResultado {
   cura: number;
   manaCurada: number;
   golpeFinal: boolean;
-  morreuAntesDeAgir?: boolean;
+  morreuAoFimDoTurno?: boolean;
   bloqueado?: boolean;
   motivoBloqueio?: string;
   cooldowns: WorldBossCooldownsApi;

@@ -118,12 +118,13 @@ export default function WorldBossArena() {
     setHpAoVivo({ atual: resultado.boss.hp_current, max: resultado.boss.hp_max, percentual: resultado.boss.hp_percentual });
     if (resultado.bloqueado) {
       adicionarMeuLog(`Você ficou impedido de agir (${resultado.motivoBloqueio ?? "controle de status"}).`);
-    } else if (resultado.morreuAntesDeAgir) {
-      adicionarMeuLog("Você foi derrotado antes de conseguir agir.");
     } else if (resultado.esquivou) {
       adicionarMeuLog(`${resultado.nomeAcao ?? "Ataque"}: a Ameaça Mundial esquivou.`);
     } else {
       adicionarMeuLog(`${resultado.nomeAcao ?? "Ataque"}: ${resultado.dano.toLocaleString("pt-BR")} de dano.`);
+    }
+    if (resultado.morreuAoFimDoTurno) {
+      adicionarMeuLog("Efeitos de status (queimadura/sangramento/veneno) te derrotaram ao fim do turno.");
     }
     if (resultado.golpeFinal) {
       adicionarMeuLog("GOLPE FINAL! A Ameaça Mundial foi derrotada!");
