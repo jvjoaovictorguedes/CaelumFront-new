@@ -4,7 +4,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { useState } from "react";
 import { getAvatarUrl, getClassPortrait } from "@/utils/media-url";
 import { logout } from "@/app/login/action";
-import CaelumBrand from "@/components/CaelumBrand/CaelumBrand";
+import { CaelumBrasao } from "@/components/CaelumBrand/CaelumBrand";
 import OnlinePlayersBadge from "./OnlinePlayersBadge";
 import PatchNotesBell from "./PatchNotesBell";
 import SidebarHealthBar from "./SidebarHealthBar";
@@ -157,7 +157,7 @@ export default function NavMenu({
       >
         <div className="flex w-full flex-col items-center justify-center gap-3 border-b border-black/50 pb-4">
           <div className="flex w-full items-center justify-center gap-2">
-            <CaelumBrand tamanho="sm" variante="escuro" comIcone={false} classNameTexto="text-base" />
+            <CaelumBrasao tamanho="xs" />
             <PatchNotesBell />
           </div>
           <div className="relative flex items-center justify-center">

@@ -49,6 +49,11 @@ export function CaelumEmblema({ tamanho = "md" }: { tamanho?: keyof typeof TAMAN
 const TAMANHOS_BRASAO = {
   md: "h-20 sm:h-32 md:h-40 lg:h-56",
   sm: "h-14 sm:h-20 md:h-24 lg:h-32",
+  // Só pra cabeçalhos compactos ao lado de texto (menu lateral, card de
+  // boas-vindas do dashboard) — fixo e pequeno em toda tela, nunca
+  // cresce como "sm"/"md" crescem, senão estoura a altura da linha de
+  // texto ao lado e quebra o layout.
+  xs: "h-10 sm:h-12",
 } as const;
 
 export function CaelumBrasao({

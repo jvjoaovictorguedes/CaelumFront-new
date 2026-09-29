@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { getCurrentCharacter } from "@/utils/character-session";
-import { CaelumEmblema } from "@/components/CaelumBrand/CaelumBrand";
+import { CaelumBrasao } from "@/components/CaelumBrand/CaelumBrand";
 import PageMusic from "@/components/music/PageMusic";
 
 export default async function DashboardHomePage() {
@@ -11,7 +11,7 @@ export default async function DashboardHomePage() {
       <PageMusic slot="PAGE_ADVENTURE" />
       <section className="rounded-2xl border-2 border-[#F3B43F] bg-[#292018]/90 p-6 text-white shadow-xl">
         <div className="flex items-center gap-4">
-          <CaelumEmblema tamanho="md" />
+          <CaelumBrasao tamanho="xs" className="shrink-0" />
           <div>
             <p className="text-sm uppercase tracking-widest text-[#F3B43F]">
               Refúgio do aventureiro
