@@ -1478,6 +1478,7 @@ function AbaRotas({ onErro }: { onErro: (m: string) => void }) {
   const [portos, setPortos] = useState<FishingPortAdminApi[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [mostrarForm, setMostrarForm] = useState(false);
+  const [editando, setEditando] = useState<MarineRouteAdminApi | null>(null);
   const [salvando, setSalvando] = useState(false);
   const [form, setForm] = useState<PayloadMarineRouteAdmin>({ min_vessel_tier: 1, distance: 1 });
 
@@ -1500,7 +1501,14 @@ function AbaRotas({ onErro }: { onErro: (m: string) => void }) {
   }, [carregar]);
 
   function abrirCriacao() {
+    setEditando(null);
     setForm({ id_port_origem: portos[0]?.id, id_zone_destino: zonas[0]?.id, min_vessel_tier: 1, distance: 1 });
+    setMostrarForm(true);
+  }
+
+  function abrirEdicao(rota: MarineRouteAdminApi) {
+    setEditando(rota);
+    setForm({ id_port_origem: rota.id_port_origem, id_zone_destino: rota.id_zone_destino, min_vessel_tier: rota.min_vessel_tier, distance: rota.distance });
     setMostrarForm(true);
   }
 
@@ -1508,11 +1516,16 @@ function AbaRotas({ onErro }: { onErro: (m: string) => void }) {
     e.preventDefault();
     setSalvando(true);
     try {
-      await criarMarineRouteAdmin(form);
+      if (editando) {
+        await atualizarMarineRouteAdmin(editando.id, form);
+      } else {
+        await criarMarineRouteAdmin(form);
+      }
       setMostrarForm(false);
+      setEditando(null);
       await carregar();
     } catch (error) {
-      onErro(mensagemDeErroAdmin(error, "Não foi possível criar a rota marítima."));
+      onErro(mensagemDeErroAdmin(error, editando ? "Não foi possível editar a rota marítima." : "Não foi possível criar a rota marítima."));
     } finally {
       setSalvando(false);
     }
@@ -1530,8 +1543,8 @@ function AbaRotas({ onErro }: { onErro: (m: string) => void }) {
   return (
     <Secao titulo="Rotas marítimas (Porto de origem → Zona de destino)">
       <p className="mb-3 text-xs text-white/50">
-        id_world_connection precisa de uma conexão já criada no Mapa Mundial (WorldMapConnection) — crie a estrada/rota
-        visual no schema do mapa primeiro e informe o id dela aqui.
+        Escolha um porto de origem, uma zona de destino e o tier mínimo de embarcação — a conexão técnica no Mapa Mundial
+        é criada e mantida automaticamente, você não precisa lidar com ela.
       </p>
       <button type="button" onClick={abrirCriacao} className="mb-3 rounded-lg bg-[#BC8418] px-4 py-2 text-sm font-bold text-black hover:bg-[#a5710f]">
         + Nova rota
@@ -1566,7 +1579,10 @@ function AbaRotas({ onErro }: { onErro: (m: string) => void }) {
                     </span>
                   </td>
                   <td className="px-3 py-2">
-                    <button type="button" onClick={() => alternarAtivo(r)} className="text-white/70 hover:underline">{r.ativo ? "Desativar" : "Ativar"}</button>
+                    <div className="flex gap-3">
+                      <button type="button" onClick={() => abrirEdicao(r)} className="text-white/70 hover:underline">Editar</button>
+                      <button type="button" onClick={() => alternarAtivo(r)} className="text-white/70 hover:underline">{r.ativo ? "Desativar" : "Ativar"}</button>
+                    </div>
                   </td>
                 </tr>
               ))
@@ -1578,10 +1594,7 @@ function AbaRotas({ onErro }: { onErro: (m: string) => void }) {
       {mostrarForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={() => setMostrarForm(false)}>
           <form onSubmit={salvar} onClick={(e) => e.stopPropagation()} className="flex w-full max-w-md flex-col gap-3 rounded-2xl border-2 border-[#F3B43F] bg-[#292018] p-5 text-white shadow-2xl">
-            <p className="font-imFeel text-xl text-[#F3B43F]">Nova rota marítima</p>
-            <label className="flex flex-col gap-1 text-xs">id_world_connection
-              <Input required type="number" value={form.id_world_connection ?? ""} onChange={(e) => setForm((f) => ({ ...f, id_world_connection: Number(e.target.value) }))} />
-            </label>
+            <p className="font-imFeel text-xl text-[#F3B43F]">{editando ? "Editar rota marítima" : "Nova rota marítima"}</p>
             <label className="flex flex-col gap-1 text-xs">Porto de origem
               <Select required value={form.id_port_origem ?? ""} onChange={(e) => setForm((f) => ({ ...f, id_port_origem: Number(e.target.value) }))}>
                 {portos.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
@@ -1601,7 +1614,7 @@ function AbaRotas({ onErro }: { onErro: (m: string) => void }) {
               </label>
             </div>
             <div className="mt-2 flex justify-end gap-2">
-              <button type="button" onClick={() => setMostrarForm(false)} className="rounded-lg border border-white/20 px-4 py-2 text-sm text-white/70 hover:bg-white/10">Cancelar</button>
+              <button type="button" onClick={() => { setMostrarForm(false); setEditando(null); }} className="rounded-lg border border-white/20 px-4 py-2 text-sm text-white/70 hover:bg-white/10">Cancelar</button>
               <BotaoSalvar disabled={salvando} />
             </div>
           </form>

@@ -2492,7 +2492,6 @@ export interface MarineRouteAdminApi {
 }
 
 export interface PayloadMarineRouteAdmin {
-  id_world_connection?: number;
   id_port_origem?: number;
   id_zone_destino?: number;
   min_vessel_tier?: number;
