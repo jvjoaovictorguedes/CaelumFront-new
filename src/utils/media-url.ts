@@ -31,7 +31,8 @@ export function resolveMediaUrl(value?: string | null) {
     value.startsWith("/images/") ||
     value.startsWith("/icons/") ||
     value.startsWith("/monstros_aventura/") ||
-    value.startsWith("/habilidades_game/")
+    value.startsWith("/habilidades_game/") ||
+    value.startsWith("/patch-notes/")
   ) {
     return value;
   }
