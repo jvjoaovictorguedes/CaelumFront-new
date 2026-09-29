@@ -24,6 +24,20 @@ interface ArmorPropertiesApi {
   bonus_velocidade: number;
 }
 
+interface ConsumablePropertiesApi {
+  efeito_vida: number;
+  efeito_mana: number;
+}
+
+interface FishingRodPropertiesApi {
+  forca_linha: number;
+  controle: number;
+  recolhimento: number;
+  precisao: number;
+  estabilidade: number;
+  nivel_pesca_minimo: number;
+}
+
 interface ItemApi {
   id: number;
   nome: string;
@@ -34,6 +48,8 @@ interface ItemApi {
   descricao?: string | null;
   weaponProperties?: WeaponPropertiesApi | null;
   armorProperties?: ArmorPropertiesApi | null;
+  consumableProperties?: ConsumablePropertiesApi | null;
+  fishingRodProperties?: FishingRodPropertiesApi | null;
 }
 
 interface InstanciaListingApi {
@@ -222,6 +238,94 @@ function PropriedadesEquipamento({ item, instancia }: { item: ItemApi; instancia
           </>
         )}
       </p>
+    );
+  }
+
+  return null;
+}
+
+// Bloco completo de atributos pra dentro do tooltip de descrição (§
+// pedido real: "já aparece o texto, mas falta o atributo") — cobre
+// arma/armadura (usando o efetivo já refinado quando a listagem for de
+// uma instância), consumível e vara de pesca, mesmo critério de
+// ListaDeAtributos em ShopItem.tsx. tipo_item decide qual bloco
+// mostrar, nunca só a presença do campo (item corrompido com uma
+// propriedade órfã no banco não pode aparecer com o atributo errado).
+function AtributosNoTooltip({ item, instancia }: { item: ItemApi; instancia?: InstanciaListingApi | null }) {
+  const efetivo = instancia?.propriedades_efetivas;
+
+  if (item.tipo_item === "Arma" && item.weaponProperties) {
+    const arma = efetivo ?? item.weaponProperties;
+    return (
+      <ul className="mt-2 space-y-0.5 border-t border-[#3a2f24]/30 pt-2 text-xs">
+        <li>
+          <span className="font-bold">{efetivo ? "Dano efetivo:" : "Dano:"}</span> {arma.dano_min}–{arma.dano_max}{" "}
+          ({arma.tipo_dano === "Fisico" ? "Físico" : "Mágico"})
+        </li>
+        {arma.valor_bonus_atributo > 0 && (
+          <li>
+            <span className="font-bold">+{arma.valor_bonus_atributo}</span> {NOME_ATRIBUTO[arma.bonus_atributo] ?? arma.bonus_atributo}
+          </li>
+        )}
+      </ul>
+    );
+  }
+
+  if (item.tipo_item !== "Consumivel" && item.armorProperties) {
+    const armor = efetivo ?? item.armorProperties;
+    const bonus = (
+      [
+        ["Força", armor.bonus_forca],
+        ["Vitalidade", armor.bonus_vitalidade],
+        ["Inteligência", armor.bonus_inteligencia],
+        ["Agilidade", armor.bonus_agilidade],
+        ["Velocidade", armor.bonus_velocidade],
+      ] as const
+    ).filter(([, valor]) => valor > 0);
+    return (
+      <ul className="mt-2 space-y-0.5 border-t border-[#3a2f24]/30 pt-2 text-xs">
+        <li>
+          <span className="font-bold">{efetivo ? "Defesa efetiva:" : "Defesa:"}</span> {armor.defesa}
+        </li>
+        {bonus.map(([nome, valor]) => (
+          <li key={nome}>
+            <span className="font-bold">+{valor}</span> {nome}
+          </li>
+        ))}
+      </ul>
+    );
+  }
+
+  if (item.consumableProperties) {
+    const consumivel = item.consumableProperties;
+    if (consumivel.efeito_vida <= 0 && consumivel.efeito_mana <= 0) return null;
+    return (
+      <ul className="mt-2 space-y-0.5 border-t border-[#3a2f24]/30 pt-2 text-xs">
+        {consumivel.efeito_vida > 0 && (
+          <li>
+            <span className="font-bold">+{consumivel.efeito_vida}%</span> Vida
+          </li>
+        )}
+        {consumivel.efeito_mana > 0 && (
+          <li>
+            <span className="font-bold">+{consumivel.efeito_mana}%</span> Mana
+          </li>
+        )}
+      </ul>
+    );
+  }
+
+  if (item.tipo_item === "Ferramenta" && item.fishingRodProperties) {
+    const vara = item.fishingRodProperties;
+    return (
+      <ul className="mt-2 space-y-0.5 border-t border-[#3a2f24]/30 pt-2 text-xs">
+        <li><span className="font-bold">Força da linha:</span> {vara.forca_linha}</li>
+        <li><span className="font-bold">Controle:</span> {vara.controle}</li>
+        <li><span className="font-bold">Recolhimento:</span> {vara.recolhimento}</li>
+        <li><span className="font-bold">Precisão:</span> {vara.precisao}</li>
+        <li><span className="font-bold">Estabilidade:</span> {vara.estabilidade}</li>
+        {vara.nivel_pesca_minimo > 1 && <li>Nível de pesca mínimo: {vara.nivel_pesca_minimo}</li>}
+      </ul>
     );
   }
 
@@ -482,6 +586,7 @@ function AbaComprar({ characterId }: { characterId: number }) {
                           {listing.instancia ? ` +${listing.instancia.refinamento}` : ""}
                         </p>
                         <p>{listing.item.descricao?.trim() || "Sem descrição."}</p>
+                        <AtributosNoTooltip item={listing.item} instancia={listing.instancia} />
                       </>
                     }
                   >
