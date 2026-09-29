@@ -9,6 +9,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { mensagemDeErroAdmin, previewDanoWorldBossAdmin, type WorldBossPhaseApi, type WorldBossPreviewDanoApi } from "@/lib/api/admin";
 import { BTN_GHOST, INPUT_XS, LABEL_XS } from "./styles";
+import WorldBossSimulatorPanel from "./WorldBossSimulatorPanel";
 
 const ACOES_PADRAO = [1, 5, 10, 20, 50, 100];
 
@@ -83,6 +84,8 @@ export default function WorldBossBalanceTab({ configId, fases }: { configId: num
           </table>
         </div>
       )}
+
+      <WorldBossSimulatorPanel configId={configId} />
     </div>
   );
 }

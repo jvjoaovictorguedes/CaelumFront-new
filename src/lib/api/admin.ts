@@ -1937,6 +1937,47 @@ export async function previewHabilidadeWorldBossAdmin(
   return resposta.data.data;
 }
 
+// Simulador de balanceamento (§14.2) — roda N combates sintéticos entre
+// o relógio real do Boss e UM perfil de personagem (HP/Defesa/
+// Agilidade); nunca simula o ataque dos jogadores contra o Boss (mede
+// a LETALIDADE do Boss, não o resultado de uma raid inteira).
+export interface WorldBossSimulacaoDanoPorFaseApi {
+  ordem: number;
+  nome_fase: string;
+  acoes_estimadas: number;
+  duracao_estimada_ms: number;
+  dano_medio: number;
+  dano_min: number;
+  dano_max: number;
+  alcancada_em_pct: number;
+}
+export interface WorldBossSimulacaoResultadoApi {
+  config: { id: number; nome: string };
+  personagem: { hp_maximo: number; defesa: number; agilidade: number };
+  quantidade_simulacoes: number;
+  taxa_sobrevivencia_pct: number;
+  acao_media_ate_derrotar: number | null;
+  fase_mais_letal: number | null;
+  furia_media_pct: number;
+  furia_maxima_pct: number;
+  mana_gasta_media: number;
+  frequencia_powers: { nome: string; usos_totais: number; usos_medios_por_simulacao: number }[];
+  dano_por_fase: WorldBossSimulacaoDanoPorFaseApi[];
+}
+
+export async function simularBalanceamentoWorldBossAdmin(
+  idConfig: number,
+  payload: {
+    personagem: { hp_maximo: number; defesa?: number; agilidade?: number };
+    dps_agregado?: number;
+    acoes_por_fase?: number;
+    quantidade_simulacoes?: number;
+  },
+): Promise<WorldBossSimulacaoResultadoApi> {
+  const resposta = await axiosInstance.post<{ data: WorldBossSimulacaoResultadoApi }>(`/admin/world-boss/configs/${idConfig}/simulate-balance`, payload);
+  return resposta.data.data;
+}
+
 // Painel Administrativo — Pesca & Navegação: Zonas, Espécies, Pool
 // (zona x espécie), Portos, Iscas e Afinidades. Vara de Pesca já é
 // gerenciada dentro do admin de Itens (tipo "Ferramenta").
