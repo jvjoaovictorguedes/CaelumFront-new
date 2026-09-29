@@ -3369,3 +3369,61 @@ export async function atualizarGuildBossAdmin(
 // criarMissaoGuildaAdmin/atualizarMissaoGuildaAdmin/duplicarMissaoGuildaAdmin
 // (ver acima), servido pela aba "Missões de Guilda" de
 // /dashboard/admin/missions.
+
+// Painel Administrativo — Wiki do Jogo. categoria é STRING livre (mesma
+// convenção de PatchNoteApi.feature) — o admin digita uma categoria
+// nova sem precisar de migration. conteudo é texto plano com parágrafos
+// separados por linha em branco (sem markdown, mesma convenção do
+// resto da base).
+export interface WikiArticleAdminApi {
+  id: number;
+  categoria: string;
+  slug: string;
+  titulo: string;
+  resumo: string | null;
+  conteudo: string;
+  ordem: number;
+  imagem_url: string | null;
+  publicado: boolean;
+  created_by_admin_id: number | null;
+}
+export interface PayloadWikiArticleAdmin {
+  categoria: string;
+  slug?: string;
+  titulo: string;
+  resumo?: string | null;
+  conteudo: string;
+  ordem?: number;
+  imagem_url?: string | null;
+  publicado?: boolean;
+}
+export async function listarWikiArtigosAdmin(
+  filtros: { categoria?: string; publicado?: string; nome?: string } = {},
+): Promise<WikiArticleAdminApi[]> {
+  const resposta = await axiosInstance.get<{ data: { artigos: WikiArticleAdminApi[] } }>("/admin/wiki", {
+    params: filtros,
+  });
+  return resposta.data.data.artigos;
+}
+export async function listarWikiCategoriasAdmin(): Promise<string[]> {
+  const resposta = await axiosInstance.get<{ data: { categorias: string[] } }>("/admin/wiki/categories");
+  return resposta.data.data.categorias;
+}
+export async function criarWikiArtigoAdmin(payload: PayloadWikiArticleAdmin): Promise<WikiArticleAdminApi> {
+  const resposta = await axiosInstance.post<{ data: { artigo: WikiArticleAdminApi } }>("/admin/wiki", payload);
+  return resposta.data.data.artigo;
+}
+export async function atualizarWikiArtigoAdmin(
+  id: number,
+  payload: Partial<PayloadWikiArticleAdmin>,
+): Promise<WikiArticleAdminApi> {
+  const resposta = await axiosInstance.patch<{ data: { artigo: WikiArticleAdminApi } }>(`/admin/wiki/${id}`, payload);
+  return resposta.data.data.artigo;
+}
+export async function duplicarWikiArtigoAdmin(id: number): Promise<WikiArticleAdminApi> {
+  const resposta = await axiosInstance.post<{ data: { artigo: WikiArticleAdminApi } }>(`/admin/wiki/${id}/duplicate`);
+  return resposta.data.data.artigo;
+}
+export async function excluirWikiArtigoAdmin(id: number): Promise<void> {
+  await axiosInstance.delete(`/admin/wiki/${id}`);
+}

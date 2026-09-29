@@ -33,6 +33,7 @@ const CATEGORIAS: CategoriaAdmin[] = [
       { titulo: "Habilidades", descricao: "Catálogo de Habilidades (Power), vínculos e evolução 1-10.", href: "/dashboard/admin/powers", permissao: "powers.manage" },
       { titulo: "Missões", descricao: "Missões livres, Guilda dos Aventureiros e Missões de Guilda.", href: "/dashboard/admin/missions", permissao: "missions.manage" },
       { titulo: "Guilda", descricao: "Balanceamento (ranks, carência, buffs, contribuição, Boss ao vivo) e catálogos de Nível e Boss por Rank.", href: "/dashboard/admin/guild", permissao: "guild.manage" },
+      { titulo: "Wiki do Jogo", descricao: "Artigos de referência pro jogador — mecânicas e sistemas, publicáveis sem deploy.", href: "/dashboard/admin/wiki", permissao: "wiki.manage" },
       { titulo: "Aventura", descricao: "Zonas, monstros, aparição e loot.", href: "/dashboard/admin/adventure", permissao: "adventure.manage" },
       { titulo: "Balcão de Espólios", descricao: "Reputação Comercial e faixas de quantidade das encomendas.", href: "/dashboard/admin/spoils", permissao: "spoils.manage" },
       { titulo: "Caçadas", descricao: "Dificuldades e Reputação de Caçador.", href: "/dashboard/admin/hunts", permissao: "hunts.manage" },
