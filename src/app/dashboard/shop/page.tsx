@@ -2,6 +2,7 @@ import axiosInstance from "@/utils/axiosIntance";
 import { getCurrentCharacter } from "@/utils/character-session";
 import { type ShopItemData } from "./components/ShopItem";
 import ShopCatalog from "./components/ShopCatalog";
+import MoedasAtuais from "./components/MoedasAtuais";
 import PageMusic from "@/components/music/PageMusic";
 
 interface ItemsResponse {
@@ -63,7 +64,7 @@ export default async function ShopPage() {
             </p>
           </div>
 
-          <p className="text-lg font-bold text-[#F3B43F]">Moedas: {moedas}</p>
+          <MoedasAtuais inicial={moedas} />
         </div>
       </div>
 

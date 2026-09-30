@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useCharacter } from "@/contexts/CharacterContext";
 import ShopItem, { type ShopItemData } from "./ShopItem";
 
 type Secao = "Equipamentos" | "Ferramentas" | "Consumiveis" | "Materiais";
@@ -59,6 +60,14 @@ export default function ShopCatalog({
   moedas,
   classeDoPersonagem,
 }: ShopCatalogProps) {
+  // Moedas vêm do contexto compartilhado (atualizado por ShopItem após
+  // cada compra, e por qualquer outra tela do jogo) — moedas (prop, do
+  // fetch server-side da página) só serve de valor inicial antes do
+  // contexto hidratar, senão a grade inteira ficava mostrando o saldo
+  // congelado do carregamento da página, igual a Sidebar mostrava antes.
+  const { character } = useCharacter();
+  const moedasAtuais = character?.dinheiro ?? moedas;
+
   const secoesComItens = useMemo(
     () =>
       SECOES.map((secao) => ({
@@ -171,7 +180,7 @@ export default function ShopCatalog({
             <ShopItem
               key={item.id}
               characterId={characterId}
-              initialCoins={moedas}
+              coins={moedasAtuais}
               item={item}
               classeDoPersonagem={classeDoPersonagem}
             />

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import axiosInstance from "@/utils/axiosIntance";
+import { useCharacter } from "@/contexts/CharacterContext";
 import { resolveMediaUrl } from "@/utils/media-url";
 
 type Atributo = "Forca" | "Vitalidade" | "Inteligencia" | "Agilidade" | "Velocidade";
@@ -93,7 +94,7 @@ interface PurchaseError {
 
 interface ShopItemProps {
   characterId?: number;
-  initialCoins: number;
+  coins: number;
   item: ShopItemData;
   classeDoPersonagem?: string;
 }
@@ -268,11 +269,11 @@ function ListaDeAtributos({ item }: { item: ShopItemData }) {
 
 export default function ShopItem({
   characterId,
-  initialCoins,
+  coins,
   item,
   classeDoPersonagem,
 }: ShopItemProps) {
-  const [coins, setCoins] = useState(initialCoins);
+  const { atualizarCharacter } = useCharacter();
   const [quantity, setQuantity] = useState(0);
   const [buyAmount, setBuyAmount] = useState(1);
   const [isBuying, setIsBuying] = useState(false);
@@ -322,9 +323,11 @@ export default function ShopItem({
 
       const purchased = response.data?.data?.quantidadeComprada ?? buyAmount;
 
+      // Atualiza o contexto compartilhado (nunca um estado local só
+      // deste card) — sem isso, a Sidebar e os outros itens da loja
+      // ficavam mostrando o saldo antigo até a página ser recarregada.
       const updatedCoins = response.data?.data?.character?.dinheiro ?? coins - custoTotal;
-
-      setCoins(updatedCoins);
+      atualizarCharacter({ dinheiro: updatedCoins });
       setQuantity((current) => current + purchased);
 
       setMessage(
