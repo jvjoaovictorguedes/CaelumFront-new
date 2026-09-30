@@ -49,56 +49,65 @@ export const DEFAULT_SPRITE_FOLDER = "Knight_1";
  * têm o desenho na mesma posição, mesmo quando todos os frames são 128x128.
  */
 export const SPRITE_CONFIGS: Record<string, SpriteCharacterConfig> = {
-  // Sprite "clean" enviado pra teste em dev (guerreiro espada+escudo) —
-  // recortado de uma folha grande em grade 8x8 (ver conversa/commit),
-  // cada frame reempacotado num canvas quadrado de 160x160 com o
-  // personagem ancorado embaixo, pra não distorcer no
-  // AnimatedSpriteSheet (que estica a folha pra 100% da altura do
-  // container). "poder" usa o golpe especial com brilho de fogo em vez
-  // de reaproveitar o ataque comum.
   Knight_1: {
     scale: 1.6,
-    originX: "50%",
-    originY: "90%",
+    originX: "38%",
+    originY: "85%",
     offsetX: 0,
     offsetY: 0,
 
     animations: {
       idle: {
         file: "Idle.png",
-        frames: 8,
+        frames: 4,
         fps: 6,
       },
 
       attack: {
         file: "Attack 1.png",
-        frames: 8,
+        frames: 5,
         fps: 10,
+        scale: 1.62,
+        originX: "36%",
+        originY: "85%",
+        offsetX: 3,
       },
 
       poder: {
-        file: "Attack 2.png",
-        frames: 8,
+        file: "Attack 1.png",
+        frames: 5,
         fps: 10,
+        scale: 1.62,
+        originX: "36%",
+        originY: "85%",
+        offsetX: 3,
       },
 
       hurt: {
         file: "Hurt.png",
         frames: 2,
         fps: 8,
+        scale: 1.6,
+        originX: "38%",
+        originY: "85%",
       },
 
       dead: {
         file: "Dead.png",
-        frames: 8,
-        fps: 7,
+        frames: 6,
+        fps: 8,
         loop: false,
+        scale: 1.5,
+        originX: "42%",
+        originY: "88%",
+        offsetY: 5,
       },
 
       victory: {
         file: "Idle.png",
-        frames: 8,
+        frames: 4,
         fps: 6,
+        scale: 1.62,
       },
     },
   },
