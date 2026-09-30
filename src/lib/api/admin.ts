@@ -2690,8 +2690,8 @@ export interface MarketTransactionAdminApi {
 
 export async function listarMarketTransactionsAdmin(
   filtros: { pagina?: number; porPagina?: number; idItem?: number; vendedorId?: number; compradorId?: number } = {},
-): Promise<PaginaApi<MarketTransactionAdminApi>> {
-  const resposta = await axiosInstance.get<{ data: PaginaApi<MarketTransactionAdminApi> }>("/admin/market/transactions", {
+): Promise<PaginaApi<MarketTransactionAdminApi> & { taxaTotal: number }> {
+  const resposta = await axiosInstance.get<{ data: PaginaApi<MarketTransactionAdminApi> & { taxaTotal: number } }>("/admin/market/transactions", {
     params: filtros,
   });
   return resposta.data.data;
