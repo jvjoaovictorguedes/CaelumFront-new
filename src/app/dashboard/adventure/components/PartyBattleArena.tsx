@@ -151,7 +151,10 @@ export default function PartyBattleArena() {
       setAnimInimigo(turno.dano > 0 ? "anim-atingido" : turno.esquivou ? "anim-esquivando-direita" : "idle");
 
       if (turno.dano > 0) {
-        dispararFloatingInimigo(`-${turno.dano}`, "#ff3333");
+        dispararFloatingInimigo(
+          turno.critico ? `-${turno.dano} CRÍTICO!` : `-${turno.dano}`,
+          turno.critico ? "#ffd23f" : "#ff3333",
+        );
       } else if (turno.esquivou) {
         dispararFloatingInimigo("Esquivou!", "#cccccc");
       }
@@ -188,7 +191,11 @@ export default function PartyBattleArena() {
           [idAlvo]: turno.dano > 0 ? "anim-atingido" : turno.esquivou ? "anim-esquivando-esquerda" : "idle",
         }));
         if (turno.dano > 0) {
-          dispararFloatingAliado(idAlvo, `-${turno.dano}`, "#ff3333");
+          dispararFloatingAliado(
+            idAlvo,
+            turno.critico ? `-${turno.dano} CRÍTICO!` : `-${turno.dano}`,
+            turno.critico ? "#ffd23f" : "#ff3333",
+          );
         } else if (turno.esquivou) {
           dispararFloatingAliado(idAlvo, "Esquivou!", "#cccccc");
         }

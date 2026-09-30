@@ -96,7 +96,10 @@ export default function GuildBossLiveArena() {
     if (turno.origem === "aliado") {
       const idAtor = turno.idAtor ? Number(turno.idAtor) : undefined;
       if (turno.dano > 0) {
-        dispararFloatingChefe(`-${turno.dano}`, "#ff3333");
+        dispararFloatingChefe(
+          turno.critico ? `-${turno.dano} CRÍTICO!` : `-${turno.dano}`,
+          turno.critico ? "#ffd23f" : "#ff3333",
+        );
         piscarChefe();
       } else if (turno.esquivou) {
         dispararFloatingChefe("Esquivou!", "#cccccc");
@@ -124,7 +127,11 @@ export default function GuildBossLiveArena() {
       const idAlvo = turno.idAlvo;
       if (idAlvo) {
         if (turno.dano > 0) {
-          dispararFloatingAliado(idAlvo, `-${turno.dano}`, "#ff3333");
+          dispararFloatingAliado(
+            idAlvo,
+            turno.critico ? `-${turno.dano} CRÍTICO!` : `-${turno.dano}`,
+            turno.critico ? "#ffd23f" : "#ff3333",
+          );
           piscarAliado(idAlvo);
         } else if (turno.esquivou) {
           dispararFloatingAliado(idAlvo, "Esquivou!", "#cccccc");

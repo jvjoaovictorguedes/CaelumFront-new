@@ -130,6 +130,9 @@ export interface TurnoResultadoPayload {
   cura: number;
   manaCurada?: number;
   esquivou: boolean;
+  // Precisão/Crítico (Velocidade) — ausente em respostas antigas
+  // (compatibilidade), tratado como false nesse caso.
+  critico?: boolean;
   bloqueado?: boolean;
   logStatus?: string[];
   statusA?: StatusInstanceDuelo[];
@@ -266,6 +269,9 @@ export interface TurnoGrupoPayload {
   cura?: number;
   manaCurada?: number;
   esquivou: boolean;
+  // Precisão/Crítico (Velocidade) — ausente em respostas antigas
+  // (compatibilidade), tratado como false nesse caso.
+  critico?: boolean;
   vidaInimigo?: number;
   vidaAliado?: number;
   manaAliado?: number;
@@ -335,6 +341,9 @@ export interface TurnoBossGuildaPayload {
   cura?: number;
   manaCurada?: number;
   esquivou: boolean;
+  // Precisão/Crítico (Velocidade) — ausente em respostas antigas
+  // (compatibilidade), tratado como false nesse caso.
+  critico?: boolean;
   vidaChefe?: number;
   vidaAliado?: number;
   manaAliado?: number;

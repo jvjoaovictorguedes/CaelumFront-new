@@ -32,8 +32,14 @@ interface WorldBossBossAcaoPayload {
   mana_current: number;
   fase?: { ordem: number; nome_fase: string };
   boss_bloqueado?: string;
-  habilidade?: { power: { id: number; nome: string } | null; alvos: { character_id: number; nome: string; dano: number; esquivou: boolean; derrotado: boolean }[]; cura_self?: number };
-  alvo?: { character_id: number; nome: string; dano: number; esquivou: boolean; derrotado: boolean };
+  habilidade?: {
+    power: { id: number; nome: string } | null;
+    // critico (Precisão/Crítico, Velocidade) ausente em respostas
+    // antigas (compatibilidade), tratado como false nesse caso.
+    alvos: { character_id: number; nome: string; dano: number; esquivou: boolean; critico?: boolean; derrotado: boolean }[];
+    cura_self?: number;
+  };
+  alvo?: { character_id: number; nome: string; dano: number; esquivou: boolean; critico?: boolean; derrotado: boolean };
   castIniciado?: { power: { id: number; nome: string; imagem_url: string | null } | null; resolves_at: string };
 }
 interface WorldBossCastStartPayload {
@@ -147,14 +153,22 @@ export function WorldBossSocketProvider({ children }: { children: React.ReactNod
         const nomePower = payload.habilidade.power?.nome ?? "uma habilidade";
         for (const alvo of payload.habilidade.alvos) {
           if (alvo.esquivou) adicionarFeed(`${nomePower} mirou em ${alvo.nome}, que esquivou.`, "info");
-          else adicionarFeed(`${nomePower} atingiu ${alvo.nome}: ${alvo.dano.toLocaleString("pt-BR")} de dano.`, "dano");
+          else
+            adicionarFeed(
+              `${nomePower} atingiu ${alvo.nome}: ${alvo.dano.toLocaleString("pt-BR")} de dano.${alvo.critico ? " ACERTO CRÍTICO!" : ""}`,
+              "dano",
+            );
         }
         if (payload.habilidade.alvos.length === 0 && payload.habilidade.cura_self) {
           adicionarFeed(`O Boss usou ${nomePower} e se curou.`, "info");
         }
       } else if (payload.alvo) {
         if (payload.alvo.esquivou) adicionarFeed(`O Boss atacou ${payload.alvo.nome}, que esquivou.`, "info");
-        else adicionarFeed(`O Boss atacou ${payload.alvo.nome}: ${payload.alvo.dano.toLocaleString("pt-BR")} de dano.`, "dano");
+        else
+          adicionarFeed(
+            `O Boss atacou ${payload.alvo.nome}: ${payload.alvo.dano.toLocaleString("pt-BR")} de dano.${payload.alvo.critico ? " ACERTO CRÍTICO!" : ""}`,
+            "dano",
+          );
       } else if (payload.boss_bloqueado) {
         adicionarFeed(`O Boss perdeu a ação (${payload.boss_bloqueado}).`, "info");
       }
