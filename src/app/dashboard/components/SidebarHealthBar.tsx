@@ -44,6 +44,7 @@ export default function SidebarHealthBar() {
   const { character } = useCharacter();
   const router = useRouter();
   const regenVidaRestanteMs = useContagemRegressiva(character?.regen_vida_restante_ms);
+  const regenManaRestanteMs = useContagemRegressiva(character?.regen_mana_restante_ms);
 
   if (!character) return null;
 
@@ -95,6 +96,11 @@ export default function SidebarHealthBar() {
             style={{ width: `${percentualMana}%` }}
           />
         </div>
+        {manaAtualExibida < manaMaxima && regenManaRestanteMs > 0 && (
+          <div className="mt-0.5 text-right text-[9px] text-black/50">
+            Mana cheia em {formatarContagem(regenManaRestanteMs)}
+          </div>
+        )}
       </div>
       {/* Ouro sempre visível perto do avatar (mesmo motivo de Vida/Mana
           acima) — antes só dava pra ver na aba Status. */}
