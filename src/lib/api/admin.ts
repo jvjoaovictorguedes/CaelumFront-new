@@ -912,9 +912,15 @@ export interface RaceAbilityApi {
   custo_ouro: number | null;
   Race?: { id: number; nome_masculino: string; nome_feminino: string };
 }
+export interface NatureAbilityApi {
+  natureza_magica: "Fogo" | "Agua" | "Terra" | "Ar" | "Luz" | "Escuridao" | "Raio" | "Yin&Yang";
+  id_poder: number;
+  nivel_aprendizagem: number;
+  custo_ouro: number | null;
+}
 
-export async function listarVinculosPowerAdmin(idPower: number): Promise<{ classes: ClassAbilityApi[]; racas: RaceAbilityApi[] }> {
-  const resposta = await axiosInstance.get<{ data: { classes: ClassAbilityApi[]; racas: RaceAbilityApi[] } }>(`/admin/powers/${idPower}/links`);
+export async function listarVinculosPowerAdmin(idPower: number): Promise<{ classes: ClassAbilityApi[]; racas: RaceAbilityApi[]; naturezas: NatureAbilityApi[] }> {
+  const resposta = await axiosInstance.get<{ data: { classes: ClassAbilityApi[]; racas: RaceAbilityApi[]; naturezas: NatureAbilityApi[] } }>(`/admin/powers/${idPower}/links`);
   return resposta.data.data;
 }
 export async function vincularClassePowerAdmin(idPower: number, payload: { id_classe: number; nivel_aprendizagem: number; custo_ouro?: number | null }): Promise<ClassAbilityApi> {
@@ -930,6 +936,13 @@ export async function vincularRacaPowerAdmin(idPower: number, payload: { id_raca
 }
 export async function desvincularRacaPowerAdmin(idPower: number, idRaca: number): Promise<void> {
   await axiosInstance.delete(`/admin/powers/${idPower}/links/race/${idRaca}`);
+}
+export async function vincularNaturezaPowerAdmin(idPower: number, payload: { natureza_magica: NatureAbilityApi["natureza_magica"]; nivel_aprendizagem: number; custo_ouro?: number | null }): Promise<NatureAbilityApi> {
+  const resposta = await axiosInstance.put<{ data: { vinculo: NatureAbilityApi } }>(`/admin/powers/${idPower}/links/nature`, payload);
+  return resposta.data.data.vinculo;
+}
+export async function desvincularNaturezaPowerAdmin(idPower: number, naturezaMagica: NatureAbilityApi["natureza_magica"]): Promise<void> {
+  await axiosInstance.delete(`/admin/powers/${idPower}/links/nature/${naturezaMagica}`);
 }
 
 export interface PayloadStatusEffectAdmin {

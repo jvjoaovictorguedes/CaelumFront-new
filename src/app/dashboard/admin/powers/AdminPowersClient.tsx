@@ -11,6 +11,7 @@ import {
   criarEvolutionAdmin,
   criarPowerAdmin,
   desvincularClassePowerAdmin,
+  desvincularNaturezaPowerAdmin,
   desvincularRacaPowerAdmin,
   duplicarPowerAdmin,
   excluirEvolutionAdmin,
@@ -26,10 +27,12 @@ import {
   previewStatusPowerAdmin,
   removerStatusEffectPowerAdmin,
   vincularClassePowerAdmin,
+  vincularNaturezaPowerAdmin,
   vincularRacaPowerAdmin,
   type ClassAbilityApi,
   type ClassPublicaApi,
   type EvolutionAdminApi,
+  type NatureAbilityApi,
   type NaturezaMagica,
   type PayloadEvolutionAdmin,
   type PayloadPowerAdmin,
@@ -94,13 +97,16 @@ function DetalhePower({
   });
   const [salvandoInfo, setSalvandoInfo] = useState(false);
 
-  const [vinculos, setVinculos] = useState<{ classes: ClassAbilityApi[]; racas: RaceAbilityApi[] }>({ classes: [], racas: [] });
+  const [vinculos, setVinculos] = useState<{ classes: ClassAbilityApi[]; racas: RaceAbilityApi[]; naturezas: NatureAbilityApi[] }>({ classes: [], racas: [], naturezas: [] });
   const [novaClasseId, setNovaClasseId] = useState("");
   const [novoNivelClasse, setNovoNivelClasse] = useState(1);
   const [novoCustoClasse, setNovoCustoClasse] = useState("");
   const [novaRacaId, setNovaRacaId] = useState("");
   const [novoNivelRaca, setNovoNivelRaca] = useState(1);
   const [novoCustoRaca, setNovoCustoRaca] = useState("");
+  const [novaNaturezaMagica, setNovaNaturezaMagica] = useState<NaturezaMagica | "">("");
+  const [novoNivelNatureza, setNovoNivelNatureza] = useState(1);
+  const [novoCustoNatureza, setNovoCustoNatureza] = useState("");
 
   const [novoStatusKey, setNovoStatusKey] = useState(catalogo[0]?.status_key ?? "");
   const [novoTarget, setNovoTarget] = useState<"Self" | "Enemy">("Enemy");
@@ -197,6 +203,33 @@ function DetalhePower({
       await carregarVinculos();
     } catch (error) {
       setErro(mensagemDeErroAdmin(error, "Não foi possível desvincular a raça."));
+    }
+  }
+
+  async function vincularNatureza(evento: React.FormEvent) {
+    evento.preventDefault();
+    setErro("");
+    try {
+      await vincularNaturezaPowerAdmin(power.id, {
+        natureza_magica: novaNaturezaMagica as NaturezaMagica,
+        nivel_aprendizagem: novoNivelNatureza,
+        custo_ouro: novoCustoNatureza ? Number(novoCustoNatureza) : null,
+      });
+      setNovaNaturezaMagica("");
+      setNovoCustoNatureza("");
+      await carregarVinculos();
+    } catch (error) {
+      setErro(mensagemDeErroAdmin(error, "Não foi possível vincular a natureza mágica."));
+    }
+  }
+
+  async function desvincularNatureza(naturezaMagica: NaturezaMagica) {
+    setErro("");
+    try {
+      await desvincularNaturezaPowerAdmin(power.id, naturezaMagica);
+      await carregarVinculos();
+    } catch (error) {
+      setErro(mensagemDeErroAdmin(error, "Não foi possível desvincular a natureza mágica."));
     }
   }
 
@@ -399,6 +432,42 @@ function DetalhePower({
             <label className="flex flex-col gap-1 text-[10px] text-white/60">
               Custo (ouro)
               <input type="number" min={0} value={novoCustoRaca} onChange={(e) => setNovoCustoRaca(e.target.value)} className="w-24 rounded-lg border border-white/20 bg-black/30 px-2 py-1 text-sm" />
+            </label>
+            <button type="submit" className="rounded-lg bg-[#BC8418] px-3 py-1.5 text-xs font-bold text-black hover:bg-[#a5710f]">
+              + Vincular
+            </button>
+          </form>
+        </div>
+
+        <div className="flex flex-col gap-2 rounded-xl border border-white/10 p-3">
+          <p className="text-xs font-bold uppercase text-[#F3B43F]/80">Vínculo com Natureza Mágica</p>
+          {vinculos.naturezas.map((v) => (
+            <div key={v.natureza_magica} className="flex items-center justify-between rounded-lg bg-black/20 px-2 py-1 text-sm">
+              <span>
+                {v.natureza_magica} · nível {v.nivel_aprendizagem}
+                {v.custo_ouro ? ` · ${v.custo_ouro} ouro` : ""}
+              </span>
+              <button type="button" onClick={() => desvincularNatureza(v.natureza_magica)} className="text-xs text-red-400 hover:underline">
+                Remover
+              </button>
+            </div>
+          ))}
+          <form onSubmit={vincularNatureza} className="flex flex-wrap items-end gap-2 pt-1">
+            <select required value={novaNaturezaMagica} onChange={(e) => setNovaNaturezaMagica(e.target.value as NaturezaMagica)} className="rounded-lg border border-white/20 bg-black/30 px-2 py-1 text-sm">
+              <option value="">Natureza...</option>
+              {NATUREZAS_MAGICAS.map((n) => (
+                <option key={n} value={n}>
+                  {n}
+                </option>
+              ))}
+            </select>
+            <label className="flex flex-col gap-1 text-[10px] text-white/60">
+              Nível
+              <input type="number" min={1} max={10} value={novoNivelNatureza} onChange={(e) => setNovoNivelNatureza(Number(e.target.value))} className="w-16 rounded-lg border border-white/20 bg-black/30 px-2 py-1 text-sm" />
+            </label>
+            <label className="flex flex-col gap-1 text-[10px] text-white/60">
+              Custo (ouro)
+              <input type="number" min={0} value={novoCustoNatureza} onChange={(e) => setNovoCustoNatureza(e.target.value)} className="w-24 rounded-lg border border-white/20 bg-black/30 px-2 py-1 text-sm" />
             </label>
             <button type="submit" className="rounded-lg bg-[#BC8418] px-3 py-1.5 text-xs font-bold text-black hover:bg-[#a5710f]">
               + Vincular
