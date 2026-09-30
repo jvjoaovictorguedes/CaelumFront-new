@@ -56,6 +56,21 @@ async function verificarSessao(request: NextRequest, token: string) {
   }
 }
 
+// RootLayout (Server Component, sem acesso nativo à rota atual) precisa
+// saber se a página é "/login" pra decidir o gate do Modo Manutenção
+// (ver app/layout.tsx) sem bloquear o próprio formulário de login.
+// Só importa nos casos que seguem pra renderizar a MESMA requisição
+// (NextResponse.next() — um redirect gera uma navegação nova, com o
+// middleware rodando de novo pro pathname de destino) — por isso
+// carimba no header do REQUEST (não da response): é a única forma de
+// um valor definido aqui chegar em headers() dentro de um Server
+// Component, mesma técnica padrão do Next.js App Router pra isso.
+function next(request: NextRequest, pathname: string) {
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-pathname", pathname);
+  return NextResponse.next({ request: { headers: requestHeaders } });
+}
+
 export async function middleware(request: NextRequest) {
   const token = request.cookies.get(TOKEN_KEY)?.value;
 
@@ -103,10 +118,10 @@ export async function middleware(request: NextRequest) {
     // Sessão caiu mas a rota atual não exige login (ex.: "/") — ainda
     // assim limpa os cookies velhos pra não arrastar esse estado
     // inconsistente pra próxima navegação.
-    return limparCookiesDeSessao(NextResponse.next());
+    return limparCookiesDeSessao(next(request, pathname));
   }
 
-  return NextResponse.next();
+  return next(request, pathname);
 }
 
 export const config = {
