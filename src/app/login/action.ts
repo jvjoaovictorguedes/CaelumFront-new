@@ -54,10 +54,22 @@ async function finalizarSessao(userData: LoginResponseData["data"], rememberMe: 
     path: "/",
   });
 
+  // Modo Manutenção: esta rota não é liberada pra quem não é admin (só
+  // /users/login é — ver maintenanceMiddleware.js no backend), então um
+  // jogador comum tentando logar durante a manutenção toma 503 aqui. Sem
+  // tolerar esse status, o axios lançava, o catch de login()/loginComGoogle()
+  // tratava como falha TOTAL (mostrando a mensagem de manutenção como se o
+  // e-mail/senha tivessem errado) mesmo com o login de verdade já aceito
+  // e o cookie do token já salvo — um bug real reportado em teste.
+  // 503 fica sem cookie de personagem nenhum (nem notCharacter nem
+  // characterId): a navegação seguinte já resolve certo sozinha — o
+  // middleware trata "sem cookie nenhum" como sem personagem (manda pra
+  // "/create"), e lá o RootLayout mostra a tela de manutenção pra quem
+  // não é admin, sem nenhuma mensagem de erro confusa.
   const character = await axiosInstance.get<CharacterLookupResponse>(
     `/characters/by-user/${userData.user.id}`,
     {
-      validateStatus: (status) => status <= 404,
+      validateStatus: (status) => status <= 404 || status === 503,
     },
   );
   const characterId = character.data?.data?.character?.id;
