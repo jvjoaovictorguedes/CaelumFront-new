@@ -2993,6 +2993,27 @@ export async function atualizarForgeBalanceAdmin(grupo: string, valores: Record<
   return resposta.data.data;
 }
 
+// Balanceamento de Pesca (pedido: editar XP por nível de Pesca + buff de
+// Proficiência por nível) — mesmo padrão de obterForgeBalanceAdmin acima.
+// O buff de Refinamento da vara usa forge.refinement (Forja →
+// Balanceamento), não tem grupo próprio aqui de propósito.
+export interface FishingBalanceGrupoApi<T = Record<string, unknown>> {
+  atual: T;
+  padrao: T;
+}
+export interface FishingBalanceCompletoApi {
+  "fishing.progression": FishingBalanceGrupoApi<{ XP_NECESSARIO_POR_ETAPA_PESCA: Record<string, number>; XP_TOTAL_PARA_NIVEL_PESCA: Record<string, number>; NIVEL_MAXIMO_PESCA: number }>;
+  "fishing.proficiency": FishingBalanceGrupoApi<{ PROFICIENCIA_PCT_POR_NIVEL: Record<string, number> }>;
+}
+export async function obterFishingBalanceAdmin(): Promise<FishingBalanceCompletoApi> {
+  const resposta = await axiosInstance.get<{ data: FishingBalanceCompletoApi }>("/admin/fishing/balance/settings");
+  return resposta.data.data;
+}
+export async function atualizarFishingBalanceAdmin(grupo: string, valores: Record<string, unknown>): Promise<FishingBalanceGrupoApi> {
+  const resposta = await axiosInstance.put<{ data: FishingBalanceGrupoApi }>(`/admin/fishing/balance/settings/${grupo}`, valores);
+  return resposta.data.data;
+}
+
 export interface ForgeSimulacaoRefinamentoApi {
   alvo: number;
   garantido: boolean;
