@@ -197,6 +197,53 @@ function SeletorItem({ aberto, onFechar, onSelecionar, tipoItem, raridade }: { a
   );
 }
 
+// Mesmo padrão do SeletorItem — sem isso, criar uma Receita pedia o ID
+// do Blueprint cru, sem nenhuma lista pra consultar (só existia jeito
+// de ver o ID abrindo cada blueprint um por um na aba Blueprints).
+function SeletorBlueprint({ aberto, onFechar, onSelecionar }: { aberto: boolean; onFechar: () => void; onSelecionar: (blueprint: ForgeBlueprintLinhaApi) => void }) {
+  const [busca, setBusca] = useState("");
+  const [itens, setItens] = useState<ForgeBlueprintLinhaApi[]>([]);
+  const [carregando, setCarregando] = useState(false);
+
+  useEffect(() => {
+    if (!aberto) return;
+    setCarregando(true);
+    listarForgeBlueprintsAdmin({ nome: busca || undefined, porPagina: 30 })
+      .then((r) => setItens(r.itens))
+      .catch(() => setItens([]))
+      .finally(() => setCarregando(false));
+  }, [aberto, busca]);
+
+  if (!aberto) return null;
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-4" onClick={onFechar}>
+      <div onClick={(e) => e.stopPropagation()} className="flex max-h-[80vh] w-full max-w-lg flex-col gap-2 overflow-hidden rounded-2xl border-2 border-[#F3B43F] bg-[#20180f] p-4">
+        <p className="font-imFeel text-lg text-[#F3B43F]">Selecionar Blueprint</p>
+        <input autoFocus value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar por nome..." className={INPUT} />
+        <div className="flex-1 overflow-y-auto">
+          {carregando ? (
+            <p className="p-2 text-sm text-white/50">Carregando...</p>
+          ) : itens.length === 0 ? (
+            <p className="p-2 text-sm text-white/50">Nenhum blueprint encontrado.</p>
+          ) : (
+            <ul className="flex flex-col gap-1">
+              {itens.map((bp) => (
+                <li key={bp.id}>
+                  <button type="button" onClick={() => { onSelecionar(bp); onFechar(); }} className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm text-white hover:bg-white/10">
+                    <span className="flex-1">{bp.nome}</span>
+                    <span className="text-xs text-white/40">#{bp.id} · {bp.categoria_equipamento}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+        <button type="button" onClick={onFechar} className={BTN_GHOST}>Cancelar</button>
+      </div>
+    </div>
+  );
+}
+
 // ---------------------------------------------------------------------
 // Visão Geral
 // ---------------------------------------------------------------------
@@ -962,9 +1009,10 @@ function AbaReceitas() {
   const [mensagem, setMensagem] = useState("");
   const [editandoId, setEditandoId] = useState<number | null>(null);
   const [form, setForm] = useState(receitaFormVazio());
-  const [idBlueprintNovo, setIdBlueprintNovo] = useState("");
+  const [blueprintNovo, setBlueprintNovo] = useState<ForgeBlueprintLinhaApi | null>(null);
   const [itemNovo, setItemNovo] = useState<AdminItemApi | null>(null);
   const [seletorAberto, setSeletorAberto] = useState(false);
+  const [seletorBlueprintAberto, setSeletorBlueprintAberto] = useState(false);
   const [mostrarForm, setMostrarForm] = useState(false);
   const [salvando, setSalvando] = useState(false);
 
@@ -974,7 +1022,7 @@ function AbaReceitas() {
   }, []);
   useEffect(() => { carregar(); }, [carregar]);
 
-  function abrirCriacao() { setEditandoId(null); setForm(receitaFormVazio()); setIdBlueprintNovo(""); setItemNovo(null); setMostrarForm(true); setMensagem(""); }
+  function abrirCriacao() { setEditandoId(null); setForm(receitaFormVazio()); setBlueprintNovo(null); setItemNovo(null); setMostrarForm(true); setMensagem(""); }
   function abrirEdicao(r: ForgeRecipeAdminApi) {
     setEditandoId(r.id);
     setForm({ raridade_receita: r.raridade_receita, negociavel: r.negociavel, consome_ao_aprender: r.consome_ao_aprender, ativo: r.ativo, pista_publica: r.pista_publica ?? "" });
@@ -990,10 +1038,9 @@ function AbaReceitas() {
         await atualizarForgeReceitaAdmin(editandoId, payload);
         setMensagem("Receita atualizada.");
       } else {
-        const idBlueprint = Number(idBlueprintNovo);
-        if (!Number.isInteger(idBlueprint) || idBlueprint <= 0) { setMensagem("Informe o ID do Blueprint."); setSalvando(false); return; }
+        if (!blueprintNovo) { setMensagem("Selecione o Blueprint."); setSalvando(false); return; }
         if (!itemNovo) { setMensagem('Selecione o Item de Receita (tipo "Receita").'); setSalvando(false); return; }
-        await criarForgeReceitaAdmin({ ...payload, id_blueprint: idBlueprint, id_item: itemNovo.id });
+        await criarForgeReceitaAdmin({ ...payload, id_blueprint: blueprintNovo.id, id_item: itemNovo.id });
         setMensagem("Receita criada.");
       }
       setMostrarForm(false);
@@ -1052,7 +1099,7 @@ function AbaReceitas() {
             ) : (
               itens.map((r) => (
                 <tr key={r.id} className="border-b border-white/5">
-                  <td className="px-3 py-2 font-bold">{r.blueprint?.nome ?? `Blueprint #${r.id_blueprint}`}</td>
+                  <td className="px-3 py-2 font-bold">{r.blueprint?.nome ?? "Blueprint"} <span className="font-normal text-white/40">#{r.id_blueprint}</span></td>
                   <td className="px-3 py-2">{r.item?.nome ?? `Item #${r.id_item}`}</td>
                   <td className={`px-3 py-2 font-bold ${COR_RARIDADE_RECEITA_ADMIN[r.raridade_receita]}`}>{r.raridade_receita}</td>
                   <td className="px-3 py-2">{r.blueprint?.nivel_forja_minimo ?? "—"}</td>
@@ -1087,10 +1134,11 @@ function AbaReceitas() {
             {mensagem && <p className="text-sm text-[#F3B43F]">{mensagem}</p>}
             {!editandoId && (
               <>
-                <label className="flex flex-col gap-1 text-xs">
-                  ID do Blueprint
-                  <input type="number" min={1} className={INPUT} value={idBlueprintNovo} onChange={(e) => setIdBlueprintNovo(e.target.value)} />
-                </label>
+                <div>
+                  <p className="mb-1 text-xs">Blueprint</p>
+                  {blueprintNovo ? <p className="text-sm">{blueprintNovo.nome} (#{blueprintNovo.id})</p> : <p className="text-xs text-white/50">Nenhum selecionado</p>}
+                  <button type="button" onClick={() => setSeletorBlueprintAberto(true)} className="text-xs text-[#F3B43F] hover:underline">Selecionar Blueprint</button>
+                </div>
                 <div>
                   <p className="mb-1 text-xs">Item de Receita (tipo &quot;Receita&quot;)</p>
                   {itemNovo ? <p className="text-sm">{itemNovo.nome} (#{itemNovo.id})</p> : <p className="text-xs text-white/50">Nenhum selecionado</p>}
@@ -1127,6 +1175,7 @@ function AbaReceitas() {
         </div>
       )}
       <SeletorItem aberto={seletorAberto} onFechar={() => setSeletorAberto(false)} onSelecionar={setItemNovo} tipoItem="Receita" />
+      <SeletorBlueprint aberto={seletorBlueprintAberto} onFechar={() => setSeletorBlueprintAberto(false)} onSelecionar={setBlueprintNovo} />
     </div>
   );
 }
