@@ -29,7 +29,7 @@ interface PoderApi {
   escala_atributo: string;
   valor_escala: number;
   imagem_url?: string | null;
-  origem: "classe" | "raca";
+  origem: "classe" | "raca" | "legado" | "evolucao";
   nivel_necessario: number;
   aprendido: boolean;
   ativo: boolean;
@@ -306,6 +306,11 @@ export default function AbilitiesPanel({ characterId }: { characterId: number })
     (p) => p.tipo_poder === "Passivo" && !p.aprendido,
   );
   const unicas = poderes.filter((p) => p.origem === "raca");
+  // Poderes concedidos por Evolução de Classe (ClassEvolutionAbility) ou
+  // Evolução de Natureza Mágica (Evolution.id_power_concedido) — sem
+  // esta seção, um poder concedido assim ficava gravado certinho no
+  // personagem mas invisível pra ele na aba de Habilidades.
+  const deEvolucao = poderes.filter((p) => p.origem === "evolucao");
 
   // Se o poder selecionado sumiu da lista (ex.: dados recarregados), some
   // com o detalhe em vez de mostrar informação desatualizada.
@@ -363,6 +368,12 @@ export default function AbilitiesPanel({ characterId }: { characterId: number })
       <GradeDePoderes
         titulo="Habilidades Únicas"
         poderes={unicas}
+        selecionadoId={selecionadoAtual?.id_power ?? null}
+        onSelecionar={setSelecionado}
+      />
+      <GradeDePoderes
+        titulo="Habilidades de Evolução"
+        poderes={deEvolucao}
         selecionadoId={selecionadoAtual?.id_power ?? null}
         onSelecionar={setSelecionado}
       />

@@ -3768,8 +3768,16 @@ export async function atualizarCaminhoEvolucaoAdmin(id: number, payload: Payload
   const resposta = await axiosInstance.patch<{ data: { caminho: ClassEvolutionPathAdminApi } }>(`/admin/classes/evolution-paths/${id}`, payload);
   return resposta.data.data.caminho;
 }
-export async function excluirCaminhoEvolucaoAdmin(id: number): Promise<void> {
-  await axiosInstance.delete(`/admin/classes/evolution-paths/${id}`);
+// force=true também desfaz a vinculação de qualquer personagem que já
+// tenha evoluído pra esse caminho (histórico + poderes concedidos por
+// ele) antes de excluir — necessário pra limpar caminhos de teste sem
+// deixar personagem preso numa evolução que deixou de existir.
+export async function excluirCaminhoEvolucaoAdmin(id: number, force = false): Promise<{ personagensDesvinculados: number }> {
+  const resposta = await axiosInstance.delete<{ data: { personagensDesvinculados: number } }>(
+    `/admin/classes/evolution-paths/${id}`,
+    { params: force ? { force: "true" } : undefined },
+  );
+  return resposta.data.data;
 }
 
 export async function criarRequisitoEvolucaoAdmin(idEvolucao: number, payload: PayloadRequisitoAdmin): Promise<ClassEvolutionRequirementAdminApi> {

@@ -523,11 +523,28 @@ function BlocoCaminho({
   }
 
   async function excluir() {
-    if (!confirm(`Excluir o caminho "${caminho.nome}"? Só é possível se ninguém tiver adquirido e não houver filhos.`)) return;
+    if (!confirm(`Excluir o caminho "${caminho.nome}"?`)) return;
     try {
       await excluirCaminhoEvolucaoAdmin(caminho.id);
       await onRecarregar();
     } catch (e) {
+      const status = (e as { response?: { status?: number } })?.response?.status;
+      if (status === 409) {
+        const forcar = confirm(
+          `${mensagemDeErroAdmin(e, "Não foi possível excluir o caminho.")}\n\nForçar exclusão? Isso desfaz a evolução de qualquer personagem que já tenha adquirido este caminho (remove o histórico e os poderes concedidos por ele) — use só em personagens de teste.`,
+        );
+        if (!forcar) return;
+        try {
+          const resultado = await excluirCaminhoEvolucaoAdmin(caminho.id, true);
+          if (resultado.personagensDesvinculados > 0) {
+            alert(`Caminho excluído. ${resultado.personagensDesvinculados} personagem(ns) desvinculado(s).`);
+          }
+          await onRecarregar();
+        } catch (e2) {
+          setErro(mensagemDeErroAdmin(e2, "Não foi possível excluir o caminho mesmo forçando."));
+        }
+        return;
+      }
       setErro(mensagemDeErroAdmin(e, "Não foi possível excluir o caminho."));
     }
   }
