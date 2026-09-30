@@ -195,24 +195,30 @@ function AbaCiclo() {
   const [characterId, setCharacterId] = useState("");
   const [executando, setExecutando] = useState(false);
 
-  const carregar = useCallback(async () => {
-    setCarregando(true);
+  // `inicial` só é true no primeiro carregamento — os re-polls
+  // automáticos de 4s NUNCA tocam `carregando`, senão o gate de
+  // `if (carregando) return <p>Carregando...</p>` desmontava a aba
+  // inteira (formulário de ações incluso, perdendo o foco do campo
+  // "Motivo" enquanto o admin digitava) a cada 4 segundos — o bug real
+  // reportado como "o ciclo atual fica atualizando sozinho".
+  const carregar = useCallback(async (opts?: { inicial?: boolean }) => {
+    if (opts?.inicial) setCarregando(true);
     setErro("");
     try {
       setStatus(await obterWorldBossStatusOperacionalAdmin());
     } catch (error) {
       setErro(mensagemDeErroAdmin(error, "Não foi possível carregar o status operacional."));
     } finally {
-      setCarregando(false);
+      if (opts?.inicial) setCarregando(false);
     }
   }, []);
 
   useEffect(() => {
-    carregar();
+    carregar({ inicial: true });
     // §13.7 — monitor "ao vivo": repolling simples enquanto a aba está
     // aberta (sem socket dedicado no admin, que já teria complexidade
     // própria de reconexão só pra isso).
-    const intervalo = setInterval(carregar, 4000);
+    const intervalo = setInterval(() => carregar(), 4000);
     return () => clearInterval(intervalo);
   }, [carregar]);
 
@@ -266,7 +272,7 @@ function AbaCiclo() {
             <li>Recompensas de participação: {status!.participation_rewards_status}</li>
           </ul>
         )}
-        <button type="button" onClick={carregar} className="mt-3 text-xs text-white/60 hover:underline">Atualizar</button>
+        <button type="button" onClick={() => carregar()} className="mt-3 text-xs text-white/60 hover:underline">Atualizar</button>
       </div>
 
       {status?.runtime_v2 && <WorldBossLiveMonitor runtime={status.runtime_v2} />}
@@ -280,13 +286,13 @@ function AbaCiclo() {
           <input value={motivo} onChange={(e) => setMotivo(e.target.value)} className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm" />
         </label>
         <label className="mt-2 flex flex-col gap-1 text-xs">
-          ID do personagem descobridor (opcional, só pra &quot;Forçar descoberta&quot;)
+          ID do personagem descobridor (opcional, só pra &quot;Forçar Ameaça agora&quot;)
           <input type="number" value={characterId} onChange={(e) => setCharacterId(e.target.value)} className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm" />
         </label>
 
         <div className="mt-3 flex flex-wrap gap-2">
           <button type="button" disabled={executando} onClick={() => executar("descoberta")} className="rounded-lg bg-[#BC8418] px-4 py-2 text-sm font-bold text-black hover:bg-[#a5710f] disabled:opacity-50">
-            Forçar descoberta (DORMANT → DISCOVERED)
+            Forçar Ameaça agora (teste de balanceamento)
           </button>
           <button type="button" disabled={executando} onClick={() => executar("despertar")} className="rounded-lg bg-[#BC8418] px-4 py-2 text-sm font-bold text-black hover:bg-[#a5710f] disabled:opacity-50">
             Despertar agora (DISCOVERED → ACTIVE)
@@ -295,6 +301,9 @@ function AbaCiclo() {
             Cancelar ciclo atual
           </button>
         </div>
+        <p className="mt-2 text-[10px] text-white/40">
+          &quot;Forçar Ameaça agora&quot; pula cooldown e threshold de descoberta — cria o ciclo se não houver nenhum, e deixa o boss direto em ACTIVE (lutável), pra testar balanceamento sem esperar.
+        </p>
       </div>
     </div>
   );
