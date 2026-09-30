@@ -484,6 +484,9 @@ function ModalNovoCaminho({
         <label className="flex flex-col gap-1 text-xs">Descrição
           <Input required value={form.descricao ?? ""} onChange={(e) => setForm((f) => ({ ...f, descricao: e.target.value }))} />
         </label>
+        <label className="flex flex-col gap-1 text-xs">Ícone (URL) — imagem redonda mostrada na árvore de evolução
+          <Input value={form.icone_url ?? ""} onChange={(e) => setForm((f) => ({ ...f, icone_url: e.target.value }))} />
+        </label>
         <div className="grid grid-cols-2 gap-2">
           {(["bonus_forca", "bonus_vitalidade", "bonus_agilidade", "bonus_inteligencia", "bonus_velocidade"] as const).map((campo) => (
             <label key={campo} className="flex flex-col gap-1 text-xs capitalize">
@@ -515,6 +518,20 @@ function BlocoCaminho({
   onNovoFilho: () => void;
 }) {
   const [expandido, setExpandido] = useState(false);
+  const [iconeUrl, setIconeUrl] = useState(caminho.icone_url ?? "");
+  const [salvandoIcone, setSalvandoIcone] = useState(false);
+
+  async function salvarIcone() {
+    setSalvandoIcone(true);
+    try {
+      await atualizarCaminhoEvolucaoAdmin(caminho.id, { icone_url: iconeUrl || null });
+      await onRecarregar();
+    } catch (e) {
+      setErro(mensagemDeErroAdmin(e, "Não foi possível salvar o ícone."));
+    } finally {
+      setSalvandoIcone(false);
+    }
+  }
 
   async function alternarAtivo() {
     try {
@@ -571,6 +588,30 @@ function BlocoCaminho({
       {expandido && (
         <div className="mt-3 flex flex-col gap-3 border-t border-white/10 pt-3">
           <p className="text-xs text-white/60">{caminho.descricao}</p>
+          <div className="flex items-center gap-2">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-[#F3B43F]/40 bg-black/30 text-xs font-bold text-[#F3B43F]">
+              {iconeUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={iconeUrl} alt={caminho.nome} className="h-full w-full object-cover" />
+              ) : (
+                caminho.nome.charAt(0)
+              )}
+            </div>
+            <Input
+              placeholder="Ícone (URL) — mostrado na árvore de evolução do jogador"
+              value={iconeUrl}
+              onChange={(e) => setIconeUrl(e.target.value)}
+              className="flex-1 text-xs"
+            />
+            <button
+              type="button"
+              onClick={salvarIcone}
+              disabled={salvandoIcone || iconeUrl === (caminho.icone_url ?? "")}
+              className="shrink-0 rounded-lg bg-[#BC8418] px-3 py-1.5 text-xs font-bold text-black hover:bg-[#a5710f] disabled:opacity-40"
+            >
+              {salvandoIcone ? "Salvando..." : "Salvar"}
+            </button>
+          </div>
           <div className="flex flex-wrap gap-1.5 text-[10px]">
             {caminho.bonus_forca > 0 && <span className="rounded bg-[#F3B43F]/15 px-1.5 py-0.5 font-bold text-[#F3B43F]">+{caminho.bonus_forca} Força</span>}
             {caminho.bonus_vitalidade > 0 && <span className="rounded bg-[#F3B43F]/15 px-1.5 py-0.5 font-bold text-[#F3B43F]">+{caminho.bonus_vitalidade} Vitalidade</span>}
