@@ -563,6 +563,12 @@ export async function duplicarMonstroAdmin(id: number): Promise<AdventureMonster
   const resposta = await axiosInstance.post<{ data: { monstro: AdventureMonsterApi } }>(`/admin/adventure/monsters/${id}/duplicate`);
   return resposta.data.data.monstro;
 }
+// Exclusão de verdade (não é o "ativo:false" do toggle Desativar) — o
+// backend recusa com 409 se o monstro tiver histórico real (Caçada etc.)
+// vinculado, pedindo pra desativar em vez de excluir.
+export async function excluirMonstroAdmin(id: number): Promise<void> {
+  await axiosInstance.delete(`/admin/adventure/monsters/${id}`);
+}
 
 // Endpoints agregados (Especificação "Admin de Aventura + Defesa/Poder
 // de Monstros" v3 §2.4/§4.2/§7.3) — ZoneEditor/MonsterEditor editam
@@ -628,6 +634,11 @@ export async function sincronizarLootMonstroAdmin(idMonstro: number, loot: LootM
     { loot },
   );
   return resposta.data.data.loot;
+}
+// Exclusão de verdade de um drop — diferente de desmarcar "Ativo" (que
+// só pausa, mantendo chance/quantidade salvas pra reativar depois).
+export async function excluirLootAdmin(id: number): Promise<void> {
+  await axiosInstance.delete(`/admin/adventure/loot/${id}`);
 }
 
 // Simulador de Balanceamento (Admin Aventura) — roda N combates PvE

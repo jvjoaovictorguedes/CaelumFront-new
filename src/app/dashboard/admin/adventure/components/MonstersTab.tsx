@@ -5,6 +5,7 @@ import {
   atualizarMonstroAdmin,
   criarMonstroAdmin,
   duplicarMonstroAdmin,
+  excluirMonstroAdmin,
   listarAparicoesAdmin,
   listarMonstrosAdmin,
   mensagemDeErroAdmin,
@@ -137,6 +138,21 @@ export function MonstersTab({ onSimular }: { onSimular: (idMonstro: number) => v
     }
   }
 
+  // Exclusão de verdade — diferente de "Desativar" (ativo:false, o
+  // monstro continua existindo, só para de aparecer no jogo). O backend
+  // recusa com 409 se esse monstro tiver histórico real de jogador
+  // vinculado (Caçada etc.), pedindo pra desativar em vez de excluir.
+  async function excluir(monstro: AdventureMonsterApi) {
+    if (!window.confirm(`Excluir "${monstro.nome}" permanentemente? Essa ação não pode ser desfeita.`)) return;
+    setErro("");
+    try {
+      await excluirMonstroAdmin(monstro.id);
+      await carregar();
+    } catch (error) {
+      setErro(mensagemDeErroAdmin(error, "Não foi possível excluir o monstro."));
+    }
+  }
+
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -203,6 +219,9 @@ export function MonstersTab({ onSimular }: { onSimular: (idMonstro: number) => v
                 </button>
                 <button type="button" onClick={() => alternarAtivo(monstro)} className="text-white/70 hover:underline">
                   {monstro.ativo ? "Desativar" : "Ativar"}
+                </button>
+                <button type="button" onClick={() => excluir(monstro)} className="text-red-400 hover:underline">
+                  Excluir
                 </button>
               </div>
             </div>
