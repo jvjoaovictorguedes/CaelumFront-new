@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  atualizarLootAdmin,
   listarAparicoesAdmin,
   listarLootAdmin,
   listarMonstrosAdmin,
@@ -15,9 +16,19 @@ import {
 import { formatarItemComId } from "@/components/admin/ItemPicker";
 
 // Especificação "Admin de Aventura + Defesa/Poder de Monstros" v3 §4.3
-// — a aba Drops vira SÓ consulta/auditoria (editar drop agora é
-// trabalho do MonsterEditor). Agrupa Zona > Monstro > Itens, com busca
-// reversa (por item) e alertas de configuração suspeita.
+// — a aba Drops é principalmente consulta/auditoria (editar
+// chance/quantidade/categoria continua sendo trabalho do
+// MonsterEditor). Agrupa Zona > Monstro > Itens, com busca reversa
+// (por item) e alertas de configuração suspeita.
+//
+// Bug real reportado: "não dá pra remover drop de monstro do painel de
+// admin da aventura" — a lista era 100% somente leitura (só um link
+// "Editar monstro" que abre outra tela); o admin não tinha NENHUMA
+// ação direta aqui, mesmo pra algo tão comum quanto desativar um drop
+// que ele está vendo na auditoria. Por isso "Remover"/"Reativar" abaixo
+// chama atualizarLootAdmin direto (mesma ação de ativo/inativo que o
+// MonsterEditor já usa — nunca um segundo caminho de edição), com
+// refresh da lista logo depois.
 export function DropsAuditTab({ onEditarMonstro }: { onEditarMonstro: (idMonstro: number) => void }) {
   const [zonas, setZonas] = useState<AdventureZoneApi[]>([]);
   const [monstros, setMonstros] = useState<AdventureMonsterApi[]>([]);
@@ -51,6 +62,16 @@ export function DropsAuditTab({ onEditarMonstro }: { onEditarMonstro: (idMonstro
   useEffect(() => {
     carregar();
   }, [carregar]);
+
+  async function alternarAtivoDrop(entrada: AdventureMonsterLootApi) {
+    setErro("");
+    try {
+      await atualizarLootAdmin(entrada.id, { ativo: !entrada.ativo });
+      await carregar();
+    } catch (error) {
+      setErro(mensagemDeErroAdmin(error, "Não foi possível atualizar o drop."));
+    }
+  }
 
   const lootPorMonstro = useMemo(() => {
     const mapa = new Map<number, AdventureMonsterLootApi[]>();
@@ -180,7 +201,7 @@ export function DropsAuditTab({ onEditarMonstro }: { onEditarMonstro: (idMonstro
               <p className="font-imFeel text-lg text-[#F3B43F]">{zona.nome}</p>
               <div className="flex flex-col gap-2">
                 {monstrosDaZona.map((monstro) => (
-                  <GrupoMonstro key={monstro.id} monstro={monstro} entradas={entradasVisiveis(monstro.id)} alertas={alertasPorMonstro.get(monstro.id) ?? []} onEditar={() => onEditarMonstro(monstro.id)} />
+                  <GrupoMonstro key={monstro.id} monstro={monstro} entradas={entradasVisiveis(monstro.id)} alertas={alertasPorMonstro.get(monstro.id) ?? []} onEditar={() => onEditarMonstro(monstro.id)} onAlternarAtivo={alternarAtivoDrop} />
                 ))}
               </div>
             </section>
@@ -190,7 +211,7 @@ export function DropsAuditTab({ onEditarMonstro }: { onEditarMonstro: (idMonstro
               <p className="font-imFeel text-lg text-white/60">Sem zona vinculada</p>
               <div className="flex flex-col gap-2">
                 {grupos.semZona.map((monstro) => (
-                  <GrupoMonstro key={monstro.id} monstro={monstro} entradas={entradasVisiveis(monstro.id)} alertas={alertasPorMonstro.get(monstro.id) ?? []} onEditar={() => onEditarMonstro(monstro.id)} />
+                  <GrupoMonstro key={monstro.id} monstro={monstro} entradas={entradasVisiveis(monstro.id)} alertas={alertasPorMonstro.get(monstro.id) ?? []} onEditar={() => onEditarMonstro(monstro.id)} onAlternarAtivo={alternarAtivoDrop} />
                 ))}
               </div>
             </section>
@@ -207,11 +228,13 @@ function GrupoMonstro({
   entradas,
   alertas,
   onEditar,
+  onAlternarAtivo,
 }: {
   monstro: AdventureMonsterApi;
   entradas: AdventureMonsterLootApi[];
   alertas: string[];
   onEditar: () => void;
+  onAlternarAtivo: (entrada: AdventureMonsterLootApi) => void;
 }) {
   return (
     <div className="rounded-xl border border-[#F3B43F]/30 bg-[#292018]/80 p-3 text-white">
@@ -233,11 +256,16 @@ function GrupoMonstro({
       {entradas.length === 0 ? (
         <p className="text-xs text-white/40">Nenhum drop nesse filtro.</p>
       ) : (
-        <ul className="flex flex-col gap-0.5 text-xs text-white/70">
+        <ul className="flex flex-col gap-1 text-xs text-white/70">
           {entradas.map((e) => (
-            <li key={e.id} className={!e.ativo ? "opacity-50" : ""}>
-              {e.item ? formatarItemComId(e.item.nome, e.id_item) : `Item #${e.id_item}`} · {(e.chance_ppm / 10000).toFixed(2)}% · x{e.quantidade_min}-{e.quantidade_max} · {e.categoria}
-              {!e.ativo && " (inativo)"}
+            <li key={e.id} className={`flex items-center justify-between gap-2 ${!e.ativo ? "opacity-50" : ""}`}>
+              <span>
+                {e.item ? formatarItemComId(e.item.nome, e.id_item) : `Item #${e.id_item}`} · {(e.chance_ppm / 10000).toFixed(2)}% · x{e.quantidade_min}-{e.quantidade_max} · {e.categoria}
+                {!e.ativo && " (inativo)"}
+              </span>
+              <button type="button" onClick={() => onAlternarAtivo(e)} className={e.ativo ? "text-red-400 hover:underline" : "text-[#F3B43F] hover:underline"}>
+                {e.ativo ? "Remover" : "Reativar"}
+              </button>
             </li>
           ))}
         </ul>
