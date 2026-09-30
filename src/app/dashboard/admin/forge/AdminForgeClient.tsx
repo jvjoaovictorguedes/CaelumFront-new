@@ -1107,8 +1107,11 @@ function AbaReceitas() {
                     <button
                       type="button"
                       onClick={() => alternarModoDesbloqueio(r)}
-                      className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${
-                        r.blueprint?.modo_desbloqueio === "Receita" ? "bg-[#F3B43F]/20 text-[#F3B43F]" : "bg-white/10 text-white/50"
+                      title="Clique pra alternar entre Auto e Exige Receita"
+                      className={`cursor-pointer rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase underline decoration-dotted underline-offset-2 hover:brightness-125 ${
+                        r.blueprint?.modo_desbloqueio === "Receita"
+                          ? "border-[#F3B43F]/40 bg-[#F3B43F]/20 text-[#F3B43F]"
+                          : "border-white/20 bg-white/10 text-white/50"
                       }`}
                     >
                       {r.blueprint?.modo_desbloqueio === "Receita" ? "Exige Receita" : "Auto"}
