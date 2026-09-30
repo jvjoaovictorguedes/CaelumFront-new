@@ -689,6 +689,17 @@ function AbaVender() {
   const [preco, setPreco] = useState(10);
   const [enviando, setEnviando] = useState(false);
   const [mensagem, setMensagem] = useState("");
+  // Taxa de mercado (drenagem de ouro pra conter inflação, spec §8/§15)
+  // — vem sempre do backend (marketConfig.js), nunca hardcoded aqui, pra
+  // nunca ficar desatualizada se o valor mudar do lado do servidor.
+  const [taxaMercado, setTaxaMercado] = useState(0);
+
+  useEffect(() => {
+    axiosInstance
+      .get<{ data?: { taxa_mercado?: number } }>("/market/config")
+      .then((resp) => setTaxaMercado(resp.data?.data?.taxa_mercado ?? 0))
+      .catch((error) => console.error("Erro ao carregar configuração do mercado:", error));
+  }, []);
 
   const carregar = useCallback(async () => {
     try {
@@ -838,6 +849,25 @@ function AbaVender() {
               </button>
             </div>
           )}
+
+          {itemSelecionado && (() => {
+            const qtdEfetiva = itemSelecionado.id_instancia ? 1 : quantidade;
+            const precoTotal = preco * qtdEfetiva;
+            // Mesma fórmula do backend (marketController.comprarAnuncio) —
+            // Math.floor, nunca arredondar diferente daqui, senão o valor
+            // mostrado na hora de anunciar diverge do que o vendedor
+            // realmente recebe na hora da venda.
+            const taxaEmMoedas = Math.floor(precoTotal * taxaMercado);
+            const valorLiquido = precoTotal - taxaEmMoedas;
+            return (
+              <p className="mt-2 text-xs text-white/60">
+                O comprador paga <span className="font-bold text-white">{precoTotal} moedas</span>. Taxa de
+                mercado ({(taxaMercado * 100).toFixed(0)}%, dreno de ouro pra conter a inflação):{" "}
+                <span className="font-bold text-red-300">-{taxaEmMoedas} moedas</span>. Você recebe{" "}
+                <span className="font-bold text-[#F3B43F]">{valorLiquido} moedas</span> quando vender.
+              </p>
+            );
+          })()}
         </>
       )}
 
