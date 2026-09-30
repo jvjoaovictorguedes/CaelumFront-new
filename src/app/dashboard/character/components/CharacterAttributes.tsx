@@ -23,7 +23,8 @@ const ATRIBUTOS = [
   {
     label: "Agilidade",
     campo: "agilidade",
-    descricao: "Aumenta sua chance de esquivar de ataques inimigos.",
+    descricao:
+      "Aumenta sua chance de esquivar de ataques inimigos. Mas a Velocidade do atacante contra-ataca essa esquiva (Precisão) — quanto mais Velocidade ele tiver, menor o efeito da sua Agilidade contra ele.",
   },
   {
     label: "Inteligência",
@@ -33,7 +34,8 @@ const ATRIBUTOS = [
   {
     label: "Velocidade",
     campo: "velocidade",
-    descricao: "Decide quem ataca primeiro em duelos PvP — quem tiver mais Velocidade age antes.",
+    descricao:
+      "Decide quem ataca primeiro em duelos PvP. Também dá Precisão: reduz a chance de o alvo esquivar (contra a Agilidade dele) e abre uma chance de ACERTO CRÍTICO (dano ampliado) nos seus ataques e habilidades.",
   },
 ] as const;
 
