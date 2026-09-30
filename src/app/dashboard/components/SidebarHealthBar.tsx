@@ -1,7 +1,38 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useCharacter } from "@/contexts/CharacterContext";
+
+function formatarContagem(ms: number) {
+  const totalSegundos = Math.ceil(ms / 1000);
+  const minutos = Math.floor(totalSegundos / 60);
+  const segundos = totalSegundos % 60;
+  return `${minutos}:${String(segundos).padStart(2, "0")}`;
+}
+
+// Só decrementa localmente o tempo que o backend já mandou calculado
+// (regen_vida_restante_ms, ver regenService.js) — nunca recalcula a
+// regeneração aqui, só marca a passagem do tempo real entre um fetch e
+// outro do personagem.
+function useContagemRegressiva(msRestante: number | undefined) {
+  const [restante, setRestante] = useState(msRestante ?? 0);
+
+  useEffect(() => {
+    if (!msRestante || msRestante <= 0) {
+      setRestante(0);
+      return;
+    }
+    const alvo = Date.now() + msRestante;
+    setRestante(msRestante);
+    const intervalo = setInterval(() => {
+      setRestante(Math.max(0, alvo - Date.now()));
+    }, 1000);
+    return () => clearInterval(intervalo);
+  }, [msRestante]);
+
+  return restante;
+}
 
 // Vida sempre visível no menu, embaixo da foto — sem isso, a única forma
 // de saber quanto de vida o personagem tem era entrar na aba Status,
@@ -12,6 +43,7 @@ import { useCharacter } from "@/contexts/CharacterContext";
 export default function SidebarHealthBar() {
   const { character } = useCharacter();
   const router = useRouter();
+  const regenVidaRestanteMs = useContagemRegressiva(character?.regen_vida_restante_ms);
 
   if (!character) return null;
 
@@ -44,6 +76,11 @@ export default function SidebarHealthBar() {
             style={{ width: `${percentual}%` }}
           />
         </div>
+        {vidaAtualExibida < vidaMaxima && regenVidaRestanteMs > 0 && (
+          <div className="mt-0.5 text-right text-[9px] text-black/50">
+            Vida cheia em {formatarContagem(regenVidaRestanteMs)}
+          </div>
+        )}
       </div>
       <div>
         <div className="mb-0.5 flex justify-between text-[10px] font-bold text-black/70">
