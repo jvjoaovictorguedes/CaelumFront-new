@@ -2727,7 +2727,7 @@ export type ForgeQualidade = (typeof FORGE_QUALIDADES)[number];
 // Por isso não existe mais um "recurso" resolvido via association aqui;
 // o nome do recurso, quando precisar exibir, vem do backend já resolvido
 // (ex: nome_recurso no preview) em vez de um include fixo.
-export type ForgeTipoInsumo = "Barra" | "RecursoExpedicao" | "ProdutoAlquimia";
+export type ForgeTipoInsumo = "Barra" | "RecursoExpedicao" | "ProdutoAlquimia" | "Espolio";
 export interface ForgeIngredienteApi {
   tipo_insumo: ForgeTipoInsumo;
   id_recurso: number;
@@ -2914,6 +2914,20 @@ export interface ForgeProdutoAlquimiaApi {
 export async function listarForgeProdutosAlquimiaAdmin(): Promise<ForgeProdutoAlquimiaApi[]> {
   const resposta = await axiosInstance.get<{ data: { produtos: ForgeProdutoAlquimiaApi[] } }>("/admin/forge/alchemy-products");
   return resposta.data.data.produtos;
+}
+
+// Forja-Materiais: Espólios elegíveis como ingrediente Espolio — a
+// Forja usa o próprio Item.id do Espólio como id_recurso desse tipo
+// (sem catálogo intermediário, como ProdutoAlquimia usa AlchemyRecipe.id).
+export interface ForgeEspolioApi {
+  id: number;
+  nome: string;
+  imagem_url: string | null;
+  raridade: string;
+}
+export async function listarForgeEspoliosAdmin(): Promise<ForgeEspolioApi[]> {
+  const resposta = await axiosInstance.get<{ data: { espolios: ForgeEspolioApi[] } }>("/admin/forge/espolios");
+  return resposta.data.data.espolios;
 }
 
 export interface ForgeBarraLinhaApi {
