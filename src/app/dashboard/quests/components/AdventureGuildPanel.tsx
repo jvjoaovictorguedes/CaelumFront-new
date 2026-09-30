@@ -257,6 +257,14 @@ export default function AdventureGuildPanel() {
     executar(`claim-${idContrato}`, () =>
       axiosInstance.post(`/adventure-guild/contracts/${idContrato}/claim`).then(() => {}),
     );
+  const abandonarContrato = (idContrato: number) => {
+    if (!window.confirm("Abandonar este contrato? Você perde o progresso e a vaga fica livre para aceitar outro.")) {
+      return;
+    }
+    return executar(`abandon-${idContrato}`, () =>
+      axiosInstance.post(`/adventure-guild/contracts/${idContrato}/abandon`).then(() => {}),
+    );
+  };
   const iniciarProvacao = () =>
     executar("trial-start", () => axiosInstance.post("/adventure-guild/trial/start").then(() => {}));
   const falharProvacao = () =>
@@ -458,6 +466,7 @@ export default function AdventureGuildPanel() {
                   contrato={contrato}
                   onEntregar={entregar}
                   onResgatar={resgatarContrato}
+                  onAbandonar={abandonarContrato}
                   processando={processando}
                 />
               ))}
@@ -476,16 +485,19 @@ function ContratoCard({
   contrato,
   onEntregar,
   onResgatar,
+  onAbandonar,
   processando,
 }: {
   contrato: ContratoApi;
   onEntregar: (id: number) => void;
   onResgatar: (id: number) => void;
+  onAbandonar: (id: number) => void;
   processando: string | null;
 }) {
   const percentual = Math.min(100, (contrato.progresso_atual / contrato.missao.quantidade_objetivo) * 100);
   const chaveEntregar = `deliver-${contrato.id}`;
   const chaveResgatar = `claim-${contrato.id}`;
+  const chaveAbandonar = `abandon-${contrato.id}`;
 
   return (
     <div className="rounded-xl border border-[#F3B43F]/30 bg-[#3a2f24] p-3">
@@ -522,6 +534,16 @@ function ContratoCard({
           className="mt-2 w-full rounded-lg bg-[#F3B43F] px-3 py-1.5 text-xs font-bold text-black transition hover:bg-[#e0a52f] disabled:opacity-50"
         >
           {processando === chaveResgatar ? "Resgatando..." : "Resgatar Recompensa"}
+        </button>
+      )}
+      {contrato.status === "Ativo" && (
+        <button
+          type="button"
+          onClick={() => onAbandonar(contrato.id)}
+          disabled={processando === chaveAbandonar}
+          className="mt-2 w-full rounded-lg border border-red-500/50 px-3 py-1.5 text-xs font-bold text-red-400 transition hover:bg-red-500/10 disabled:opacity-50"
+        >
+          {processando === chaveAbandonar ? "Abandonando..." : "Abandonar"}
         </button>
       )}
     </div>
