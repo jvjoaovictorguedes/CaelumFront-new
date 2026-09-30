@@ -121,7 +121,9 @@ export default function WorldBossArena() {
     } else if (resultado.esquivou) {
       adicionarMeuLog(`${resultado.nomeAcao ?? "Ataque"}: a Ameaça Mundial esquivou.`);
     } else {
-      adicionarMeuLog(`${resultado.nomeAcao ?? "Ataque"}: ${resultado.dano.toLocaleString("pt-BR")} de dano.`);
+      adicionarMeuLog(
+        `${resultado.nomeAcao ?? "Ataque"}: ${resultado.dano.toLocaleString("pt-BR")} de dano.${resultado.critico ? " ACERTO CRÍTICO!" : ""}`,
+      );
     }
     if (resultado.morreuAoFimDoTurno) {
       adicionarMeuLog("Efeitos de status (queimadura/sangramento/veneno) te derrotaram ao fim do turno.");
@@ -309,7 +311,11 @@ export default function WorldBossArena() {
 
           {meuLog.length > 0 && (
             <div className="rounded-xl border border-[#F3B43F]/20 bg-black/20 p-2 text-xs text-[#F3B43F]/80">
-              {meuLog.map((linha, i) => <p key={i}>{linha}</p>)}
+              {meuLog.map((linha, i) => (
+                <p key={i} className={linha.includes("ACERTO CRÍTICO") ? "font-bold text-[#ffd23f]" : undefined}>
+                  {linha}
+                </p>
+              ))}
             </div>
           )}
         </div>
@@ -322,7 +328,22 @@ export default function WorldBossArena() {
             <p className="text-white/40">Nenhuma ação ainda.</p>
           ) : (
             feed.map((linha) => (
-              <p key={linha.id} className={linha.tipo === "dano" ? "text-red-300" : linha.tipo === "derrota" ? "text-red-400 font-bold" : linha.tipo === "cast" ? "text-orange-300" : linha.tipo === "fase" ? "text-[#F3B43F] font-bold" : "text-white/60"}>
+              <p
+                key={linha.id}
+                className={
+                  linha.texto.includes("ACERTO CRÍTICO")
+                    ? "font-bold text-[#ffd23f]"
+                    : linha.tipo === "dano"
+                      ? "text-red-300"
+                      : linha.tipo === "derrota"
+                        ? "text-red-400 font-bold"
+                        : linha.tipo === "cast"
+                          ? "text-orange-300"
+                          : linha.tipo === "fase"
+                            ? "text-[#F3B43F] font-bold"
+                            : "text-white/60"
+                }
+              >
                 {linha.texto}
               </p>
             ))

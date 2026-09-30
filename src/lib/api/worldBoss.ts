@@ -144,6 +144,9 @@ export interface WorldBossAcaoResultado {
   nomeAcao: string | null;
   dano: number;
   esquivou: boolean;
+  // Precisão/Crítico (Velocidade) — ausente em respostas antigas
+  // (compatibilidade), tratado como false nesse caso.
+  critico?: boolean;
   cura: number;
   manaCurada: number;
   golpeFinal: boolean;

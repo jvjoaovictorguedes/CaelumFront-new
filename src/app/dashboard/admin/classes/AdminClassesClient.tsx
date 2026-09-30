@@ -520,6 +520,20 @@ function BlocoCaminho({
   const [expandido, setExpandido] = useState(false);
   const [iconeUrl, setIconeUrl] = useState(caminho.icone_url ?? "");
   const [salvandoIcone, setSalvandoIcone] = useState(false);
+  const [bonus, setBonus] = useState({
+    bonus_forca: caminho.bonus_forca,
+    bonus_vitalidade: caminho.bonus_vitalidade,
+    bonus_agilidade: caminho.bonus_agilidade,
+    bonus_inteligencia: caminho.bonus_inteligencia,
+    bonus_velocidade: caminho.bonus_velocidade,
+  });
+  const [salvandoBonus, setSalvandoBonus] = useState(false);
+  const bonusMudou =
+    bonus.bonus_forca !== caminho.bonus_forca ||
+    bonus.bonus_vitalidade !== caminho.bonus_vitalidade ||
+    bonus.bonus_agilidade !== caminho.bonus_agilidade ||
+    bonus.bonus_inteligencia !== caminho.bonus_inteligencia ||
+    bonus.bonus_velocidade !== caminho.bonus_velocidade;
 
   async function salvarIcone() {
     setSalvandoIcone(true);
@@ -530,6 +544,22 @@ function BlocoCaminho({
       setErro(mensagemDeErroAdmin(e, "Não foi possível salvar o ícone."));
     } finally {
       setSalvandoIcone(false);
+    }
+  }
+
+  // Os bônus de atributo só apareciam como badge fixo (Força/Vitalidade/...)
+  // sem nenhuma forma de editar depois de criado o caminho — o backend já
+  // aceita PATCH nesses campos (adminClassService.atualizarCaminho), só
+  // faltava a tela permitir.
+  async function salvarBonus() {
+    setSalvandoBonus(true);
+    try {
+      await atualizarCaminhoEvolucaoAdmin(caminho.id, bonus);
+      await onRecarregar();
+    } catch (e) {
+      setErro(mensagemDeErroAdmin(e, "Não foi possível salvar os atributos."));
+    } finally {
+      setSalvandoBonus(false);
     }
   }
 
@@ -612,12 +642,37 @@ function BlocoCaminho({
               {salvandoIcone ? "Salvando..." : "Salvar"}
             </button>
           </div>
-          <div className="flex flex-wrap gap-1.5 text-[10px]">
-            {caminho.bonus_forca > 0 && <span className="rounded bg-[#F3B43F]/15 px-1.5 py-0.5 font-bold text-[#F3B43F]">+{caminho.bonus_forca} Força</span>}
-            {caminho.bonus_vitalidade > 0 && <span className="rounded bg-[#F3B43F]/15 px-1.5 py-0.5 font-bold text-[#F3B43F]">+{caminho.bonus_vitalidade} Vitalidade</span>}
-            {caminho.bonus_agilidade > 0 && <span className="rounded bg-[#F3B43F]/15 px-1.5 py-0.5 font-bold text-[#F3B43F]">+{caminho.bonus_agilidade} Agilidade</span>}
-            {caminho.bonus_inteligencia > 0 && <span className="rounded bg-[#F3B43F]/15 px-1.5 py-0.5 font-bold text-[#F3B43F]">+{caminho.bonus_inteligencia} Inteligência</span>}
-            {caminho.bonus_velocidade > 0 && <span className="rounded bg-[#F3B43F]/15 px-1.5 py-0.5 font-bold text-[#F3B43F]">+{caminho.bonus_velocidade} Velocidade</span>}
+          <div className="flex flex-col gap-1.5">
+            <p className="text-[10px] font-bold uppercase text-white/50">Bônus de atributo</p>
+            <div className="grid grid-cols-5 gap-1.5">
+              {(
+                [
+                  ["bonus_forca", "Força"],
+                  ["bonus_vitalidade", "Vitalidade"],
+                  ["bonus_agilidade", "Agilidade"],
+                  ["bonus_inteligencia", "Inteligência"],
+                  ["bonus_velocidade", "Velocidade"],
+                ] as const
+              ).map(([campo, label]) => (
+                <label key={campo} className="flex flex-col gap-0.5 text-[10px] text-white/60">
+                  {label}
+                  <Input
+                    type="number"
+                    value={bonus[campo]}
+                    onChange={(e) => setBonus((b) => ({ ...b, [campo]: Number(e.target.value) }))}
+                    className="text-xs"
+                  />
+                </label>
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={salvarBonus}
+              disabled={salvandoBonus || !bonusMudou}
+              className="self-start rounded-lg bg-[#BC8418] px-3 py-1.5 text-xs font-bold text-black hover:bg-[#a5710f] disabled:opacity-40"
+            >
+              {salvandoBonus ? "Salvando..." : "Salvar atributos"}
+            </button>
           </div>
 
           <PainelRequisitos caminho={caminho} onRecarregar={onRecarregar} setErro={setErro} />

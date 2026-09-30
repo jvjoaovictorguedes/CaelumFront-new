@@ -116,7 +116,7 @@ export default function LiveDuelArena({ meuCharacterId }: { meuCharacterId: numb
         } else if (turno.esquivou) {
           linha = `${nomeDefensor} esquivou de ${turno.nomeAcao} de ${nomeAtacante}!`;
         } else if (turno.dano > 0) {
-          linha = `${nomeAtacante} usou ${turno.nomeAcao} e causou ${turno.dano} de dano em ${nomeDefensor}.`;
+          linha = `${nomeAtacante} usou ${turno.nomeAcao} e causou ${turno.dano} de dano em ${nomeDefensor}.${turno.critico ? " ACERTO CRÍTICO!" : ""}`;
         } else if (turno.cura > 0 && (turno.manaCurada ?? 0) > 0) {
           linha = `${nomeAtacante} usou ${turno.nomeAcao} e recuperou ${turno.cura} de vida e ${turno.manaCurada} de mana.`;
         } else if (turno.cura > 0) {
@@ -243,7 +243,7 @@ export default function LiveDuelArena({ meuCharacterId }: { meuCharacterId: numb
       <div className="flex h-40 w-full flex-col-reverse overflow-y-auto rounded-2xl bg-black/85 p-4 text-sm text-white shadow-inner">
         <div>
           {log.map((linha, i) => (
-            <p key={i} className="mb-1">
+            <p key={i} className={linha.includes("ACERTO CRÍTICO") ? "mb-1 font-bold text-[#ffd23f]" : "mb-1"}>
               {linha}
             </p>
           ))}

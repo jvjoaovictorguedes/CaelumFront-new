@@ -236,6 +236,14 @@ interface RespostaCombate {
     statusEffects?: StatusEffectsState;
     cooldowns?: { player?: Record<string, number> };
 
+    // Precisão/Crítico (Velocidade) — ausentes em respostas antigas
+    // (compatibilidade), tratados como false nesse caso. Um por lado:
+    // só uma das duas ações de dano acontece por turno (seu ataque/
+    // poder OU o contra-ataque do inimigo), nunca as duas ao mesmo
+    // tempo, então nunca ficam true junto.
+    criticoJogador?: boolean;
+    criticoInimigo?: boolean;
+
     // Presente só na vitória que derrota o ÚLTIMO monstro que faltava
     // descobrir na área (Bestiário) — null em qualquer outra vitória.
     bestiarioCompletoAgora?: {
@@ -587,6 +595,9 @@ export default function CombatArena({
     usouPoder,
     usouPoderDeFogo,
 
+    criticoJogador,
+    criticoInimigo,
+
     novoEnemy,
     novaVidaJogador,
   }: {
@@ -611,6 +622,11 @@ export default function CombatArena({
     manaRecebida: number;
     usouPoder: boolean;
     usouPoderDeFogo: boolean;
+
+    // Precisão/Crítico (Velocidade) — mesmo padrão visual do resto dos
+    // números flutuantes (triggerFloatingText), só troca cor/texto.
+    criticoJogador?: boolean;
+    criticoInimigo?: boolean;
 
     novoEnemy: EnemyState;
     novaVidaJogador: number;
@@ -686,7 +702,15 @@ export default function CombatArena({
     );
 
     if (danoInimigo > 0) {
-      triggerFloatingText("enemy", `-${danoInimigo}`, "#ff3333");
+      // Crítico usa o mesmo padrão visual do resto dos números
+      // flutuantes (mesma função, mesmo estilo) — só troca cor (dourado
+      // em vez de vermelho) e acrescenta "CRÍTICO!" ao texto, igual já
+      // existe pra CURA/MANA ao lado.
+      triggerFloatingText(
+        "enemy",
+        criticoJogador ? `-${danoInimigo} CRÍTICO!` : `-${danoInimigo}`,
+        criticoJogador ? "#ffd23f" : "#ff3333",
+      );
     }
 
     // A barra de vida do inimigo só reflete o novo valor aqui, no
@@ -758,7 +782,11 @@ export default function CombatArena({
     );
 
     if (jogadorLevouDano) {
-      triggerFloatingText("player", `-${danoRecebidoDoContraAtaque}`, "#ff3333");
+      triggerFloatingText(
+        "player",
+        criticoInimigo ? `-${danoRecebidoDoContraAtaque} CRÍTICO!` : `-${danoRecebidoDoContraAtaque}`,
+        criticoInimigo ? "#ffd23f" : "#ff3333",
+      );
     }
 
     // Vida final do turno (depois do contra-ataque, se houve) — a cura
@@ -925,6 +953,9 @@ export default function CombatArena({
         manaRecebida: Math.max(0, data.character.mana_atual - manaAntesDaAcao),
         usouPoder,
         usouPoderDeFogo,
+
+        criticoJogador: data.criticoJogador,
+        criticoInimigo: data.criticoInimigo,
 
         novoEnemy: data.enemy,
         novaVidaJogador: data.character.vida_atual,
@@ -1421,7 +1452,14 @@ export default function CombatArena({
             <div className="flex flex-1 flex-col-reverse overflow-y-auto rounded-xl bg-black/85 p-4 text-sm shadow-inner">
               <div>
                 {log.map((linha, indice) => (
-                  <p key={indice} className="mb-1">
+                  <p
+                    key={indice}
+                    className={
+                      linha.includes("ACERTO CRÍTICO")
+                        ? "mb-1 font-bold text-[#ffd23f]"
+                        : "mb-1"
+                    }
+                  >
                     {linha}
                   </p>
                 ))}
