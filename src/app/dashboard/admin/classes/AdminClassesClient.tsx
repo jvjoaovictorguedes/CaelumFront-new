@@ -309,6 +309,9 @@ function AbaClasses({
             <label className="flex flex-col gap-1 text-xs">Ordem de exibição
               <Input type="number" value={form.ordem_exibicao ?? 0} onChange={(e) => setForm((f) => ({ ...f, ordem_exibicao: Number(e.target.value) }))} />
             </label>
+            <label className="flex flex-col gap-1 text-xs">Imagem (URL) — usada no card de seleção de classe na criação de personagem
+              <Input value={form.imagem_url ?? ""} onChange={(e) => setForm((f) => ({ ...f, imagem_url: e.target.value }))} />
+            </label>
             <label className="flex flex-col gap-1 text-xs">Ícone (URL)
               <Input value={form.icone_url ?? ""} onChange={(e) => setForm((f) => ({ ...f, icone_url: e.target.value }))} />
             </label>
