@@ -11,27 +11,43 @@ function formatarContagem(ms: number) {
   return `${minutos}:${String(segundos).padStart(2, "0")}`;
 }
 
-// Só decrementa localmente o tempo que o backend já mandou calculado
-// (regen_vida_restante_ms, ver regenService.js) — nunca recalcula a
-// regeneração aqui, só marca a passagem do tempo real entre um fetch e
-// outro do personagem.
-function useContagemRegressiva(msRestante: number | undefined) {
-  const [restante, setRestante] = useState(msRestante ?? 0);
+// Faz o número (e a barra) SUBIREM sozinhos entre um fetch e outro do
+// personagem, sem precisar de F5 — sem isso, vida/mana só atualizavam
+// quando outra coisa forçava um re-render (ação de combate, navegação).
+// Reproduz a MESMA regeneração linear do backend (regenService.js: taxa
+// constante = máximo / duração total), nunca uma conta própria — a taxa
+// aqui é só derivada de (máximo, atual, tempo restante) que o backend já
+// mandou no último fetch.
+function useValorComRegen(atualServidor: number, maximoServidor: number, msRestanteServidor: number | undefined) {
+  const [base, setBase] = useState(() => ({
+    tempo: Date.now(),
+    atual: atualServidor,
+    msRestante: msRestanteServidor ?? 0,
+  }));
 
   useEffect(() => {
-    if (!msRestante || msRestante <= 0) {
-      setRestante(0);
-      return;
-    }
-    const alvo = Date.now() + msRestante;
-    setRestante(msRestante);
-    const intervalo = setInterval(() => {
-      setRestante(Math.max(0, alvo - Date.now()));
-    }, 1000);
-    return () => clearInterval(intervalo);
-  }, [msRestante]);
+    setBase({ tempo: Date.now(), atual: atualServidor, msRestante: msRestanteServidor ?? 0 });
+  }, [atualServidor, maximoServidor, msRestanteServidor]);
 
-  return restante;
+  // Só existe pra forçar um re-render a cada segundo — o valor de
+  // verdade é sempre recalculado a partir do tempo real decorrido, nunca
+  // incrementado passo a passo (evita acumular erro de arredondamento).
+  const [, tick] = useState(0);
+  useEffect(() => {
+    if (base.msRestante <= 0) return;
+    const intervalo = setInterval(() => tick((n) => n + 1), 1000);
+    return () => clearInterval(intervalo);
+  }, [base]);
+
+  if (base.msRestante <= 0 || maximoServidor <= base.atual) {
+    return { valor: Math.min(atualServidor, maximoServidor), restanteMs: 0 };
+  }
+
+  const decorridoMs = Date.now() - base.tempo;
+  const taxaPorMs = (maximoServidor - base.atual) / base.msRestante;
+  const valor = Math.min(maximoServidor, Math.round(base.atual + decorridoMs * taxaPorMs));
+  const restanteMs = Math.max(0, base.msRestante - decorridoMs);
+  return { valor, restanteMs };
 }
 
 // Vida sempre visível no menu, embaixo da foto — sem isso, a única forma
@@ -43,23 +59,25 @@ function useContagemRegressiva(msRestante: number | undefined) {
 export default function SidebarHealthBar() {
   const { character } = useCharacter();
   const router = useRouter();
-  const regenVidaRestanteMs = useContagemRegressiva(character?.regen_vida_restante_ms);
-  const regenManaRestanteMs = useContagemRegressiva(character?.regen_mana_restante_ms);
-
-  if (!character) return null;
-
-  const pontosParaDistribuir = character.pontos_distribuir ?? 0;
 
   // Nunca infla o máximo pelo atual (Math.max fazia isso) — se o atual
   // vier acima do máximo real por qualquer motivo transitório (a
   // sincronização do backend ainda não rodou), o certo é mostrar o
   // atual TRAVADO no máximo, nunca fingir que o máximo cresceu.
-  const vidaMaxima = character.vida_maxima ?? 30 + character.vitalidade * 6;
-  const vidaAtualExibida = Math.min(character.vida_atual, vidaMaxima);
+  const vidaMaxima = character ? character.vida_maxima ?? 30 + character.vitalidade * 6 : 0;
+  const manaMaxima = character ? character.mana_maxima ?? 20 + character.inteligencia * 5 : 0;
+
+  const vida = useValorComRegen(character?.vida_atual ?? 0, vidaMaxima, character?.regen_vida_restante_ms);
+  const mana = useValorComRegen(character?.mana_atual ?? 0, manaMaxima, character?.regen_mana_restante_ms);
+
+  if (!character) return null;
+
+  const pontosParaDistribuir = character.pontos_distribuir ?? 0;
+
+  const vidaAtualExibida = vida.valor;
   const percentual = Math.min(100, Math.max(0, (vidaAtualExibida / vidaMaxima) * 100));
 
-  const manaMaxima = character.mana_maxima ?? 20 + character.inteligencia * 5;
-  const manaAtualExibida = Math.min(character.mana_atual, manaMaxima);
+  const manaAtualExibida = mana.valor;
   const percentualMana = Math.min(100, Math.max(0, (manaAtualExibida / manaMaxima) * 100));
 
   return (
@@ -77,9 +95,9 @@ export default function SidebarHealthBar() {
             style={{ width: `${percentual}%` }}
           />
         </div>
-        {vidaAtualExibida < vidaMaxima && regenVidaRestanteMs > 0 && (
+        {vidaAtualExibida < vidaMaxima && vida.restanteMs > 0 && (
           <div className="mt-0.5 text-right text-[9px] text-black/50">
-            Vida cheia em {formatarContagem(regenVidaRestanteMs)}
+            Vida cheia em {formatarContagem(vida.restanteMs)}
           </div>
         )}
       </div>
@@ -96,9 +114,9 @@ export default function SidebarHealthBar() {
             style={{ width: `${percentualMana}%` }}
           />
         </div>
-        {manaAtualExibida < manaMaxima && regenManaRestanteMs > 0 && (
+        {manaAtualExibida < manaMaxima && mana.restanteMs > 0 && (
           <div className="mt-0.5 text-right text-[9px] text-black/50">
-            Mana cheia em {formatarContagem(regenManaRestanteMs)}
+            Mana cheia em {formatarContagem(mana.restanteMs)}
           </div>
         )}
       </div>
