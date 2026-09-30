@@ -1070,6 +1070,49 @@ export async function listarRacasPublicas(): Promise<RacePublicaApi[]> {
   return resposta.data.data.races;
 }
 
+// Evoluções por Natureza Mágica (evolutionController.js /api/evolutions)
+// — árvore de habilidades que o Mago (ou qualquer classe com natureza
+// mágica) compra com ouro conforme sobe de nível. Sem página no painel
+// até aqui: só dava pra criar/editar batendo direto na API.
+export const NATUREZAS_MAGICAS = ["Fogo", "Agua", "Terra", "Ar", "Luz", "Escuridao", "Raio", "Yin&Yang"] as const;
+export type NaturezaMagica = (typeof NATUREZAS_MAGICAS)[number];
+
+export interface EvolutionAdminApi {
+  id: number;
+  nome: string;
+  descricao: string;
+  id_classe: number;
+  natureza_magica: NaturezaMagica;
+  nivel_necessario: number;
+  custo: number;
+  bonus_forca: number;
+  bonus_vitalidade: number;
+  bonus_agilidade: number;
+  bonus_inteligencia: number;
+  bonus_velocidade: number;
+  id_power_concedido: number | null;
+  id_evolucao_pre_requisito: number | null;
+  ordem: number;
+  imagem_url: string | null;
+}
+export type PayloadEvolutionAdmin = Omit<EvolutionAdminApi, "id">;
+
+export async function listarEvolutionsAdmin(filtros?: { id_classe?: number; natureza_magica?: string }): Promise<EvolutionAdminApi[]> {
+  const resposta = await axiosInstance.get<{ data: { evolutions: EvolutionAdminApi[] } }>("/evolutions", { params: filtros });
+  return resposta.data.data.evolutions;
+}
+export async function criarEvolutionAdmin(payload: PayloadEvolutionAdmin): Promise<EvolutionAdminApi> {
+  const resposta = await axiosInstance.post<{ data: { evolution: EvolutionAdminApi } }>("/evolutions", payload);
+  return resposta.data.data.evolution;
+}
+export async function atualizarEvolutionAdmin(id: number, payload: Partial<PayloadEvolutionAdmin>): Promise<EvolutionAdminApi> {
+  const resposta = await axiosInstance.patch<{ data: { evolution: EvolutionAdminApi } }>(`/evolutions/${id}`, payload);
+  return resposta.data.data.evolution;
+}
+export async function excluirEvolutionAdmin(id: number): Promise<void> {
+  await axiosInstance.delete(`/evolutions/${id}`);
+}
+
 // Painel Administrativo Fase 3 — Biblioteca de Mídia. O upload em si
 // (multipart) NÃO passa por aqui — vai por uma Server Action própria
 // (ver uploadMediaAction.ts), porque o proxy genérico /api/backend
