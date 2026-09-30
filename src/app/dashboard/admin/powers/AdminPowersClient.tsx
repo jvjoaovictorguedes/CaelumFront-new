@@ -391,7 +391,7 @@ function DetalhePower({
             </select>
             <label className="flex flex-col gap-1 text-[10px] text-white/60">
               Nível
-              <input type="number" min={1} max={10} value={novoNivelClasse} onChange={(e) => setNovoNivelClasse(Number(e.target.value))} className="w-16 rounded-lg border border-white/20 bg-black/30 px-2 py-1 text-sm" />
+              <input type="number" min={1} value={novoNivelClasse} onChange={(e) => setNovoNivelClasse(Number(e.target.value))} className="w-16 rounded-lg border border-white/20 bg-black/30 px-2 py-1 text-sm" />
             </label>
             <label className="flex flex-col gap-1 text-[10px] text-white/60">
               Custo (ouro)
@@ -427,7 +427,7 @@ function DetalhePower({
             </select>
             <label className="flex flex-col gap-1 text-[10px] text-white/60">
               Nível
-              <input type="number" min={1} max={10} value={novoNivelRaca} onChange={(e) => setNovoNivelRaca(Number(e.target.value))} className="w-16 rounded-lg border border-white/20 bg-black/30 px-2 py-1 text-sm" />
+              <input type="number" min={1} value={novoNivelRaca} onChange={(e) => setNovoNivelRaca(Number(e.target.value))} className="w-16 rounded-lg border border-white/20 bg-black/30 px-2 py-1 text-sm" />
             </label>
             <label className="flex flex-col gap-1 text-[10px] text-white/60">
               Custo (ouro)
@@ -463,7 +463,7 @@ function DetalhePower({
             </select>
             <label className="flex flex-col gap-1 text-[10px] text-white/60">
               Nível
-              <input type="number" min={1} max={10} value={novoNivelNatureza} onChange={(e) => setNovoNivelNatureza(Number(e.target.value))} className="w-16 rounded-lg border border-white/20 bg-black/30 px-2 py-1 text-sm" />
+              <input type="number" min={1} value={novoNivelNatureza} onChange={(e) => setNovoNivelNatureza(Number(e.target.value))} className="w-16 rounded-lg border border-white/20 bg-black/30 px-2 py-1 text-sm" />
             </label>
             <label className="flex flex-col gap-1 text-[10px] text-white/60">
               Custo (ouro)
