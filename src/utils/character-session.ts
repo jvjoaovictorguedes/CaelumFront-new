@@ -128,8 +128,14 @@ export async function getCurrentCharacterId() {
  */
 export async function isCurrentUserAdmin() {
   try {
+    // 404 ("ainda não tem personagem") também carrega isAdmin desde o
+    // fix do Modo Manutenção — sem tolerar esse status aqui, o axios
+    // lançava e o catch abaixo devolvia false sem nunca ler o corpo,
+    // deixando um admin recém-criado (sem personagem ainda) preso na
+    // tela de manutenção igual um jogador comum.
     const response = await axiosInstance.get<CurrentCharacterResponse>(
       "/characters/me",
+      { validateStatus: (status) => status === 200 || status === 404 },
     );
     return Boolean(response.data?.data?.isAdmin);
   } catch {
