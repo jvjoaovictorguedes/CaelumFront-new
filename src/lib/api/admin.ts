@@ -47,6 +47,20 @@ export interface FishingRodPropertiesApi {
   nivel_pesca_minimo: number;
 }
 
+// tipo_item "Ferramenta" é compartilhado por dois subtipos mutuamente
+// exclusivos — Vara de Pesca (fishingRodProperties, acima) e Ferramenta
+// de Ferraria (forgeToolProperties, abaixo). O admin escolhe UM dos
+// dois já na criação do Item; nunca os dois ao mesmo tempo (mesma regra
+// de adminItemService.validarSubtipoFerramenta no backend). Tipos de
+// slot/effect_key reaproveitam SlotFerrariaAdmin/ForgeToolEffectKey
+// (definidos mais abaixo, na seção de Admin da Forja) — nunca duplicar.
+export interface ForgeToolPropertiesItemApi {
+  slot: SlotFerrariaAdmin;
+  nivel_ferreiro_minimo: number;
+  ativo: boolean;
+  efeitos: { id: number; effect_key: ForgeToolEffectKey; valor_ppm: number }[];
+}
+
 export interface AdminItemApi {
   id: number;
   nome: string;
@@ -65,6 +79,7 @@ export interface AdminItemApi {
   armorProperties?: ArmorPropertiesApi | null;
   consumableProperties?: ConsumablePropertiesApi | null;
   fishingRodProperties?: FishingRodPropertiesApi | null;
+  forgeToolProperties?: ForgeToolPropertiesItemApi | null;
 }
 
 interface PaginaApi<T> {
@@ -133,6 +148,11 @@ export interface PayloadItemAdmin {
   armor?: Partial<ArmorPropertiesApi>;
   consumable?: Partial<ConsumablePropertiesApi>;
   fishingRod?: Partial<FishingRodPropertiesApi>;
+  forgeTool?: {
+    slot?: SlotFerrariaAdmin;
+    nivel_ferreiro_minimo?: number;
+    efeitos?: { effect_key: ForgeToolEffectKey; valor_ppm: number }[];
+  };
 }
 
 export async function criarItemAdmin(payload: PayloadItemAdmin): Promise<AdminItemApi> {

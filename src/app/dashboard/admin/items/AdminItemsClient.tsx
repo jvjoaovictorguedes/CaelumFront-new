@@ -161,6 +161,7 @@ const TIPOS_ITEM = [
   "Currencia",
   "Espolio",
   "Ferramenta",
+  "Receita",
 ];
 const RARIDADES = ["Comum", "Incomum", "Raro", "Epico", "Lendario", "Mitico"];
 const TIPOS_DANO = ["Fisico", "Magico"];
@@ -171,8 +172,20 @@ const SLOTS_ARMADURA = ["Cabeca", "Torso", "Pes", "Acessorio1", "Acessorio2"];
 const TIPOS_COM_ARMA = ["Arma"];
 const TIPOS_COM_ARMADURA = ["Armadura", "Capacete", "Escudo", "Acessorio1", "Acessorio2"];
 const TIPOS_COM_CONSUMIVEL = ["Consumivel"];
-const TIPOS_COM_VARA_PESCA = ["Ferramenta"];
-const TIPOS_EQUIPAMENTO = [...TIPOS_COM_ARMA, ...TIPOS_COM_ARMADURA, ...TIPOS_COM_VARA_PESCA];
+// tipo_item "Ferramenta" é compartilhado por dois subtipos mutuamente
+// exclusivos — Vara de Pesca e Ferramenta de Ferraria (mesma regra de
+// adminItemService.validarSubtipoFerramenta no backend). O admin
+// escolhe qual das duas com o seletor abaixo antes de preencher o
+// fieldset correspondente.
+const TIPOS_COM_SUBTIPO_FERRAMENTA = ["Ferramenta"];
+const SLOTS_FERRARIA = ["Fole", "Martelo", "Tenaz"] as const;
+const EFFECT_KEYS_FERRARIA = ["SMELTING_BONUS_BAR_PPM", "CRAFTING_QUALITY_BONUS_PPM", "REFINEMENT_SUCCESS_BONUS_PPM"] as const;
+const NOME_EFFECT_KEY_FERRARIA: Record<string, string> = {
+  SMELTING_BONUS_BAR_PPM: "Bônus na Fundição",
+  CRAFTING_QUALITY_BONUS_PPM: "Bônus de Qualidade na Fabricação",
+  REFINEMENT_SUCCESS_BONUS_PPM: "Bônus de Sucesso no Refinamento",
+};
+const TIPOS_EQUIPAMENTO = [...TIPOS_COM_ARMA, ...TIPOS_COM_ARMADURA, ...TIPOS_COM_SUBTIPO_FERRAMENTA];
 
 function formularioVazio(): PayloadItemAdmin {
   return {
@@ -193,6 +206,7 @@ function formularioVazio(): PayloadItemAdmin {
     armor: { slot_equipamento: "Cabeca", defesa: 0, bonus_forca: 0, bonus_vitalidade: 0, bonus_inteligencia: 0, bonus_agilidade: 0, bonus_velocidade: 0 },
     consumable: { efeito_vida: 0, efeito_mana: 0, efeito_atributo: "", valor_atributo: 0, duracao_efeito: null },
     fishingRod: { forca_linha: 100, controle: 100, recolhimento: 100, precisao: 100, estabilidade: 100, nivel_pesca_minimo: 1 },
+    forgeTool: { slot: "Fole", nivel_ferreiro_minimo: 1, efeitos: [] },
   };
 }
 
@@ -212,6 +226,7 @@ export default function AdminItemsClient() {
 
   const [editandoId, setEditandoId] = useState<number | null>(null);
   const [form, setForm] = useState<PayloadItemAdmin>(formularioVazio());
+  const [subtipoFerramenta, setSubtipoFerramenta] = useState<"vara_pesca" | "ferreiro">("vara_pesca");
   const [salvando, setSalvando] = useState(false);
   const [mostrarForm, setMostrarForm] = useState(false);
   const [catalogoStatus, setCatalogoStatus] = useState<StatusCatalogEntryApi[]>([]);
@@ -250,6 +265,7 @@ export default function AdminItemsClient() {
   function abrirCriacao() {
     setEditandoId(null);
     setForm(formularioVazio());
+    setSubtipoFerramenta("vara_pesca");
     setMostrarForm(true);
     setMensagem("");
   }
@@ -274,7 +290,15 @@ export default function AdminItemsClient() {
       armor: item.armorProperties ?? formularioVazio().armor,
       consumable: item.consumableProperties ?? formularioVazio().consumable,
       fishingRod: item.fishingRodProperties ?? formularioVazio().fishingRod,
+      forgeTool: item.forgeToolProperties
+        ? {
+            slot: item.forgeToolProperties.slot,
+            nivel_ferreiro_minimo: item.forgeToolProperties.nivel_ferreiro_minimo,
+            efeitos: item.forgeToolProperties.efeitos.map((e) => ({ effect_key: e.effect_key, valor_ppm: e.valor_ppm })),
+          }
+        : formularioVazio().forgeTool,
     });
+    setSubtipoFerramenta(item.forgeToolProperties ? "ferreiro" : "vara_pesca");
     setMostrarForm(true);
     setMensagem("");
   }
@@ -284,11 +308,22 @@ export default function AdminItemsClient() {
     setSalvando(true);
     setMensagem("");
     try {
+      // tipo_item "Ferramenta" só pode mandar UM dos dois subtipos —
+      // nunca os dois (o form sempre mantém as duas seções em memória
+      // pra não perder o que o admin já preencheu ao alternar o
+      // seletor, então quem decide o que realmente é enviado é o
+      // subtipo escolhido agora, na hora de salvar).
+      const ehFerramenta = TIPOS_COM_SUBTIPO_FERRAMENTA.includes(form.item.tipo_item);
+      const payload: PayloadItemAdmin = {
+        ...form,
+        fishingRod: ehFerramenta && subtipoFerramenta === "vara_pesca" ? form.fishingRod : undefined,
+        forgeTool: ehFerramenta && subtipoFerramenta === "ferreiro" ? form.forgeTool : undefined,
+      };
       if (editandoId) {
-        await atualizarItemAdmin(editandoId, form);
+        await atualizarItemAdmin(editandoId, payload);
         setMensagem(`Item "${form.item.nome}" atualizado.`);
       } else {
-        await criarItemAdmin(form);
+        await criarItemAdmin(payload);
         setMensagem(`Item "${form.item.nome}" criado.`);
       }
       setMostrarForm(false);
@@ -834,7 +869,26 @@ export default function AdminItemsClient() {
               </fieldset>
             )}
 
-            {TIPOS_COM_VARA_PESCA.includes(tipoAtual) && (
+            {TIPOS_COM_SUBTIPO_FERRAMENTA.includes(tipoAtual) && (
+              <fieldset className="flex flex-col gap-2 rounded-lg border border-white/10 p-3">
+                <legend className="px-1 text-xs font-bold uppercase text-[#F3B43F]">Subtipo de ferramenta</legend>
+                <p className="text-[10px] text-white/40">
+                  &ldquo;Ferramenta&rdquo; cobre dois subtipos que nunca coexistem no mesmo Item — escolha um.
+                </p>
+                <div className="flex gap-4 text-sm">
+                  <label className="flex items-center gap-2">
+                    <input type="radio" name="subtipoFerramenta" checked={subtipoFerramenta === "vara_pesca"} onChange={() => setSubtipoFerramenta("vara_pesca")} />
+                    Vara de Pesca
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <input type="radio" name="subtipoFerramenta" checked={subtipoFerramenta === "ferreiro"} onChange={() => setSubtipoFerramenta("ferreiro")} />
+                    Ferramenta de Ferraria (Ferreiro)
+                  </label>
+                </div>
+              </fieldset>
+            )}
+
+            {TIPOS_COM_SUBTIPO_FERRAMENTA.includes(tipoAtual) && subtipoFerramenta === "vara_pesca" && (
               <fieldset className="flex flex-col gap-2 rounded-lg border border-white/10 p-3">
                 <legend className="px-1 text-xs font-bold uppercase text-[#F3B43F]">Propriedades de vara de pesca</legend>
                 <p className="text-[10px] text-white/40">
@@ -865,6 +919,103 @@ export default function AdminItemsClient() {
                     />
                   </label>
                 </div>
+              </fieldset>
+            )}
+
+            {TIPOS_COM_SUBTIPO_FERRAMENTA.includes(tipoAtual) && subtipoFerramenta === "ferreiro" && (
+              <fieldset className="flex flex-col gap-2 rounded-lg border border-white/10 p-3">
+                <legend className="px-1 text-xs font-bold uppercase text-[#F3B43F]">Propriedades de ferramenta de Ferraria</legend>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                  <label className="flex flex-col gap-1 text-xs">
+                    Slot
+                    <select
+                      value={form.forgeTool?.slot ?? "Fole"}
+                      onChange={(e) => setForm((f) => ({ ...f, forgeTool: { ...f.forgeTool!, slot: e.target.value as (typeof SLOTS_FERRARIA)[number] } }))}
+                      className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm"
+                    >
+                      {SLOTS_FERRARIA.map((slot) => (
+                        <option key={slot} value={slot}>
+                          {slot}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="flex flex-col gap-1 text-xs">
+                    Nível de Ferreiro mín.
+                    <input
+                      type="number"
+                      min={1}
+                      value={form.forgeTool?.nivel_ferreiro_minimo ?? 1}
+                      onChange={(e) => setForm((f) => ({ ...f, forgeTool: { ...f.forgeTool!, nivel_ferreiro_minimo: Number(e.target.value) } }))}
+                      className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm"
+                    />
+                  </label>
+                </div>
+
+                <p className="pt-1 text-[10px] font-bold uppercase text-white/50">Efeitos (bônus em PPM — 1.000.000 = 100%)</p>
+                {(form.forgeTool?.efeitos ?? []).map((efeito, indice) => (
+                  <div key={`${efeito.effect_key}-${indice}`} className="flex flex-wrap items-end gap-2 rounded-lg bg-black/20 px-2 py-1.5">
+                    <label className="flex flex-col gap-1 text-xs">
+                      Efeito
+                      <select
+                        value={efeito.effect_key}
+                        onChange={(e) =>
+                          setForm((f) => {
+                            const efeitos = [...(f.forgeTool?.efeitos ?? [])];
+                            efeitos[indice] = { ...efeitos[indice], effect_key: e.target.value as (typeof EFFECT_KEYS_FERRARIA)[number] };
+                            return { ...f, forgeTool: { ...f.forgeTool!, efeitos } };
+                          })
+                        }
+                        className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm"
+                      >
+                        {EFFECT_KEYS_FERRARIA.map((chave) => (
+                          <option key={chave} value={chave}>
+                            {NOME_EFFECT_KEY_FERRARIA[chave]}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="flex flex-col gap-1 text-xs">
+                      Valor (%)
+                      <input
+                        type="number"
+                        min={0}
+                        max={100}
+                        step="0.1"
+                        value={efeito.valor_ppm / 10000}
+                        onChange={(e) =>
+                          setForm((f) => {
+                            const efeitos = [...(f.forgeTool?.efeitos ?? [])];
+                            efeitos[indice] = { ...efeitos[indice], valor_ppm: Math.round(Number(e.target.value) * 10000) };
+                            return { ...f, forgeTool: { ...f.forgeTool!, efeitos } };
+                          })
+                        }
+                        className="w-24 rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm"
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setForm((f) => ({ ...f, forgeTool: { ...f.forgeTool!, efeitos: (f.forgeTool?.efeitos ?? []).filter((_, i) => i !== indice) } }))
+                      }
+                      className="rounded-lg border border-red-400/40 px-2 py-1.5 text-xs text-red-400 hover:bg-red-400/10"
+                    >
+                      Remover
+                    </button>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() =>
+                    setForm((f) => ({
+                      ...f,
+                      forgeTool: { ...f.forgeTool!, efeitos: [...(f.forgeTool?.efeitos ?? []), { effect_key: EFFECT_KEYS_FERRARIA[0], valor_ppm: 0 }] },
+                    }))
+                  }
+                  className="self-start rounded-lg bg-[#BC8418] px-3 py-1 text-xs font-bold text-black hover:bg-[#a5710f]"
+                >
+                  + Efeito
+                </button>
               </fieldset>
             )}
 
