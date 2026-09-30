@@ -30,7 +30,9 @@ import {
   listarFishingZonesAdmin,
   listarMarineRoutesAdmin,
   listarVesselsAdmin,
+  atualizarFishingBalanceAdmin,
   mensagemDeErroAdmin,
+  obterFishingBalanceAdmin,
   previewFishingChancePoolAdmin,
   listarFishingRodsAdmin,
   simularFishingBalanceamentoAdmin,
@@ -939,7 +941,177 @@ function AbaBalanceamento({ onErro }: { onErro: (m: string) => void }) {
           </div>
         )}
       </Secao>
+
+      <SecaoXpPorNivel onErro={onErro} />
+      <SecaoProficiencia onErro={onErro} />
     </div>
+  );
+}
+
+// XP necessário por nível de Pesca (pedido do jogador) — mesmo padrão de
+// PainelProgressao em AdminForgeClient.tsx (grupo "*.progression",
+// confirmação explícita antes de salvar). O teto de 25 níveis é fixo
+// (ver comentário em fishingConfig.js), só o CUSTO de cada etapa 1..24
+// é editável aqui.
+function SecaoXpPorNivel({ onErro }: { onErro: (m: string) => void }) {
+  const [etapas, setEtapas] = useState<Record<string, number>>({});
+  const [carregando, setCarregando] = useState(true);
+  const [confirmar, setConfirmar] = useState(false);
+  const [salvando, setSalvando] = useState(false);
+  const [mensagem, setMensagem] = useState("");
+
+  const carregar = useCallback(async () => {
+    setCarregando(true);
+    try {
+      const dados = await obterFishingBalanceAdmin();
+      setEtapas(dados["fishing.progression"].atual.XP_NECESSARIO_POR_ETAPA_PESCA);
+    } catch (error) {
+      onErro(mensagemDeErroAdmin(error, "Não foi possível carregar o XP por nível de Pesca."));
+    } finally {
+      setCarregando(false);
+    }
+  }, [onErro]);
+
+  useEffect(() => {
+    carregar();
+  }, [carregar]);
+
+  async function salvar() {
+    setSalvando(true);
+    setMensagem("");
+    try {
+      await atualizarFishingBalanceAdmin("fishing.progression", { XP_NECESSARIO_POR_ETAPA_PESCA: etapas, confirmado: true });
+      setMensagem("Curva de XP de Pesca salva.");
+      setConfirmar(false);
+      await carregar();
+    } catch (error) {
+      onErro(mensagemDeErroAdmin(error, "Não foi possível salvar a curva de XP."));
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  return (
+    <Secao titulo="XP necessário por nível de Pesca (1 → 25)">
+      {carregando ? (
+        <p className="text-sm text-white/50">Carregando...</p>
+      ) : (
+        <>
+          <p className="mb-2 text-xs text-white/50">Quanto XP cada nível exige pra subir pro próximo. O teto de 25 níveis é fixo.</p>
+          <div className="flex flex-wrap gap-2">
+            {Object.entries(etapas).map(([etapa, xp]) => (
+              <label key={etapa} className="flex flex-col gap-1 text-xs">
+                Nv.{etapa}→{Number(etapa) + 1}
+                <Input type="number" min={1} className="w-24" value={xp} onChange={(e) => setEtapas((t) => ({ ...t, [etapa]: Number(e.target.value) }))} />
+              </label>
+            ))}
+          </div>
+          <label className="mt-3 flex items-center gap-2 text-xs text-white/70">
+            <input type="checkbox" checked={confirmar} onChange={(e) => setConfirmar(e.target.checked)} />
+            Confirmo a mudança da curva de XP de Pesca (afeta todos os personagens em progressão).
+          </label>
+          {mensagem && <p className="mt-2 text-sm text-[#F3B43F]">{mensagem}</p>}
+          <button
+            type="button"
+            disabled={!confirmar || salvando}
+            onClick={salvar}
+            className="mt-2 rounded-lg bg-[#BC8418] px-4 py-2 text-sm font-bold text-black hover:bg-[#a5710f] disabled:opacity-50"
+          >
+            {salvando ? "Salvando..." : "Salvar curva de XP"}
+          </button>
+        </>
+      )}
+    </Secao>
+  );
+}
+
+// Buff de Proficiência por nível de Pesca (pedido do jogador) — taxa
+// percentual POR NÍVEL acima do 1, aplicada em fishingConfig.
+// aplicarProficienciaPesca. NÃO é uma tabela por nível individual (é uma
+// taxa fixa multiplicada pelos níveis acima de 1), então o editor mostra
+// os 5 campos (um por atributo da vara), não uma linha por nível.
+const CAMPOS_PROFICIENCIA: { campo: string; rotulo: string }[] = [
+  { campo: "controle", rotulo: "Controle" },
+  { campo: "precisao", rotulo: "Precisão" },
+  { campo: "estabilidade", rotulo: "Estabilidade" },
+  { campo: "forca_linha", rotulo: "Força da linha" },
+  { campo: "recolhimento", rotulo: "Recolhimento" },
+];
+
+function SecaoProficiencia({ onErro }: { onErro: (m: string) => void }) {
+  const [pct, setPct] = useState<Record<string, number>>({});
+  const [carregando, setCarregando] = useState(true);
+  const [salvando, setSalvando] = useState(false);
+  const [mensagem, setMensagem] = useState("");
+
+  const carregar = useCallback(async () => {
+    setCarregando(true);
+    try {
+      const dados = await obterFishingBalanceAdmin();
+      setPct(dados["fishing.proficiency"].atual.PROFICIENCIA_PCT_POR_NIVEL);
+    } catch (error) {
+      onErro(mensagemDeErroAdmin(error, "Não foi possível carregar o buff de Proficiência."));
+    } finally {
+      setCarregando(false);
+    }
+  }, [onErro]);
+
+  useEffect(() => {
+    carregar();
+  }, [carregar]);
+
+  async function salvar() {
+    setSalvando(true);
+    setMensagem("");
+    try {
+      await atualizarFishingBalanceAdmin("fishing.proficiency", { PROFICIENCIA_PCT_POR_NIVEL: pct });
+      setMensagem("Buff de Proficiência salvo.");
+      await carregar();
+    } catch (error) {
+      onErro(mensagemDeErroAdmin(error, "Não foi possível salvar o buff de Proficiência."));
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  return (
+    <Secao titulo="Buff de Proficiência por nível de Pesca">
+      {carregando ? (
+        <p className="text-sm text-white/50">Carregando...</p>
+      ) : (
+        <>
+          <p className="mb-2 text-xs text-white/50">% aplicado por nível ACIMA do 1 em cada atributo efetivo da vara (ex.: 0,75% × 24 níveis acima do 1 = +18% no nível 25).</p>
+          <div className="flex flex-wrap gap-3">
+            {CAMPOS_PROFICIENCIA.map(({ campo, rotulo }) => (
+              <label key={campo} className="flex flex-col gap-1 text-xs">
+                {rotulo}
+                <div className="flex items-center gap-1">
+                  <Input
+                    type="number"
+                    min={0}
+                    max={10}
+                    step={0.01}
+                    className="w-20"
+                    value={pct[campo] != null ? Number((pct[campo] * 100).toFixed(4)) : 0}
+                    onChange={(e) => setPct((p) => ({ ...p, [campo]: Number(e.target.value) / 100 }))}
+                  />
+                  <span className="text-white/50">%/nível</span>
+                </div>
+              </label>
+            ))}
+          </div>
+          {mensagem && <p className="mt-2 text-sm text-[#F3B43F]">{mensagem}</p>}
+          <button
+            type="button"
+            disabled={salvando}
+            onClick={salvar}
+            className="mt-2 rounded-lg bg-[#BC8418] px-4 py-2 text-sm font-bold text-black hover:bg-[#a5710f] disabled:opacity-50"
+          >
+            {salvando ? "Salvando..." : "Salvar buff de Proficiência"}
+          </button>
+        </>
+      )}
+    </Secao>
   );
 }
 
