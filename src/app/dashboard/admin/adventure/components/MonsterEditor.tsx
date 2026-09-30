@@ -6,6 +6,7 @@ import {
   atualizarMonstroAdmin,
   buscarDetalheMonstroAdmin,
   criarAparicaoAdmin,
+  excluirLootAdmin,
   listarZonasAdmin,
   mensagemDeErroAdmin,
   sincronizarLootMonstroAdmin,
@@ -120,7 +121,25 @@ export function MonsterEditor({
     marcarSujo();
   }
 
-  function removerDrop(chave: string) {
+  // Um drop já salvo (tem `id`) é excluído de verdade na hora — diferente
+  // de desmarcar a caixa "Ativo" (que só pausa, mantendo a configuração
+  // pra reativar depois). Um drop recém-adicionado nesta sessão (ainda
+  // sem `id`, nunca foi salvo) só precisa sumir do estado local.
+  async function removerDrop(chave: string) {
+    const linha = drops.find((l) => l.chaveLocal === chave);
+    if (!linha) return;
+
+    if (linha.id != null) {
+      if (!window.confirm(`Excluir o drop de "${linha.nomeItem ?? "este item"}" permanentemente?`)) return;
+      setErro("");
+      try {
+        await excluirLootAdmin(linha.id);
+      } catch (error) {
+        setErro(mensagemDeErroAdmin(error, "Não foi possível excluir o drop."));
+        return;
+      }
+    }
+
     setDrops((d) => d.filter((l) => l.chaveLocal !== chave));
     marcarSujo();
   }
@@ -321,7 +340,7 @@ export function MonsterEditor({
                         </td>
                         <td className="py-1">
                           <button type="button" onClick={() => removerDrop(linha.chaveLocal)} className="text-red-400 hover:underline">
-                            Remover
+                            Excluir
                           </button>
                         </td>
                       </tr>

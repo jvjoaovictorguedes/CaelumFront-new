@@ -17,17 +17,17 @@ export default function SidebarHealthBar() {
 
   const pontosParaDistribuir = character.pontos_distribuir ?? 0;
 
-  const vidaMaxima = Math.max(
-    character.vida_maxima ?? 30 + character.vitalidade * 6,
-    character.vida_atual,
-  );
-  const percentual = Math.min(100, Math.max(0, (character.vida_atual / vidaMaxima) * 100));
+  // Nunca infla o máximo pelo atual (Math.max fazia isso) — se o atual
+  // vier acima do máximo real por qualquer motivo transitório (a
+  // sincronização do backend ainda não rodou), o certo é mostrar o
+  // atual TRAVADO no máximo, nunca fingir que o máximo cresceu.
+  const vidaMaxima = character.vida_maxima ?? 30 + character.vitalidade * 6;
+  const vidaAtualExibida = Math.min(character.vida_atual, vidaMaxima);
+  const percentual = Math.min(100, Math.max(0, (vidaAtualExibida / vidaMaxima) * 100));
 
-  const manaMaxima = Math.max(
-    character.mana_maxima ?? 20 + character.inteligencia * 5,
-    character.mana_atual,
-  );
-  const percentualMana = Math.min(100, Math.max(0, (character.mana_atual / manaMaxima) * 100));
+  const manaMaxima = character.mana_maxima ?? 20 + character.inteligencia * 5;
+  const manaAtualExibida = Math.min(character.mana_atual, manaMaxima);
+  const percentualMana = Math.min(100, Math.max(0, (manaAtualExibida / manaMaxima) * 100));
 
   return (
     <div className="w-full max-w-[9rem] space-y-1">
@@ -35,7 +35,7 @@ export default function SidebarHealthBar() {
         <div className="mb-0.5 flex justify-between text-[10px] font-bold text-black/70">
           <span>Vida</span>
           <span>
-            {character.vida_atual} / {vidaMaxima}
+            {vidaAtualExibida} / {vidaMaxima}
           </span>
         </div>
         <div className="h-2.5 w-full overflow-hidden rounded-full bg-black/30">
@@ -49,7 +49,7 @@ export default function SidebarHealthBar() {
         <div className="mb-0.5 flex justify-between text-[10px] font-bold text-black/70">
           <span>Mana</span>
           <span>
-            {character.mana_atual} / {manaMaxima}
+            {manaAtualExibida} / {manaMaxima}
           </span>
         </div>
         <div className="h-2.5 w-full overflow-hidden rounded-full bg-black/30">

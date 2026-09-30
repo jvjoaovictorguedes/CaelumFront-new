@@ -209,6 +209,7 @@ function AbaAnuncios({ onErro }: { onErro: (m: string) => void }) {
 function AbaHistorico({ onErro }: { onErro: (m: string) => void }) {
   const [transacoes, setTransacoes] = useState<MarketTransactionAdminApi[]>([]);
   const [total, setTotal] = useState(0);
+  const [taxaTotal, setTaxaTotal] = useState(0);
   const [pagina, setPagina] = useState(1);
   const porPagina = 20;
   const [carregando, setCarregando] = useState(true);
@@ -219,6 +220,7 @@ function AbaHistorico({ onErro }: { onErro: (m: string) => void }) {
       const resultado = await listarMarketTransactionsAdmin({ pagina, porPagina });
       setTransacoes(resultado.itens);
       setTotal(resultado.total);
+      setTaxaTotal(resultado.taxaTotal);
     } catch (error) {
       onErro(mensagemDeErroAdmin(error, "Não foi possível carregar o histórico."));
     } finally {
@@ -234,6 +236,11 @@ function AbaHistorico({ onErro }: { onErro: (m: string) => void }) {
 
   return (
     <div className="flex flex-col gap-3">
+      <div className="rounded-2xl border-2 border-[#F3B43F]/40 bg-[#292018]/80 p-4">
+        <p className="text-xs uppercase tracking-wide text-white/50">Taxa arrecadada (mercado P2P)</p>
+        <p className="font-imFeel text-2xl text-[#F3B43F]">{taxaTotal.toLocaleString("pt-BR")} ouro</p>
+        <p className="text-[11px] text-white/40">Soma de todas as vendas concluídas (não só a página atual).</p>
+      </div>
       <div className="overflow-x-auto rounded-2xl border-2 border-[#F3B43F]/40 bg-[#292018]/80">
         <table className="w-full text-left text-sm text-white">
           <thead>

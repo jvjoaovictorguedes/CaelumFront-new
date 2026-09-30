@@ -28,6 +28,8 @@ export default function GuildBossLiveArena() {
     resultadoBossGuilda,
     agirBossGuilda,
     limparBatalhaBossGuilda,
+    erroBossGuilda,
+    limparErroBossGuilda,
   } = usePvpSocket();
 
   const [vidaChefe, setVidaChefe] = useState(0);
@@ -37,6 +39,17 @@ export default function GuildBossLiveArena() {
   const [floatingAliados, setFloatingAliados] = useState<Record<number, FloatingText[]>>({});
   const [flashChefe, setFlashChefe] = useState(false);
   const [flashAliados, setFlashAliados] = useState<Record<number, boolean>>({});
+  // Cooldown REAL de Powers dentro da luta ao vivo — mesmo formato
+  // "power:<id>" -> turnos restantes que o Boss Mundial já usa
+  // (WorldBossArena.tsx), mapeado por personagem porque cada membro tem
+  // o seu próprio (guildBossSocket.js § registrarUsoDePoder).
+  const [cooldownsPorPersonagem, setCooldownsPorPersonagem] = useState<Record<number, Record<number, number>>>({});
+  // Trava local enquanto aguarda o servidor resolver a ação já enviada
+  // (mesmo papel do `agindo` de WorldBossArena.tsx/`processandoTurnos`
+  // de PartyBattleArena.tsx) — antes desta correção o CombatActionBar
+  // recebia `ocupado={false}` fixo, então nunca desabilitava os botões
+  // enquanto uma ação já estava a caminho do servidor.
+  const [aguardandoResposta, setAguardandoResposta] = useState(false);
   const ultimoIndexRef = useRef(0);
 
   useEffect(() => {
@@ -46,8 +59,27 @@ export default function GuildBossLiveArena() {
     setManasAliados(Object.fromEntries(batalhaBossGuilda.membros.map((m) => [m.id, m.mana])));
     setFloatingChefe([]);
     setFloatingAliados({});
+    setCooldownsPorPersonagem({});
+    setAguardandoResposta(false);
     ultimoIndexRef.current = 0;
   }, [batalhaBossGuilda]);
+
+  // Assim que o turno muda de mão (o servidor já processou a rodada
+  // inteira — aliado + chefe) a trava local pode soltar. Cobre tanto o
+  // "sucesso" (o servidor sempre manda um novo guildboss:proximo-turno
+  // depois de aplicar a ação) quanto o caso de erro abaixo.
+  useEffect(() => {
+    setAguardandoResposta(false);
+  }, [turnoAtualBossGuilda, rodadaAtualBossGuilda]);
+
+  // Ação rejeitada pelo servidor (fora de turno, cooldown de Power ainda
+  // ativo, mana insuficiente etc.) — precisa soltar a trava local na
+  // hora (nenhum guildboss:proximo-turno vem depois disso) e mostrar o
+  // motivo, que antes desta correção sumia sem feedback nenhum aqui.
+  useEffect(() => {
+    if (!erroBossGuilda) return;
+    setAguardandoResposta(false);
+  }, [erroBossGuilda]);
 
   useEffect(() => {
     if (turnosBossGuilda.length <= ultimoIndexRef.current) return;
@@ -77,6 +109,16 @@ export default function GuildBossLiveArena() {
       }
       if (idAtor && turno.cura && turno.cura > 0) {
         dispararFloatingAliado(idAtor, `+${turno.cura}`, "#44ff44");
+      }
+      if (idAtor && turno.cooldowns) {
+        // Chave vem como "power:<id>" (ver cooldownService.js) — mesma
+        // conversão que CombatArena.tsx já faz pro combate solo.
+        const mapeado: Record<number, number> = {};
+        for (const [chave, turnos] of Object.entries(turno.cooldowns)) {
+          const id = Number(chave.split(":")[1]);
+          if (!Number.isNaN(id)) mapeado[id] = turnos;
+        }
+        setCooldownsPorPersonagem((atual) => ({ ...atual, [idAtor]: mapeado }));
       }
     } else {
       const idAlvo = turno.idAlvo;
@@ -265,12 +307,24 @@ export default function GuildBossLiveArena() {
 
       {!resultadoBossGuilda && (
         <div className="absolute inset-x-0 bottom-0 z-30 bg-gradient-to-t from-black/90 via-black/70 to-transparent px-3 pb-3 pt-10 sm:px-6">
+          {erroBossGuilda && (
+            <p className="mb-2 rounded-lg bg-black/60 px-3 py-1.5 text-center text-xs text-red-400">
+              {erroBossGuilda}{" "}
+              <button type="button" onClick={limparErroBossGuilda} className="underline">
+                ok
+              </button>
+            </p>
+          )}
           {meuTurno ? (
             <CombatActionBar
               podeAgir={meuTurno}
-              ocupado={false}
+              ocupado={aguardandoResposta}
               manaAtual={manasAliados[meuId ?? -1] ?? meuMembro?.mana ?? 0}
-              onAtaqueBasico={() => agirBossGuilda("attack")}
+              onAtaqueBasico={() => {
+                if (aguardandoResposta) return;
+                setAguardandoResposta(true);
+                agirBossGuilda("attack");
+              }}
               poderes={(meuMembro?.poderes ?? []).map((p) => ({
                 id: p.id,
                 nome: p.nome,
@@ -278,9 +332,14 @@ export default function GuildBossLiveArena() {
                 custo_mana: p.custo_mana,
                 descricao: "",
               }))}
-              onUsarPoder={(powerId) => agirBossGuilda("power", powerId)}
+              onUsarPoder={(powerId) => {
+                if (aguardandoResposta) return;
+                setAguardandoResposta(true);
+                agirBossGuilda("power", powerId);
+              }}
               consumiveis={[]}
               onUsarConsumivel={() => {}}
+              cooldownsPorPoder={cooldownsPorPersonagem[meuId ?? -1] ?? {}}
             />
           ) : (
             <p className="pb-4 text-center text-sm text-white/70">

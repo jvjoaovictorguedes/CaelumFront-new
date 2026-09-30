@@ -339,6 +339,10 @@ export interface TurnoBossGuildaPayload {
   vidaAliado?: number;
   manaAliado?: number;
   rodada: number;
+  // Cooldowns ATUAIS do ator (só em origem "aliado") — formato
+  // "power:<id>" -> turnos restantes, mesmo cooldownService.js do Boss
+  // Mundial (ver WorldBossCooldownsApi em lib/api/worldBoss.ts).
+  cooldowns?: Record<string, number>;
 }
 
 export interface ProximoTurnoBossGuildaPayload {

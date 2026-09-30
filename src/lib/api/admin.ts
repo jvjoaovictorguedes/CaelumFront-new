@@ -563,6 +563,12 @@ export async function duplicarMonstroAdmin(id: number): Promise<AdventureMonster
   const resposta = await axiosInstance.post<{ data: { monstro: AdventureMonsterApi } }>(`/admin/adventure/monsters/${id}/duplicate`);
   return resposta.data.data.monstro;
 }
+// Exclusão de verdade (não é o "ativo:false" do toggle Desativar) — o
+// backend recusa com 409 se o monstro tiver histórico real (Caçada etc.)
+// vinculado, pedindo pra desativar em vez de excluir.
+export async function excluirMonstroAdmin(id: number): Promise<void> {
+  await axiosInstance.delete(`/admin/adventure/monsters/${id}`);
+}
 
 // Endpoints agregados (Especificação "Admin de Aventura + Defesa/Poder
 // de Monstros" v3 §2.4/§4.2/§7.3) — ZoneEditor/MonsterEditor editam
@@ -628,6 +634,11 @@ export async function sincronizarLootMonstroAdmin(idMonstro: number, loot: LootM
     { loot },
   );
   return resposta.data.data.loot;
+}
+// Exclusão de verdade de um drop — diferente de desmarcar "Ativo" (que
+// só pausa, mantendo chance/quantidade salvas pra reativar depois).
+export async function excluirLootAdmin(id: number): Promise<void> {
+  await axiosInstance.delete(`/admin/adventure/loot/${id}`);
 }
 
 // Simulador de Balanceamento (Admin Aventura) — roda N combates PvE
@@ -1057,6 +1068,49 @@ export async function listarClassesPublicas(): Promise<ClassPublicaApi[]> {
 export async function listarRacasPublicas(): Promise<RacePublicaApi[]> {
   const resposta = await axiosInstance.get<{ data: { races: RacePublicaApi[] } }>("/races");
   return resposta.data.data.races;
+}
+
+// Evoluções por Natureza Mágica (evolutionController.js /api/evolutions)
+// — árvore de habilidades que o Mago (ou qualquer classe com natureza
+// mágica) compra com ouro conforme sobe de nível. Sem página no painel
+// até aqui: só dava pra criar/editar batendo direto na API.
+export const NATUREZAS_MAGICAS = ["Fogo", "Agua", "Terra", "Ar", "Luz", "Escuridao", "Raio", "Yin&Yang"] as const;
+export type NaturezaMagica = (typeof NATUREZAS_MAGICAS)[number];
+
+export interface EvolutionAdminApi {
+  id: number;
+  nome: string;
+  descricao: string;
+  id_classe: number;
+  natureza_magica: NaturezaMagica;
+  nivel_necessario: number;
+  custo: number;
+  bonus_forca: number;
+  bonus_vitalidade: number;
+  bonus_agilidade: number;
+  bonus_inteligencia: number;
+  bonus_velocidade: number;
+  id_power_concedido: number | null;
+  id_evolucao_pre_requisito: number | null;
+  ordem: number;
+  imagem_url: string | null;
+}
+export type PayloadEvolutionAdmin = Omit<EvolutionAdminApi, "id">;
+
+export async function listarEvolutionsAdmin(filtros?: { id_classe?: number; natureza_magica?: string }): Promise<EvolutionAdminApi[]> {
+  const resposta = await axiosInstance.get<{ data: { evolutions: EvolutionAdminApi[] } }>("/evolutions", { params: filtros });
+  return resposta.data.data.evolutions;
+}
+export async function criarEvolutionAdmin(payload: PayloadEvolutionAdmin): Promise<EvolutionAdminApi> {
+  const resposta = await axiosInstance.post<{ data: { evolution: EvolutionAdminApi } }>("/evolutions", payload);
+  return resposta.data.data.evolution;
+}
+export async function atualizarEvolutionAdmin(id: number, payload: Partial<PayloadEvolutionAdmin>): Promise<EvolutionAdminApi> {
+  const resposta = await axiosInstance.patch<{ data: { evolution: EvolutionAdminApi } }>(`/evolutions/${id}`, payload);
+  return resposta.data.data.evolution;
+}
+export async function excluirEvolutionAdmin(id: number): Promise<void> {
+  await axiosInstance.delete(`/evolutions/${id}`);
 }
 
 // Painel Administrativo Fase 3 — Biblioteca de Mídia. O upload em si
@@ -2636,8 +2690,8 @@ export interface MarketTransactionAdminApi {
 
 export async function listarMarketTransactionsAdmin(
   filtros: { pagina?: number; porPagina?: number; idItem?: number; vendedorId?: number; compradorId?: number } = {},
-): Promise<PaginaApi<MarketTransactionAdminApi>> {
-  const resposta = await axiosInstance.get<{ data: PaginaApi<MarketTransactionAdminApi> }>("/admin/market/transactions", {
+): Promise<PaginaApi<MarketTransactionAdminApi> & { taxaTotal: number }> {
+  const resposta = await axiosInstance.get<{ data: PaginaApi<MarketTransactionAdminApi> & { taxaTotal: number } }>("/admin/market/transactions", {
     params: filtros,
   });
   return resposta.data.data;
@@ -3768,8 +3822,16 @@ export async function atualizarCaminhoEvolucaoAdmin(id: number, payload: Payload
   const resposta = await axiosInstance.patch<{ data: { caminho: ClassEvolutionPathAdminApi } }>(`/admin/classes/evolution-paths/${id}`, payload);
   return resposta.data.data.caminho;
 }
-export async function excluirCaminhoEvolucaoAdmin(id: number): Promise<void> {
-  await axiosInstance.delete(`/admin/classes/evolution-paths/${id}`);
+// force=true também desfaz a vinculação de qualquer personagem que já
+// tenha evoluído pra esse caminho (histórico + poderes concedidos por
+// ele) antes de excluir — necessário pra limpar caminhos de teste sem
+// deixar personagem preso numa evolução que deixou de existir.
+export async function excluirCaminhoEvolucaoAdmin(id: number, force = false): Promise<{ personagensDesvinculados: number }> {
+  const resposta = await axiosInstance.delete<{ data: { personagensDesvinculados: number } }>(
+    `/admin/classes/evolution-paths/${id}`,
+    { params: force ? { force: "true" } : undefined },
+  );
+  return resposta.data.data;
 }
 
 export async function criarRequisitoEvolucaoAdmin(idEvolucao: number, payload: PayloadRequisitoAdmin): Promise<ClassEvolutionRequirementAdminApi> {
