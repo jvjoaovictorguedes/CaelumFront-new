@@ -24,8 +24,9 @@ export default function Prototype2DPage() {
         </p>
         <h1 className="mt-1 font-imFeel text-2xl">Exploração 2D top-down</h1>
         <p className="mt-2 text-sm text-white/60">
-          Setas ou WASD pra andar. Colide com a borda do mapa e com o bloco cinza no meio — resto da grama é
-          andável. Câmera segue o personagem.
+          Setas ou WASD pra andar. Colide com a borda do mapa e com os blocos cinzas espalhados — resto da grama
+          é andável. Ande por cima de um ícone (Ferreiro/Loja/Taverna/Guilda) ou clique nele pra entrar. Minimapa
+          no canto superior direito mostra o mapa inteiro.
         </p>
       </div>
       <Explorer2DGame />

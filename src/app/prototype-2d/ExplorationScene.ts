@@ -19,14 +19,15 @@
 // verdade (se o protótipo validar a ideia) é trabalho futuro separado.
 //
 // Tileset do chão continua placeholder (desenhado em runtime via
-// Canvas Texture) — só o personagem usa asset real, por pedido.
+// Canvas Texture) — mapa ainda não tem arte final.
 //
 // Locais interativos (pedido do jogador: "se eu entrar no ferreiro
 // ele vai pra forja") — pontos fixos no mapa que, ao serem tocados
 // pelo personagem OU clicados, navegam pra rota real do jogo
-// correspondente (/dashboard/forge, /dashboard/shop, etc). Ícones
-// ainda são placeholder (quadrado colorido + letra), mesmo critério
-// do resto da arte deste protótipo — só a ROTA de destino é real.
+// correspondente. Os ÍCONES já são os mesmos ícones de verdade do
+// menu lateral do jogo (public/icons/...), não é mais placeholder —
+// só o "selo" colorido atrás de cada um é gerado em runtime, pra dar
+// contraste contra a grama.
 import * as Phaser from "phaser";
 
 interface LocalInterativo {
@@ -36,21 +37,25 @@ interface LocalInterativo {
   tileX: number;
   tileY: number;
   cor: number;
-  letra: string;
+  iconeKey: string;
+  iconeUrl: string;
 }
 
+// Mesmos ícones que o NavMenu real usa pra essas telas (ver
+// src/app/dashboard/components/NavMenu.tsx) — Taverna reaproveita
+// loja.png porque é o que o PRÓPRIO menu do jogo já faz hoje.
 const LOCAIS_INTERATIVOS: LocalInterativo[] = [
-  { chave: "ferreiro", nome: "Ferreiro", rota: "/dashboard/forge", tileX: 6, tileY: 12, cor: 0xb0462a, letra: "F" },
-  { chave: "loja", nome: "Loja", rota: "/dashboard/shop", tileX: 15, tileY: 5, cor: 0xc9a227, letra: "$" },
-  { chave: "taverna", nome: "Taverna", rota: "/dashboard/tavern", tileX: 6, tileY: 22, cor: 0x8a5a2b, letra: "T" },
-  { chave: "guilda", nome: "Guilda", rota: "/dashboard/guilds", tileX: 18, tileY: 22, cor: 0x2a6fb0, letra: "G" },
+  { chave: "ferreiro", nome: "Ferreiro", rota: "/dashboard/forge", tileX: 6, tileY: 12, cor: 0xb0462a, iconeKey: "icon-forja", iconeUrl: "/icons/ui/forja.png" },
+  { chave: "loja", nome: "Loja", rota: "/dashboard/shop", tileX: 15, tileY: 5, cor: 0xc9a227, iconeKey: "icon-loja", iconeUrl: "/icons/loja.png" },
+  { chave: "taverna", nome: "Taverna", rota: "/dashboard/tavern", tileX: 6, tileY: 22, cor: 0x8a5a2b, iconeKey: "icon-loja", iconeUrl: "/icons/loja.png" },
+  { chave: "guilda", nome: "Guilda", rota: "/dashboard/guilds", tileX: 18, tileY: 22, cor: 0x2a6fb0, iconeKey: "icon-guildas", iconeUrl: "/icons/guildas.png" },
 ];
 
 const TILE = 32;
 // Mapa BEM maior que a viewport do jogo (ver LARGURA/ALTURA em
-// Explorer2DGame.tsx, 640x480) — de propósito, senão o mapa inteiro
-// cabe numa tela só e não dá pra ver a câmera seguindo o personagem
-// de verdade (critério #4 do escopo do protótipo).
+// Explorer2DGame.tsx) — de propósito, senão o mapa inteiro cabe numa
+// tela só e não dá pra ver a câmera seguindo o personagem de verdade
+// (critério #4 do escopo original do protótipo).
 const MAP_COLS = 50;
 const MAP_ROWS = 40;
 
@@ -89,8 +94,15 @@ const FRAME_SRC = 128;
 // a célula visualmente).
 const ESCALA_PERSONAGEM = 0.4;
 
+// Minimapa fixo no canto superior direito — tamanho mantém a mesma
+// proporção do mapa (MAP_COLS:MAP_ROWS) pra não distorcer.
+const MINIMAPA_LARGURA = 160;
+const MINIMAPA_ALTURA = Math.round(MINIMAPA_LARGURA * (MAP_ROWS / MAP_COLS));
+const MINIMAPA_MARGEM = 10;
+
 export class ExplorationScene extends Phaser.Scene {
   private player!: Phaser.Physics.Arcade.Sprite;
+  private playerDot!: Phaser.GameObjects.Arc;
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private teclasWASD!: { W: Phaser.Input.Keyboard.Key; A: Phaser.Input.Keyboard.Key; S: Phaser.Input.Keyboard.Key; D: Phaser.Input.Keyboard.Key };
   private debugText!: Phaser.GameObjects.Text;
@@ -103,7 +115,13 @@ export class ExplorationScene extends Phaser.Scene {
 
   preload() {
     this.gerarTilesetPlaceholder();
-    for (const local of LOCAIS_INTERATIVOS) this.gerarIconeLocal(local);
+    for (const local of LOCAIS_INTERATIVOS) this.gerarSeloLocal(local);
+
+    // Ícones DE VERDADE do jogo (os mesmos arquivos que o menu lateral
+    // usa) — carrega cada URL só uma vez mesmo que mais de um Local
+    // reaproveite o mesmo ícone (ex.: Loja/Taverna).
+    const iconesUnicos = new Map(LOCAIS_INTERATIVOS.map((l) => [l.iconeKey, l.iconeUrl]));
+    for (const [key, url] of iconesUnicos) this.load.image(key, url);
 
     // Mesma pasta/arquivos que o combate da Aventura usa pro Guerreiro
     // (ver spriteUrl em spriteSheets.ts: `/${pasta}/${arquivo}`) — vem
@@ -156,28 +174,23 @@ export class ExplorationScene extends Phaser.Scene {
     textura.refresh();
   }
 
-  // Ícone placeholder de um Local Interativo — quadrado colorido com
-  // borda + letra, mesmo nível de acabamento do tileset acima (não é
-  // arte final, só precisa ser reconhecível/clicável pro teste).
-  private gerarIconeLocal(local: LocalInterativo) {
-    const chaveTextura = `local-${local.chave}`;
+  // "Selo" colorido atrás do ícone de um Local Interativo — só um
+  // círculo com borda, pra dar contraste contra a grama e servir de
+  // corpo físico pro overlap/clique. O ícone de verdade (imagem real)
+  // é desenhado POR CIMA dele em create(), como um segundo GameObject.
+  private gerarSeloLocal(local: LocalInterativo) {
+    const chaveTextura = `selo-${local.chave}`;
     const textura = this.textures.createCanvas(chaveTextura, TILE, TILE)!;
     const ctx = textura.getContext();
     const cssCor = `#${local.cor.toString(16).padStart(6, "0")}`;
 
     ctx.fillStyle = cssCor;
     ctx.beginPath();
-    ctx.roundRect(2, 2, TILE - 4, TILE - 4, 6);
+    ctx.arc(TILE / 2, TILE / 2, TILE / 2 - 2, 0, Math.PI * 2);
     ctx.fill();
     ctx.strokeStyle = "#1a1410";
     ctx.lineWidth = 2;
     ctx.stroke();
-
-    ctx.fillStyle = "#fff8e7";
-    ctx.font = "bold 16px sans-serif";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText(local.letra, TILE / 2, TILE / 2 + 1);
 
     textura.refresh();
   }
@@ -225,18 +238,35 @@ export class ExplorationScene extends Phaser.Scene {
 
     this.physics.add.collider(this.player, camada);
 
+    // Ponto que representa o personagem no minimapa — o sprite real é
+    // detalhado demais pra ficar legível reduzido a alguns pixels, um
+    // pontinho sólido se vê muito melhor lá. Some do jogo principal
+    // (ignorado pela câmera main/UI) e só aparece via minimapCamera.
+    // Raio BEM maior que o personagem de verdade em unidades de mundo —
+    // de propósito: a câmera do minimapa usa zoom ~0.1 (ver
+    // minimapCamera.setZoom abaixo), então um raio do tamanho "normal"
+    // (5px de mundo) vira menos de 1px na tela e some. 40px de mundo ~
+    // 4px na tela do minimapa, visível sem ficar gigante.
+    this.playerDot = this.add
+      .circle(this.player.x, this.player.y, 40, 0xffe066)
+      .setStrokeStyle(6, 0x1a1410)
+      .setDepth(2000);
+
     // Locais interativos — anda por cima (overlap) OU clica no ícone
     // pra entrar direto, igual pedido ("clicando e entrando no
     // lugar"). Cada um navega pra UMA rota real do jogo quando o
     // personagem "entra" nele (ver entrarNoLocal).
-    const objetosDeLocais: Phaser.GameObjects.GameObject[] = [];
+    const iconesDeLocais: Phaser.GameObjects.GameObject[] = [];
+    const rotulosDeLocais: Phaser.GameObjects.GameObject[] = [];
     for (const local of LOCAIS_INTERATIVOS) {
       const px = local.tileX * TILE + TILE / 2;
       const py = local.tileY * TILE + TILE / 2;
 
-      const icone = this.physics.add.staticImage(px, py, `local-${local.chave}`);
-      icone.setInteractive({ useHandCursor: true });
-      icone.on("pointerdown", () => this.entrarNoLocal(local));
+      const selo = this.physics.add.staticImage(px, py, `selo-${local.chave}`);
+      selo.setInteractive({ useHandCursor: true });
+      selo.on("pointerdown", () => this.entrarNoLocal(local));
+
+      const icone = this.add.image(px, py, local.iconeKey).setDisplaySize(TILE - 10, TILE - 10).setDepth(1);
 
       const rotulo = this.add
         .text(px, py - TILE / 2 - 4, local.nome, {
@@ -247,8 +277,9 @@ export class ExplorationScene extends Phaser.Scene {
         })
         .setOrigin(0.5, 1);
 
-      this.physics.add.overlap(this.player, icone, () => this.entrarNoLocal(local));
-      objetosDeLocais.push(icone, rotulo);
+      this.physics.add.overlap(this.player, selo, () => this.entrarNoLocal(local));
+      iconesDeLocais.push(selo, icone);
+      rotulosDeLocais.push(rotulo);
     }
 
     this.cameras.main.setBounds(0, 0, larguraMundo, alturaMundo);
@@ -304,8 +335,45 @@ export class ExplorationScene extends Phaser.Scene {
 
     const uiCamera = this.cameras.add(0, 0, this.scale.width, this.scale.height);
     uiCamera.setScroll(0, 0);
-    uiCamera.ignore([camada, this.player, ...objetosDeLocais]);
-    this.cameras.main.ignore([this.debugText, this.mensagemEntrada]);
+
+    // Minimapa — pedido do jogador ("pra pessoa não se perder"), canto
+    // superior direito, sempre mostrando o mapa INTEIRO (zoom calculado
+    // pra caber tudo de uma vez, sem seguir o personagem — só o pontinho
+    // dele que se move lá dentro). O próprio contorno de parede que já
+    // cerca o mapa inteiro (ver construirMapa) acaba servindo de moldura
+    // natural; o retângulo com borda dourada por trás (minimapFundo) só
+    // dá uma margem/contraste contra o jogo por trás.
+    const minimapX = this.scale.width - MINIMAPA_LARGURA - MINIMAPA_MARGEM;
+    const minimapY = MINIMAPA_MARGEM;
+    const minimapFundo = this.add
+      .rectangle(
+        minimapX + MINIMAPA_LARGURA / 2,
+        minimapY + MINIMAPA_ALTURA / 2,
+        MINIMAPA_LARGURA + 6,
+        MINIMAPA_ALTURA + 6,
+        0x000000,
+        0.6,
+      )
+      .setStrokeStyle(2, 0xf3b43f)
+      .setScrollFactor(0)
+      .setDepth(999);
+
+    const minimapCamera = this.cameras.add(minimapX, minimapY, MINIMAPA_LARGURA, MINIMAPA_ALTURA);
+    minimapCamera.setZoom(MINIMAPA_LARGURA / larguraMundo);
+    minimapCamera.setScroll(0, 0);
+    minimapCamera.setBounds(0, 0, larguraMundo, alturaMundo);
+    minimapCamera.setBackgroundColor(0x16210f);
+
+    // Cada câmera só desenha o que NÃO está na lista de ignorados —
+    // jogo principal (zoom 1.6, segue o personagem): mundo + personagem
+    // de verdade + ícones dos locais, nunca o HUD/minimapa/pontinho.
+    // Câmera de UI (zoom 1, fixa): só o HUD/mensagem central/moldura do
+    // minimapa. Câmera do minimapa: mundo + ícones + pontinho do
+    // personagem, nunca o personagem "de verdade" (grande demais) nem
+    // os rótulos de texto (ilegíveis nesse tamanho) nem o HUD/UI.
+    this.cameras.main.ignore([this.debugText, this.mensagemEntrada, minimapFundo, this.playerDot]);
+    uiCamera.ignore([camada, this.player, this.playerDot, ...iconesDeLocais, ...rotulosDeLocais]);
+    minimapCamera.ignore([this.debugText, this.mensagemEntrada, minimapFundo, this.player, ...rotulosDeLocais]);
   }
 
   // Dispara a navegação real pro resto do jogo (Explorer2DGame.tsx
@@ -368,6 +436,8 @@ export class ExplorationScene extends Phaser.Scene {
     } else {
       this.player.anims.play("knight-idle", true);
     }
+
+    this.playerDot.setPosition(this.player.x, this.player.y);
 
     const tileX = Math.floor(this.player.x / TILE);
     const tileY = Math.floor(this.player.y / TILE);

@@ -8,8 +8,12 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
-const LARGURA = 640;
-const ALTURA = 480;
+// Pedido do jogador ("deixa o mapa um pouco maior na tela") — 960x600
+// cabe confortavelmente na maioria das telas de desktop sem precisar
+// de Scale Manager/resize responsivo (esta rota é admin-only, nunca
+// acessada no celular).
+const LARGURA = 960;
+const ALTURA = 600;
 
 export default function Explorer2DGame() {
   const containerRef = useRef<HTMLDivElement>(null);
