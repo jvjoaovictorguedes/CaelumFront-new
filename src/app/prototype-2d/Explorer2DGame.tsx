@@ -8,13 +8,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
-// Pedido do jogador ("deixa o mapa um pouco maior na tela") — 960x600
-// cabe confortavelmente na maioria das telas de desktop sem precisar
-// de Scale Manager/resize responsivo (esta rota é admin-only, nunca
-// acessada no celular).
-const LARGURA = 960;
-const ALTURA = 600;
-
 export default function Explorer2DGame() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [erro, setErro] = useState<string | null>(null);
@@ -35,8 +28,17 @@ export default function Explorer2DGame() {
         jogo = new Phaser.Game({
           type: Phaser.AUTO,
           parent: containerRef.current,
-          width: LARGURA,
-          height: ALTURA,
+          // Tela cheia de verdade (pedido do jogador: "poderia ser na
+          // tela cheia") — Scale.RESIZE acompanha o tamanho do elemento
+          // `parent` (o container abaixo, fixed inset-0) e já escuta
+          // resize de janela sozinho; ExplorationScene.ts também escuta
+          // o evento 'resize' da própria cena pra reposicionar
+          // câmeras/HUD/minimapa quando isso acontece.
+          scale: {
+            mode: Phaser.Scale.RESIZE,
+            width: window.innerWidth,
+            height: window.innerHeight,
+          },
           pixelArt: true,
           backgroundColor: "#1a1410",
           physics: {
@@ -69,13 +71,10 @@ export default function Explorer2DGame() {
   }, []);
 
   return (
-    <div className="flex flex-col items-center gap-3">
-      <div
-        ref={containerRef}
-        style={{ width: LARGURA, height: ALTURA }}
-        className="overflow-hidden rounded-lg border-2 border-[#F3B43F]/60 shadow-xl"
-      />
-      {erro && <p className="text-sm text-red-400">{erro}</p>}
+    <div ref={containerRef} className="fixed inset-0 overflow-hidden bg-[#1a1410]">
+      {erro && (
+        <p className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-sm text-red-400">{erro}</p>
+      )}
     </div>
   );
 }

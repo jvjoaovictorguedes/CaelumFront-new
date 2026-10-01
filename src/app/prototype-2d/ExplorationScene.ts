@@ -59,10 +59,17 @@ const TILE = 32;
 const MAP_COLS = 50;
 const MAP_ROWS = 40;
 
-// 0 = grama (andável), 1 = parede/água (bloqueado) — único tipo
-// bloqueado pedido no escopo do protótipo. Borda inteira bloqueada +
-// alguns blocos sólidos espalhados, só pra ter algo visível de colidir
-// com além da borda enquanto anda por um mapa grande.
+// Tile do spawn do personagem (ver this.player em create()).
+const SPAWN_TILE_X = 3;
+const SPAWN_TILE_Y = 4;
+
+// 0 = grama (andável), 1 = rocha/montanha (bloqueado), 2 = caminho de
+// terra (andável, só visual) — índices do tileset gerado em
+// gerarTilesetPlaceholder(). Borda inteira bloqueada + alguns blocos
+// de rocha espalhados, e um caminho carvado do spawn até cada Local
+// Interativo pra dar a sensação de estradas ligando os pontos do mapa
+// (pedido do jogador: textura mais parecida com o Mapa de Caelum de
+// verdade, que tem estradas visíveis ligando os territórios).
 function construirMapa(): number[][] {
   const linhas: number[][] = [];
   const blocos = [
@@ -80,7 +87,36 @@ function construirMapa(): number[][] {
     }
     linhas.push(linha);
   }
+
+  for (const local of LOCAIS_INTERATIVOS) {
+    marcarCaminho(linhas, SPAWN_TILE_X, SPAWN_TILE_Y, local.tileX, local.tileY);
+  }
+
   return linhas;
+}
+
+// Carva um "L" de 2 tiles de largura entre dois pontos, só sobrescrevendo
+// células que hoje são grama (0) — nunca abre caminho através de um
+// bloco de rocha (1), então o caminho pode "sumir" visualmente debaixo
+// de uma formação rochosa; a colisão continua vindo só do valor da
+// célula, então isso é só estética, não afeta andabilidade real.
+function marcarCaminho(grade: number[][], x0: number, y0: number, x1: number, y1: number) {
+  const marcar = (x: number, y: number) => {
+    if (y < 0 || y >= MAP_ROWS || x < 0 || x >= MAP_COLS) return;
+    if (grade[y][x] === 0) grade[y][x] = 2;
+  };
+  const xi = Math.min(x0, x1);
+  const xf = Math.max(x0, x1);
+  for (let x = xi; x <= xf; x++) {
+    marcar(x, y0);
+    marcar(x, y0 + 1);
+  }
+  const yi = Math.min(y0, y1);
+  const yf = Math.max(y0, y1);
+  for (let y = yi; y <= yf; y++) {
+    marcar(x1, y);
+    marcar(x1 + 1, y);
+  }
 }
 
 // Tamanho real de cada frame das folhas do Guerreiro (Knight_1) —
@@ -95,10 +131,15 @@ const FRAME_SRC = 128;
 const ESCALA_PERSONAGEM = 0.4;
 
 // Minimapa fixo no canto superior direito — tamanho mantém a mesma
-// proporção do mapa (MAP_COLS:MAP_ROWS) pra não distorcer.
+// proporção do mapa (MAP_COLS:MAP_ROWS) pra não distorcer. Margem Y
+// maior que a X: dá espaço pro botão "fechar" (✕) que fica por cima do
+// canvas, fora do Phaser, no canto superior direito da página (ver
+// page.tsx) — senão os dois ficariam sobrepostos agora que o jogo é
+// tela cheia.
 const MINIMAPA_LARGURA = 160;
 const MINIMAPA_ALTURA = Math.round(MINIMAPA_LARGURA * (MAP_ROWS / MAP_COLS));
-const MINIMAPA_MARGEM = 10;
+const MINIMAPA_MARGEM_X = 10;
+const MINIMAPA_MARGEM_Y = 54;
 
 export class ExplorationScene extends Phaser.Scene {
   private player!: Phaser.Physics.Arcade.Sprite;
@@ -107,6 +148,9 @@ export class ExplorationScene extends Phaser.Scene {
   private teclasWASD!: { W: Phaser.Input.Keyboard.Key; A: Phaser.Input.Keyboard.Key; S: Phaser.Input.Keyboard.Key; D: Phaser.Input.Keyboard.Key };
   private debugText!: Phaser.GameObjects.Text;
   private mensagemEntrada!: Phaser.GameObjects.Text;
+  private uiCamera!: Phaser.Cameras.Scene2D.Camera;
+  private minimapCamera!: Phaser.Cameras.Scene2D.Camera;
+  private minimapFundo!: Phaser.GameObjects.Rectangle;
   private entrando = false;
 
   constructor() {
@@ -115,6 +159,7 @@ export class ExplorationScene extends Phaser.Scene {
 
   preload() {
     this.gerarTilesetPlaceholder();
+    this.gerarTexturaArvore();
     for (const local of LOCAIS_INTERATIVOS) this.gerarSeloLocal(local);
 
     // Ícones DE VERDADE do jogo (os mesmos arquivos que o menu lateral
@@ -136,40 +181,131 @@ export class ExplorationScene extends Phaser.Scene {
     });
   }
 
-  // Tileset de 2 frames (grama/parede) desenhado em runtime — Phaser
-  // fatia a imagem em tiles de 32x32 automaticamente a partir da
-  // largura/altura passadas em addTilesetImage, então só precisamos
-  // desenhar os 2 quadrados lado a lado numa única textura.
+  // Tileset de 3 frames (grama / rocha-montanha / caminho de terra)
+  // desenhado em runtime — Phaser fatia a imagem em tiles de 32x32
+  // automaticamente a partir da largura/altura passadas em
+  // addTilesetImage, então só precisamos desenhar os 3 quadrados lado
+  // a lado numa única textura. Pedido do jogador ("colocar as
+  // imagens"/textura parecida com o Mapa de Caelum de verdade) — ainda
+  // é tudo desenhado via Canvas (não tem arte pintada final pro
+  // protótipo), mas com bem mais variação/relevo que o placeholder
+  // anterior (manchas de grama, veios de rocha, pedrinhas no caminho).
   private gerarTilesetPlaceholder() {
-    const textura = this.textures.createCanvas("tiles-placeholder", TILE * 2, TILE)!;
+    const textura = this.textures.createCanvas("tiles-placeholder", TILE * 3, TILE)!;
     const ctx = textura.getContext();
 
-    // Frame 0 — grama (andável).
-    ctx.fillStyle = "#3f7a3f";
+    // Frame 0 — grama (andável): base + manchas orgânicas de tom
+    // variado + tufos, em vez de um verde chapado.
+    ctx.fillStyle = "#3d7a3a";
     ctx.fillRect(0, 0, TILE, TILE);
-    ctx.strokeStyle = "#2d5a2d";
-    ctx.lineWidth = 1;
-    for (let i = 0; i < 5; i++) {
+    const manchas: [number, number, number, string][] = [
+      [4, 4, 7, "#468a42"],
+      [18, 9, 6, "#356b33"],
+      [10, 20, 8, "#4d9048"],
+      [24, 22, 5, "#336430"],
+      [2, 24, 6, "#43843f"],
+    ];
+    for (const [mx, my, mr, cor] of manchas) {
+      ctx.fillStyle = cor;
       ctx.beginPath();
-      const px = 4 + (i * 7) % (TILE - 8);
-      const py = 4 + ((i * 11) % (TILE - 8));
-      ctx.moveTo(px, py + 4);
-      ctx.lineTo(px, py);
+      ctx.arc(mx, my, mr, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.strokeStyle = "#2a5528";
+    ctx.lineWidth = 1;
+    for (let i = 0; i < 10; i++) {
+      const px = 2 + ((i * 7) % (TILE - 4));
+      const py = 2 + ((i * 13) % (TILE - 4));
+      ctx.beginPath();
+      ctx.moveTo(px, py + 3);
+      ctx.lineTo(px + 1, py);
       ctx.stroke();
     }
 
-    // Frame 1 — parede/bloco (bloqueado).
-    ctx.fillStyle = "#6b6b6b";
-    ctx.fillRect(TILE, 0, TILE, TILE);
-    ctx.strokeStyle = "#454545";
-    ctx.lineWidth = 2;
-    ctx.strokeRect(TILE + 2, 2, TILE - 4, TILE - 4);
+    // Frame 1 — rocha/montanha (bloqueado): gradiente cinza + veios/
+    // fendas escuras + um brilho claro, no lugar do bloco liso de
+    // antes — mais parecido com as formações rochosas do mapa real.
+    const offR = TILE;
+    const gradR = ctx.createLinearGradient(offR, 0, offR, TILE);
+    gradR.addColorStop(0, "#8a8a86");
+    gradR.addColorStop(1, "#5c5c58");
+    ctx.fillStyle = gradR;
+    ctx.fillRect(offR, 0, TILE, TILE);
+    ctx.strokeStyle = "#3d3d3a";
+    ctx.lineWidth = 1;
+    const fendas: [number, number, number, number][] = [
+      [offR + 4, 4, offR + 10, 14],
+      [offR + 20, 6, offR + 14, 18],
+      [offR + 8, 22, offR + 22, 26],
+    ];
+    for (const [x1, y1, x2, y2] of fendas) {
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.stroke();
+    }
+    ctx.strokeStyle = "#a8a8a4";
     ctx.beginPath();
-    ctx.moveTo(TILE + 4, TILE / 2);
-    ctx.lineTo(TILE + TILE - 4, TILE / 2);
-    ctx.moveTo(TILE + TILE / 2, 4);
-    ctx.lineTo(TILE + TILE / 2, TILE - 4);
+    ctx.moveTo(offR + 6, 6);
+    ctx.lineTo(offR + 12, 10);
     ctx.stroke();
+
+    // Frame 2 — caminho de terra (andável, só visual): tom terroso +
+    // pedrinhas espalhadas + borda sutil, carvado do spawn até cada
+    // Local Interativo (ver marcarCaminho).
+    const offP = TILE * 2;
+    ctx.fillStyle = "#a9814f";
+    ctx.fillRect(offP, 0, TILE, TILE);
+    ctx.fillStyle = "#96713f";
+    const pedrinhas: [number, number, number][] = [
+      [offP + 4, 6, 2],
+      [offP + 14, 10, 1.5],
+      [offP + 22, 4, 2],
+      [offP + 8, 20, 1.5],
+      [offP + 20, 24, 2],
+      [offP + 28, 16, 1.5],
+    ];
+    for (const [px, py, pr] of pedrinhas) {
+      ctx.beginPath();
+      ctx.arc(px, py, pr, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.strokeStyle = "#7d5c33";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(offP + 0.5, 0.5, TILE - 1, TILE - 1);
+
+    textura.refresh();
+  }
+
+  // Árvore decorativa (estilo pinheiro, 3 camadas triangulares +
+  // tronco) espalhada pela grama só por estética — sem física/colisão,
+  // é puro enfeite visual pra dar a sensação de floresta que o mapa
+  // real tem. Mais alta que 1 tile de propósito (origin fica nos "pés",
+  // a copa ultrapassa pra cima, como árvores de verdade num top-down).
+  private gerarTexturaArvore() {
+    const largura = TILE - 4;
+    const altura = TILE + 18;
+    const textura = this.textures.createCanvas("prop-arvore", largura, altura)!;
+    const ctx = textura.getContext();
+    const cx = largura / 2;
+
+    ctx.fillStyle = "#5a3d23";
+    ctx.fillRect(cx - 3, altura - 14, 6, 14);
+
+    const camadas: { y: number; r: number; cor: string }[] = [
+      { y: altura - 14, r: largura / 2 - 1, cor: "#2f5e2a" },
+      { y: altura - 24, r: largura / 2 - 4, cor: "#376b31" },
+      { y: altura - 34, r: largura / 2 - 7, cor: "#3f7a38" },
+    ];
+    for (const c of camadas) {
+      ctx.fillStyle = c.cor;
+      ctx.beginPath();
+      ctx.moveTo(cx, c.y - 16);
+      ctx.lineTo(cx - c.r, c.y);
+      ctx.lineTo(cx + c.r, c.y);
+      ctx.closePath();
+      ctx.fill();
+    }
 
     textura.refresh();
   }
@@ -235,6 +371,11 @@ export class ExplorationScene extends Phaser.Scene {
     // da escala do GameObject, o physics body escala junto sozinho).
     this.player.setSize(46, 40);
     this.player.setOffset((FRAME_SRC - 46) / 2, FRAME_SRC - 44);
+    // Depth explícito acima das árvores decorativas (depth 0, ver
+    // abaixo) — sem isso a ordem de desenho dependeria só da ordem de
+    // criação dos objetos, e o personagem podia ficar "atrás" de uma
+    // árvore ao passar por cima dela.
+    this.player.setDepth(1);
 
     this.physics.add.collider(this.player, camada);
 
@@ -251,6 +392,32 @@ export class ExplorationScene extends Phaser.Scene {
       .circle(this.player.x, this.player.y, 40, 0xffe066)
       .setStrokeStyle(6, 0x1a1410)
       .setDepth(2000);
+
+    // Árvores decorativas espalhadas pela grama (pedido do jogador:
+    // textura mais parecida com o mapa real, que tem floresta visível)
+    // — nunca em cima de rocha/caminho/Local Interativo/spawn, puro
+    // enfeite sem física. Depth 0 (abaixo do personagem, ver
+    // player.setDepth(1) acima) e some das câmeras de UI/minimapa (ver
+    // ignore-lists no fim do método) pra não virar um amontoado de
+    // pontinhos ilegível no minimapa.
+    const arvores: Phaser.GameObjects.Image[] = [];
+    const ocupado = new Set<string>([`${SPAWN_TILE_X},${SPAWN_TILE_Y}`]);
+    for (const local of LOCAIS_INTERATIVOS) ocupado.add(`${local.tileX},${local.tileY}`);
+    let tentativas = 0;
+    while (arvores.length < 70 && tentativas < 600) {
+      tentativas++;
+      const tx = 1 + Math.floor(Math.random() * (MAP_COLS - 2));
+      const ty = 1 + Math.floor(Math.random() * (MAP_ROWS - 2));
+      const chave = `${tx},${ty}`;
+      if (ocupado.has(chave)) continue;
+      if (dados[ty][tx] !== 0) continue;
+      const pertoDeUmLocal = LOCAIS_INTERATIVOS.some(
+        (local) => Math.abs(local.tileX - tx) <= 1 && Math.abs(local.tileY - ty) <= 1,
+      );
+      if (pertoDeUmLocal) continue;
+      ocupado.add(chave);
+      arvores.push(this.add.image(tx * TILE + TILE / 2, ty * TILE + TILE, "prop-arvore").setOrigin(0.5, 1).setDepth(0));
+    }
 
     // Locais interativos — anda por cima (overlap) OU clica no ícone
     // pra entrar direto, igual pedido ("clicando e entrando no
@@ -313,7 +480,12 @@ export class ExplorationScene extends Phaser.Scene {
     // ignora o mundo (tilemap/jogador) — e a câmera principal ignora o
     // HUD, pra não desenhar os dois ao mesmo tempo.
     this.debugText = this.add
-      .text(4, 4, "", { fontSize: "12px", color: "#ffffff", backgroundColor: "#000000aa", padding: { x: 4, y: 2 } })
+      .text(4, this.scale.height - 24, "", {
+        fontSize: "12px",
+        color: "#ffffff",
+        backgroundColor: "#000000aa",
+        padding: { x: 4, y: 2 },
+      })
       .setScrollFactor(0)
       .setDepth(1000);
 
@@ -333,8 +505,8 @@ export class ExplorationScene extends Phaser.Scene {
       .setDepth(1001)
       .setVisible(false);
 
-    const uiCamera = this.cameras.add(0, 0, this.scale.width, this.scale.height);
-    uiCamera.setScroll(0, 0);
+    this.uiCamera = this.cameras.add(0, 0, this.scale.width, this.scale.height);
+    this.uiCamera.setScroll(0, 0);
 
     // Minimapa — pedido do jogador ("pra pessoa não se perder"), canto
     // superior direito, sempre mostrando o mapa INTEIRO (zoom calculado
@@ -343,9 +515,9 @@ export class ExplorationScene extends Phaser.Scene {
     // cerca o mapa inteiro (ver construirMapa) acaba servindo de moldura
     // natural; o retângulo com borda dourada por trás (minimapFundo) só
     // dá uma margem/contraste contra o jogo por trás.
-    const minimapX = this.scale.width - MINIMAPA_LARGURA - MINIMAPA_MARGEM;
-    const minimapY = MINIMAPA_MARGEM;
-    const minimapFundo = this.add
+    const minimapX = this.scale.width - MINIMAPA_LARGURA - MINIMAPA_MARGEM_X;
+    const minimapY = MINIMAPA_MARGEM_Y;
+    this.minimapFundo = this.add
       .rectangle(
         minimapX + MINIMAPA_LARGURA / 2,
         minimapY + MINIMAPA_ALTURA / 2,
@@ -358,22 +530,49 @@ export class ExplorationScene extends Phaser.Scene {
       .setScrollFactor(0)
       .setDepth(999);
 
-    const minimapCamera = this.cameras.add(minimapX, minimapY, MINIMAPA_LARGURA, MINIMAPA_ALTURA);
-    minimapCamera.setZoom(MINIMAPA_LARGURA / larguraMundo);
-    minimapCamera.setScroll(0, 0);
-    minimapCamera.setBounds(0, 0, larguraMundo, alturaMundo);
-    minimapCamera.setBackgroundColor(0x16210f);
+    this.minimapCamera = this.cameras.add(minimapX, minimapY, MINIMAPA_LARGURA, MINIMAPA_ALTURA);
+    this.minimapCamera.setZoom(MINIMAPA_LARGURA / larguraMundo);
+    this.minimapCamera.setScroll(0, 0);
+    this.minimapCamera.setBounds(0, 0, larguraMundo, alturaMundo);
+    this.minimapCamera.setBackgroundColor(0x16210f);
 
     // Cada câmera só desenha o que NÃO está na lista de ignorados —
     // jogo principal (zoom 1.6, segue o personagem): mundo + personagem
-    // de verdade + ícones dos locais, nunca o HUD/minimapa/pontinho.
-    // Câmera de UI (zoom 1, fixa): só o HUD/mensagem central/moldura do
-    // minimapa. Câmera do minimapa: mundo + ícones + pontinho do
-    // personagem, nunca o personagem "de verdade" (grande demais) nem
-    // os rótulos de texto (ilegíveis nesse tamanho) nem o HUD/UI.
-    this.cameras.main.ignore([this.debugText, this.mensagemEntrada, minimapFundo, this.playerDot]);
-    uiCamera.ignore([camada, this.player, this.playerDot, ...iconesDeLocais, ...rotulosDeLocais]);
-    minimapCamera.ignore([this.debugText, this.mensagemEntrada, minimapFundo, this.player, ...rotulosDeLocais]);
+    // de verdade + árvores + ícones dos locais, nunca o HUD/minimapa/
+    // pontinho. Câmera de UI (zoom 1, fixa): só o HUD/mensagem central/
+    // moldura do minimapa. Câmera do minimapa: só o terreno (tileset já
+    // mostra grama/rocha/caminho) + ícones + pontinho do personagem —
+    // nunca o personagem "de verdade", as árvores (viram poeira
+    // ilegível reduzidas) nem os rótulos de texto nem o HUD/UI.
+    this.cameras.main.ignore([this.debugText, this.mensagemEntrada, this.minimapFundo, this.playerDot]);
+    this.uiCamera.ignore([camada, this.player, this.playerDot, ...arvores, ...iconesDeLocais, ...rotulosDeLocais]);
+    this.minimapCamera.ignore([
+      this.debugText,
+      this.mensagemEntrada,
+      this.minimapFundo,
+      this.player,
+      ...arvores,
+      ...rotulosDeLocais,
+    ]);
+
+    // Jogo agora é tela cheia (Scale.RESIZE, ver Explorer2DGame.tsx) —
+    // precisa reposicionar câmeras/HUD/minimapa quando a janela muda de
+    // tamanho, já que tudo acima foi calculado com o tamanho inicial.
+    this.scale.on("resize", this.aoRedimensionar, this);
+  }
+
+  private aoRedimensionar(gameSize: Phaser.Structs.Size) {
+    const largura = gameSize.width;
+    const altura = gameSize.height;
+    this.cameras.main.setSize(largura, altura);
+    this.uiCamera.setSize(largura, altura);
+    this.mensagemEntrada.setPosition(largura / 2, altura / 2);
+    this.debugText.setPosition(4, altura - 24);
+
+    const minimapX = largura - MINIMAPA_LARGURA - MINIMAPA_MARGEM_X;
+    const minimapY = MINIMAPA_MARGEM_Y;
+    this.minimapCamera.setPosition(minimapX, minimapY);
+    this.minimapFundo.setPosition(minimapX + MINIMAPA_LARGURA / 2, minimapY + MINIMAPA_ALTURA / 2);
   }
 
   // Dispara a navegação real pro resto do jogo (Explorer2DGame.tsx

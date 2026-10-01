@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import Explorer2DGame from "./Explorer2DGame";
 
 // PROTÓTIPO EXPERIMENTAL — prova de conceito isolada de exploração 2D
@@ -17,19 +18,29 @@ export const metadata: Metadata = {
 
 export default function Prototype2DPage() {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-[#0f0c09] p-6 text-white">
-      <div className="max-w-xl text-center">
-        <p className="text-xs font-bold uppercase tracking-widest text-[#F3B43F]">
+    <div className="fixed inset-0 overflow-hidden bg-[#0f0c09] text-white">
+      {/* Tela cheia (pedido do jogador) — o jogo Phaser cobre a página
+          inteira, o resto aqui é só overlay HTML por cima dele. */}
+      <Explorer2DGame />
+
+      <div className="pointer-events-none absolute left-4 top-4 max-w-sm rounded-lg border border-[#F3B43F]/40 bg-black/70 p-3 backdrop-blur-sm">
+        <p className="text-[10px] font-bold uppercase tracking-widest text-[#F3B43F]">
           Protótipo experimental — não é o jogo de produção
         </p>
-        <h1 className="mt-1 font-imFeel text-2xl">Exploração 2D top-down</h1>
-        <p className="mt-2 text-sm text-white/60">
-          Setas ou WASD pra andar. Colide com a borda do mapa e com os blocos cinzas espalhados — resto da grama
-          é andável. Ande por cima de um ícone (Ferreiro/Loja/Taverna/Guilda) ou clique nele pra entrar. Minimapa
-          no canto superior direito mostra o mapa inteiro.
+        <p className="mt-1 text-xs text-white/70">
+          Setas ou WASD pra andar. Ande por cima de um ícone (Ferreiro/Loja/Taverna/Guilda) ou clique nele pra
+          entrar. Minimapa no canto superior direito mostra o mapa inteiro.
         </p>
       </div>
-      <Explorer2DGame />
+
+      <Link
+        href="/dashboard/map"
+        aria-label="Fechar protótipo"
+        title="Fechar protótipo"
+        className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full border-2 border-[#F3B43F] bg-[#292018] text-[#F3B43F] shadow-lg transition hover:bg-[#3a2f24]"
+      >
+        ✕
+      </Link>
     </div>
   );
 }
