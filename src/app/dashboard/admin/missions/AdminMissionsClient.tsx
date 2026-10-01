@@ -27,7 +27,7 @@ import {
   type PayloadGuildMissionAdmin,
   type PayloadMissionAdmin,
 } from "@/lib/api/admin";
-import { ItemSelect, formatarItemComId, useItensParaSelecaoAdmin } from "@/components/admin/ItemPicker";
+import { ItemSelect, MonsterSelect, ZoneSelect, formatarItemComId, useItensParaSelecaoAdmin, useMonstrosParaSelecaoAdmin, useZonasParaSelecaoAdmin } from "@/components/admin/ItemPicker";
 
 type Aba = "livres" | "guilda-aventureiros" | "guilda";
 
@@ -343,6 +343,8 @@ function GuildaAventureirosTab({ catalogos }: { catalogos: MissionCatalogosApi |
   const [salvando, setSalvando] = useState(false);
   const [recompensasId, setRecompensasId] = useState<number | null>(null);
   const { itens: itensDisponiveis } = useItensParaSelecaoAdmin();
+  const { monstros: monstrosDisponiveis } = useMonstrosParaSelecaoAdmin();
+  const { zonas: zonasDisponiveis } = useZonasParaSelecaoAdmin();
 
   const carregar = useCallback(async () => {
     setCarregando(true);
@@ -437,11 +439,19 @@ function GuildaAventureirosTab({ catalogos }: { catalogos: MissionCatalogosApi |
               </tr>
             </thead>
             <tbody>
-              {missoes.map((m) => (
+              {missoes.map((m) => {
+                const alvo =
+                  monstrosDisponiveis.find((mo) => mo.id === m.id_monstro_alvo)?.nome ??
+                  zonasDisponiveis.find((z) => z.id === m.id_area_alvo)?.nome ??
+                  null;
+                return (
                 <tr key={m.id} className={`border-b border-white/5 ${!m.ativa ? "opacity-60" : ""}`}>
                   <td className="px-3 py-2 font-bold">{m.rank}</td>
                   <td className="px-3 py-2">{m.nome}</td>
-                  <td className="px-3 py-2">{m.tipo_objetivo}</td>
+                  <td className="px-3 py-2">
+                    {m.tipo_objetivo}
+                    {alvo && <span className="block text-[10px] text-white/50">{alvo}</span>}
+                  </td>
                   <td className="px-3 py-2">{m.quantidade_objetivo}</td>
                   <td className="px-3 py-2">{m.eh_provacao ? "Sim" : "Não"}</td>
                   <td className="px-3 py-2">{badgeAtiva(m.ativa)}</td>
@@ -462,7 +472,8 @@ function GuildaAventureirosTab({ catalogos }: { catalogos: MissionCatalogosApi |
                     </div>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
               {missoes.length === 0 && (
                 <tr>
                   <td colSpan={7} className="px-3 py-4 text-center text-white/50">
@@ -521,12 +532,20 @@ function GuildaAventureirosTab({ catalogos }: { catalogos: MissionCatalogosApi |
             </div>
             <div className="flex gap-2">
               <label className="flex flex-1 flex-col gap-1 text-xs">
-                Monstro alvo (ID, opcional)
-                <input type="number" value={form.id_monstro_alvo ?? ""} onChange={(e) => setForm((f) => ({ ...f, id_monstro_alvo: e.target.value ? Number(e.target.value) : null }))} className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm" />
+                Monstro alvo (opcional)
+                <MonsterSelect
+                  monstros={monstrosDisponiveis}
+                  value={form.id_monstro_alvo ?? ""}
+                  onChange={(id) => setForm((f) => ({ ...f, id_monstro_alvo: id === "" ? null : id }))}
+                />
               </label>
               <label className="flex flex-1 flex-col gap-1 text-xs">
-                Zona alvo (ID, opcional)
-                <input type="number" value={form.id_area_alvo ?? ""} onChange={(e) => setForm((f) => ({ ...f, id_area_alvo: e.target.value ? Number(e.target.value) : null }))} className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm" />
+                Zona alvo (opcional)
+                <ZoneSelect
+                  zonas={zonasDisponiveis}
+                  value={form.id_area_alvo ?? ""}
+                  onChange={(id) => setForm((f) => ({ ...f, id_area_alvo: id === "" ? null : id }))}
+                />
               </label>
               <label className="flex flex-1 flex-col gap-1 text-xs">
                 Item alvo (opcional)

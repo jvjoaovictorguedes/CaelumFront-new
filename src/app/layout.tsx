@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { Geist, Geist_Mono, IM_Fell_English_SC } from "next/font/google";
 import "./globals.css";
 import { getUserCookie } from "@/app/create/temp-character-data-action";
@@ -41,8 +42,19 @@ export default async function RootLayout({
   // navegação, antes de montar qualquer provider/tela: só admin passa.
   // A checagem de isAdmin só roda quando a manutenção está de fato
   // ligada (custa uma request a mais só nesse caso).
+  //
+  // Bug real: "/login" nunca tinha exceção aqui — antes de logar
+  // ninguém tem sessão (isCurrentUserAdmin() só pode responder false),
+  // então a manutenção também escondia o PRÓPRIO formulário de login,
+  // travando até o admin de entrar pra desligá-la de novo. "/login"
+  // fica de fora do bloqueio (pathname vem do header carimbado pelo
+  // middleware.ts, que é quem realmente sabe a rota aqui) — "/register"
+  // e "esqueci senha" continuam bloqueados de propósito, mesmo critério
+  // do backend (maintenanceMiddleware.js: não libera criar conta nem
+  // trocar senha durante a manutenção).
+  const pathname = (await headers()).get("x-pathname");
   const manutencao = await obterStatusManutencao();
-  const bloqueado = manutencao.enabled && !(await isCurrentUserAdmin());
+  const bloqueado = manutencao.enabled && pathname !== "/login" && !(await isCurrentUserAdmin());
 
   return (
     <html lang="pt-BR">

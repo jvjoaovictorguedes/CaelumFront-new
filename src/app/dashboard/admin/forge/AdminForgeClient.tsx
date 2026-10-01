@@ -19,6 +19,7 @@ import {
   excluirTodosForgeBlueprintsAdmin,
   listarForgeBarrasAdmin,
   listarForgeBlueprintsAdmin,
+  listarForgeEspoliosAdmin,
   listarForgeProdutosAlquimiaAdmin,
   listarForgeRecursosAdmin,
   listarForgeScrollsAdmin,
@@ -55,6 +56,7 @@ import {
   type ForgeBlueprintApi,
   type ForgeBlueprintLinhaApi,
   type ForgeCategoria,
+  type ForgeEspolioApi,
   type ForgeMetricasApi,
   type ForgeProdutoAlquimiaApi,
   type ForgeQualidade,
@@ -442,13 +444,16 @@ function EditorBlueprint({ id, onFechar }: { id: number | null; onFechar: () => 
   // Reformulação V2 (Item Único por Equipamento) — só existe UM Item
   // resultado por blueprint, não mais um seletor por qualidade.
   const [seletorItemResultadoAberto, setSeletorItemResultadoAberto] = useState(false);
-  // Forja-Materiais: 3 fontes de ingrediente lógico — "recursos" traz
+  // Forja-Materiais: 4 fontes de ingrediente lógico — "recursos" traz
   // TODAS as profissões (Mineração/Silvicultura/Exploração) de uma vez
   // (sem filtro de profissao); "Barra" só é válida com recurso de
   // Mineração (mesma regra que upsertBarraAdmin já impõe no backend),
   // então o dropdown desse tipo filtra recursosMineracao localmente.
+  // "Espolio" (pedido: "usar espólios também" na fabricação) aponta
+  // direto pro próprio Item — sem catálogo de recurso intermediário.
   const [recursos, setRecursos] = useState<ForgeRecursoApi[]>([]);
   const [produtosAlquimia, setProdutosAlquimia] = useState<ForgeProdutoAlquimiaApi[]>([]);
+  const [espolios, setEspolios] = useState<ForgeEspolioApi[]>([]);
   const recursosMineracao = useMemo(() => recursos.filter((r) => r.profissao === "Mineracao"), [recursos]);
   const [previewDados, setPreviewDados] = useState<Awaited<ReturnType<typeof previewForgeBlueprintAdmin>> | null>(null);
   const [overridesForm, setOverridesForm] = useState<Record<ForgeQualidade, Record<string, string>>>(overridesFormVazio());
@@ -484,6 +489,7 @@ function EditorBlueprint({ id, onFechar }: { id: number | null; onFechar: () => 
   useEffect(() => { carregar(); }, [carregar]);
   useEffect(() => { listarForgeRecursosAdmin().then(setRecursos).catch(() => setRecursos([])); }, []);
   useEffect(() => { listarForgeProdutosAlquimiaAdmin().then(setProdutosAlquimia).catch(() => setProdutosAlquimia([])); }, []);
+  useEffect(() => { listarForgeEspoliosAdmin().then(setEspolios).catch(() => setEspolios([])); }, []);
 
   async function salvarCamposBasicos() {
     setSalvando(true); setErro(""); setMensagem("");
@@ -611,7 +617,7 @@ function EditorBlueprint({ id, onFechar }: { id: number | null; onFechar: () => 
         <>
           <div className={CARD}>
             <p className="mb-3 font-imFeel text-xl text-[#F3B43F]">Ingredientes lógicos</p>
-            <p className="mb-2 text-xs text-white/50">O Admin escolhe o tipo de insumo — Barra (só recurso de Mineração), Recurso de Expedição (Mineração/Silvicultura/Exploração) ou Produto do Caldeirão (Alquimia) — e o recurso lógico; o backend resolve o Item correto nas 6 qualidades (Produto do Caldeirão usa o mesmo Item nas 6).</p>
+            <p className="mb-2 text-xs text-white/50">O Admin escolhe o tipo de insumo — Barra (só recurso de Mineração), Recurso de Expedição (Mineração/Silvicultura/Exploração), Produto do Caldeirão (Alquimia) ou Espólio (drop de monstro da Aventura) — e o recurso lógico; o backend resolve o Item correto nas 6 qualidades (Produto do Caldeirão e Espólio usam o mesmo Item nas 6).</p>
             {(form.ingredientes ?? []).map((ing, idx) => {
               const opcoesRecurso = ing.tipo_insumo === "Barra" ? recursosMineracao : recursos;
               return (
@@ -622,17 +628,25 @@ function EditorBlueprint({ id, onFechar }: { id: number | null; onFechar: () => 
                     onChange={(e) => {
                       const novoTipo = e.target.value as ForgeTipoInsumo;
                       const novoIdRecurso =
-                        novoTipo === "Barra" ? recursosMineracao[0]?.id ?? 0 : novoTipo === "ProdutoAlquimia" ? produtosAlquimia[0]?.id ?? 0 : recursos[0]?.id ?? 0;
+                        novoTipo === "Barra" ? recursosMineracao[0]?.id ?? 0 :
+                        novoTipo === "ProdutoAlquimia" ? produtosAlquimia[0]?.id ?? 0 :
+                        novoTipo === "Espolio" ? espolios[0]?.id ?? 0 :
+                        recursos[0]?.id ?? 0;
                       setForm((f) => ({ ...f, ingredientes: f.ingredientes!.map((x, i) => (i === idx ? { ...x, tipo_insumo: novoTipo, id_recurso: novoIdRecurso } : x)) }));
                     }}
                   >
                     <option value="Barra">Barra (Mineração)</option>
                     <option value="RecursoExpedicao">Recurso de Expedição</option>
                     <option value="ProdutoAlquimia">Produto do Caldeirão</option>
+                    <option value="Espolio">Espólio</option>
                   </select>
                   {ing.tipo_insumo === "ProdutoAlquimia" ? (
                     <select className={INPUT} value={ing.id_recurso} onChange={(e) => setForm((f) => ({ ...f, ingredientes: f.ingredientes!.map((x, i) => (i === idx ? { ...x, id_recurso: Number(e.target.value) } : x)) }))}>
                       {produtosAlquimia.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
+                    </select>
+                  ) : ing.tipo_insumo === "Espolio" ? (
+                    <select className={INPUT} value={ing.id_recurso} onChange={(e) => setForm((f) => ({ ...f, ingredientes: f.ingredientes!.map((x, i) => (i === idx ? { ...x, id_recurso: Number(e.target.value) } : x)) }))}>
+                      {espolios.map((es) => <option key={es.id} value={es.id}>{es.nome}</option>)}
                     </select>
                   ) : (
                     <select className={INPUT} value={ing.id_recurso} onChange={(e) => setForm((f) => ({ ...f, ingredientes: f.ingredientes!.map((x, i) => (i === idx ? { ...x, id_recurso: Number(e.target.value) } : x)) }))}>

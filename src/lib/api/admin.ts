@@ -2727,7 +2727,7 @@ export type ForgeQualidade = (typeof FORGE_QUALIDADES)[number];
 // Por isso não existe mais um "recurso" resolvido via association aqui;
 // o nome do recurso, quando precisar exibir, vem do backend já resolvido
 // (ex: nome_recurso no preview) em vez de um include fixo.
-export type ForgeTipoInsumo = "Barra" | "RecursoExpedicao" | "ProdutoAlquimia";
+export type ForgeTipoInsumo = "Barra" | "RecursoExpedicao" | "ProdutoAlquimia" | "Espolio";
 export interface ForgeIngredienteApi {
   tipo_insumo: ForgeTipoInsumo;
   id_recurso: number;
@@ -2916,6 +2916,20 @@ export async function listarForgeProdutosAlquimiaAdmin(): Promise<ForgeProdutoAl
   return resposta.data.data.produtos;
 }
 
+// Forja-Materiais: Espólios elegíveis como ingrediente Espolio — a
+// Forja usa o próprio Item.id do Espólio como id_recurso desse tipo
+// (sem catálogo intermediário, como ProdutoAlquimia usa AlchemyRecipe.id).
+export interface ForgeEspolioApi {
+  id: number;
+  nome: string;
+  imagem_url: string | null;
+  raridade: string;
+}
+export async function listarForgeEspoliosAdmin(): Promise<ForgeEspolioApi[]> {
+  const resposta = await axiosInstance.get<{ data: { espolios: ForgeEspolioApi[] } }>("/admin/forge/espolios");
+  return resposta.data.data.espolios;
+}
+
 export interface ForgeBarraLinhaApi {
   id_recurso: number;
   nome_recurso: string;
@@ -2990,6 +3004,27 @@ export async function obterForgeBalanceAdmin(): Promise<ForgeBalanceCompletoApi>
 }
 export async function atualizarForgeBalanceAdmin(grupo: string, valores: Record<string, unknown>): Promise<ForgeBalanceGrupoApi> {
   const resposta = await axiosInstance.put<{ data: ForgeBalanceGrupoApi }>(`/admin/forge/balance/${grupo}`, valores);
+  return resposta.data.data;
+}
+
+// Balanceamento de Pesca (pedido: editar XP por nível de Pesca + buff de
+// Proficiência por nível) — mesmo padrão de obterForgeBalanceAdmin acima.
+// O buff de Refinamento da vara usa forge.refinement (Forja →
+// Balanceamento), não tem grupo próprio aqui de propósito.
+export interface FishingBalanceGrupoApi<T = Record<string, unknown>> {
+  atual: T;
+  padrao: T;
+}
+export interface FishingBalanceCompletoApi {
+  "fishing.progression": FishingBalanceGrupoApi<{ XP_NECESSARIO_POR_ETAPA_PESCA: Record<string, number>; XP_TOTAL_PARA_NIVEL_PESCA: Record<string, number>; NIVEL_MAXIMO_PESCA: number }>;
+  "fishing.proficiency": FishingBalanceGrupoApi<{ PROFICIENCIA_PCT_POR_NIVEL: Record<string, number> }>;
+}
+export async function obterFishingBalanceAdmin(): Promise<FishingBalanceCompletoApi> {
+  const resposta = await axiosInstance.get<{ data: FishingBalanceCompletoApi }>("/admin/fishing/balance/settings");
+  return resposta.data.data;
+}
+export async function atualizarFishingBalanceAdmin(grupo: string, valores: Record<string, unknown>): Promise<FishingBalanceGrupoApi> {
+  const resposta = await axiosInstance.put<{ data: FishingBalanceGrupoApi }>(`/admin/fishing/balance/settings/${grupo}`, valores);
   return resposta.data.data;
 }
 

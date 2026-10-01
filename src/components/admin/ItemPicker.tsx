@@ -17,7 +17,14 @@
 // catálogo (a seleção final continua sempre vindo da lista, igual antes).
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { listarItensParaSelecaoAdmin, type AdminItemSelecionavelApi } from "@/lib/api/admin";
+import {
+  listarItensParaSelecaoAdmin,
+  listarMonstrosAdmin,
+  listarZonasAdmin,
+  type AdminItemSelecionavelApi,
+  type AdventureMonsterApi,
+  type AdventureZoneApi,
+} from "@/lib/api/admin";
 
 /** Formata "Nome (ID: N)" de forma consistente em todo o admin. */
 export function formatarItemComId(nome: string, id: number): string {
@@ -213,4 +220,176 @@ export function ItemSelect({
       )}
     </div>
   );
+}
+
+// ------------------------------------------------ MONSTRO/ZONA (genérico)
+// Mesmo bug do ItemSelect, só que pros campos "Monstro alvo"/"Zona alvo"
+// de contratos de Rank da Guilda dos Aventureiros (antes exigiam digitar
+// o ID numérico de cabeça, sem nenhuma confirmação visual — na prática
+// inutilizável). Entidade só precisa de {id, nome}, então um combobox
+// genérico cobre as duas sem duplicar a lógica de busca/abrir/fechar do
+// ItemSelect acima.
+interface EntidadeComNome {
+  id: number;
+  nome: string;
+}
+
+function useEntidadesParaSelecaoAdmin<T extends EntidadeComNome>(carregar: () => Promise<T[]>) {
+  const [entidades, setEntidades] = useState<T[]>([]);
+  const [carregando, setCarregando] = useState(true);
+
+  useEffect(() => {
+    let cancelado = false;
+    setCarregando(true);
+    carregar()
+      .then((resultado) => {
+        if (!cancelado) setEntidades(resultado);
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelado) setCarregando(false);
+      });
+    return () => {
+      cancelado = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return { entidades, carregando };
+}
+
+function EntidadeSelect<T extends EntidadeComNome>({
+  entidades,
+  value,
+  onChange,
+  placeholderVazio,
+  className,
+}: {
+  entidades: T[];
+  value: number | "";
+  onChange: (id: number | "") => void;
+  placeholderVazio: string;
+  className?: string;
+}) {
+  const selecionada = value === "" ? null : entidades.find((e) => e.id === value) ?? null;
+  const [busca, setBusca] = useState("");
+  const [aberto, setAberto] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const textoExibido = aberto ? busca : selecionada ? formatarItemComId(selecionada.nome, selecionada.id) : "";
+
+  const filtradas = useMemo(() => {
+    const buscaNormalizada = normalizar(busca);
+    return entidades
+      .filter((e) => !buscaNormalizada || String(e.id).includes(buscaNormalizada) || normalizar(e.nome).includes(buscaNormalizada))
+      .slice(0, 50);
+  }, [entidades, busca]);
+
+  useEffect(() => {
+    if (!aberto) return;
+    function aoClicarFora(evento: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(evento.target as Node)) {
+        setAberto(false);
+        setBusca("");
+      }
+    }
+    document.addEventListener("mousedown", aoClicarFora);
+    return () => document.removeEventListener("mousedown", aoClicarFora);
+  }, [aberto]);
+
+  function escolher(entidade: T) {
+    onChange(entidade.id);
+    setBusca("");
+    setAberto(false);
+  }
+
+  function limpar() {
+    onChange("");
+    setBusca("");
+    setAberto(false);
+  }
+
+  return (
+    <div ref={containerRef} className="relative">
+      <div className="flex items-center gap-1">
+        <input
+          type="text"
+          value={textoExibido}
+          placeholder={placeholderVazio}
+          onFocus={() => {
+            setAberto(true);
+            setBusca("");
+          }}
+          onChange={(e) => {
+            setBusca(e.target.value);
+            setAberto(true);
+          }}
+          onKeyDown={(e) => {
+            if (!aberto) return;
+            if (e.key === "Escape") {
+              setAberto(false);
+              setBusca("");
+              (e.target as HTMLInputElement).blur();
+            }
+            if (e.key === "Enter") {
+              e.preventDefault();
+              if (filtradas.length > 0) escolher(filtradas[0]);
+            }
+          }}
+          className={className ?? "w-full rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm"}
+        />
+        {selecionada && (
+          <button
+            type="button"
+            onClick={limpar}
+            title="Limpar seleção"
+            className="shrink-0 rounded-lg border border-white/20 px-2 py-1.5 text-xs text-white/60 hover:bg-white/10"
+          >
+            ✕
+          </button>
+        )}
+      </div>
+
+      {aberto && (
+        <ul className="absolute z-20 mt-1 max-h-64 w-full min-w-[16rem] overflow-y-auto rounded-lg border border-white/20 bg-[#1b140d] text-sm shadow-xl">
+          {filtradas.length === 0 && <li className="px-3 py-2 text-white/50">Nenhum resultado para &quot;{busca}&quot;.</li>}
+          {filtradas.map((entidade) => (
+            <li key={entidade.id}>
+              <button
+                type="button"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  escolher(entidade);
+                }}
+                className={`flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left hover:bg-[#F3B43F]/20 ${
+                  entidade.id === value ? "bg-[#F3B43F]/10 text-[#F3B43F]" : "text-white"
+                }`}
+              >
+                <span>{entidade.nome}</span>
+                <span className="text-xs text-white/40">ID: {entidade.id}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+export function useMonstrosParaSelecaoAdmin() {
+  const { entidades, carregando } = useEntidadesParaSelecaoAdmin<AdventureMonsterApi>(listarMonstrosAdmin);
+  return { monstros: entidades, carregando };
+}
+
+export function MonsterSelect({ monstros, value, onChange, className }: { monstros: AdventureMonsterApi[]; value: number | ""; onChange: (id: number | "") => void; className?: string }) {
+  return <EntidadeSelect entidades={monstros} value={value} onChange={onChange} placeholderVazio="Buscar monstro por ID ou nome..." className={className} />;
+}
+
+export function useZonasParaSelecaoAdmin() {
+  const { entidades, carregando } = useEntidadesParaSelecaoAdmin<AdventureZoneApi>(listarZonasAdmin);
+  return { zonas: entidades, carregando };
+}
+
+export function ZoneSelect({ zonas, value, onChange, className }: { zonas: AdventureZoneApi[]; value: number | ""; onChange: (id: number | "") => void; className?: string }) {
+  return <EntidadeSelect entidades={zonas} value={value} onChange={onChange} placeholderVazio="Buscar zona por ID ou nome..." className={className} />;
 }
