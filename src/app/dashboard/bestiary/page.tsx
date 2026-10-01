@@ -9,7 +9,9 @@ interface RegiaoApi {
   nome: string;
   imagem_url: string | null;
   descobertos: number;
-  total: number;
+  // Mistério do Bestiário — null até descobrir todos os monstros da
+  // região (ver bestiaryService.js no backend).
+  total: number | null;
   maestria_nivel: number;
   maestria_numeral: string | null;
   progresso_pct_proximo_nivel: number;
@@ -17,7 +19,7 @@ interface RegiaoApi {
 
 interface ResumoApi {
   criaturas_descobertas: number;
-  criaturas_totais: number;
+  criaturas_totais: number | null;
   regioes_completas: number;
   regioes_totais: number;
   maestrias_v: number;
@@ -67,8 +69,11 @@ export default async function BestiaryPage() {
         </p>
         {resumo && (
           <p className="mt-1 text-sm text-white/70">
-            Criaturas descobertas: {resumo.criaturas_descobertas} / {resumo.criaturas_totais} · Regiões
-            completas: {resumo.regioes_completas} / {resumo.regioes_totais} · Maestrias V:{" "}
+            Criaturas descobertas:{" "}
+            {resumo.criaturas_totais != null
+              ? `${resumo.criaturas_descobertas} / ${resumo.criaturas_totais}`
+              : resumo.criaturas_descobertas}{" "}
+            · Regiões completas: {resumo.regioes_completas} / {resumo.regioes_totais} · Maestrias V:{" "}
             {resumo.maestrias_v} / {resumo.regioes_totais}
           </p>
         )}
@@ -76,7 +81,7 @@ export default async function BestiaryPage() {
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {regioes.map((regiao) => {
-          const completa = regiao.total > 0 && regiao.descobertos === regiao.total;
+          const completa = regiao.total !== null && regiao.descobertos === regiao.total;
           const maestriaV = regiao.maestria_nivel === 5;
 
           return (
@@ -99,7 +104,7 @@ export default async function BestiaryPage() {
                   )}
                 </div>
                 <p className="text-sm text-white/70">
-                  Descobertas: {regiao.descobertos} / {regiao.total}
+                  Descobertas: {regiao.total !== null ? `${regiao.descobertos} / ${regiao.total}` : regiao.descobertos}
                 </p>
                 <p className="text-sm text-white/70">
                   Maestria: {regiao.maestria_numeral ? `Nível ${regiao.maestria_numeral}` : "Bloqueada"}

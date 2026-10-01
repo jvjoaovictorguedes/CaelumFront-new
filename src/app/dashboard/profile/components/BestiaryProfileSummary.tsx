@@ -16,7 +16,12 @@ export default function BestiaryProfileSummary({
       <p className="mb-2 text-xs uppercase tracking-widest text-[#F3B43F]">Bestiário</p>
       <div className="grid grid-cols-1 gap-1 text-sm sm:grid-cols-3">
         <p className="text-white/70">
-          Criaturas: <span className="font-bold text-white">{bestiary.criaturas_descobertas} / {bestiary.criaturas_totais}</span>
+          Criaturas:{" "}
+          <span className="font-bold text-white">
+            {bestiary.criaturas_totais != null
+              ? `${bestiary.criaturas_descobertas} / ${bestiary.criaturas_totais}`
+              : `${bestiary.criaturas_descobertas} descobertas`}
+          </span>
         </p>
         <p className="text-white/70">
           Regiões: <span className="font-bold text-white">{bestiary.regioes_completas} / {bestiary.regioes_totais}</span>
