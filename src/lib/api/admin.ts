@@ -3510,6 +3510,54 @@ export async function atualizarExpeditionBalanceAdmin(
   return resposta.data.data;
 }
 
+// Quais recursos (minérios/madeiras/ervas) caem e o peso relativo de
+// cada um por região — pedido do jogador: "poder escolher que tipos de
+// drops caem na exploração" (mesma tela serve Mineração/Silvicultura).
+export type ProfissaoExpedicaoAdmin = "Mineracao" | "Silvicultura" | "Exploracao";
+export interface ExpedicaoRecursoDaRegiaoApi {
+  id_recurso: number;
+  nome: string;
+  ativo: boolean;
+  peso: number;
+  peso_percentual: number;
+}
+export interface ExpedicaoRegiaoAdminApi {
+  id: number;
+  nome: string;
+  nivel_minimo: number;
+  ativo: boolean;
+  recursos: ExpedicaoRecursoDaRegiaoApi[];
+}
+export interface ExpedicaoRecursoAdminApi {
+  id: number;
+  nome: string;
+  ativo: boolean;
+}
+export interface ExpedicaoRecursosCompletoApi {
+  profissao: ProfissaoExpedicaoAdmin;
+  regioes: ExpedicaoRegiaoAdminApi[];
+  recursos: ExpedicaoRecursoAdminApi[];
+  recursos_sem_regiao: ExpedicaoRecursoAdminApi[];
+}
+export async function listarExpedicaoRecursosAdmin(
+  profissao: ProfissaoExpedicaoAdmin,
+): Promise<ExpedicaoRecursosCompletoApi> {
+  const resposta = await axiosInstance.get<{ data: ExpedicaoRecursosCompletoApi }>("/admin/expedition/resources", {
+    params: { profissao },
+  });
+  return resposta.data.data;
+}
+export async function atualizarExpedicaoRecursoAtivoAdmin(idRecurso: number, ativo: boolean): Promise<void> {
+  await axiosInstance.patch(`/admin/expedition/resources/${idRecurso}/active`, { ativo });
+}
+export async function atualizarExpedicaoPesoNaRegiaoAdmin(
+  idRegiao: number,
+  idRecurso: number,
+  peso: number,
+): Promise<void> {
+  await axiosInstance.patch(`/admin/expedition/resources/region/${idRegiao}/${idRecurso}/weight`, { peso });
+}
+
 // Painel Administrativo — Alquimia (Caldeirão): CRUD de receitas +
 // ingredientes. id_item_resultado/id_item são resolvidos em lote pelo
 // backend (sem include/alias — mesma convenção do resto do domínio de

@@ -4,9 +4,14 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import {
   atualizarExpeditionBalanceAdmin,
+  atualizarExpedicaoPesoNaRegiaoAdmin,
+  atualizarExpedicaoRecursoAtivoAdmin,
+  listarExpedicaoRecursosAdmin,
   mensagemDeErroAdmin,
   obterExpeditionBalanceAdmin,
   type ExpeditionBalanceCompletoApi,
+  type ExpedicaoRecursosCompletoApi,
+  type ProfissaoExpedicaoAdmin,
 } from "@/lib/api/admin";
 import { SimuladorBalanceamento } from "@/components/admin/SimuladorBalanceamento";
 
@@ -111,6 +116,7 @@ function AbaExpedicao({ dados, onSalvo }: { dados: ExpeditionBalanceCompletoApi;
       <CardProgressao atual={dados["expedition.progression"].atual} onSalvo={onSalvo} />
       <CardDrops atual={dados["expedition.drops"].atual} onSalvo={onSalvo} />
       <CardEmboscada atual={dados["expedition.ambush"].atual} onSalvo={onSalvo} />
+      <CardRecursos />
     </div>
   );
 }
@@ -449,6 +455,218 @@ function CardEmboscada({ atual, onSalvo }: { atual: EmboscadaBalance; onSalvo: (
         </button>
       </div>
     </div>
+  );
+}
+
+const PROFISSOES_RECURSO: [ProfissaoExpedicaoAdmin, string][] = [
+  ["Mineracao", "Mineração"],
+  ["Silvicultura", "Silvicultura"],
+  ["Exploracao", "Exploração"],
+];
+
+// Pedido do jogador: "poder escolher que tipos de drops caem na
+// exploração" — admin liga/desliga um recurso inteiro (ativo) e ajusta
+// o peso relativo dele dentro de cada região (0 = nunca cai ali, sem
+// precisar desligar o recurso inteiro pras outras regiões). Mesma tela
+// serve Mineração/Silvicultura por ter a estrutura idêntica.
+function CardRecursos() {
+  const [profissao, setProfissao] = useState<ProfissaoExpedicaoAdmin>("Exploracao");
+  const [dados, setDados] = useState<ExpedicaoRecursosCompletoApi | null>(null);
+  const [carregando, setCarregando] = useState(true);
+  const [erro, setErro] = useState("");
+  const [mensagem, setMensagem] = useState("");
+  const [salvandoChave, setSalvandoChave] = useState<string | null>(null);
+
+  const carregar = useCallback(async (p: ProfissaoExpedicaoAdmin) => {
+    setCarregando(true);
+    setErro("");
+    try {
+      setDados(await listarExpedicaoRecursosAdmin(p));
+    } catch (error) {
+      setErro(mensagemDeErroAdmin(error, "Não foi possível carregar os recursos."));
+    } finally {
+      setCarregando(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    carregar(profissao);
+  }, [profissao, carregar]);
+
+  async function alternarAtivo(idRecurso: number, ativoAtual: boolean) {
+    const chave = `ativo-${idRecurso}`;
+    setSalvandoChave(chave);
+    setErro("");
+    setMensagem("");
+    try {
+      await atualizarExpedicaoRecursoAtivoAdmin(idRecurso, !ativoAtual);
+      setMensagem("Salvo.");
+      await carregar(profissao);
+    } catch (error) {
+      setErro(mensagemDeErroAdmin(error, "Não foi possível atualizar o recurso."));
+    } finally {
+      setSalvandoChave(null);
+    }
+  }
+
+  async function salvarPeso(idRegiao: number, idRecurso: number, peso: number) {
+    const chave = `peso-${idRegiao}-${idRecurso}`;
+    setSalvandoChave(chave);
+    setErro("");
+    setMensagem("");
+    try {
+      await atualizarExpedicaoPesoNaRegiaoAdmin(idRegiao, idRecurso, peso);
+      setMensagem("Salvo.");
+      await carregar(profissao);
+    } catch (error) {
+      setErro(mensagemDeErroAdmin(error, "Não foi possível atualizar o peso."));
+    } finally {
+      setSalvandoChave(null);
+    }
+  }
+
+  return (
+    <div className={CARD}>
+      <p className="mb-1 font-imFeel text-xl text-[#F3B43F]">Recursos por região</p>
+      <p className="mb-3 text-xs text-white/50">
+        Liga/desliga um recurso inteiro (some de TODAS as regiões onde aparece) e ajusta o peso relativo de cada um
+        dentro de uma região específica — peso maior cai mais, 0 nunca cai ali. A % mostrada já considera só os
+        recursos ativos, igual o sorteio de verdade.
+      </p>
+
+      <div className="mb-3 flex flex-wrap gap-2">
+        {PROFISSOES_RECURSO.map(([valor, rotulo]) => (
+          <button
+            key={valor}
+            type="button"
+            onClick={() => setProfissao(valor)}
+            className={`rounded-lg px-3 py-1.5 text-xs font-bold uppercase tracking-widest transition ${
+              profissao === valor ? "bg-[#BC8418] text-black" : "border border-white/20 text-white/70 hover:bg-white/10"
+            }`}
+          >
+            {rotulo}
+          </button>
+        ))}
+      </div>
+
+      <CardMensagem erro={erro} mensagem={mensagem} />
+
+      {carregando ? (
+        <p className="text-xs text-white/50">Carregando...</p>
+      ) : !dados ? (
+        <p className="text-xs text-red-400">Falha ao carregar.</p>
+      ) : (
+        <div className="flex flex-col gap-4">
+          {dados.regioes.length === 0 ? (
+            <p className="text-xs text-white/50">Nenhuma região cadastrada pra essa profissão.</p>
+          ) : (
+            dados.regioes.map((regiao) => (
+              <div key={regiao.id} className="rounded-lg border border-white/10 p-3">
+                <p className="mb-2 text-sm font-bold text-white">
+                  {regiao.nome} <span className="font-normal text-white/40">(nível mín. {regiao.nivel_minimo})</span>
+                </p>
+                {regiao.recursos.length === 0 ? (
+                  <p className="text-xs text-white/50">Nenhum recurso vinculado a essa região.</p>
+                ) : (
+                  <table className="w-full text-left text-xs text-white">
+                    <thead>
+                      <tr className="text-white/50">
+                        <th className="px-2 py-1">Recurso</th>
+                        <th className="px-2 py-1">Ativo</th>
+                        <th className="px-2 py-1">Peso</th>
+                        <th className="px-2 py-1">% nessa região</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {regiao.recursos.map((recurso) => (
+                        <LinhaRecursoDaRegiao
+                          key={recurso.id_recurso}
+                          recurso={recurso}
+                          salvando={
+                            salvandoChave === `ativo-${recurso.id_recurso}` ||
+                            salvandoChave === `peso-${regiao.id}-${recurso.id_recurso}`
+                          }
+                          onAlternarAtivo={() => alternarAtivo(recurso.id_recurso, recurso.ativo)}
+                          onSalvarPeso={(peso) => salvarPeso(regiao.id, recurso.id_recurso, peso)}
+                        />
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            ))
+          )}
+
+          {dados.recursos_sem_regiao.length > 0 && (
+            <div className="rounded-lg border border-yellow-500/30 bg-yellow-900/10 p-3">
+              <p className="mb-1 text-xs font-bold uppercase tracking-widest text-yellow-400">
+                Sem vínculo com nenhuma região
+              </p>
+              <p className="mb-2 text-[10px] text-white/50">
+                Esses recursos nunca caem em lugar nenhum (mesmo ativos) até serem vinculados a uma região.
+              </p>
+              <ul className="flex flex-wrap gap-2 text-xs text-white/70">
+                {dados.recursos_sem_regiao.map((r) => (
+                  <li key={r.id} className="rounded-full border border-white/20 px-2 py-0.5">
+                    {r.nome}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function LinhaRecursoDaRegiao({
+  recurso,
+  salvando,
+  onAlternarAtivo,
+  onSalvarPeso,
+}: {
+  recurso: { id_recurso: number; nome: string; ativo: boolean; peso: number; peso_percentual: number };
+  salvando: boolean;
+  onAlternarAtivo: () => void;
+  onSalvarPeso: (peso: number) => void;
+}) {
+  const [peso, setPeso] = useState(recurso.peso);
+
+  useEffect(() => {
+    setPeso(recurso.peso);
+  }, [recurso.peso]);
+
+  return (
+    <tr className={`border-b border-white/5 ${!recurso.ativo ? "opacity-40" : ""}`}>
+      <td className="px-2 py-1">{recurso.nome}</td>
+      <td className="px-2 py-1">
+        <input type="checkbox" checked={recurso.ativo} disabled={salvando} onChange={onAlternarAtivo} />
+      </td>
+      <td className="px-2 py-1">
+        <div className="flex items-center gap-1">
+          <input
+            type="number"
+            min={0}
+            disabled={salvando}
+            className="w-16 rounded border border-white/20 bg-black/30 px-1 py-0.5 text-xs text-white disabled:opacity-50"
+            value={peso}
+            onChange={(e) => setPeso(Number(e.target.value))}
+          />
+          {peso !== recurso.peso && (
+            <button
+              type="button"
+              disabled={salvando}
+              onClick={() => onSalvarPeso(peso)}
+              className="text-[#F3B43F] hover:underline disabled:opacity-40"
+            >
+              Salvar
+            </button>
+          )}
+        </div>
+      </td>
+      <td className="px-2 py-1 text-white/70">{recurso.peso_percentual}%</td>
+    </tr>
   );
 }
 
