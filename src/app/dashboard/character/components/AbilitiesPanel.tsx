@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import axiosInstance from "@/utils/axiosIntance";
 import { resolveMediaUrl } from "@/utils/media-url";
 
@@ -236,6 +236,18 @@ export default function AbilitiesPanel({ characterId }: { characterId: number })
   const [evoluindoId, setEvoluindoId] = useState<number | null>(null);
   const [comprandoId, setComprandoId] = useState<number | null>(null);
   const [selecionado, setSelecionado] = useState<PoderApi | null>(null);
+  const detalheRef = useRef<HTMLDivElement | null>(null);
+
+  // Com 6 grades empilhadas (até ~1000px no mobile), clicar numa
+  // habilidade lá em cima sem rolar a tela fazia o jogador achar que o
+  // clique não fez nada — o detalhe só aparece no fim de tudo.
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- só precisa
+  // re-rolar quando o ID selecionado muda, não a cada novo objeto `poder`
+  useEffect(() => {
+    if (selecionado) {
+      detalheRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+  }, [selecionado?.id_power]);
 
   const carregar = useCallback(async () => {
     try {
@@ -385,13 +397,15 @@ export default function AbilitiesPanel({ characterId }: { characterId: number })
       )}
 
       {selecionadoAtual && (
-        <DetalheDoPoder
-          poder={selecionadoAtual}
-          evoluindo={evoluindoId === selecionadoAtual.id_character_ability}
-          onEvoluir={() => evoluir(selecionadoAtual)}
-          comprando={comprandoId === selecionadoAtual.id_power}
-          onComprar={() => comprar(selecionadoAtual)}
-        />
+        <div ref={detalheRef}>
+          <DetalheDoPoder
+            poder={selecionadoAtual}
+            evoluindo={evoluindoId === selecionadoAtual.id_character_ability}
+            onEvoluir={() => evoluir(selecionadoAtual)}
+            comprando={comprandoId === selecionadoAtual.id_power}
+            onComprar={() => comprar(selecionadoAtual)}
+          />
+        </div>
       )}
     </div>
   );

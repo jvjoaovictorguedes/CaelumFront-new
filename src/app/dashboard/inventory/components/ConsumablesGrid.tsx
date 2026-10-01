@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import axiosInstance from "@/utils/axiosIntance";
 import { resolveMediaUrl } from "@/utils/media-url";
 import { useCharacter } from "@/contexts/CharacterContext";
@@ -67,6 +67,16 @@ export default function ConsumablesGrid({ characterId }: { characterId: number }
   const [mensagem, setMensagem] = useState("");
   const [selecionado, setSelecionado] = useState<number | null>(null);
   const [criterio, setCriterio] = useState<CriterioOrdenacaoInventario>("raridade");
+  const detalheRef = useRef<HTMLDivElement | null>(null);
+
+  // Com muitos consumíveis a grade cresce bastante — sem isso, tocar num
+  // item lá em cima não rolava a tela até o painel "Usar" que aparece
+  // embaixo de tudo.
+  useEffect(() => {
+    if (selecionado !== null) {
+      detalheRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+  }, [selecionado]);
 
   const carregar = useCallback(async () => {
     try {
@@ -190,7 +200,10 @@ export default function ConsumablesGrid({ characterId }: { characterId: number }
           </div>
 
           {selecionadoEntrada && (
-            <div className="mt-4 flex flex-col items-center gap-2 border-t border-white/10 pt-3">
+            <div
+              ref={detalheRef}
+              className="mt-4 flex flex-col items-center gap-2 border-t border-white/10 pt-3"
+            >
               <span className="text-sm font-bold">{selecionadoEntrada.Item.nome}</span>
               <StatsDoConsumivel item={selecionadoEntrada.Item} />
               <button
