@@ -245,6 +245,19 @@ interface RespostaCombate {
     criticoJogador?: boolean;
     criticoInimigo?: boolean;
 
+    // Dano de ataque/poder separado do dano de status effect (DoT) —
+    // ausentes em respostas antigas (compatibilidade), tratados como 0
+    // nesse caso (ver cálculo de fallback em executarAcao/
+    // tocarAnimacaoDoTurno). Bug relatado: o dano do status effect
+    // (Queimadura/Sangramento/Veneno) estava sendo somado ao dano do
+    // golpe num único número flutuante, como se tivesse vindo do
+    // ataque/arma/atributo — o status deve aparecer separado, só no
+    // fim do turno de quem carrega o efeito (combatController.js).
+    danoCausadoNoInimigo?: number;
+    danoStatusInimigo?: number;
+    danoRecebidoContraAtaque?: number;
+    danoStatusJogador?: number;
+
     // Progresso da Caçada ativa cujo alvo é exatamente o monstro morto
     // nesta vitória — null se o monstro não contava pra nenhuma Caçada
     // Ativa do personagem (ver adventureHuntCombatService.js).
@@ -755,6 +768,15 @@ export default function CombatArena({
     danoInimigo,
     vidaAposAcaoJogador,
 
+    // Dano de status effect (DoT) separado do dano de ataque/poder —
+    // bug relatado: os dois estavam sendo somados num único número
+    // flutuante, como se o status tivesse saído do golpe/arma/atributo
+    // do atacante. Cada um tica no FIM do turno de quem o carrega
+    // (ver combatController.js), então aparece como um número à parte,
+    // depois do golpe/contra-ataque daquele turno — nunca junto.
+    danoStatusJogador,
+    danoStatusInimigo,
+
     usouCura,
     usouManaPotion,
     manaRecebida,
@@ -774,11 +796,16 @@ export default function CombatArena({
 
     danoInimigo: number;
     // Vida do jogador logo após A PRÓPRIA ação (cura de poder/item ou
-    // nenhuma, se foi ataque), ainda sem o contra-ataque do inimigo —
-    // ver combatController.js (vida_apos_sua_acao). Usado pra separar
-    // visualmente "quanto eu curei" de "quanto o inimigo me tirou",
-    // em vez de só mostrar o saldo líquido do turno inteiro.
+    // nenhuma, se foi ataque) MAIS o tick de status do próprio jogador
+    // (Queimadura/Sangramento/Veneno que ELE carrega), ainda sem o
+    // contra-ataque do inimigo — ver combatController.js
+    // (vida_apos_sua_acao). Usado pra separar visualmente "quanto eu
+    // curei" de "quanto o inimigo me tirou", em vez de só mostrar o
+    // saldo líquido do turno inteiro.
     vidaAposAcaoJogador: number;
+
+    danoStatusJogador: number;
+    danoStatusInimigo: number;
 
     usouCura: boolean;
     // Poção de mana também não avança pra golpear (é um efeito sobre si
@@ -802,13 +829,18 @@ export default function CombatArena({
     // avançam até a distância de combate.
     const ficaParado = usouCura || usouManaPotion;
 
+    // Vida do jogador logo após a PRÓPRIA ação, ANTES do tick de status
+    // dele (vidaAposAcaoJogador já vem com o tick descontado — ver
+    // combatController.js) — isola a cura de verdade do dano de status,
+    // pra um dos dois nunca "engolir" o outro visualmente.
+    const vidaAntesDoTickJogador = vidaAposAcaoJogador + danoStatusJogador;
     // Cura de verdade (poder ou item) desse turno — independente do que
     // o inimigo faz em seguida. Antes disso, a cura só aparecia na tela
     // quando o SALDO do turno inteiro (cura menos o contra-ataque) desse
     // positivo — se o inimigo batesse mais forte que a cura, a poção
     // "sumia" da tela mesmo tendo funcionado (log dizia que curou, a
     // vida não subia visivelmente nunca).
-    const curaRecebida = Math.max(0, vidaAposAcaoJogador - vidaAtual);
+    const curaRecebida = Math.max(0, vidaAntesDoTickJogador - vidaAtual);
     // Dano real do contra-ataque do inimigo NESTE turno — não mais
     // inferido do saldo líquido (que confundia "esquivei" com "curei
     // mais do que apanhei"). "usouCura" nunca mais implica imunidade: o
@@ -828,6 +860,17 @@ export default function CombatArena({
       // refletia o saldo do turno inteiro lá no final (depois do
       // contra-ataque), e uma cura real podia nunca aparecer visível
       // na tela quando o inimigo batia mais forte que ela em seguida.
+      setVidaAtual(vidaAntesDoTickJogador);
+      await espera(400);
+    }
+
+    // Tick de status (Queimadura/Sangramento/Veneno) do PRÓPRIO jogador
+    // — acontece no fim do turno DELE (depois da ação, antes do
+    // contra-ataque do inimigo, ver combatController.js), então aparece
+    // aqui como número à parte, nunca somado à cura nem ao contra-ataque
+    // que vem a seguir.
+    if (danoStatusJogador > 0) {
+      triggerFloatingText("player", `-${danoStatusJogador} EFEITO`, "#b15cff");
       setVidaAtual(vidaAposAcaoJogador);
       await espera(400);
     }
@@ -879,10 +922,15 @@ export default function CombatArena({
       );
     }
 
-    // A barra de vida do inimigo só reflete o novo valor aqui, no
-    // instante em que o golpe visualmente chega (depois da caminhada) —
-    // ver comentário no cabeçalho da função.
-    setEnemy(novoEnemy);
+    // A barra de vida do inimigo só reflete o dano do GOLPE aqui, no
+    // instante em que ele visualmente chega (depois da caminhada) — o
+    // tick de status do próprio inimigo (se houver) só é mostrado mais
+    // abaixo, separado, no fim do turno dele (ver bloco logo antes do
+    // fim desta função).
+    const vidaInimigoAntesDoTick = novoEnemy.vida_atual + danoStatusInimigo;
+    setEnemy(
+      acabouNaVitoria ? novoEnemy : { ...novoEnemy, vida_atual: vidaInimigoAntesDoTick },
+    );
 
     const duracaoAcaoJogador = duracaoVisual(
       pastaSpriteJogador,
@@ -967,6 +1015,16 @@ export default function CombatArena({
 
     await espera(Math.max(duracaoAtaqueInimigo, duracaoReacaoJogador));
 
+    // Tick de status (Queimadura/Sangramento/Veneno) do PRÓPRIO inimigo
+    // — fim do turno DELE, depois do contra-ataque (mesma regra do
+    // tick do jogador lá em cima) — nunca somado ao dano do golpe que
+    // mostramos antes, mesmo quando os dois acontecem no mesmo turno.
+    if (danoStatusInimigo > 0) {
+      triggerFloatingText("enemy", `-${danoStatusInimigo} EFEITO`, "#b15cff");
+      setEnemy(novoEnemy);
+      await espera(400);
+    }
+
     setIsShieldActive(false);
     setIsManaGlowActive(false);
 
@@ -1046,7 +1104,17 @@ export default function CombatArena({
 
       const data = response.data.data;
 
-      const danoInimigo = enemy.vida_atual - data.enemy.vida_atual;
+      // Dano do golpe (ataque/poder) separado do tick de status effect
+      // (DoT) do inimigo — bug relatado: antes inferíamos um único
+      // número pela diferença de vida_atual, que já vinha com os dois
+      // somados (golpe do jogador + Queimadura/Sangramento/Veneno que o
+      // inimigo carregava), como se o status tivesse saído da própria
+      // arma/atributo do ataque. Fallback pro cálculo antigo só pra
+      // respostas de servidor sem os campos novos (compatibilidade).
+      const danoInimigo =
+        data.danoCausadoNoInimigo ?? Math.max(0, enemy.vida_atual - data.enemy.vida_atual);
+      const danoStatusInimigo = data.danoStatusInimigo ?? 0;
+      const danoStatusJogador = data.danoStatusJogador ?? 0;
 
       const inimigoLevouDano = danoInimigo > 0;
 
@@ -1130,6 +1198,9 @@ export default function CombatArena({
         // Ausente em respostas antigas (compatibilidade) — sem contra-
         // ataque separado pra mostrar, cai direto pro valor final.
         vidaAposAcaoJogador: data.character.vida_apos_sua_acao ?? data.character.vida_atual,
+
+        danoStatusJogador,
+        danoStatusInimigo,
 
         usouCura,
         usouManaPotion,
