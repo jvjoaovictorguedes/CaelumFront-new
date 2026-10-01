@@ -9,6 +9,7 @@ import { useContextMusic } from "@/hooks/useContextMusic";
 import CombatActionBar, {
   type ConsumivelAcao,
 } from "@/components/combat/CombatActionBar";
+import MissionsPanel, { type CacadaAtivaInfo } from "@/components/combat/MissionsPanel";
 import {
   StatusIconsRow,
   NOME_POR_STATUS,
@@ -244,6 +245,18 @@ interface RespostaCombate {
     criticoJogador?: boolean;
     criticoInimigo?: boolean;
 
+    // Progresso da Caçada ativa cujo alvo é exatamente o monstro morto
+    // nesta vitória — null se o monstro não contava pra nenhuma Caçada
+    // Ativa do personagem (ver adventureHuntCombatService.js).
+    huntUpdate?: {
+      huntId: number;
+      progress: number;
+      quantityRequired: number;
+      completed: boolean;
+      goldReward: number | null;
+      reputationReward: number | null;
+    } | null;
+
     // Presente só na vitória que derrota o ÚLTIMO monstro que faltava
     // descobrir na área (Bestiário) — null em qualquer outra vitória.
     bestiarioCompletoAgora?: {
@@ -430,6 +443,40 @@ export default function CombatArena({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [character.id]);
+
+  // Painel de Missões em andamento (sugestão de jogador — k4zUt0): busca
+  // a Caçada Ativa uma vez ao entrar na tela — o progresso turno a turno
+  // depois vem de graça no `huntUpdate` de cada resposta de combate
+  // (ver executarAcao), sem precisar de polling nem de socket novo.
+  const [cacadaAtiva, setCacadaAtiva] = useState<CacadaAtivaInfo | null>(null);
+
+  useEffect(() => {
+    let cancelado = false;
+
+    async function carregarCacadaAtiva() {
+      try {
+        const resp = await axiosInstance.get<{
+          data?: {
+            activeHunt?: {
+              id: number;
+              target: { nome: string; imagem_url?: string | null } | null;
+              progress: number;
+              quantityRequired: number;
+              difficultyLabel?: string | null;
+            } | null;
+          };
+        }>("/adventure-guild/hunt");
+        if (!cancelado) setCacadaAtiva(resp.data?.data?.activeHunt ?? null);
+      } catch (error) {
+        console.error("Erro ao carregar caçada ativa:", error);
+      }
+    }
+
+    carregarCacadaAtiva();
+    return () => {
+      cancelado = true;
+    };
+  }, []);
 
   const [animJogador, setAnimJogador] = useState<EstadoAnimacao>("idle");
 
@@ -890,6 +937,23 @@ export default function CombatArena({
 
       setLog((atual) => [...atual, ...data.log]);
 
+      // Progresso da Caçada ativa atualizado de graça aqui, sem round-trip
+      // extra — ver comentário no estado `cacadaAtiva` acima.
+      if (data.huntUpdate) {
+        const huntUpdate = data.huntUpdate;
+        setCacadaAtiva((atual) => {
+          if (!atual || atual.id !== huntUpdate.huntId) return atual;
+          if (huntUpdate.completed) return null;
+          return { ...atual, progress: huntUpdate.progress, quantityRequired: huntUpdate.quantityRequired };
+        });
+        if (huntUpdate.completed) {
+          setLog((atual) => [
+            ...atual,
+            `🏹 Caçada concluída! +${huntUpdate.goldReward ?? 0} ouro, +${huntUpdate.reputationReward ?? 0} reputação.`,
+          ]);
+        }
+      }
+
       // setEnemy/setVidaAtual NÃO são commitados aqui — ficam pra
       // tocarAnimacaoDoTurno, disparados no instante em que o golpe chega
       // visualmente (ver comentário lá). O resto do personagem (mana,
@@ -1230,27 +1294,30 @@ export default function CombatArena({
               Você está Paralisado — há chance de perder a ação neste turno.
             </p>
           )}
-          <CombatActionBar
-            podeAgir={!resultado && !statusControleDuro}
-            ocupado={carregando}
-            manaAtual={manaAtual}
-            onAtaqueBasico={() => executarAcao({ type: "attack" })}
-            poderes={abilities.map((habilidade) => ({
-              id: habilidade.Power.id,
-              nome: habilidade.Power.nome,
-              imagem_url: habilidade.Power.imagem_url,
-              custo_mana: habilidade.Power.custo_mana,
-              descricao: habilidade.Power.descricao,
-              escala_atributo: habilidade.Power.escala_atributo,
-              valor_escala: habilidade.Power.valor_escala,
-            }))}
-            onUsarPoder={(powerId) => executarAcao({ type: "power", powerId })}
-            consumiveis={consumiveis}
-            onUsarConsumivel={(itemId) =>
-              executarAcao({ type: "item", itemId })
-            }
-            cooldownsPorPoder={cooldownsPorPoder}
-          />
+          <div className="flex items-end justify-between gap-3">
+            <CombatActionBar
+              podeAgir={!resultado && !statusControleDuro}
+              ocupado={carregando}
+              manaAtual={manaAtual}
+              onAtaqueBasico={() => executarAcao({ type: "attack" })}
+              poderes={abilities.map((habilidade) => ({
+                id: habilidade.Power.id,
+                nome: habilidade.Power.nome,
+                imagem_url: habilidade.Power.imagem_url,
+                custo_mana: habilidade.Power.custo_mana,
+                descricao: habilidade.Power.descricao,
+                escala_atributo: habilidade.Power.escala_atributo,
+                valor_escala: habilidade.Power.valor_escala,
+              }))}
+              onUsarPoder={(powerId) => executarAcao({ type: "power", powerId })}
+              consumiveis={consumiveis}
+              onUsarConsumivel={(itemId) =>
+                executarAcao({ type: "item", itemId })
+              }
+              cooldownsPorPoder={cooldownsPorPoder}
+            />
+            <MissionsPanel cacada={cacadaAtiva} />
+          </div>
         </div>
       )}
 
