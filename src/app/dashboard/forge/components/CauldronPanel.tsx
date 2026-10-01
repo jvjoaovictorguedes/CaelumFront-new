@@ -29,15 +29,29 @@ interface IngredienteReceita {
   quantidade_possuida: number;
 }
 
+interface FormulaFisica {
+  id_item: number;
+  nome: string | null;
+  imagem_url: string | null;
+  raridade_receita: "Comum" | "Raro" | "Lendario" | null;
+  negociavel: boolean;
+  consome_ao_aprender: boolean;
+  quantidade_possuida: number;
+  pode_aprender: boolean;
+}
+
 interface ReceitaAlquimia {
   id: number;
   key: string;
   nome: string;
+  // Livro de Fórmulas (spec §10) — DESCOBERTA ainda não conhecida vem
+  // com descricao/xp_alquimia/custo_ouro/resultado/ingredientes todos
+  // null/[] de propósito (o backend oculta, nunca o front).
   descricao: string | null;
   categoria: "POCAO" | "ANTIDOTO" | "TONICO" | "ELIXIR" | "PREPARADO";
   nivel_alquimia_minimo: number;
-  xp_alquimia: number;
-  custo_ouro: number;
+  xp_alquimia: number | null;
+  custo_ouro: number | null;
   modo_desbloqueio: "NIVEL" | "DESCOBERTA";
   resultado: {
     id_item: number;
@@ -46,8 +60,10 @@ interface ReceitaAlquimia {
     raridade: string | null;
     negociavel_mercado: boolean | null;
     quantidade: number;
-  };
+  } | null;
   ingredientes: IngredienteReceita[];
+  pista_publica: string | null;
+  formula_fisica: FormulaFisica | null;
   desbloqueada: boolean;
   motivo_bloqueio: string | null;
   max_craftable: number;
@@ -87,6 +103,7 @@ export default function CauldronPanel() {
   const [quantidades, setQuantidades] = useState<Record<number, number>>({});
   const [carregando, setCarregando] = useState(true);
   const [preparando, setPreparando] = useState<number | null>(null);
+  const [aprendendo, setAprendendo] = useState<number | null>(null);
   const { mostrarErro, mostrarSucesso } = useToast();
 
   const carregar = useCallback(async () => {
@@ -132,7 +149,7 @@ export default function CauldronPanel() {
         data?: { quantidade_produzida: number; xp_ganho: number; subiu_nivel: boolean; nivel_depois: number };
       }>(`/alchemy/recipes/${receita.id}/brew`, { quantity: quantidade, idempotencyKey });
       const dados = resp.data?.data;
-      const base = `Preparou ${dados?.quantidade_produzida ?? quantidade}x ${receita.resultado.nome ?? receita.nome}!`;
+      const base = `Preparou ${dados?.quantidade_produzida ?? quantidade}x ${receita.resultado?.nome ?? receita.nome}!`;
       mostrarSucesso(
         dados?.subiu_nivel ? `${base} Alquimia subiu para o nível ${dados.nivel_depois}!` : base,
       );
@@ -141,6 +158,25 @@ export default function CauldronPanel() {
       mostrarErro(extrairMensagemErro(error, "Não foi possível preparar essa receita."));
     } finally {
       setPreparando(null);
+    }
+  }
+
+  // Livro de Fórmulas (spec §8.2/§10) — aprender consome o pergaminho
+  // (quando consome_ao_aprender) e registra o conhecimento permanente;
+  // depois disso a receita passa a vir com os dados completos (backend
+  // já oculta/revela, o front só reconsulta — spec §10: "atualizar
+  // interface sem F5").
+  async function aprender(receita: ReceitaAlquimia) {
+    if (aprendendo || !receita.formula_fisica?.pode_aprender) return;
+    setAprendendo(receita.id);
+    try {
+      const resp = await axiosInstance.post<{ data?: { nome: string } }>(`/alchemy/recipes/${receita.id}/learn`);
+      mostrarSucesso(`Você aprendeu a fórmula de ${resp.data?.data?.nome ?? receita.nome}!`);
+      await carregar();
+    } catch (error) {
+      mostrarErro(extrairMensagemErro(error, "Não foi possível aprender essa fórmula."));
+    } finally {
+      setAprendendo(null);
     }
   }
 
@@ -173,6 +209,15 @@ export default function CauldronPanel() {
         <div className="mt-2 h-2 overflow-hidden rounded-full bg-black/50">
           <div className="h-full bg-[#F3B43F]" style={{ width: `${percentualXp}%` }} />
         </div>
+        {/* Livro de Fórmulas (spec §10) — "conhecidas / total visível": só
+            conta DESCOBERTA (NIVEL nunca é segredo, não entra nessa
+            contagem de "fórmulas a descobrir"). */}
+        {receitas.some((r) => r.modo_desbloqueio === "DESCOBERTA") && (
+          <p className="mt-2 text-xs text-white/50">
+            Fórmulas descobertas: {receitas.filter((r) => r.modo_desbloqueio === "DESCOBERTA" && r.desbloqueada).length} /{" "}
+            {receitas.filter((r) => r.modo_desbloqueio === "DESCOBERTA").length}
+          </p>
+        )}
       </div>
 
       <div className="flex flex-wrap gap-2">
@@ -199,9 +244,14 @@ export default function CauldronPanel() {
       ) : (
         receitasFiltradas.map((receita) => {
           const quantidade = quantidadeAtual(receita);
-          const src = resolveMediaUrl(receita.resultado.imagem_url);
+          const src = resolveMediaUrl(receita.resultado?.imagem_url ?? null);
           const bloqueada = !receita.desbloqueada;
           const semEstoque = receita.max_craftable <= 0;
+          // Livro de Fórmulas — DESCOBERTA ainda não conhecida nunca tem
+          // `resultado` (o backend oculta de propósito, ver spec §10);
+          // essas receitas mostram a fórmula física/pista em vez do
+          // bloco de preparo normal.
+          const oculta = receita.resultado === null;
 
           return (
             <div key={receita.id} className="rounded-2xl border-2 border-[#F3B43F] bg-[#292018]/90 p-5 text-white shadow-xl">
@@ -209,19 +259,20 @@ export default function CauldronPanel() {
                 <ItemIcon
                   imagemUrl={src}
                   nome={receita.nome}
-                  className={`h-14 w-14 shrink-0 rounded-lg border-2 bg-[#3a2f24] ${bordaPorRaridade(receita.resultado.raridade)}`}
+                  className={`h-14 w-14 shrink-0 rounded-lg border-2 bg-[#3a2f24] ${bordaPorRaridade(receita.resultado?.raridade)}`}
                   imgClassName="h-full w-full object-contain p-1.5"
                   fallback={
                     <div className="flex h-full w-full items-center justify-center text-lg font-bold text-[#F3B43F]/80">
-                      {receita.nome.charAt(0)}
+                      {oculta ? "?" : receita.nome.charAt(0)}
                     </div>
                   }
                 />
                 <div className="min-w-0 flex-1">
                   <p className="font-imFeel text-xl uppercase">{receita.nome}</p>
                   <p className="text-xs text-white/50">
-                    Resultado: {receita.resultado.nome ?? "?"} x{receita.resultado.quantidade}
-                    {" · "}Nível mínimo: {receita.nivel_alquimia_minimo}
+                    {oculta
+                      ? `Fórmula ainda não descoberta · Nível mínimo: ${receita.nivel_alquimia_minimo}`
+                      : `Resultado: ${receita.resultado?.nome ?? "?"} x${receita.resultado?.quantidade} · Nível mínimo: ${receita.nivel_alquimia_minimo}`}
                   </p>
                 </div>
                 {receita.modo_desbloqueio === "DESCOBERTA" && (
@@ -231,7 +282,11 @@ export default function CauldronPanel() {
                 )}
               </div>
 
-              {receita.descricao && <p className="mb-2 text-xs text-white/50">{receita.descricao}</p>}
+              {!oculta && receita.descricao && <p className="mb-2 text-xs text-white/50">{receita.descricao}</p>}
+
+              {oculta && receita.pista_publica && (
+                <p className="mb-2 text-xs italic text-white/60">&ldquo;{receita.pista_publica}&rdquo;</p>
+              )}
 
               {bloqueada && (
                 <p className="mb-2 rounded-md border border-red-400/40 bg-red-950/30 px-2 py-1 text-xs text-red-300">
@@ -239,34 +294,59 @@ export default function CauldronPanel() {
                 </p>
               )}
 
-              <ul className="mb-3 flex flex-col gap-1">
-                {receita.ingredientes.map((ingrediente) => {
-                  const suficiente = ingrediente.quantidade_possuida >= ingrediente.quantidade_necessaria;
-                  return (
-                    <li key={ingrediente.id_item} className="flex items-center gap-2 text-xs">
-                      <span className="truncate text-white/80">
-                        {ingrediente.quantidade_necessaria}x {ingrediente.nome ?? `Item #${ingrediente.id_item}`}
-                      </span>
-                      <span className={`ml-auto font-bold ${suficiente ? "text-green-400" : "text-red-400"}`}>
-                        {ingrediente.quantidade_possuida}/{ingrediente.quantidade_necessaria}
-                      </span>
-                    </li>
-                  );
-                })}
-                {receita.custo_ouro > 0 && (
-                  <li className="flex items-center gap-2 text-xs">
-                    <span className="text-white/80">Custo em ouro</span>
-                    <span className="ml-auto font-bold text-[#F3B43F]">{receita.custo_ouro}/lote</span>
-                  </li>
-                )}
-              </ul>
+              {oculta ? (
+                receita.formula_fisica && (
+                  <div className="mb-3 flex items-center justify-between gap-2 rounded-md border border-[#F3B43F]/30 bg-black/20 px-2 py-2 text-xs">
+                    <span className="text-white/80">
+                      Fórmula física: {receita.formula_fisica.nome ?? `Item #${receita.formula_fisica.id_item}`}
+                      {" "}
+                      ({receita.formula_fisica.quantidade_possuida > 0
+                        ? `${receita.formula_fisica.quantidade_possuida} no inventário`
+                        : "você não possui ainda"}
+                      )
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => aprender(receita)}
+                      disabled={!receita.formula_fisica.pode_aprender || aprendendo === receita.id}
+                      className="shrink-0 rounded-lg bg-[#F3B43F] px-4 py-1.5 font-bold text-black transition hover:bg-[#e0a52f] disabled:cursor-not-allowed disabled:bg-black/40 disabled:text-white/50"
+                    >
+                      {aprendendo === receita.id ? "Aprendendo..." : "Aprender"}
+                    </button>
+                  </div>
+                )
+              ) : (
+                <>
+                  <ul className="mb-3 flex flex-col gap-1">
+                    {receita.ingredientes.map((ingrediente) => {
+                      const suficiente = ingrediente.quantidade_possuida >= ingrediente.quantidade_necessaria;
+                      return (
+                        <li key={ingrediente.id_item} className="flex items-center gap-2 text-xs">
+                          <span className="truncate text-white/80">
+                            {ingrediente.quantidade_necessaria}x {ingrediente.nome ?? `Item #${ingrediente.id_item}`}
+                          </span>
+                          <span className={`ml-auto font-bold ${suficiente ? "text-green-400" : "text-red-400"}`}>
+                            {ingrediente.quantidade_possuida}/{ingrediente.quantidade_necessaria}
+                          </span>
+                        </li>
+                      );
+                    })}
+                    {!!receita.custo_ouro && receita.custo_ouro > 0 && (
+                      <li className="flex items-center gap-2 text-xs">
+                        <span className="text-white/80">Custo em ouro</span>
+                        <span className="ml-auto font-bold text-[#F3B43F]">{receita.custo_ouro}/lote</span>
+                      </li>
+                    )}
+                  </ul>
 
-              <p className="mb-2 text-xs text-white/50">
-                Pode produzir: <span className="font-bold text-white">{receita.max_craftable}</span> lote(s) · XP por
-                lote: {receita.xp_alquimia}
-              </p>
+                  <p className="mb-2 text-xs text-white/50">
+                    Pode produzir: <span className="font-bold text-white">{receita.max_craftable}</span> lote(s) · XP
+                    por lote: {receita.xp_alquimia}
+                  </p>
+                </>
+              )}
 
-              {!bloqueada && (
+              {!bloqueada && !oculta && (
                 <div className="mb-3 flex flex-wrap items-center gap-2">
                   <button
                     type="button"
@@ -315,16 +395,18 @@ export default function CauldronPanel() {
                 </div>
               )}
 
-              <div className="flex items-center justify-end">
-                <button
-                  type="button"
-                  onClick={() => preparar(receita)}
-                  disabled={bloqueada || semEstoque || preparando === receita.id}
-                  className="rounded-lg bg-[#F3B43F] px-5 py-1.5 text-sm font-bold text-black transition hover:bg-[#e0a52f] disabled:cursor-not-allowed disabled:bg-black/40 disabled:text-white/50"
-                >
-                  {preparando === receita.id ? "Preparando..." : bloqueada ? "Bloqueada" : semEstoque ? "Sem ingredientes" : "Preparar"}
-                </button>
-              </div>
+              {!oculta && (
+                <div className="flex items-center justify-end">
+                  <button
+                    type="button"
+                    onClick={() => preparar(receita)}
+                    disabled={bloqueada || semEstoque || preparando === receita.id}
+                    className="rounded-lg bg-[#F3B43F] px-5 py-1.5 text-sm font-bold text-black transition hover:bg-[#e0a52f] disabled:cursor-not-allowed disabled:bg-black/40 disabled:text-white/50"
+                  >
+                    {preparando === receita.id ? "Preparando..." : bloqueada ? "Bloqueada" : semEstoque ? "Sem ingredientes" : "Preparar"}
+                  </button>
+                </div>
+              )}
             </div>
           );
         })
