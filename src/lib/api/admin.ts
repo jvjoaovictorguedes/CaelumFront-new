@@ -36,6 +36,7 @@ export interface ConsumablePropertiesApi {
   efeito_atributo?: string | null;
   valor_atributo: number;
   duracao_efeito?: number | null;
+  efeito_reset_atributos?: boolean;
 }
 
 export interface FishingRodPropertiesApi {

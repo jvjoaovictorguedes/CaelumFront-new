@@ -10,6 +10,7 @@ import { OPCOES_ORDENACAO, ordenarInventario, type CriterioOrdenacaoInventario }
 interface ConsumablePropertiesApi {
   efeito_vida: number;
   efeito_mana: number;
+  efeito_reset_atributos?: boolean;
 }
 
 interface ItemInfo {
@@ -35,8 +36,9 @@ interface InventarioEntry {
 function StatsDoConsumivel({ item }: { item: ItemInfo }) {
   const props = item.consumableProperties;
   const temEfeitoNumerico = (props?.efeito_vida ?? 0) > 0 || (props?.efeito_mana ?? 0) > 0;
+  const resetaAtributos = props?.efeito_reset_atributos ?? false;
 
-  if (!temEfeitoNumerico && !item.descricao) return null;
+  if (!temEfeitoNumerico && !resetaAtributos && !item.descricao) return null;
 
   return (
     <div className="mt-1 flex flex-col items-center gap-1 text-center">
@@ -54,6 +56,12 @@ function StatsDoConsumivel({ item }: { item: ItemInfo }) {
           )}
         </p>
       )}
+      {resetaAtributos && (
+        <p className="text-xs">
+          <span className="font-bold text-[#F3B43F]">Reseta seus atributos</span> — devolve os
+          pontos livres pra redistribuir, nunca abaixo do mínimo da sua raça.
+        </p>
+      )}
       {item.descricao && <p className="max-w-xs text-xs text-white/60">{item.descricao}</p>}
     </div>
   );
@@ -65,6 +73,7 @@ export default function ConsumablesGrid({ characterId }: { characterId: number }
   const [carregando, setCarregando] = useState(true);
   const [usandoId, setUsandoId] = useState<number | null>(null);
   const [mensagem, setMensagem] = useState("");
+  const [sucesso, setSucesso] = useState("");
   const [selecionado, setSelecionado] = useState<number | null>(null);
   const [criterio, setCriterio] = useState<CriterioOrdenacaoInventario>("raridade");
   const detalheRef = useRef<HTMLDivElement | null>(null);
@@ -100,15 +109,32 @@ export default function ConsumablesGrid({ characterId }: { characterId: number }
     if (usandoId) return;
     setUsandoId(entrada.id_personagem_inventario);
     setMensagem("");
+    setSucesso("");
     try {
       const resp = await axiosInstance.post<{
-        data?: { character?: { vida_atual?: number; mana_atual?: number } };
+        data?: {
+          character?: {
+            vida_atual?: number;
+            mana_atual?: number;
+            forca?: number;
+            vitalidade?: number;
+            agilidade?: number;
+            inteligencia?: number;
+            velocidade?: number;
+            pontos_distribuir?: number;
+          };
+          pontosRecuperadosNoReset?: number;
+        };
       }>("/character-items/use", {
         id_personagem: characterId,
         id_item: entrada.Item.id,
         quantidade: 1,
       });
       if (resp.data?.data?.character) atualizarCharacter(resp.data.data.character);
+      const pontos = resp.data?.data?.pontosRecuperadosNoReset ?? 0;
+      setSucesso(
+        pontos > 0 ? `Atributos resetados! ${pontos} ponto(s) liberado(s) pra redistribuir.` : "",
+      );
       await carregar();
       setSelecionado(null);
     } catch (error: unknown) {
@@ -156,6 +182,7 @@ export default function ConsumablesGrid({ characterId }: { characterId: number }
       </div>
 
       {mensagem && <p className="mb-3 text-center text-sm text-red-400">{mensagem}</p>}
+      {sucesso && <p className="mb-3 text-center text-sm text-green-400">{sucesso}</p>}
 
       {itens.length === 0 ? (
         <p className="text-center text-sm text-white/50">

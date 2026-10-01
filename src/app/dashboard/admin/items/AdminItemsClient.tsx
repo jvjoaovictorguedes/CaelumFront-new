@@ -204,7 +204,7 @@ function formularioVazio(): PayloadItemAdmin {
     },
     weapon: { dano_min: 0, dano_max: 0, tipo_dano: "Fisico", tipo_arma: "Espada", bonus_atributo: "Forca", valor_bonus_atributo: 0 },
     armor: { slot_equipamento: "Cabeca", defesa: 0, bonus_forca: 0, bonus_vitalidade: 0, bonus_inteligencia: 0, bonus_agilidade: 0, bonus_velocidade: 0 },
-    consumable: { efeito_vida: 0, efeito_mana: 0, efeito_atributo: "", valor_atributo: 0, duracao_efeito: null },
+    consumable: { efeito_vida: 0, efeito_mana: 0, efeito_atributo: "", valor_atributo: 0, duracao_efeito: null, efeito_reset_atributos: false },
     fishingRod: { forca_linha: 100, controle: 100, recolhimento: 100, precisao: 100, estabilidade: 100, nivel_pesca_minimo: 1 },
     forgeTool: { slot: "Fole", nivel_ferreiro_minimo: 1, efeitos: [] },
   };
@@ -866,6 +866,21 @@ export default function AdminItemsClient() {
                     />
                   </label>
                 </div>
+                <label className="flex items-center gap-2 text-xs">
+                  <input
+                    type="checkbox"
+                    checked={form.consumable?.efeito_reset_atributos ?? false}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, consumable: { ...f.consumable!, efeito_reset_atributos: e.target.checked } }))
+                    }
+                  />
+                  Reseta atributos (devolve pontos livres, nunca abaixo do bônus da raça)
+                </label>
+                <p className="text-[10px] text-white/40">
+                  Item especial — nunca cai na loja/drop normal (deixe &ldquo;Disponível na Loja&rdquo;
+                  desmarcado e &ldquo;Negociável no Mercado&rdquo; desmarcado). Distribua só via Conceder
+                  Recompensa ou Código de Resgate. Só pode ser usado fora de combate.
+                </p>
               </fieldset>
             )}
 
