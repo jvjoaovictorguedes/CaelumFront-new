@@ -311,17 +311,8 @@ export interface BatalhaGrupoFimPayload {
 // Boss da Guilda V2.0 (batalha em tempo real) — mesmo modelo de payload
 // da Aventura em grupo acima, só trocando "inimigo"/"zona" por "chefe"
 // e sem consumíveis (o boss da guilda não aceita ação tipo "item").
-export interface MembroBossGuilda {
-  id: number;
-  nome: string;
-  classe: string | null;
-}
-
-export interface LobbyBossGuildaPayload {
-  idGuild: number;
-  participantes: MembroBossGuilda[];
-}
-
+// Sem sala de espera (pedido do jogador: "entrar tipo aventura") —
+// "guildboss:entrar" já entrega o personagem dentro da luta.
 export interface AliadoBossGuilda {
   id: number;
   nome: string;
@@ -334,6 +325,11 @@ export interface AliadoBossGuilda {
   poderes: PoderGrupo[];
 }
 
+// Mesmo formato tanto pra "batalha-iniciada" (acabou de abrir, só com
+// quem entrou primeiro) quanto pra "estado" (reconexão/resync, ou
+// entrando numa luta já em andamento) — nunca duas formas diferentes
+// de descrever a mesma luta. `turnoDe` null = fase "chefe" (telegraph
+// ou resolução do contra-ataque em andamento, ninguém pode agir).
 export interface BatalhaBossGuildaIniciadaPayload {
   battleId: number;
   nomeChefe: string;
@@ -341,9 +337,28 @@ export interface BatalhaBossGuildaIniciadaPayload {
   vidaTotal: number;
   membros: AliadoBossGuilda[];
   ordem: string[];
-  turnoDe: string;
+  turnoDe: string | null;
+  fase?: "aliados" | "chefe";
   rodada: number;
   prazoSegundos: number;
+}
+
+export interface MembroEntrouBossGuildaPayload {
+  battleId: number;
+  membro: AliadoBossGuilda;
+  ordem: string[];
+}
+
+// Telegraph do turno do chefe (ver executarTurnoChefe no backend) —
+// SEMPRE emitido antes do contra-ataque resolver, mesmo sem nenhuma
+// habilidade (nomePoder/imagemUrl null nesse caso): é o "ritmo de
+// turno" pedido igual à Ameaça Mundial, nunca resolve instantâneo.
+export interface CastStartBossGuildaPayload {
+  battleId: number;
+  nomePoder: string | null;
+  imagemUrl: string | null;
+  tempoConjuracaoMs: number;
+  rodada: number;
 }
 
 export interface TurnoBossGuildaPayload {
@@ -436,17 +451,18 @@ interface PvpSocketContextValue {
   agirGrupo: (tipo: "attack" | "power" | "item", id?: number) => void;
   limparBatalhaGrupo: () => void;
   limparErroParty: () => void;
-  // Boss da Guilda V2.0 (batalha em tempo real)
-  lobbyBossGuilda: LobbyBossGuildaPayload | null;
+  // Boss da Guilda V2.0 (batalha em tempo real) — sem sala de espera,
+  // "entrarNoBossGuilda" já entrega dentro da luta (ver comentário em
+  // BatalhaBossGuildaIniciadaPayload).
   erroBossGuilda: string;
   batalhaBossGuilda: BatalhaBossGuildaIniciadaPayload | null;
   turnosBossGuilda: TurnoBossGuildaPayload[];
   turnoAtualBossGuilda: string | null;
   rodadaAtualBossGuilda: number;
+  castBossGuilda: CastStartBossGuildaPayload | null;
   resultadoBossGuilda: BatalhaBossGuildaFimPayload | null;
   entrarNoBossGuilda: () => void;
   sairDoBossGuilda: () => void;
-  iniciarBossGuildaAoVivo: () => void;
   agirBossGuilda: (tipo: "attack" | "power", idPoder?: number) => void;
   limparBatalhaBossGuilda: () => void;
   limparErroBossGuilda: () => void;
@@ -491,12 +507,12 @@ export function PvpSocketProvider({
   const [turnoAtualGrupo, setTurnoAtualGrupo] = useState<string | null>(null);
   const [rodadaAtualGrupo, setRodadaAtualGrupo] = useState(1);
   const [resultadoGrupo, setResultadoGrupo] = useState<BatalhaGrupoFimPayload | null>(null);
-  const [lobbyBossGuilda, setLobbyBossGuilda] = useState<LobbyBossGuildaPayload | null>(null);
   const [erroBossGuilda, setErroBossGuilda] = useState("");
   const [batalhaBossGuilda, setBatalhaBossGuilda] = useState<BatalhaBossGuildaIniciadaPayload | null>(null);
   const [turnosBossGuilda, setTurnosBossGuilda] = useState<TurnoBossGuildaPayload[]>([]);
   const [turnoAtualBossGuilda, setTurnoAtualBossGuilda] = useState<string | null>(null);
   const [rodadaAtualBossGuilda, setRodadaAtualBossGuilda] = useState(1);
+  const [castBossGuilda, setCastBossGuilda] = useState<CastStartBossGuildaPayload | null>(null);
   const [resultadoBossGuilda, setResultadoBossGuilda] = useState<BatalhaBossGuildaFimPayload | null>(null);
 
   useEffect(() => {
@@ -718,26 +734,43 @@ export function PvpSocketProvider({
       setErroParty(mensagem);
     });
 
-    // Boss da Guilda V2.0 (batalha em tempo real)
-    socket.on("guildboss:lobby-atualizada", (payload: LobbyBossGuildaPayload) => {
-      setLobbyBossGuilda(payload);
-    });
-
-    socket.on("guildboss:sala-desfeita", () => {
-      setLobbyBossGuilda(null);
-    });
-
+    // Boss da Guilda V2.0 (batalha em tempo real) — sem sala de espera,
+    // "entrar" já devolve direto dentro da luta (ver comentário em
+    // BatalhaBossGuildaIniciadaPayload).
     socket.on("guildboss:batalha-iniciada", (payload: BatalhaBossGuildaIniciadaPayload) => {
-      setLobbyBossGuilda(null);
       setResultadoBossGuilda(null);
       setTurnosBossGuilda([]);
+      setCastBossGuilda(null);
       setBatalhaBossGuilda(payload);
       setTurnoAtualBossGuilda(payload.turnoDe);
       setRodadaAtualBossGuilda(payload.rodada);
     });
 
+    // Reconexão/F5/segunda aba OU entrando numa luta já em andamento —
+    // MESMO formato de "batalha-iniciada" (ver montarEstadoBatalha no
+    // backend), nunca um shape próprio.
+    socket.on("guildboss:estado", (payload: BatalhaBossGuildaIniciadaPayload) => {
+      setResultadoBossGuilda(null);
+      setTurnosBossGuilda([]);
+      setCastBossGuilda(null);
+      setBatalhaBossGuilda(payload);
+      setTurnoAtualBossGuilda(payload.turnoDe);
+      setRodadaAtualBossGuilda(payload.rodada);
+    });
+
+    // Outro membro da guilda entrou no meio da luta — soma na lista de
+    // aliados em vez de substituir o estado inteiro.
+    socket.on("guildboss:membro-entrou", (payload: MembroEntrouBossGuildaPayload) => {
+      setBatalhaBossGuilda((atual) => {
+        if (!atual || atual.battleId !== payload.battleId) return atual;
+        if (atual.membros.some((m) => m.id === payload.membro.id)) return atual;
+        return { ...atual, membros: [...atual.membros, payload.membro], ordem: payload.ordem };
+      });
+    });
+
     socket.on("guildboss:turno-resultado", (payload: TurnoBossGuildaPayload) => {
       setTurnosBossGuilda((atual) => [...atual, payload]);
+      setCastBossGuilda(null);
     });
 
     socket.on("guildboss:proximo-turno", (payload: ProximoTurnoBossGuildaPayload) => {
@@ -745,8 +778,17 @@ export function PvpSocketProvider({
       setRodadaAtualBossGuilda(payload.rodada);
     });
 
+    // Telegraph do contra-ataque do chefe (ver executarTurnoChefe no
+    // backend) — SEMPRE chega antes do "turno-resultado" de origem
+    // "chefe", mesmo sem nenhuma habilidade (ritmo de turno igual à
+    // Ameaça Mundial).
+    socket.on("guildboss:cast-start", (payload: CastStartBossGuildaPayload) => {
+      setCastBossGuilda(payload);
+    });
+
     socket.on("guildboss:batalha-fim", (payload: BatalhaBossGuildaFimPayload) => {
       setResultadoBossGuilda(payload);
+      setCastBossGuilda(null);
     });
 
     socket.on("guildboss:erro", ({ mensagem }: { mensagem: string }) => {
@@ -875,11 +917,6 @@ export function PvpSocketProvider({
 
   const sairDoBossGuilda = useCallback(() => {
     socketRef.current?.emit("guildboss:sair");
-    setLobbyBossGuilda(null);
-  }, []);
-
-  const iniciarBossGuildaAoVivo = useCallback(() => {
-    socketRef.current?.emit("guildboss:iniciar");
   }, []);
 
   const agirBossGuilda = useCallback((tipo: "attack" | "power", idPoder?: number) => {
@@ -890,6 +927,7 @@ export function PvpSocketProvider({
     setBatalhaBossGuilda(null);
     setTurnosBossGuilda([]);
     setTurnoAtualBossGuilda(null);
+    setCastBossGuilda(null);
     setResultadoBossGuilda(null);
   }, []);
 
@@ -938,16 +976,15 @@ export function PvpSocketProvider({
         agirGrupo,
         limparBatalhaGrupo,
         limparErroParty,
-        lobbyBossGuilda,
         erroBossGuilda,
         batalhaBossGuilda,
         turnosBossGuilda,
         turnoAtualBossGuilda,
         rodadaAtualBossGuilda,
+        castBossGuilda,
         resultadoBossGuilda,
         entrarNoBossGuilda,
         sairDoBossGuilda,
-        iniciarBossGuildaAoVivo,
         agirBossGuilda,
         limparBatalhaBossGuilda,
         limparErroBossGuilda,

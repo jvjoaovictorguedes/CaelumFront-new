@@ -30,6 +30,7 @@ export default function GuildBossLiveArena() {
     limparBatalhaBossGuilda,
     erroBossGuilda,
     limparErroBossGuilda,
+    castBossGuilda,
   } = usePvpSocket();
 
   const [vidaChefe, setVidaChefe] = useState(0);
@@ -51,17 +52,39 @@ export default function GuildBossLiveArena() {
   // enquanto uma ação já estava a caminho do servidor.
   const [aguardandoResposta, setAguardandoResposta] = useState(false);
   const ultimoIndexRef = useRef(0);
+  const battleIdRef = useRef<number | null>(null);
 
+  // Sem sala de espera, gente pode entrar no meio da luta a qualquer
+  // momento (guildboss:membro-entrou) — isso também atualiza
+  // `batalhaBossGuilda` (novo `membros`/`ordem`), então só zera todo o
+  // estado visual (HP/mana/floating/cooldowns de quem já tava lutando)
+  // quando É uma luta nova de verdade (battleId mudou); se for só
+  // alguém entrando, apenas inicializa o HP/mana de quem chegou agora.
   useEffect(() => {
     if (!batalhaBossGuilda) return;
-    setVidaChefe(batalhaBossGuilda.vidaAtual);
-    setVidasAliados(Object.fromEntries(batalhaBossGuilda.membros.map((m) => [m.id, m.vida])));
-    setManasAliados(Object.fromEntries(batalhaBossGuilda.membros.map((m) => [m.id, m.mana])));
-    setFloatingChefe([]);
-    setFloatingAliados({});
-    setCooldownsPorPersonagem({});
-    setAguardandoResposta(false);
-    ultimoIndexRef.current = 0;
+    const lutaNova = battleIdRef.current !== batalhaBossGuilda.battleId;
+    battleIdRef.current = batalhaBossGuilda.battleId;
+
+    if (lutaNova) {
+      setVidaChefe(batalhaBossGuilda.vidaAtual);
+      setVidasAliados(Object.fromEntries(batalhaBossGuilda.membros.map((m) => [m.id, m.vida])));
+      setManasAliados(Object.fromEntries(batalhaBossGuilda.membros.map((m) => [m.id, m.mana])));
+      setFloatingChefe([]);
+      setFloatingAliados({});
+      setCooldownsPorPersonagem({});
+      setAguardandoResposta(false);
+      ultimoIndexRef.current = 0;
+      return;
+    }
+
+    setVidasAliados((atual) => {
+      const faltando = batalhaBossGuilda.membros.filter((m) => !(m.id in atual));
+      return faltando.length === 0 ? atual : { ...atual, ...Object.fromEntries(faltando.map((m) => [m.id, m.vida])) };
+    });
+    setManasAliados((atual) => {
+      const faltando = batalhaBossGuilda.membros.filter((m) => !(m.id in atual));
+      return faltando.length === 0 ? atual : { ...atual, ...Object.fromEntries(faltando.map((m) => [m.id, m.mana])) };
+    });
   }, [batalhaBossGuilda]);
 
   // Assim que o turno muda de mão (o servidor já processou a rodada
@@ -348,6 +371,11 @@ export default function GuildBossLiveArena() {
               onUsarConsumivel={() => {}}
               cooldownsPorPoder={cooldownsPorPersonagem[meuId ?? -1] ?? {}}
             />
+          ) : castBossGuilda && castBossGuilda.battleId === batalhaBossGuilda.battleId ? (
+            <p className="pb-4 text-center text-sm font-bold text-[#F3B43F] animate-pulse">
+              {batalhaBossGuilda.nomeChefe} se prepara
+              {castBossGuilda.nomePoder ? ` para usar ${castBossGuilda.nomePoder}` : " para atacar"}...
+            </p>
           ) : (
             <p className="pb-4 text-center text-sm text-white/70">
               Aguardando o turno de{" "}

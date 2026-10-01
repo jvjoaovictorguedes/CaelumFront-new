@@ -58,13 +58,10 @@ export default function GuildBossTab({
   pode: Record<Permissao, boolean>;
 }) {
   const {
-    lobbyBossGuilda,
     erroBossGuilda,
     batalhaBossGuilda,
     resultadoBossGuilda,
     entrarNoBossGuilda,
-    sairDoBossGuilda,
-    iniciarBossGuildaAoVivo,
     limparErroBossGuilda,
   } = usePvpSocket();
 
@@ -182,42 +179,19 @@ export default function GuildBossTab({
                   <div className="mt-4 rounded-lg border border-[#F3B43F]/30 bg-black/20 p-3">
                     <p className="text-xs uppercase tracking-widest text-[#F3B43F]/80">Atacar o Boss</p>
                     <p className="mt-1 text-xs text-white/60">
-                      Entre numa sala com outros membros online e enfrentem o Boss em tempo real — ele
-                      revida com dano crescente a cada rodada. Consumíveis não podem ser usados aqui.
-                      Depois de lutar, espere 20min pra atacar de novo.
+                      Entre direto na luta — se já tem gente da guilda atacando, você entra no fim da
+                      fila de turnos; senão, abre a luta sozinho e mais gente pode entrar depois, a
+                      qualquer momento. O Boss revida com dano crescente a cada rodada. Consumíveis não
+                      podem ser usados aqui. Depois de lutar, espere 20min pra atacar de novo.
                     </p>
 
-                    {lobbyBossGuilda ? (
-                      <div className="mt-2">
-                        <p className="text-xs text-white/60">
-                          Na sala: {lobbyBossGuilda.participantes.map((p) => p.nome).join(", ")}
-                        </p>
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          <button
-                            type="button"
-                            onClick={iniciarBossGuildaAoVivo}
-                            className="rounded-lg bg-[#F3B43F] px-3 py-1.5 text-xs font-bold text-black transition hover:bg-[#e0a52f]"
-                          >
-                            Iniciar Luta
-                          </button>
-                          <button
-                            type="button"
-                            onClick={sairDoBossGuilda}
-                            className="rounded-lg border border-white/30 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-white/10"
-                          >
-                            Sair da sala
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={entrarNoBossGuilda}
-                        className="mt-2 rounded-lg bg-[#F3B43F] px-4 py-2 text-sm font-bold text-black transition hover:bg-[#e0a52f]"
-                      >
-                        Atacar o Boss
-                      </button>
-                    )}
+                    <button
+                      type="button"
+                      onClick={entrarNoBossGuilda}
+                      className="mt-2 rounded-lg bg-[#F3B43F] px-4 py-2 text-sm font-bold text-black transition hover:bg-[#e0a52f]"
+                    >
+                      Atacar o Boss
+                    </button>
 
                     {erroBossGuilda && (
                       <p className="mt-2 text-xs text-red-400">
