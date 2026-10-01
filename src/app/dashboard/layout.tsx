@@ -6,12 +6,14 @@ import { CharacterProvider } from "@/contexts/CharacterContext";
 import { ToastProvider } from "@/contexts/ToastContext";
 import { WorldBossSocketProvider } from "@/contexts/WorldBossSocketContext";
 import { UniqueFeatSocketProvider } from "@/contexts/UniqueFeatSocketContext";
+import { GlobalChatSocketProvider } from "@/contexts/GlobalChatSocketContext";
 import SessionKeepAlive from "@/components/SessionKeepAlive/SessionKeepAlive";
 import PartyBattleArena from "./adventure/components/PartyBattleArena";
 import GuildBossLiveArena from "./guilds/components/GuildBossLiveArena";
 import WorldBossGlobalAlert from "./components/WorldBossGlobalAlert";
 import UniqueFeatGlobalAlert from "@/components/unique-feats/UniqueFeatGlobalAlert";
 import FloatingMusicWidget from "@/components/music/FloatingMusicWidget";
+import FloatingGlobalChatWidget from "@/components/chat/FloatingGlobalChatWidget";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -31,21 +33,24 @@ export default async function DashboardLayout({
         <PvpSocketProvider characterId={characterId ? Number(characterId) : undefined}>
           <WorldBossSocketProvider>
             <UniqueFeatSocketProvider>
-              <WorldBossGlobalAlert />
-              <UniqueFeatGlobalAlert />
-              <div className="homeDash min-h-[100dvh] w-full overflow-x-hidden bg-cover bg-center bg-fixed">
-                <NavMenu
-                  classe={character?.Class?.nome}
-                  avatarKey={character?.avatar_key}
-                  isAdmin={isAdmin}
-                />
-                <main className="dashboard-main min-h-[100dvh] overflow-y-auto px-4 pb-8 pt-20 sm:px-6 lg:px-8 lg:pt-8">
-                  {children}
-                </main>
-              </div>
-              <PartyBattleArena />
-              <GuildBossLiveArena />
-              <FloatingMusicWidget />
+              <GlobalChatSocketProvider>
+                <WorldBossGlobalAlert />
+                <UniqueFeatGlobalAlert />
+                <div className="homeDash min-h-[100dvh] w-full overflow-x-hidden bg-cover bg-center bg-fixed">
+                  <NavMenu
+                    classe={character?.Class?.nome}
+                    avatarKey={character?.avatar_key}
+                    isAdmin={isAdmin}
+                  />
+                  <main className="dashboard-main min-h-[100dvh] overflow-y-auto px-4 pb-8 pt-20 sm:px-6 lg:px-8 lg:pt-8">
+                    {children}
+                  </main>
+                </div>
+                <PartyBattleArena />
+                <GuildBossLiveArena />
+                <FloatingMusicWidget />
+                <FloatingGlobalChatWidget />
+              </GlobalChatSocketProvider>
             </UniqueFeatSocketProvider>
           </WorldBossSocketProvider>
         </PvpSocketProvider>
