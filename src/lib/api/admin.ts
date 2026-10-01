@@ -3072,6 +3072,7 @@ export interface FishingBalanceGrupoApi<T = Record<string, unknown>> {
   padrao: T;
 }
 export interface FishingBalanceCompletoApi {
+  "fishing.levelCap": FishingBalanceGrupoApi<{ NIVEL_MAXIMO_PESCA: number }>;
   "fishing.progression": FishingBalanceGrupoApi<{ XP_NECESSARIO_POR_ETAPA_PESCA: Record<string, number>; XP_TOTAL_PARA_NIVEL_PESCA: Record<string, number>; NIVEL_MAXIMO_PESCA: number }>;
   "fishing.proficiency": FishingBalanceGrupoApi<{ PROFICIENCIA_PCT_POR_NIVEL: Record<string, number> }>;
 }
