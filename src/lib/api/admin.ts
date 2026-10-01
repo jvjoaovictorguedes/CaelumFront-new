@@ -2675,6 +2675,11 @@ export interface FishingTournamentAdminApi {
   termina_em: string;
   ativo: boolean;
   zona?: { id: number; nome: string } | null;
+  // Ideia #1 da fila de melhorias — preenchidos sozinhos pelo
+  // fishingTournamentScheduler.js quando termina_em passa.
+  finalizado_em?: string | null;
+  vencedor_character_id?: number | null;
+  vencedor_nome?: string | null;
 }
 
 export interface PayloadFishingTournamentAdmin {

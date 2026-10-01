@@ -1910,9 +1910,15 @@ function AbaTorneios({ onErro }: { onErro: (m: string) => void }) {
                   <td className="px-3 py-2 text-white/60">{new Date(t.inicia_em).toLocaleString("pt-BR")}</td>
                   <td className="px-3 py-2 text-white/60">{new Date(t.termina_em).toLocaleString("pt-BR")}</td>
                   <td className="px-3 py-2">
-                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${t.ativo ? "bg-green-500/20 text-green-300" : "bg-white/10 text-white/60"}`}>
-                      {t.ativo ? "Ativo" : "Inativo"}
-                    </span>
+                    {t.finalizado_em ? (
+                      <span className="rounded-full bg-sky-500/20 px-2 py-0.5 text-[10px] font-bold uppercase text-sky-300">
+                        Finalizado{t.vencedor_nome ? ` — venceu: ${t.vencedor_nome}` : " — ninguém pontuou"}
+                      </span>
+                    ) : (
+                      <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${t.ativo ? "bg-green-500/20 text-green-300" : "bg-white/10 text-white/60"}`}>
+                        {t.ativo ? "Ativo" : "Inativo (desativado manualmente)"}
+                      </span>
+                    )}
                   </td>
                   <td className="px-3 py-2">
                     <div className="flex gap-2">

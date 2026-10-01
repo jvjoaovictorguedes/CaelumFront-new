@@ -6,6 +6,11 @@
 // devolve.
 import axiosInstance from "@/utils/axiosIntance";
 
+export function mensagemDeErro(erro: unknown, padrao: string): string {
+  const dados = (erro as { response?: { data?: { message?: string } } })?.response?.data;
+  return dados?.message ?? padrao;
+}
+
 export interface ProgressoPesca {
   nivel: number;
   experiencia: number;
@@ -168,6 +173,12 @@ export interface TorneioPesca {
   termina_em: string;
   ativo: boolean;
   zona?: { id: number; nome: string } | null;
+  // Ideia #1 da fila de melhorias — fechamento automático (ver
+  // fishingTournamentScheduler.js no backend): preenchidos quando o
+  // torneio termina sozinho, nunca por ninguém diretamente.
+  finalizado_em?: string | null;
+  vencedor_character_id?: number | null;
+  vencedor_nome?: string | null;
 }
 
 export interface TorneioPescaMinhaPosicao {
@@ -180,9 +191,12 @@ export interface TorneioPescaMinhaPosicao {
 
 export interface TorneioPescaResposta {
   torneio: TorneioPesca | null;
-  statusTorneio: "EM_ANDAMENTO" | "AGENDADO" | "NENHUM";
+  statusTorneio: "EM_ANDAMENTO" | "AGENDADO" | "NENHUM" | "FINALIZADO";
   leaderboard: { itens: TorneioPescaItem[]; pagina: number; totalPaginas: number; totalItens: number } | null;
   minhaPosicao: TorneioPescaMinhaPosicao | null;
+  // Ideia #1 da fila de melhorias — se o personagem atual já se
+  // inscreveu (controla se mostra o botão "Inscrever-se" ou não).
+  inscrito: boolean;
 }
 
 export const fishingApi = {
@@ -200,6 +214,8 @@ export const fishingApi = {
       .get("/fishing/ranking", { params: { type, page } })
       .then((r) => r.data.data as RankingPescaResposta<RankingPescaItemTotal | RankingPescaItemMaiorPeixe>),
   getTournament: () => axiosInstance.get("/fishing/tournament").then((r) => r.data.data as TorneioPescaResposta),
+  inscreverTournament: (idTorneio: number) =>
+    axiosInstance.post(`/fishing/tournament/${idTorneio}/inscrever`).then((r) => r.data.data as { inscrito: boolean }),
 
   getSessaoAtiva: () => axiosInstance.get("/fishing/sessions/active").then((r) => r.data.data.sessao as SessaoPesca | null),
   startSession: (zoneId: number, rodInstanceId: number | null, baitItemId: number | null) =>
