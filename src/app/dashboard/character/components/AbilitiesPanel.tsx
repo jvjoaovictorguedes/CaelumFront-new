@@ -40,6 +40,8 @@ interface PoderApi {
   proxima_evolucao: CustoEvolucao | null;
   custo_ouro: number | null;
   pode_comprar: boolean;
+  bloqueado_por_evolucao: boolean;
+  evolucao_necessaria: string | null;
 }
 
 interface RecursosEvolucao {
@@ -185,9 +187,21 @@ function DetalheDoPoder({
             Precisa comprar: {poder.custo_ouro} ouro
           </span>
         )}
+        {bloqueado && poder.bloqueado_por_evolucao && (
+          <span className="rounded bg-purple-900/40 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-purple-300">
+            Requer evolução: {poder.evolucao_necessaria}
+          </span>
+        )}
       </div>
       <p className="mt-2 text-sm text-white/80">{poder.descricao}</p>
       <p className="mt-1 text-xs text-white/60">{detalhes.join(" · ")}</p>
+
+      {bloqueado && poder.bloqueado_por_evolucao && (
+        <p className="mt-3 text-[11px] text-purple-300/80">
+          Essa habilidade só é liberada ao adquirir a evolução &quot;{poder.evolucao_necessaria}&quot; — veja a Árvore
+          de Evolução na aba Classe.
+        </p>
+      )}
 
       {bloqueado && poder.pode_comprar && (
         <div className="mt-3 flex flex-wrap items-center gap-2">
