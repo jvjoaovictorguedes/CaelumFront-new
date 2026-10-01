@@ -20,7 +20,31 @@
 //
 // Tileset do chão continua placeholder (desenhado em runtime via
 // Canvas Texture) — só o personagem usa asset real, por pedido.
+//
+// Locais interativos (pedido do jogador: "se eu entrar no ferreiro
+// ele vai pra forja") — pontos fixos no mapa que, ao serem tocados
+// pelo personagem OU clicados, navegam pra rota real do jogo
+// correspondente (/dashboard/forge, /dashboard/shop, etc). Ícones
+// ainda são placeholder (quadrado colorido + letra), mesmo critério
+// do resto da arte deste protótipo — só a ROTA de destino é real.
 import * as Phaser from "phaser";
+
+interface LocalInterativo {
+  chave: string;
+  nome: string;
+  rota: string;
+  tileX: number;
+  tileY: number;
+  cor: number;
+  letra: string;
+}
+
+const LOCAIS_INTERATIVOS: LocalInterativo[] = [
+  { chave: "ferreiro", nome: "Ferreiro", rota: "/dashboard/forge", tileX: 6, tileY: 12, cor: 0xb0462a, letra: "F" },
+  { chave: "loja", nome: "Loja", rota: "/dashboard/shop", tileX: 15, tileY: 5, cor: 0xc9a227, letra: "$" },
+  { chave: "taverna", nome: "Taverna", rota: "/dashboard/tavern", tileX: 6, tileY: 22, cor: 0x8a5a2b, letra: "T" },
+  { chave: "guilda", nome: "Guilda", rota: "/dashboard/guilds", tileX: 18, tileY: 22, cor: 0x2a6fb0, letra: "G" },
+];
 
 const TILE = 32;
 // Mapa BEM maior que a viewport do jogo (ver LARGURA/ALTURA em
@@ -70,6 +94,8 @@ export class ExplorationScene extends Phaser.Scene {
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private teclasWASD!: { W: Phaser.Input.Keyboard.Key; A: Phaser.Input.Keyboard.Key; S: Phaser.Input.Keyboard.Key; D: Phaser.Input.Keyboard.Key };
   private debugText!: Phaser.GameObjects.Text;
+  private mensagemEntrada!: Phaser.GameObjects.Text;
+  private entrando = false;
 
   constructor() {
     super("ExplorationScene");
@@ -77,6 +103,7 @@ export class ExplorationScene extends Phaser.Scene {
 
   preload() {
     this.gerarTilesetPlaceholder();
+    for (const local of LOCAIS_INTERATIVOS) this.gerarIconeLocal(local);
 
     // Mesma pasta/arquivos que o combate da Aventura usa pro Guerreiro
     // (ver spriteUrl em spriteSheets.ts: `/${pasta}/${arquivo}`) — vem
@@ -129,6 +156,32 @@ export class ExplorationScene extends Phaser.Scene {
     textura.refresh();
   }
 
+  // Ícone placeholder de um Local Interativo — quadrado colorido com
+  // borda + letra, mesmo nível de acabamento do tileset acima (não é
+  // arte final, só precisa ser reconhecível/clicável pro teste).
+  private gerarIconeLocal(local: LocalInterativo) {
+    const chaveTextura = `local-${local.chave}`;
+    const textura = this.textures.createCanvas(chaveTextura, TILE, TILE)!;
+    const ctx = textura.getContext();
+    const cssCor = `#${local.cor.toString(16).padStart(6, "0")}`;
+
+    ctx.fillStyle = cssCor;
+    ctx.beginPath();
+    ctx.roundRect(2, 2, TILE - 4, TILE - 4, 6);
+    ctx.fill();
+    ctx.strokeStyle = "#1a1410";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    ctx.fillStyle = "#fff8e7";
+    ctx.font = "bold 16px sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(local.letra, TILE / 2, TILE / 2 + 1);
+
+    textura.refresh();
+  }
+
   create() {
     const dados = construirMapa();
     const mapa = this.make.tilemap({ data: dados, tileWidth: TILE, tileHeight: TILE });
@@ -172,12 +225,52 @@ export class ExplorationScene extends Phaser.Scene {
 
     this.physics.add.collider(this.player, camada);
 
+    // Locais interativos — anda por cima (overlap) OU clica no ícone
+    // pra entrar direto, igual pedido ("clicando e entrando no
+    // lugar"). Cada um navega pra UMA rota real do jogo quando o
+    // personagem "entra" nele (ver entrarNoLocal).
+    const objetosDeLocais: Phaser.GameObjects.GameObject[] = [];
+    for (const local of LOCAIS_INTERATIVOS) {
+      const px = local.tileX * TILE + TILE / 2;
+      const py = local.tileY * TILE + TILE / 2;
+
+      const icone = this.physics.add.staticImage(px, py, `local-${local.chave}`);
+      icone.setInteractive({ useHandCursor: true });
+      icone.on("pointerdown", () => this.entrarNoLocal(local));
+
+      const rotulo = this.add
+        .text(px, py - TILE / 2 - 4, local.nome, {
+          fontSize: "11px",
+          color: "#fff8e7",
+          backgroundColor: "#000000aa",
+          padding: { x: 3, y: 1 },
+        })
+        .setOrigin(0.5, 1);
+
+      this.physics.add.overlap(this.player, icone, () => this.entrarNoLocal(local));
+      objetosDeLocais.push(icone, rotulo);
+    }
+
     this.cameras.main.setBounds(0, 0, larguraMundo, alturaMundo);
     this.cameras.main.startFollow(this.player, true, 0.12, 0.12);
     this.cameras.main.setZoom(1.6);
 
     this.cursors = this.input.keyboard!.createCursorKeys();
     this.teclasWASD = this.input.keyboard!.addKeys("W,A,S,D") as typeof this.teclasWASD;
+
+    // Helper de debug pro console do navegador — teleporta o
+    // personagem direto num Local Interativo (ex.: `__proto2d.irPara("ferreiro")`)
+    // pra testar a entrada sem precisar andar manualmente até lá.
+    // Só existe nesta rota isolada/experimental, nunca no jogo real.
+    (window as unknown as { __proto2d?: unknown }).__proto2d = {
+      locais: LOCAIS_INTERATIVOS.map((l) => l.chave),
+      irPara: (chave: string) => {
+        const local = LOCAIS_INTERATIVOS.find((l) => l.chave === chave);
+        if (!local) return false;
+        this.player.setPosition(local.tileX * TILE + TILE / 2, local.tileY * TILE + TILE / 2);
+        return true;
+      },
+    };
 
     // HUD de debug (tile atual/tamanho do mapa) — só pra facilitar
     // testar/validar o protótipo. `scrollFactor(0)` sozinho NÃO basta
@@ -193,14 +286,51 @@ export class ExplorationScene extends Phaser.Scene {
       .setScrollFactor(0)
       .setDepth(1000);
 
+    // Mensagem central mostrada por um instante ANTES de navegar (dá
+    // pro jogador ver o que ele acabou de "entrar", em vez da página
+    // trocar sem aviso nenhum) — ver entrarNoLocal.
+    this.mensagemEntrada = this.add
+      .text(this.scale.width / 2, this.scale.height / 2, "", {
+        fontSize: "18px",
+        fontStyle: "bold",
+        color: "#F3B43F",
+        backgroundColor: "#000000cc",
+        padding: { x: 14, y: 8 },
+      })
+      .setOrigin(0.5)
+      .setScrollFactor(0)
+      .setDepth(1001)
+      .setVisible(false);
+
     const uiCamera = this.cameras.add(0, 0, this.scale.width, this.scale.height);
     uiCamera.setScroll(0, 0);
-    uiCamera.ignore([camada, this.player]);
-    this.cameras.main.ignore(this.debugText);
+    uiCamera.ignore([camada, this.player, ...objetosDeLocais]);
+    this.cameras.main.ignore([this.debugText, this.mensagemEntrada]);
+  }
+
+  // Dispara a navegação real pro resto do jogo (Explorer2DGame.tsx
+  // escuta este evento e chama router.push). `entrando` evita
+  // disparar de novo por overlap contínuo (o jogador fica alguns
+  // frames "dentro" do ícone antes da página trocar) ou clique duplo.
+  private entrarNoLocal(local: LocalInterativo) {
+    if (this.entrando) return;
+    this.entrando = true;
+
+    const corpo = this.player.body as Phaser.Physics.Arcade.Body;
+    corpo.setVelocity(0, 0);
+    this.mensagemEntrada.setText(`Entrando em ${local.nome}...`).setVisible(true);
+
+    this.time.delayedCall(350, () => {
+      this.game.events.emit("proto2d-entrar", local.rota);
+    });
   }
 
   update() {
     if (!this.player) return;
+    // Trava o personagem enquanto a mensagem "Entrando em..." está na
+    // tela (ver entrarNoLocal) — sem isso ele continuava andando (e
+    // escapando do overlap) nos ~350ms antes da navegação acontecer.
+    if (this.entrando) return;
     const velocidade = 140;
     const corpo = this.player.body as Phaser.Physics.Arcade.Body;
 

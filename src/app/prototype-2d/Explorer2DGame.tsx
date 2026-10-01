@@ -6,6 +6,7 @@
 // criado dentro de um useEffect, depois do componente já estar
 // montado no navegador.
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 
 const LARGURA = 640;
 const ALTURA = 480;
@@ -13,6 +14,7 @@ const ALTURA = 480;
 export default function Explorer2DGame() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [erro, setErro] = useState<string | null>(null);
+  const router = useRouter();
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -39,6 +41,16 @@ export default function Explorer2DGame() {
           },
           scene: [ExplorationScene],
         });
+
+        // Locais interativos (Ferreiro -> Forja, Loja -> Loja, etc.,
+        // ver LOCAIS_INTERATIVOS em ExplorationScene.ts) — a cena
+        // Phaser não sabe navegar sozinha (não tem acesso ao router do
+        // Next), então só emite a ROTA de destino nesse evento global
+        // do próprio Phaser.Game, e quem efetivamente navega é o
+        // componente React aqui fora.
+        jogo.events.on("proto2d-entrar", (rota: string) => {
+          router.push(rota);
+        });
       })
       .catch((e) => {
         console.error("Erro ao iniciar o protótipo 2D:", e);
@@ -49,6 +61,7 @@ export default function Explorer2DGame() {
       cancelado = true;
       jogo?.destroy(true);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
