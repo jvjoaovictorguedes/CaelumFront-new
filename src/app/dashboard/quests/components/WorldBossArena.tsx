@@ -70,6 +70,32 @@ export default function WorldBossArena() {
 
   const proximaAcaoRestante = useContagemRegressiva(status?.combate?.proxima_acao_em_ms);
 
+  // Bug relatado: sem contra-ataque do boss nem fila de turnos entre
+  // jogadores (isso aqui é 1 pra 1 contra o HP compartilhado), nada
+  // travava o botão entre um clique e outro — dava pra apertar ataque/
+  // poder em sequência imediata. O servidor agora recusa (429) ações
+  // mais rápidas que proxima_acao_jogador_em_ms; isto aqui só desenha
+  // essa espera ANTES do clique falhar, igual proximaAcaoRestante faz
+  // pro relógio do boss. Não usa useContagemRegressiva porque o
+  // servidor sempre devolve o MESMO valor "cheio" (ex.: 3000) a cada
+  // ação — um hook preso a [msIniciais] nunca rearmaria de novo pra um
+  // valor igual ao anterior.
+  const [meuCooldownRestanteMs, setMeuCooldownRestanteMs] = useState(0);
+  const meuCooldownLiberaEmRef = useRef(0);
+
+  useEffect(() => {
+    const intervalo = setInterval(() => {
+      setMeuCooldownRestanteMs(Math.max(0, meuCooldownLiberaEmRef.current - Date.now()));
+    }, 150);
+    return () => clearInterval(intervalo);
+  }, []);
+
+  const armarMeuCooldown = useCallback((ms: number | undefined) => {
+    const restante = Math.max(0, ms ?? 0);
+    meuCooldownLiberaEmRef.current = Date.now() + restante;
+    setMeuCooldownRestanteMs(restante);
+  }, []);
+
   useEffect(() => {
     if (status?.hp_current !== undefined && status?.hp_max !== undefined) {
       setHpAoVivo({ atual: status.hp_current, max: status.hp_max, percentual: status.hp_percentual ?? 0 });
@@ -88,6 +114,7 @@ export default function WorldBossArena() {
       setLutador(resultado.lutador);
       setPoderes(resultado.poderes);
       setCooldowns(resultado.cooldowns);
+      armarMeuCooldown(resultado.proxima_acao_jogador_em_ms);
       setEmSessao(true);
       adicionarMeuLog("Você entrou na luta contra a Ameaça Mundial.");
     } catch (error) {
@@ -110,11 +137,13 @@ export default function WorldBossArena() {
     setPoderes([]);
     setCooldowns({});
     setMeuLog([]);
+    armarMeuCooldown(0);
   }
 
   function aplicarResultado(resultado: WorldBossAcaoResultado) {
     setLutador((atual) => (atual ? { ...atual, ...resultado.lutador } : atual));
     setCooldowns(resultado.cooldowns);
+    armarMeuCooldown(resultado.proxima_acao_jogador_em_ms);
     setHpAoVivo({ atual: resultado.boss.hp_current, max: resultado.boss.hp_max, percentual: resultado.boss.hp_percentual });
     if (resultado.bloqueado) {
       adicionarMeuLog(`Você ficou impedido de agir (${resultado.motivoBloqueio ?? "controle de status"}).`);
@@ -268,10 +297,10 @@ export default function WorldBossArena() {
             </div>
           )}
 
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
-              disabled={agindo}
+              disabled={agindo || meuCooldownRestanteMs > 0}
               onClick={atacar}
               className="rounded-lg bg-[#F3B43F] px-4 py-2 text-sm font-bold text-black transition hover:bg-[#e0a52f] disabled:opacity-50"
             >
@@ -288,7 +317,7 @@ export default function WorldBossArena() {
                 <button
                   key={poder.id}
                   type="button"
-                  disabled={agindo || bloqueado}
+                  disabled={agindo || bloqueado || meuCooldownRestanteMs > 0}
                   onClick={() => usarPoder(poder)}
                   className="relative rounded-lg border border-[#F3B43F]/60 px-4 py-2 text-sm font-bold text-[#F3B43F] transition hover:bg-[#F3B43F]/10 disabled:opacity-50"
                   title={restante > 0 ? `Em cooldown: ${restante} turno(s)` : `Custo: ${poder.custo_mana} mana${infoEscala}`}
@@ -307,6 +336,9 @@ export default function WorldBossArena() {
             >
               Sair da luta
             </button>
+            {meuCooldownRestanteMs > 0 && (
+              <span className="text-xs text-white/50">Próxima ação em {(meuCooldownRestanteMs / 1000).toFixed(1)}s</span>
+            )}
           </div>
 
           {meuLog.length > 0 && (
