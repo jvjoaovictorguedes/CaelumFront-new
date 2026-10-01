@@ -217,6 +217,10 @@ export default function WorldBossBattleScene({
   const pastaSpriteJogador = spriteFolderForClass(nomeClasse);
 
   const bossImagemUrl = status?.imagem_url ?? null;
+  // Fundo dedicado (cadastrado no admin — WorldBossIdentityTab.tsx);
+  // sem isso cai pro blur da própria imagem do monstro, igual já era
+  // antes de fundo_url existir — nunca uma tela cheia sem nada atrás.
+  const fundoBatalha = status?.fundo_url ?? bossImagemUrl;
 
   async function executar(acaoFn: () => Promise<WorldBossAcaoResultado>, usouPoder: boolean, usouPoderDeFogo: boolean) {
     if (agindo || meuCooldownRestanteMs > 0 || encerrada) return;
@@ -330,9 +334,13 @@ export default function WorldBossBattleScene({
         }
       `}</style>
 
+      {/* Fundo dedicado (status.fundo_url) aparece nítido, com overlay
+          mais leve — é arte feita pra isso. Sem fundo cadastrado, cai
+          pro blur/opacidade baixa da própria imagem do monstro (nunca
+          foi pensada como fundo de tela cheia, então disfarça mais). */}
       <div
-        className="absolute inset-0 bg-cover bg-center opacity-30 blur-sm"
-        style={bossImagemUrl ? { backgroundImage: `url(${bossImagemUrl})` } : undefined}
+        className={`absolute inset-0 bg-cover bg-center ${status?.fundo_url ? "opacity-70" : "opacity-30 blur-sm"}`}
+        style={fundoBatalha ? { backgroundImage: `url(${fundoBatalha})` } : undefined}
       />
       <div className="absolute inset-0 bg-gradient-to-b from-[#3a1414]/80 to-[#1a1410]" />
 

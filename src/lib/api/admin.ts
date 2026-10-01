@@ -1753,6 +1753,7 @@ export interface WorldBossConfigApi {
   descricao: string;
   lore: string | null;
   imagem_url: string | null;
+  fundo_url: string | null;
   ativo: boolean;
   peso_selecao: number;
   vida_base: string;
@@ -1802,6 +1803,10 @@ export interface PayloadWorldBossConfigAdmin {
   descricao: string;
   lore?: string | null;
   imagem_url?: string | null;
+  // Fundo de batalha dedicado da cena de combate (WorldBossBattleScene.
+  // tsx) — sem isso o front caía de volta pro blur da própria
+  // imagem_url (retrato) como fundo.
+  fundo_url?: string | null;
   peso_selecao?: number;
   vida_base: number;
   defesa?: number;

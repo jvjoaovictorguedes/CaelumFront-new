@@ -31,8 +31,16 @@ export default function WorldBossIdentityTab({
         <textarea rows={3} value={form.lore ?? ""} onChange={(e) => setForm((f) => ({ ...f, lore: e.target.value }))} className={INPUT} />
       </label>
       <label className={LABEL}>
-        URL da imagem (opcional)
+        URL da imagem do monstro (opcional)
         <input value={form.imagem_url ?? ""} onChange={(e) => setForm((f) => ({ ...f, imagem_url: e.target.value }))} className={INPUT} />
+      </label>
+      <label className={LABEL}>
+        URL do fundo de batalha (opcional)
+        {/* Cena de combate (WorldBossBattleScene.tsx) — sem isso, cai
+            pro fallback de usar a própria imagem do monstro borrada
+            como fundo. Mesmo fluxo de qualquer outra imagem do painel:
+            enviar em Mídia (categoria "Monster") e colar a URL aqui. */}
+        <input value={form.fundo_url ?? ""} onChange={(e) => setForm((f) => ({ ...f, fundo_url: e.target.value }))} className={INPUT} />
       </label>
       <label className={LABEL}>
         Peso de seleção (concorrência com outras Ameaças ativas no sorteio de qual Boss aparece)

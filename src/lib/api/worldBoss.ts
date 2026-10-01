@@ -31,6 +31,10 @@ export interface WorldBossStatusApi {
   descricao?: string | null;
   lore?: string | null;
   imagem_url?: string | null;
+  // Fundo de batalha dedicado (WorldBossBattleScene.tsx) — ausente em
+  // Boss sem fundo cadastrado no admin, tratado como null nesse caso
+  // (a cena cai pro blur da própria imagem_url).
+  fundo_url?: string | null;
   mensagem_convocacao?: string | null;
   mensagem_fase_final?: string | null;
   mensagem_derrota?: string | null;
