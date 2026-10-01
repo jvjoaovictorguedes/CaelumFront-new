@@ -27,16 +27,14 @@ export default function GuildTreasuryTab({
   const [erroDoacao, setErroDoacao] = useState("");
   const [enviandoDoacao, setEnviandoDoacao] = useState(false);
 
-  const [valorGasto, setValorGasto] = useState("");
-  const [motivoGasto, setMotivoGasto] = useState("");
-  const [erroGasto, setErroGasto] = useState("");
-
   const [transacoes, setTransacoes] = useState<TransacaoTesouro[]>([]);
 
-  // Registrar gasto é ação só do líder (o backend também trava isso,
-  // mesmo que a permissão autorizar_gastos seja reatribuída a outro
-  // cargo em "editar cargos") — não tem sentido buscar o extrato pra
-  // quem não vai ver essa seção.
+  // O extrato só mostra movimentação de verdade (doação, benefício
+  // comprado, boss liberado) — não tem um "registrar gasto" manual
+  // porque isso só queimava ouro do tesouro sem nenhum efeito no jogo
+  // (ver GuildTreasuryTransaction: nada mais credita o tesouro além de
+  // doação). Fica restrito ao líder porque é informação financeira da
+  // guilda inteira.
   const souLider = meuCargo === "Fundador";
 
   useEffect(() => {
@@ -68,27 +66,6 @@ export default function GuildTreasuryTab({
       setErroDoacao(mensagemDeErro(error, "Não foi possível processar a doação."));
     } finally {
       setEnviandoDoacao(false);
-    }
-  }
-
-  async function registrarGasto(event: React.FormEvent) {
-    event.preventDefault();
-    setErroGasto("");
-    try {
-      await axiosInstance.post(`/guilds/${guild.id}/treasury/expenses`, {
-        idResponsavel: characterId,
-        valor: Number(valorGasto),
-        motivo: motivoGasto,
-      });
-      setValorGasto("");
-      setMotivoGasto("");
-      onMudou();
-      const resp = await axiosInstance.get<{ data?: { transacoes?: TransacaoTesouro[] } }>(
-        `/guilds/${guild.id}/treasury/transactions`,
-      );
-      setTransacoes(resp.data?.data?.transacoes ?? []);
-    } catch (error) {
-      setErroGasto(mensagemDeErro(error, "Não foi possível registrar o gasto."));
     }
   }
 
@@ -127,44 +104,11 @@ export default function GuildTreasuryTab({
 
       {souLider && (
         <div className="rounded-2xl border-2 border-[#F3B43F] bg-[#292018]/90 p-5 text-white shadow-xl">
-          <p className="mb-1 text-sm uppercase tracking-widest text-[#F3B43F]">Registrar gasto</p>
+          <p className="mb-1 text-sm uppercase tracking-widest text-[#F3B43F]">Extrato</p>
           <p className="mb-3 text-xs text-white/50">
-            Isso só retira o valor do tesouro e grava no extrato abaixo — é um registro contábil,
-            não paga nem transfere ouro pra ninguém. (Uma forma de efetivamente sacar/usar esse
-            ouro ainda está por vir.)
+            Todo gasto automático do tesouro (comprar benefício, liberar o Boss) aparece aqui
+            sozinho — não precisa anotar nada na mão.
           </p>
-          <form onSubmit={registrarGasto} className="flex flex-wrap items-end gap-2">
-            <div className="flex flex-col">
-              <label className="mb-1 text-xs text-white/60">Valor</label>
-              <input
-                value={valorGasto}
-                onChange={(e) => setValorGasto(e.target.value)}
-                type="number"
-                min={1}
-                required
-                className="w-32 rounded-lg border border-white/20 bg-black/30 px-3 py-2 text-white outline-none focus:border-[#F3B43F]"
-              />
-            </div>
-            <div className="flex flex-1 flex-col">
-              <label className="mb-1 text-xs text-white/60">Motivo</label>
-              <input
-                value={motivoGasto}
-                onChange={(e) => setMotivoGasto(e.target.value)}
-                required
-                placeholder="Ex: reserva pro próximo boss"
-                className="rounded-lg border border-white/20 bg-black/30 px-3 py-2 text-white placeholder-white/40 outline-none focus:border-[#F3B43F]"
-              />
-            </div>
-            <button
-              type="submit"
-              className="rounded-lg border-2 border-red-400/60 px-4 py-2 font-bold text-red-300 hover:bg-red-950/40"
-            >
-              Registrar gasto
-            </button>
-          </form>
-          {erroGasto && <p className="mt-2 text-sm text-red-400">{erroGasto}</p>}
-
-          <p className="mb-2 mt-5 text-sm uppercase tracking-widest text-[#F3B43F]">Extrato</p>
           <div className="flex flex-col gap-1">
             {transacoes.length === 0 ? (
               <p className="text-sm text-white/50">Nenhuma movimentação ainda.</p>
