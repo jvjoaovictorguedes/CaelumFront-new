@@ -139,7 +139,7 @@ export default function WorldMapClient({ mapa, isAdmin = false }: { mapa: WorldM
           {isAdmin && (
             <Link
               href="/prototype-2d"
-              title="Protótipo experimental de exploração 2D — só admin, não é o jogo de produção"
+              title="Protótipo de exploração 2D (em desenvolvimento) — só admin"
               className="rounded-full border border-dashed border-[#F3B43F]/50 px-3 py-1 text-xs font-bold text-[#F3B43F]/80 transition hover:border-[#F3B43F] hover:text-[#F3B43F]"
             >
               Protótipo 2D (admin)

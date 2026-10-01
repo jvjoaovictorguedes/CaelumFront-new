@@ -25,7 +25,7 @@ export default function Prototype2DPage() {
 
       <div className="pointer-events-none absolute left-4 top-4 max-w-sm rounded-lg border border-[#F3B43F]/40 bg-black/70 p-3 backdrop-blur-sm">
         <p className="text-[10px] font-bold uppercase tracking-widest text-[#F3B43F]">
-          Protótipo experimental — não é o jogo de produção
+          Protótipo — ainda em desenvolvimento, vai passar por mais ajustes
         </p>
         <p className="mt-1 text-xs text-white/70">
           Setas ou WASD pra andar. Ande por cima de um ícone (Ferreiro/Loja/Taverna/Guilda) ou clique nele pra
