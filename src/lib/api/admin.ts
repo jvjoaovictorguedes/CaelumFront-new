@@ -3469,7 +3469,13 @@ export interface ExpeditionBalanceCompletoApi {
     CHANCE_POR_NIVEL_PPM: Record<string, Record<string, number>>;
     QUANTIDADE_POR_NIVEL: Record<string, [number, number]>;
   }>;
-  "expedition.ambush": ExpeditionBalanceGrupoApi<{ CHANCE_MONSTRO_PPM: number }>;
+  "expedition.ambush": ExpeditionBalanceGrupoApi<{
+    CHANCE_MONSTRO_PPM: number;
+    EMBOSCADA_XP_BASE: number;
+    EMBOSCADA_XP_POR_NIVEL: number;
+    EMBOSCADA_OURO_BASE: number;
+    EMBOSCADA_OURO_POR_NIVEL: number;
+  }>;
   "adventure.danger": ExpeditionBalanceGrupoApi<{ MEDIO: number; ALTO: number }>;
   "party.balance": ExpeditionBalanceGrupoApi<{
     TAMANHO_MAXIMO_GRUPO: number;
