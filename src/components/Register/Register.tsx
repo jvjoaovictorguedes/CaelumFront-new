@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import axios from "axios";
 import axiosInstance from "@/utils/axiosIntance";
@@ -14,8 +14,18 @@ export default function Register() {
   const [confirmEmail, setConfirmEmail] = useState("");
   // Sistema de Referral — opcional, nunca bloqueia o registro por si só
   // (campo vazio = sem indicação). Só barra se PREENCHIDO com um nome
-  // que não bate com nenhuma conta (validado no backend).
+  // que não bate com nenhum personagem (validado de verdade no backend
+  // no submit — a checagem abaixo é só feedback antecipado, nunca a
+  // fonte de verdade).
   const [indicadoPor, setIndicadoPor] = useState("");
+  // Pedido real: jogador digitava o nome errado, só descobria no erro
+  // do submit, e insistir nisso esgotava a cota de tentativas antes de
+  // perceber que era só um erro de digitação. Mostra ✓/✗ assim que ele
+  // para de digitar — NUNCA uma lista de sugestões (ver
+  // /users/referral-check no backend: só confirma o nome exato
+  // digitado, nunca devolve outros nomes).
+  const [statusIndicador, setStatusIndicador] = useState<"idle" | "verificando" | "encontrado" | "nao-encontrado">("idle");
+  const [nomeIndicadorReal, setNomeIndicadorReal] = useState("");
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -35,6 +45,44 @@ export default function Register() {
   const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
   const isValidEmail = (email: string) => EMAIL_REGEX.test(email);
+
+  // Debounce (500ms) + guarda de corrida: se o nome mudar de novo antes
+  // da resposta chegar, a resposta velha é descartada (nunca mostra
+  // ✓/✗ de um nome que o jogador já apagou/trocou).
+  useEffect(() => {
+    const nome = indicadoPor.trim();
+    if (!nome) {
+      setStatusIndicador("idle");
+      setNomeIndicadorReal("");
+      return;
+    }
+    setStatusIndicador("verificando");
+    let cancelado = false;
+    const timeoutId = setTimeout(async () => {
+      try {
+        const resposta = await axiosInstance.get<{ existe: boolean; nome?: string }>(
+          "/users/referral-check",
+          { params: { nome } },
+        );
+        if (cancelado) return;
+        if (resposta.data.existe) {
+          setStatusIndicador("encontrado");
+          setNomeIndicadorReal(resposta.data.nome ?? nome);
+        } else {
+          setStatusIndicador("nao-encontrado");
+        }
+      } catch {
+        // Falha na checagem (rede, rate-limit, etc.) nunca deve travar
+        // o campo — volta pro estado neutro; o submit continua sendo a
+        // validação de verdade de qualquer jeito.
+        if (!cancelado) setStatusIndicador("idle");
+      }
+    }, 500);
+    return () => {
+      cancelado = true;
+      clearTimeout(timeoutId);
+    };
+  }, [indicadoPor]);
 
   const handleRegisterSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -170,7 +218,7 @@ export default function Register() {
             disabled={isLoading}
           />
         </div>
-        <div className="flex justify-center mb-4">
+        <div className="mb-4">
           <input
             type="text"
             id="indicado-por"
@@ -180,6 +228,15 @@ export default function Register() {
             onChange={(e) => setIndicadoPor(e.target.value)}
             disabled={isLoading}
           />
+          {statusIndicador === "verificando" && (
+            <p className="mt-1 text-center text-[13px] text-white/60 font-imFeel">Verificando...</p>
+          )}
+          {statusIndicador === "encontrado" && (
+            <p className="mt-1 text-center text-[13px] text-green-400 font-imFeel">✓ Personagem encontrado: {nomeIndicadorReal}</p>
+          )}
+          {statusIndicador === "nao-encontrado" && (
+            <p className="mt-1 text-center text-[13px] text-red-400 font-imFeel">✗ Nenhum personagem com esse nome. Confira (ou deixe em branco).</p>
+          )}
         </div>
         {errorMessage && (
           <p className="text-red-500 text-center font-imFeel text-[14px] h-max">
