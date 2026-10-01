@@ -514,6 +514,49 @@ function AbaGrupo({ dados, onSalvo }: { dados: ExpeditionBalanceCompletoApi; onS
           <input type="number" min={0} step={0.01} className={`${INPUT} w-40`} value={form.FATOR_DIFICULDADE_DANO_POR_EXTRA} onChange={(e) => campo("FATOR_DIFICULDADE_DANO_POR_EXTRA", Number(e.target.value))} />
         </label>
       </div>
+
+      <p className="mb-1 mt-4 font-imFeel text-lg text-[#F3B43F]">Penalidade anti power-leveling</p>
+      <p className="mb-3 text-xs text-white/50">
+        Quando o personagem de MAIOR nível do grupo está muito acima do teto de nível da zona (ex.: nível 100 numa
+        área desenhada pra nível 5), a recompensa de XP e ouro cai pro GRUPO INTEIRO — desincentiva carregar um
+        personagem fraco numa área fácil demais pra farmar nível rápido. Não afeta grupos de nível parecido.
+      </p>
+      <div className="flex flex-wrap gap-3">
+        <label className="flex flex-col gap-1 text-xs text-white/70">
+          Tolerância acima do teto da zona (níveis)
+          <input
+            type="number"
+            min={0}
+            className={`${INPUT} w-40`}
+            value={form.LIMIAR_NIVEL_ACIMA_DA_ZONA}
+            onChange={(e) => campo("LIMIAR_NIVEL_ACIMA_DA_ZONA", Number(e.target.value))}
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-xs text-white/70">
+          Redução por nível excedente (fração, ex.: 0.05 = -5%)
+          <input
+            type="number"
+            min={0}
+            max={1}
+            step={0.01}
+            className={`${INPUT} w-48`}
+            value={form.REDUCAO_RECOMPENSA_POR_NIVEL_EXCEDENTE}
+            onChange={(e) => campo("REDUCAO_RECOMPENSA_POR_NIVEL_EXCEDENTE", Number(e.target.value))}
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-xs text-white/70">
+          Piso da recompensa (fração, ex.: 0.2 = nunca abaixo de 20%)
+          <input
+            type="number"
+            min={0}
+            max={1}
+            step={0.01}
+            className={`${INPUT} w-48`}
+            value={form.PISO_MULTIPLICADOR_RECOMPENSA}
+            onChange={(e) => campo("PISO_MULTIPLICADOR_RECOMPENSA", Number(e.target.value))}
+          />
+        </label>
+      </div>
       <button type="button" disabled={salvando} onClick={salvar} className={`${BTN} mt-3`}>
         {salvando ? "Salvando..." : "Salvar"}
       </button>

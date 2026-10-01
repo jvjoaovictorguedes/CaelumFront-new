@@ -311,6 +311,12 @@ export default function PartyBattleArena() {
         <h1 className="font-imFeel text-xl leading-tight sm:text-2xl">
           {batalhaGrupo.inimigo.nome} (Nv. {batalhaGrupo.inimigo.nivel}) — Rodada {rodadaAtualGrupo}
         </h1>
+        {batalhaGrupo.penalidadePowerLeveling && (
+          <p className="mt-1 rounded-full bg-black/50 px-3 py-0.5 text-[10px] font-bold text-yellow-400 sm:text-xs">
+            Recompensa reduzida ({Math.round(batalhaGrupo.penalidadePowerLeveling.multiplicador * 100)}%) — alguém do
+            grupo está muito acima do nível desta área.
+          </p>
+        )}
       </div>
 
       {/* Aliados: empilhados à esquerda, cada um com nome+vida+mana acima
