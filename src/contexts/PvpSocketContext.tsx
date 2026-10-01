@@ -277,6 +277,15 @@ export interface TurnoGrupoPayload {
   // Precisão/Crítico (Velocidade) — ausente em respostas antigas
   // (compatibilidade), tratado como false nesse caso.
   critico?: boolean;
+  // Motor de Status (mesmo formato do Duelo ao vivo/PvP assíncrono) —
+  // agora também na Aventura em Grupo: monstro pode causar status
+  // configurado no admin, DoT tica no fim do turno de quem tá com ele
+  // (nunca na hora do golpe que aplicou), e hard control pode bloquear a
+  // ação de quem estiver agindo (aliado OU monstro).
+  bloqueado?: boolean;
+  logStatus?: string[];
+  statusInimigo?: StatusInstanceDuelo[];
+  statusAliados?: Record<string, StatusInstanceDuelo[]>;
   vidaInimigo?: number;
   vidaAliado?: number;
   manaAliado?: number;
