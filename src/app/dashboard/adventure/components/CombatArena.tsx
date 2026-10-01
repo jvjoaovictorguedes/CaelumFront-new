@@ -9,7 +9,7 @@ import { useContextMusic } from "@/hooks/useContextMusic";
 import CombatActionBar, {
   type ConsumivelAcao,
 } from "@/components/combat/CombatActionBar";
-import MissionsPanel, { type CacadaAtivaInfo } from "@/components/combat/MissionsPanel";
+import MissionsPanel, { type CacadaAtivaInfo, type MissaoEmAndamentoInfo } from "@/components/combat/MissionsPanel";
 import {
   StatusIconsRow,
   NOME_POR_STATUS,
@@ -477,6 +477,125 @@ export default function CombatArena({
       cancelado = true;
     };
   }, []);
+
+  // Bug reportado: Contratos de Rank da Guilda dos Aventureiros e
+  // Missões da Guilda (clã) aceitos/ativos não apareciam no painel —
+  // só a Caçada. Busca os dois UMA vez ao entrar na tela (mesmo
+  // critério da Caçada acima: sem contador em tempo real na resposta
+  // de /combat/action, então o valor fica estático durante a visita a
+  // esta tela, igual já acontece em qualquer outra tela do jogo).
+  // Filtra só pros tipos de objetivo que fazem sentido numa tela de
+  // combate PvE (matar monstro/entregar item) — nunca
+  // Fabricar/Refinar/CompletarExpedicoes/VencerDuelos/GanharOuro/
+  // AlcancarNivel, que não avançam por uma vitória de Aventura.
+  const [contratosRank, setContratosRank] = useState<MissaoEmAndamentoInfo[]>([]);
+  const [missoesDaGuilda, setMissoesDaGuilda] = useState<MissaoEmAndamentoInfo[]>([]);
+
+  useEffect(() => {
+    let cancelado = false;
+    const TIPOS_CONTRATO_DE_COMBATE = new Set([
+      "MatarMonstroEspecifico",
+      "MatarNaRegiao",
+      "MatarInimigos",
+      "Entregar",
+    ]);
+
+    async function carregarContratosDeRank() {
+      try {
+        const resp = await axiosInstance.get<{
+          data?: {
+            contratos_ativos?: {
+              id: number;
+              progresso_atual: number;
+              missao: { tipo_objetivo: string; descricao_objetivo: string; quantidade_objetivo: number };
+            }[];
+          };
+        }>("/adventure-guild/rank");
+        const contratos = resp.data?.data?.contratos_ativos ?? [];
+        if (!cancelado) {
+          setContratosRank(
+            contratos
+              .filter((c) => TIPOS_CONTRATO_DE_COMBATE.has(c.missao.tipo_objetivo))
+              .map((c) => ({
+                id: `contrato:${c.id}`,
+                origem: "Guilda dos Aventureiros" as const,
+                titulo: c.missao.descricao_objetivo,
+                progresso: c.progresso_atual,
+                total: c.missao.quantidade_objetivo,
+              })),
+          );
+        }
+      } catch (error) {
+        console.error("Erro ao carregar contratos de Rank da Guilda dos Aventureiros:", error);
+      }
+    }
+
+    async function carregarMissoesDaGuilda() {
+      try {
+        const respGuild = await axiosInstance.get<{ data?: { guild?: { id: number } | null } }>(
+          `/guilds/character/${character.id}`,
+        );
+        const idGuild = respGuild.data?.data?.guild?.id;
+        if (!idGuild) return;
+
+        const resp = await axiosInstance.get<{
+          data?: {
+            missoes?: {
+              categoria: string;
+              missao: { nome: string; tipo_objetivo: string; meta: number };
+              progresso: number;
+              concluida: boolean;
+            }[];
+          };
+        }>(`/guilds/${idGuild}/missions`);
+        const missoes = resp.data?.data?.missoes ?? [];
+        if (!cancelado) {
+          setMissoesDaGuilda(
+            missoes
+              // Missão da Guilda não tem "Entregar"/"MatarMonstroEspecifico"/
+              // "MatarNaRegiao" no catálogo (§ GuildMission.js) — só
+              // "MatarInimigos" é combate; e já concluída sai da lista (não
+              // é mais "em andamento").
+              .filter((m) => m.missao.tipo_objetivo === "MatarInimigos" && !m.concluida)
+              .map((m) => ({
+                id: `guilda:${m.categoria}`,
+                origem: "Guilda" as const,
+                titulo: m.missao.nome,
+                subtitulo: m.categoria,
+                progresso: m.progresso,
+                total: m.missao.meta,
+              })),
+          );
+        }
+      } catch (error) {
+        console.error("Erro ao carregar missões da Guilda:", error);
+      }
+    }
+
+    carregarContratosDeRank();
+    carregarMissoesDaGuilda();
+    return () => {
+      cancelado = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const missoesEmAndamento: MissaoEmAndamentoInfo[] = [
+    ...(cacadaAtiva
+      ? [
+          {
+            id: `cacada:${cacadaAtiva.id}`,
+            origem: "Caçada" as const,
+            titulo: `Caça: ${cacadaAtiva.target?.nome ?? "Alvo desconhecido"}`,
+            subtitulo: cacadaAtiva.difficultyLabel ?? null,
+            progresso: cacadaAtiva.progress,
+            total: cacadaAtiva.quantityRequired,
+          },
+        ]
+      : []),
+    ...contratosRank,
+    ...missoesDaGuilda,
+  ];
 
   const [animJogador, setAnimJogador] = useState<EstadoAnimacao>("idle");
 
@@ -1316,7 +1435,7 @@ export default function CombatArena({
               }
               cooldownsPorPoder={cooldownsPorPoder}
             />
-            <MissionsPanel cacada={cacadaAtiva} />
+            <MissionsPanel missoes={missoesEmAndamento} />
           </div>
         </div>
       )}
