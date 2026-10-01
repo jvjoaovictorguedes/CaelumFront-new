@@ -206,6 +206,17 @@ export default function CraftingPanel({ onProgressoMudou }: { nivelForja: number
   const intervaloRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const { mostrarErro, mostrarSucesso } = useToast();
 
+  // Filtro completo (pedido do jogador) — busca por nome, Tier e "só o
+  // que já dá pra fabricar agora" (materiais suficientes em alguma
+  // qualidade). Enquanto algum filtro está ativo, carrega TODAS as
+  // categorias (não só a que o jogador abriu) e ignora o colapso manual
+  // das seções — senão "filtro completo" só filtraria o que já tivesse
+  // sido clicado antes, o que não é completo nenhum.
+  const [filtroNome, setFiltroNome] = useState("");
+  const [filtroTier, setFiltroTier] = useState<number | "todos">("todos");
+  const [filtroFabricavel, setFiltroFabricavel] = useState(false);
+  const filtroAtivo = filtroNome.trim() !== "" || filtroTier !== "todos" || filtroFabricavel;
+
   const mesclarQualidadesPadrao = useCallback((lista: Blueprint[]) => {
     setQualidadeSelecionada((atual) => {
       const novo = { ...atual };
@@ -258,6 +269,16 @@ export default function CraftingPanel({ onProgressoMudou }: { nivelForja: number
   useEffect(() => {
     carregarInicial();
   }, [carregarInicial]);
+
+  useEffect(() => {
+    if (!filtroAtivo || !resumo) return;
+    for (const { categoria_equipamento: categoria } of resumo) {
+      if (!blueprintsPorCategoria[categoria] && !carregandoCategoria[categoria]) {
+        carregarCategoria(categoria);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filtroAtivo, resumo]);
 
   useEffect(() => {
     if (intervaloRef.current) clearInterval(intervaloRef.current);
@@ -353,6 +374,15 @@ export default function CraftingPanel({ onProgressoMudou }: { nivelForja: number
 
   const pronto = fila && (fila.pronto || contagem <= 0);
 
+  function filtrarBlueprints(lista: Blueprint[]) {
+    return lista.filter((bp) => {
+      if (filtroNome.trim() && !bp.nome.toLowerCase().includes(filtroNome.trim().toLowerCase())) return false;
+      if (filtroTier !== "todos" && bp.tier_equipamento !== filtroTier) return false;
+      if (filtroFabricavel && !bp.variantes.some((v) => v.pode_fabricar)) return false;
+      return true;
+    });
+  }
+
   return (
     <div className="flex flex-col gap-4">
       {fila && (
@@ -381,35 +411,98 @@ export default function CraftingPanel({ onProgressoMudou }: { nivelForja: number
         </div>
       )}
 
+      {resumo && resumo.length > 0 && (
+        <div className="flex flex-wrap items-end gap-3 rounded-2xl border-2 border-[#F3B43F]/40 bg-[#292018]/80 p-4">
+          <label className="flex flex-1 min-w-[10rem] flex-col gap-1 text-xs text-white/70">
+            Buscar por nome
+            <input
+              type="text"
+              value={filtroNome}
+              onChange={(e) => setFiltroNome(e.target.value)}
+              placeholder="Ex: Espada de Ferro"
+              className="rounded-lg border border-white/20 bg-black/30 px-3 py-1.5 text-sm text-white placeholder-white/40 outline-none focus:border-[#F3B43F]"
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-xs text-white/70">
+            Tier
+            <select
+              value={filtroTier}
+              onChange={(e) => setFiltroTier(e.target.value === "todos" ? "todos" : Number(e.target.value))}
+              className="rounded-lg border border-white/20 bg-black/30 px-3 py-1.5 text-sm text-white outline-none focus:border-[#F3B43F]"
+            >
+              <option value="todos">Todos</option>
+              {[1, 2, 3, 4, 5].map((tier) => (
+                <option key={tier} value={tier}>
+                  {formatarTier(tier)}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="flex items-center gap-2 pb-1.5 text-xs text-white/70">
+            <input
+              type="checkbox"
+              checked={filtroFabricavel}
+              onChange={(e) => setFiltroFabricavel(e.target.checked)}
+            />
+            Só o que já dá pra fabricar
+          </label>
+          {filtroAtivo && (
+            <button
+              type="button"
+              onClick={() => {
+                setFiltroNome("");
+                setFiltroTier("todos");
+                setFiltroFabricavel(false);
+              }}
+              className="pb-1.5 text-xs text-[#F3B43F] hover:underline"
+            >
+              Limpar filtro
+            </button>
+          )}
+        </div>
+      )}
+
       {!resumo || resumo.length === 0 ? (
         <div className="rounded-2xl border-2 border-[#F3B43F] bg-[#292018]/90 p-5 text-white shadow-xl">
           <p className="text-sm text-white/60">Nenhum blueprint disponível ainda.</p>
         </div>
       ) : (
         ordenarCategorias(resumo).map(({ categoria_equipamento: categoria, total }) => {
-          const aberta = secoesAbertas[categoria] ?? false;
+          const aberta = filtroAtivo || (secoesAbertas[categoria] ?? false);
           const carregandoEssa = carregandoCategoria[categoria] ?? false;
           const blueprintsDaCategoria = blueprintsPorCategoria[categoria];
+          const blueprintsFiltrados = blueprintsDaCategoria ? filtrarBlueprints(blueprintsDaCategoria) : undefined;
+
+          // Com filtro ativo, categoria sem nenhum resultado nem aparece
+          // (senão "filtro completo" ainda mostraria um monte de seções
+          // vazias pra rolar).
+          if (filtroAtivo && !carregandoEssa && blueprintsFiltrados && blueprintsFiltrados.length === 0) {
+            return null;
+          }
+
           return (
             <div key={categoria} className="flex flex-col gap-3">
               <button
                 type="button"
                 onClick={() => alternarSecao(categoria)}
-                className="flex items-center gap-2 rounded-xl border-2 border-[#F3B43F]/60 bg-[#292018]/90 px-4 py-2 text-left text-white shadow-xl transition hover:border-[#F3B43F]"
+                disabled={filtroAtivo}
+                className="flex items-center gap-2 rounded-xl border-2 border-[#F3B43F]/60 bg-[#292018]/90 px-4 py-2 text-left text-white shadow-xl transition hover:border-[#F3B43F] disabled:cursor-default"
               >
                 <span className={`text-xs transition-transform ${aberta ? "" : "-rotate-90"}`}>▼</span>
                 <span className="font-imFeel text-lg uppercase tracking-wide text-[#F3B43F]">
                   {LABEL_CATEGORIA[categoria] ?? categoria}
                 </span>
-                <span className="ml-auto text-xs text-white/50">{total} receita(s)</span>
+                <span className="ml-auto text-xs text-white/50">
+                  {filtroAtivo && blueprintsFiltrados ? `${blueprintsFiltrados.length} de ${total}` : `${total} receita(s)`}
+                </span>
               </button>
 
               {aberta && carregandoEssa && (
                 <p className="pl-1 text-xs text-white/50">Carregando {LABEL_CATEGORIA[categoria] ?? categoria}...</p>
               )}
 
-              {aberta && !carregandoEssa && blueprintsDaCategoria && categoria === "Arma"
-                ? agruparPorTipoArma(blueprintsDaCategoria).map(([tipoArma, blueprintsDoTipo]) => (
+              {aberta && !carregandoEssa && blueprintsFiltrados && categoria === "Arma"
+                ? agruparPorTipoArma(blueprintsFiltrados).map(([tipoArma, blueprintsDoTipo]) => (
                     <div key={tipoArma} className="flex flex-col gap-3">
                       <p className="pl-1 text-xs font-bold uppercase tracking-widest text-white/50">{tipoArma}</p>
                       {blueprintsDoTipo.map((blueprint) => renderBlueprintCard(blueprint))}
@@ -417,7 +510,7 @@ export default function CraftingPanel({ onProgressoMudou }: { nivelForja: number
                   ))
                 : aberta &&
                   !carregandoEssa &&
-                  blueprintsDaCategoria?.map((blueprint) => renderBlueprintCard(blueprint))}
+                  blueprintsFiltrados?.map((blueprint) => renderBlueprintCard(blueprint))}
             </div>
           );
         })
