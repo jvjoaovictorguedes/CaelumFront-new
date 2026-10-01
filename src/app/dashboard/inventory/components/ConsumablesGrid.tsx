@@ -5,6 +5,7 @@ import axiosInstance from "@/utils/axiosIntance";
 import { resolveMediaUrl } from "@/utils/media-url";
 import { useCharacter } from "@/contexts/CharacterContext";
 import ItemIcon from "@/components/Item/ItemIcon";
+import { OPCOES_ORDENACAO, ordenarInventario, type CriterioOrdenacaoInventario } from "@/lib/inventorySort";
 
 interface ConsumablePropertiesApi {
   efeito_vida: number;
@@ -65,6 +66,7 @@ export default function ConsumablesGrid({ characterId }: { characterId: number }
   const [usandoId, setUsandoId] = useState<number | null>(null);
   const [mensagem, setMensagem] = useState("");
   const [selecionado, setSelecionado] = useState<number | null>(null);
+  const [criterio, setCriterio] = useState<CriterioOrdenacaoInventario>("raridade");
 
   const carregar = useCallback(async () => {
     try {
@@ -121,10 +123,26 @@ export default function ConsumablesGrid({ characterId }: { characterId: number }
 
   return (
     <div className="rounded-2xl border-2 border-[#F3B43F] bg-[#292018]/90 p-5 text-white shadow-xl">
-      <div className="mb-3 flex justify-center">
+      <div className="mb-3 flex flex-wrap items-center justify-center gap-2">
         <p className="rounded-full border border-[#F3B43F]/50 bg-black/30 px-4 py-1 text-xs font-bold uppercase tracking-widest text-[#F3B43F]">
           Consumíveis
         </p>
+        {itens.length > 0 && (
+          <label className="flex items-center gap-1 text-[11px] text-white/60">
+            Ordenar por:
+            <select
+              value={criterio}
+              onChange={(e) => setCriterio(e.target.value as CriterioOrdenacaoInventario)}
+              className="rounded-lg border border-white/20 bg-black/40 px-2 py-1 text-[11px] text-white"
+            >
+              {OPCOES_ORDENACAO.map((o) => (
+                <option key={o.valor} value={o.valor}>
+                  {o.rotulo}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
       </div>
 
       {mensagem && <p className="mb-3 text-center text-sm text-red-400">{mensagem}</p>}
@@ -136,7 +154,7 @@ export default function ConsumablesGrid({ characterId }: { characterId: number }
       ) : (
         <>
           <div className="grid grid-cols-4 gap-2 sm:grid-cols-7">
-            {itens.map((entrada) => (
+            {ordenarInventario(itens, criterio).map((entrada) => (
               <button
                 key={entrada.id_personagem_inventario}
                 type="button"

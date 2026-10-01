@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import axiosInstance from "@/utils/axiosIntance";
 import { resolveMediaUrl } from "@/utils/media-url";
 import ItemIcon from "@/components/Item/ItemIcon";
+import { OPCOES_ORDENACAO, ordenarInventario, type CriterioOrdenacaoInventario } from "@/lib/inventorySort";
 
 interface ItemInfo {
   id: number;
@@ -32,6 +33,7 @@ const CORES_RARIDADE: Record<string, string> = {
 export default function MaterialsGrid({ characterId }: { characterId: number }) {
   const [itens, setItens] = useState<InventarioEntry[]>([]);
   const [carregando, setCarregando] = useState(true);
+  const [criterio, setCriterio] = useState<CriterioOrdenacaoInventario>("raridade");
 
   useEffect(() => {
     let cancelado = false;
@@ -68,10 +70,26 @@ export default function MaterialsGrid({ characterId }: { characterId: number }) 
 
   return (
     <div className="rounded-2xl border-2 border-[#F3B43F] bg-[#292018]/90 p-5 text-white shadow-xl">
-      <div className="mb-3 flex justify-center">
+      <div className="mb-3 flex flex-wrap items-center justify-center gap-2">
         <p className="rounded-full border border-[#F3B43F]/50 bg-black/30 px-4 py-1 text-xs font-bold uppercase tracking-widest text-[#F3B43F]">
           Materiais e Espólios
         </p>
+        {itens.length > 0 && (
+          <label className="flex items-center gap-1 text-[11px] text-white/60">
+            Ordenar por:
+            <select
+              value={criterio}
+              onChange={(e) => setCriterio(e.target.value as CriterioOrdenacaoInventario)}
+              className="rounded-lg border border-white/20 bg-black/40 px-2 py-1 text-[11px] text-white"
+            >
+              {OPCOES_ORDENACAO.map((o) => (
+                <option key={o.valor} value={o.valor}>
+                  {o.rotulo}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
       </div>
 
       {itens.length === 0 ? (
@@ -80,7 +98,7 @@ export default function MaterialsGrid({ characterId }: { characterId: number }) 
         </p>
       ) : (
         <div className="grid grid-cols-4 gap-2 sm:grid-cols-7">
-          {itens.map((entrada) => (
+          {ordenarInventario(itens, criterio).map((entrada) => (
             <MaterialCard key={entrada.id_personagem_inventario} entrada={entrada} />
           ))}
         </div>
