@@ -289,7 +289,7 @@ export default function GuildDashboard({
       {aba === "beneficios" && <GuildBenefitsTab idGuild={guild.id} pode={pode} />}
       {aba === "boss" && <GuildBossTab idGuild={guild.id} pode={pode} />}
       {aba === "tesouro" && (
-        <GuildTreasuryTab guild={guild} characterId={characterId} pode={pode} onMudou={recarregarGuild} />
+        <GuildTreasuryTab guild={guild} characterId={characterId} meuCargo={cargo} onMudou={recarregarGuild} />
       )}
       {aba === "contribuicao" && <GuildContributionTab idGuild={guild.id} />}
       {aba === "logs" && <GuildLogsTab idGuild={guild.id} />}

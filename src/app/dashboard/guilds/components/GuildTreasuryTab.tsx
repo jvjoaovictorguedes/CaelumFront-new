@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import axiosInstance from "@/utils/axiosIntance";
-import type { GuildResumo, Permissao, TransacaoTesouro } from "./types";
+import type { GuildResumo, TransacaoTesouro } from "./types";
 
 function mensagemDeErro(error: unknown, fallback: string) {
   return (
@@ -14,12 +14,12 @@ function mensagemDeErro(error: unknown, fallback: string) {
 export default function GuildTreasuryTab({
   guild,
   characterId,
-  pode,
+  meuCargo,
   onMudou,
 }: {
   guild: GuildResumo;
   characterId: number;
-  pode: Partial<Record<Permissao, boolean>>;
+  meuCargo: string;
   onMudou: () => void;
 }) {
   const [valorDoacao, setValorDoacao] = useState("");
@@ -33,13 +33,19 @@ export default function GuildTreasuryTab({
 
   const [transacoes, setTransacoes] = useState<TransacaoTesouro[]>([]);
 
+  // Registrar gasto é ação só do líder (o backend também trava isso,
+  // mesmo que a permissão autorizar_gastos seja reatribuída a outro
+  // cargo em "editar cargos") — não tem sentido buscar o extrato pra
+  // quem não vai ver essa seção.
+  const souLider = meuCargo === "Fundador";
+
   useEffect(() => {
-    if (!pode.autorizar_gastos) return;
+    if (!souLider) return;
     axiosInstance
       .get<{ data?: { transacoes?: TransacaoTesouro[] } }>(`/guilds/${guild.id}/treasury/transactions`)
       .then((resp) => setTransacoes(resp.data?.data?.transacoes ?? []))
       .catch((error) => console.error("Erro ao buscar extrato:", error));
-  }, [guild.id, pode.autorizar_gastos]);
+  }, [guild.id, souLider]);
 
   async function doar(event: React.FormEvent) {
     event.preventDefault();
@@ -119,9 +125,14 @@ export default function GuildTreasuryTab({
         {erroDoacao && <p className="mt-2 text-sm text-red-400">{erroDoacao}</p>}
       </div>
 
-      {pode.autorizar_gastos && (
+      {souLider && (
         <div className="rounded-2xl border-2 border-[#F3B43F] bg-[#292018]/90 p-5 text-white shadow-xl">
-          <p className="mb-3 text-sm uppercase tracking-widest text-[#F3B43F]">Registrar gasto</p>
+          <p className="mb-1 text-sm uppercase tracking-widest text-[#F3B43F]">Registrar gasto</p>
+          <p className="mb-3 text-xs text-white/50">
+            Isso só retira o valor do tesouro e grava no extrato abaixo — é um registro contábil,
+            não paga nem transfere ouro pra ninguém. (Uma forma de efetivamente sacar/usar esse
+            ouro ainda está por vir.)
+          </p>
           <form onSubmit={registrarGasto} className="flex flex-wrap items-end gap-2">
             <div className="flex flex-col">
               <label className="mb-1 text-xs text-white/60">Valor</label>
