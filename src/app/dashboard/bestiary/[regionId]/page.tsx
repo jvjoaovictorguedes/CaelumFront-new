@@ -231,8 +231,11 @@ export default async function BestiaryRegionPage({
       {zona.ha_nao_descobertos && (
         <div className="flex flex-col items-center justify-center gap-1 rounded-2xl border border-dashed border-white/15 bg-black/30 p-6 text-center text-white/50">
           <p className="font-imFeel text-2xl">???</p>
-          <p className="text-sm">Falta alguma coisa para concluir esta região.</p>
-          <p className="text-xs text-white/40">Continue caçando — a ficha completa só aparece depois da primeira vitória.</p>
+          <p className="text-sm">As lendas desta região ainda guardam segredos não revelados.</p>
+          <p className="text-xs text-white/40">
+            Dizem que uma fera rara ronda estas terras sem nunca ter sido vista — e caçadores
+            desavisados que cruzaram seu caminho não voltaram para contar a história.
+          </p>
         </div>
       )}
     </div>
