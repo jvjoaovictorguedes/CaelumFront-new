@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import axiosInstance from "@/utils/axiosIntance";
 import { resolveMediaUrl } from "@/utils/media-url";
 
@@ -40,6 +40,8 @@ interface PoderApi {
   proxima_evolucao: CustoEvolucao | null;
   custo_ouro: number | null;
   pode_comprar: boolean;
+  bloqueado_por_evolucao: boolean;
+  evolucao_necessaria: string | null;
 }
 
 interface RecursosEvolucao {
@@ -185,9 +187,21 @@ function DetalheDoPoder({
             Precisa comprar: {poder.custo_ouro} ouro
           </span>
         )}
+        {bloqueado && poder.bloqueado_por_evolucao && (
+          <span className="rounded bg-purple-900/40 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-purple-300">
+            Requer evolução: {poder.evolucao_necessaria}
+          </span>
+        )}
       </div>
       <p className="mt-2 text-sm text-white/80">{poder.descricao}</p>
       <p className="mt-1 text-xs text-white/60">{detalhes.join(" · ")}</p>
+
+      {bloqueado && poder.bloqueado_por_evolucao && (
+        <p className="mt-3 text-[11px] text-purple-300/80">
+          Essa habilidade só é liberada ao adquirir a evolução &quot;{poder.evolucao_necessaria}&quot; — veja a Árvore
+          de Evolução na aba Classe.
+        </p>
+      )}
 
       {bloqueado && poder.pode_comprar && (
         <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -236,6 +250,18 @@ export default function AbilitiesPanel({ characterId }: { characterId: number })
   const [evoluindoId, setEvoluindoId] = useState<number | null>(null);
   const [comprandoId, setComprandoId] = useState<number | null>(null);
   const [selecionado, setSelecionado] = useState<PoderApi | null>(null);
+  const detalheRef = useRef<HTMLDivElement | null>(null);
+
+  // Com 6 grades empilhadas (até ~1000px no mobile), clicar numa
+  // habilidade lá em cima sem rolar a tela fazia o jogador achar que o
+  // clique não fez nada — o detalhe só aparece no fim de tudo.
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- só precisa
+  // re-rolar quando o ID selecionado muda, não a cada novo objeto `poder`
+  useEffect(() => {
+    if (selecionado) {
+      detalheRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+  }, [selecionado?.id_power]);
 
   const carregar = useCallback(async () => {
     try {
@@ -385,13 +411,15 @@ export default function AbilitiesPanel({ characterId }: { characterId: number })
       )}
 
       {selecionadoAtual && (
-        <DetalheDoPoder
-          poder={selecionadoAtual}
-          evoluindo={evoluindoId === selecionadoAtual.id_character_ability}
-          onEvoluir={() => evoluir(selecionadoAtual)}
-          comprando={comprandoId === selecionadoAtual.id_power}
-          onComprar={() => comprar(selecionadoAtual)}
-        />
+        <div ref={detalheRef}>
+          <DetalheDoPoder
+            poder={selecionadoAtual}
+            evoluindo={evoluindoId === selecionadoAtual.id_character_ability}
+            onEvoluir={() => evoluir(selecionadoAtual)}
+            comprando={comprandoId === selecionadoAtual.id_power}
+            onComprar={() => comprar(selecionadoAtual)}
+          />
+        </div>
       )}
     </div>
   );

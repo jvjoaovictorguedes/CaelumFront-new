@@ -18,6 +18,7 @@ import {
   type WorldBossRankingApi,
   type WorldBossStatusApi,
 } from "@/lib/api/worldBoss";
+import { useCharacter } from "./CharacterContext";
 
 interface WorldBossHpAtualizado {
   hp_max: number;
@@ -63,11 +64,30 @@ export interface WorldBossFeedEntry {
   tipo: "dano" | "derrota" | "fase" | "cast" | "info";
 }
 
+// Bug relatado ("não tá igual aventura") — WorldBossArena mostrava um
+// golpe do Boss em mim só como uma linha de texto no feed, nunca como
+// reação visual (flash/número flutuante) na própria cena de batalha,
+// porque `worldboss:boss-acao` é um broadcast GLOBAL (todo mundo recebe
+// o mesmo evento, atingido ou não) e nada aqui filtrava "esse alvo sou
+// eu". `seq` incrementa a cada impacto novo pra quem consome poder
+// disparar a animação via useEffect mesmo quando dois impactos seguidos
+// têm o mesmo dano (um valor igual ao anterior não dispara reatividade
+// sozinho).
+export interface WorldBossImpactoEmMim {
+  seq: number;
+  dano: number;
+  critico: boolean;
+  esquivou: boolean;
+  derrotado: boolean;
+  origem: string;
+}
+
 interface WorldBossSocketContextValue {
   status: WorldBossStatusApi | null;
   ranking: WorldBossRankingApi | null;
   feed: WorldBossFeedEntry[];
   faseAlerta: WorldBossFasePayload | null;
+  impactoEmMim: WorldBossImpactoEmMim | null;
   recarregar: () => void;
 }
 
@@ -76,6 +96,7 @@ const WorldBossSocketContext = createContext<WorldBossSocketContextValue>({
   ranking: null,
   feed: [],
   faseAlerta: null,
+  impactoEmMim: null,
   recarregar: () => {},
 });
 
@@ -84,12 +105,22 @@ function socketUrlFromApiUrl(apiUrl: string) {
 }
 
 export function WorldBossSocketProvider({ children }: { children: React.ReactNode }) {
+  const { character } = useCharacter();
   const [status, setStatus] = useState<WorldBossStatusApi | null>(null);
   const [ranking, setRanking] = useState<WorldBossRankingApi | null>(null);
   const [feed, setFeed] = useState<WorldBossFeedEntry[]>([]);
   const [faseAlerta, setFaseAlerta] = useState<WorldBossFasePayload | null>(null);
+  const [impactoEmMim, setImpactoEmMim] = useState<WorldBossImpactoEmMim | null>(null);
   const socketRef = useRef<Socket | null>(null);
   const proximoFeedId = useRef(1);
+  const proximoImpactoSeq = useRef(1);
+  // Lido dentro do listener de socket (montado uma única vez no mount
+  // deste provider) — nunca o `character` da closure, que ficaria
+  // travado no personagem de quando o socket conectou.
+  const meuIdRef = useRef<number | null>(character?.id ?? null);
+  useEffect(() => {
+    meuIdRef.current = character?.id ?? null;
+  }, [character?.id]);
 
   const adicionarFeed = useCallback((texto: string, tipo: WorldBossFeedEntry["tipo"]) => {
     const id = proximoFeedId.current++;
@@ -149,6 +180,21 @@ export function WorldBossSocketProvider({ children }: { children: React.ReactNod
         };
       });
 
+      const registrarImpactoSeEuForOAlvo = (
+        alvo: { character_id: number; dano: number; esquivou: boolean; critico?: boolean; derrotado: boolean },
+        origem: string,
+      ) => {
+        if (meuIdRef.current === null || alvo.character_id !== meuIdRef.current) return;
+        setImpactoEmMim({
+          seq: proximoImpactoSeq.current++,
+          dano: alvo.dano,
+          critico: Boolean(alvo.critico),
+          esquivou: alvo.esquivou,
+          derrotado: alvo.derrotado,
+          origem,
+        });
+      };
+
       if (payload.habilidade) {
         const nomePower = payload.habilidade.power?.nome ?? "uma habilidade";
         for (const alvo of payload.habilidade.alvos) {
@@ -158,6 +204,7 @@ export function WorldBossSocketProvider({ children }: { children: React.ReactNod
               `${nomePower} atingiu ${alvo.nome}: ${alvo.dano.toLocaleString("pt-BR")} de dano.${alvo.critico ? " ACERTO CRÍTICO!" : ""}`,
               "dano",
             );
+          registrarImpactoSeEuForOAlvo(alvo, nomePower);
         }
         if (payload.habilidade.alvos.length === 0 && payload.habilidade.cura_self) {
           adicionarFeed(`O Boss usou ${nomePower} e se curou.`, "info");
@@ -169,6 +216,7 @@ export function WorldBossSocketProvider({ children }: { children: React.ReactNod
             `O Boss atacou ${payload.alvo.nome}: ${payload.alvo.dano.toLocaleString("pt-BR")} de dano.${payload.alvo.critico ? " ACERTO CRÍTICO!" : ""}`,
             "dano",
           );
+        registrarImpactoSeEuForOAlvo(payload.alvo, "O Boss");
       } else if (payload.boss_bloqueado) {
         adicionarFeed(`O Boss perdeu a ação (${payload.boss_bloqueado}).`, "info");
       }
@@ -203,7 +251,7 @@ export function WorldBossSocketProvider({ children }: { children: React.ReactNod
   }, [recarregar, adicionarFeed]);
 
   return (
-    <WorldBossSocketContext.Provider value={{ status, ranking, feed, faseAlerta, recarregar }}>
+    <WorldBossSocketContext.Provider value={{ status, ranking, feed, faseAlerta, impactoEmMim, recarregar }}>
       {children}
     </WorldBossSocketContext.Provider>
   );

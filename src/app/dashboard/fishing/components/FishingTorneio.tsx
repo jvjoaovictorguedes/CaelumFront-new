@@ -1,11 +1,13 @@
 "use client";
 
-// Torneio da Pesca — participação automática (qualquer captura durante
-// a janela conta, sem botão de "entrar"). Pontuação e leaderboard vêm
-// 100% de GET /fishing/tournament, materializados na leitura pelo
-// backend (fishingTournamentService.js) — este componente só exibe.
-import { useEffect, useState } from "react";
-import { fishingApi, type TorneioPescaResposta } from "@/lib/api/fishing";
+// Torneio da Pesca — ideia #1 da fila de melhorias: inscrição explícita
+// (reversão do design original "participação automática" — agora só
+// captura de quem se inscreveu conta pro placar) e fechamento automático
+// (fishingTournamentScheduler.js no backend registra o vencedor e marca
+// o torneio como finalizado sozinho, sem ação de admin). Pontuação e
+// leaderboard continuam vindo 100% de GET /fishing/tournament.
+import { useCallback, useEffect, useState } from "react";
+import { fishingApi, mensagemDeErro, type TorneioPescaResposta } from "@/lib/api/fishing";
 
 function formatarJanela(inicio: string, fim: string) {
   const fmt = (iso: string) => new Date(iso).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
@@ -31,7 +33,7 @@ export function TorneioBanner({ onVerTorneio }: { onVerTorneio: () => void }) {
     };
   }, []);
 
-  if (!dados || dados.statusTorneio === "NENHUM" || !dados.torneio) return null;
+  if (!dados || dados.statusTorneio === "NENHUM" || dados.statusTorneio === "FINALIZADO" || !dados.torneio) return null;
 
   const emAndamento = dados.statusTorneio === "EM_ANDAMENTO";
 
@@ -49,6 +51,7 @@ export function TorneioBanner({ onVerTorneio }: { onVerTorneio: () => void }) {
         {emAndamento ? "🏆 Torneio ativo agora: " : "Próximo torneio: "}
         <b>{dados.torneio.nome}</b>
         {dados.torneio.zona ? ` (zona: ${dados.torneio.zona.nome})` : " (todas as zonas)"}
+        {!emAndamento && !dados.inscrito && " — inscreva-se antes que comece!"}
       </span>
       <span className="text-xs uppercase tracking-wide opacity-80">
         {formatarJanela(dados.torneio.inicia_em, dados.torneio.termina_em)}
@@ -61,27 +64,38 @@ export default function FishingTorneio() {
   const [dados, setDados] = useState<TorneioPescaResposta | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
+  const [inscrevendo, setInscrevendo] = useState(false);
 
-  useEffect(() => {
-    let ativo = true;
-    fishingApi
-      .getTournament()
-      .then((r) => {
-        if (ativo) setDados(r);
-      })
-      .catch(() => {
-        if (ativo) setErro("Não foi possível carregar o Torneio da Pesca.");
-      })
-      .finally(() => {
-        if (ativo) setCarregando(false);
-      });
-    return () => {
-      ativo = false;
-    };
+  const carregar = useCallback(async () => {
+    try {
+      const r = await fishingApi.getTournament();
+      setDados(r);
+    } catch {
+      setErro("Não foi possível carregar o Torneio da Pesca.");
+    } finally {
+      setCarregando(false);
+    }
   }, []);
 
+  useEffect(() => {
+    carregar();
+  }, [carregar]);
+
+  async function inscrever() {
+    if (!dados?.torneio) return;
+    setInscrevendo(true);
+    setErro("");
+    try {
+      await fishingApi.inscreverTournament(dados.torneio.id);
+      await carregar();
+    } catch (error) {
+      setErro(mensagemDeErro(error, "Não foi possível se inscrever no torneio."));
+    } finally {
+      setInscrevendo(false);
+    }
+  }
+
   if (carregando) return <p className="text-white/70">Carregando Torneio…</p>;
-  if (erro) return <p className="text-red-400">{erro}</p>;
 
   if (!dados || dados.statusTorneio === "NENHUM" || !dados.torneio) {
     return (
@@ -91,27 +105,66 @@ export default function FishingTorneio() {
     );
   }
 
-  const { torneio, statusTorneio, leaderboard, minhaPosicao } = dados;
+  const { torneio, statusTorneio, leaderboard, minhaPosicao, inscrito } = dados;
   const emAndamento = statusTorneio === "EM_ANDAMENTO";
+  const agendado = statusTorneio === "AGENDADO";
+  const finalizado = statusTorneio === "FINALIZADO";
 
   return (
     <div className="flex flex-col gap-4">
       <div
         className={`rounded-xl border p-4 text-white ${
-          emAndamento ? "border-amber-400/60 bg-amber-950/30" : "border-white/15 bg-black/30"
+          emAndamento
+            ? "border-amber-400/60 bg-amber-950/30"
+            : finalizado
+              ? "border-white/10 bg-black/40"
+              : "border-white/15 bg-black/30"
         }`}
       >
         <p className="text-sm uppercase tracking-widest text-amber-300">
-          {emAndamento ? "Torneio em andamento" : "Próximo torneio agendado"}
+          {emAndamento ? "Torneio em andamento" : agendado ? "Próximo torneio agendado" : "Último torneio (encerrado)"}
         </p>
         <p className="text-2xl font-imFeel">{torneio.nome}</p>
         <p className="text-sm text-white/60">
           Escopo: {torneio.zona ? torneio.zona.nome : "Todas as zonas"} · Janela: {formatarJanela(torneio.inicia_em, torneio.termina_em)}
         </p>
-        <p className="mt-2 text-xs text-white/50">
-          Pontuação = soma de (peso × qualidade) de cada captura feita durante a janela. Participação é automática — qualquer
-          peixe pescado agora, enquanto o torneio estiver ativo, já conta pro seu placar.
-        </p>
+
+        {finalizado ? (
+          <p className="mt-2 text-sm text-white/70">
+            {torneio.vencedor_nome ? (
+              <>
+                🏆 Vencedor: <b className="text-amber-300">{torneio.vencedor_nome}</b>
+              </>
+            ) : (
+              "Ninguém se inscreveu ou pescou o suficiente neste torneio."
+            )}
+          </p>
+        ) : (
+          <p className="mt-2 text-xs text-white/50">
+            Pontuação = soma de (peso × qualidade) de cada captura feita durante a janela, só de quem se inscreveu. A
+            inscrição fecha assim que o torneio começa.
+          </p>
+        )}
+
+        {!finalizado && (
+          <div className="mt-3">
+            {inscrito ? (
+              <p className="text-sm font-bold text-emerald-400">✓ Você está inscrito neste torneio.</p>
+            ) : agendado ? (
+              <button
+                type="button"
+                onClick={inscrever}
+                disabled={inscrevendo}
+                className="rounded-lg bg-amber-500 px-4 py-2 text-sm font-bold text-black transition hover:bg-amber-400 disabled:opacity-50"
+              >
+                {inscrevendo ? "Inscrevendo..." : "Inscrever-se no torneio"}
+              </button>
+            ) : (
+              <p className="text-sm text-white/50">Inscrições encerradas — o torneio já começou.</p>
+            )}
+          </div>
+        )}
+        {erro && <p className="mt-2 text-sm text-red-400">{erro}</p>}
       </div>
 
       {emAndamento && minhaPosicao && (
@@ -142,7 +195,7 @@ export default function FishingTorneio() {
               {leaderboard.itens.length === 0 ? (
                 <tr>
                   <td colSpan={4} className="px-3 py-4 text-center text-white/50">
-                    Ninguém pescou durante este torneio ainda.
+                    {agendado ? "Ninguém se inscreveu ainda." : "Ninguém pescou durante este torneio ainda."}
                   </td>
                 </tr>
               ) : (

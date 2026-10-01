@@ -105,7 +105,7 @@ function nodePassaNoFiltro(node: NodeApi, filtro: FiltroTipo, subfiltroExpedicao
 
 // Estado neutro fica sempre visível de fundo, mesmo filtrando Nodes
 // (spec §27: "territórios permanecem como camada de fundo").
-export default function WorldMapClient({ mapa }: { mapa: WorldMapApi }) {
+export default function WorldMapClient({ mapa, isAdmin = false }: { mapa: WorldMapApi; isAdmin?: boolean }) {
   const [filtro, setFiltro] = useState<FiltroTipo>("TODOS");
   const [subfiltroExpedicao, setSubfiltroExpedicao] = useState<SubfiltroExpedicao>(null);
   const [nodeSelecionadoId, setNodeSelecionadoId] = useState<number | null>(null);
@@ -136,6 +136,15 @@ export default function WorldMapClient({ mapa }: { mapa: WorldMapApi }) {
             ✕
           </Link>
           <h1 className="font-imFeel text-3xl text-white sm:text-4xl">Mapa de Caelum</h1>
+          {isAdmin && (
+            <Link
+              href="/prototype-2d"
+              title="Protótipo de exploração 2D (em desenvolvimento) — só admin"
+              className="rounded-full border border-dashed border-[#F3B43F]/50 px-3 py-1 text-xs font-bold text-[#F3B43F]/80 transition hover:border-[#F3B43F] hover:text-[#F3B43F]"
+            >
+              Protótipo 2D (admin)
+            </Link>
+          )}
         </div>
         <WorldMapFilters
           filtro={filtro}

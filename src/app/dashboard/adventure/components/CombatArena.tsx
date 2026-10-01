@@ -9,6 +9,7 @@ import { useContextMusic } from "@/hooks/useContextMusic";
 import CombatActionBar, {
   type ConsumivelAcao,
 } from "@/components/combat/CombatActionBar";
+import MissionsPanel, { type CacadaAtivaInfo, type MissaoEmAndamentoInfo } from "@/components/combat/MissionsPanel";
 import {
   StatusIconsRow,
   NOME_POR_STATUS,
@@ -244,6 +245,31 @@ interface RespostaCombate {
     criticoJogador?: boolean;
     criticoInimigo?: boolean;
 
+    // Dano de ataque/poder separado do dano de status effect (DoT) —
+    // ausentes em respostas antigas (compatibilidade), tratados como 0
+    // nesse caso (ver cálculo de fallback em executarAcao/
+    // tocarAnimacaoDoTurno). Bug relatado: o dano do status effect
+    // (Queimadura/Sangramento/Veneno) estava sendo somado ao dano do
+    // golpe num único número flutuante, como se tivesse vindo do
+    // ataque/arma/atributo — o status deve aparecer separado, só no
+    // fim do turno de quem carrega o efeito (combatController.js).
+    danoCausadoNoInimigo?: number;
+    danoStatusInimigo?: number;
+    danoRecebidoContraAtaque?: number;
+    danoStatusJogador?: number;
+
+    // Progresso da Caçada ativa cujo alvo é exatamente o monstro morto
+    // nesta vitória — null se o monstro não contava pra nenhuma Caçada
+    // Ativa do personagem (ver adventureHuntCombatService.js).
+    huntUpdate?: {
+      huntId: number;
+      progress: number;
+      quantityRequired: number;
+      completed: boolean;
+      goldReward: number | null;
+      reputationReward: number | null;
+    } | null;
+
     // Presente só na vitória que derrota o ÚLTIMO monstro que faltava
     // descobrir na área (Bestiário) — null em qualquer outra vitória.
     bestiarioCompletoAgora?: {
@@ -431,6 +457,159 @@ export default function CombatArena({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [character.id]);
 
+  // Painel de Missões em andamento (sugestão de jogador — k4zUt0): busca
+  // a Caçada Ativa uma vez ao entrar na tela — o progresso turno a turno
+  // depois vem de graça no `huntUpdate` de cada resposta de combate
+  // (ver executarAcao), sem precisar de polling nem de socket novo.
+  const [cacadaAtiva, setCacadaAtiva] = useState<CacadaAtivaInfo | null>(null);
+
+  useEffect(() => {
+    let cancelado = false;
+
+    async function carregarCacadaAtiva() {
+      try {
+        const resp = await axiosInstance.get<{
+          data?: {
+            activeHunt?: {
+              id: number;
+              target: { nome: string; imagem_url?: string | null } | null;
+              progress: number;
+              quantityRequired: number;
+              difficultyLabel?: string | null;
+            } | null;
+          };
+        }>("/adventure-guild/hunt");
+        if (!cancelado) setCacadaAtiva(resp.data?.data?.activeHunt ?? null);
+      } catch (error) {
+        console.error("Erro ao carregar caçada ativa:", error);
+      }
+    }
+
+    carregarCacadaAtiva();
+    return () => {
+      cancelado = true;
+    };
+  }, []);
+
+  // Bug reportado: Contratos de Rank da Guilda dos Aventureiros e
+  // Missões da Guilda (clã) aceitos/ativos não apareciam no painel —
+  // só a Caçada. Busca os dois UMA vez ao entrar na tela (mesmo
+  // critério da Caçada acima: sem contador em tempo real na resposta
+  // de /combat/action, então o valor fica estático durante a visita a
+  // esta tela, igual já acontece em qualquer outra tela do jogo).
+  // Filtra só pros tipos de objetivo que fazem sentido numa tela de
+  // combate PvE (matar monstro/entregar item) — nunca
+  // Fabricar/Refinar/CompletarExpedicoes/VencerDuelos/GanharOuro/
+  // AlcancarNivel, que não avançam por uma vitória de Aventura.
+  const [contratosRank, setContratosRank] = useState<MissaoEmAndamentoInfo[]>([]);
+  const [missoesDaGuilda, setMissoesDaGuilda] = useState<MissaoEmAndamentoInfo[]>([]);
+
+  useEffect(() => {
+    let cancelado = false;
+    const TIPOS_CONTRATO_DE_COMBATE = new Set([
+      "MatarMonstroEspecifico",
+      "MatarNaRegiao",
+      "MatarInimigos",
+      "Entregar",
+    ]);
+
+    async function carregarContratosDeRank() {
+      try {
+        const resp = await axiosInstance.get<{
+          data?: {
+            contratos_ativos?: {
+              id: number;
+              progresso_atual: number;
+              missao: { tipo_objetivo: string; descricao_objetivo: string; quantidade_objetivo: number };
+            }[];
+          };
+        }>("/adventure-guild/rank");
+        const contratos = resp.data?.data?.contratos_ativos ?? [];
+        if (!cancelado) {
+          setContratosRank(
+            contratos
+              .filter((c) => TIPOS_CONTRATO_DE_COMBATE.has(c.missao.tipo_objetivo))
+              .map((c) => ({
+                id: `contrato:${c.id}`,
+                origem: "Guilda dos Aventureiros" as const,
+                titulo: c.missao.descricao_objetivo,
+                progresso: c.progresso_atual,
+                total: c.missao.quantidade_objetivo,
+              })),
+          );
+        }
+      } catch (error) {
+        console.error("Erro ao carregar contratos de Rank da Guilda dos Aventureiros:", error);
+      }
+    }
+
+    async function carregarMissoesDaGuilda() {
+      try {
+        const respGuild = await axiosInstance.get<{ data?: { guild?: { id: number } | null } }>(
+          `/guilds/character/${character.id}`,
+        );
+        const idGuild = respGuild.data?.data?.guild?.id;
+        if (!idGuild) return;
+
+        const resp = await axiosInstance.get<{
+          data?: {
+            missoes?: {
+              categoria: string;
+              missao: { nome: string; tipo_objetivo: string; meta: number };
+              progresso: number;
+              concluida: boolean;
+            }[];
+          };
+        }>(`/guilds/${idGuild}/missions`);
+        const missoes = resp.data?.data?.missoes ?? [];
+        if (!cancelado) {
+          setMissoesDaGuilda(
+            missoes
+              // Missão da Guilda não tem "Entregar"/"MatarMonstroEspecifico"/
+              // "MatarNaRegiao" no catálogo (§ GuildMission.js) — só
+              // "MatarInimigos" é combate; e já concluída sai da lista (não
+              // é mais "em andamento").
+              .filter((m) => m.missao.tipo_objetivo === "MatarInimigos" && !m.concluida)
+              .map((m) => ({
+                id: `guilda:${m.categoria}`,
+                origem: "Guilda" as const,
+                titulo: m.missao.nome,
+                subtitulo: m.categoria,
+                progresso: m.progresso,
+                total: m.missao.meta,
+              })),
+          );
+        }
+      } catch (error) {
+        console.error("Erro ao carregar missões da Guilda:", error);
+      }
+    }
+
+    carregarContratosDeRank();
+    carregarMissoesDaGuilda();
+    return () => {
+      cancelado = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const missoesEmAndamento: MissaoEmAndamentoInfo[] = [
+    ...(cacadaAtiva
+      ? [
+          {
+            id: `cacada:${cacadaAtiva.id}`,
+            origem: "Caçada" as const,
+            titulo: `Caça: ${cacadaAtiva.target?.nome ?? "Alvo desconhecido"}`,
+            subtitulo: cacadaAtiva.difficultyLabel ?? null,
+            progresso: cacadaAtiva.progress,
+            total: cacadaAtiva.quantityRequired,
+          },
+        ]
+      : []),
+    ...contratosRank,
+    ...missoesDaGuilda,
+  ];
+
   const [animJogador, setAnimJogador] = useState<EstadoAnimacao>("idle");
 
   const [animInimigo, setAnimInimigo] = useState<EstadoAnimacao>("idle");
@@ -589,6 +768,15 @@ export default function CombatArena({
     danoInimigo,
     vidaAposAcaoJogador,
 
+    // Dano de status effect (DoT) separado do dano de ataque/poder —
+    // bug relatado: os dois estavam sendo somados num único número
+    // flutuante, como se o status tivesse saído do golpe/arma/atributo
+    // do atacante. Cada um tica no FIM do turno de quem o carrega
+    // (ver combatController.js), então aparece como um número à parte,
+    // depois do golpe/contra-ataque daquele turno — nunca junto.
+    danoStatusJogador,
+    danoStatusInimigo,
+
     usouCura,
     usouManaPotion,
     manaRecebida,
@@ -608,11 +796,16 @@ export default function CombatArena({
 
     danoInimigo: number;
     // Vida do jogador logo após A PRÓPRIA ação (cura de poder/item ou
-    // nenhuma, se foi ataque), ainda sem o contra-ataque do inimigo —
-    // ver combatController.js (vida_apos_sua_acao). Usado pra separar
-    // visualmente "quanto eu curei" de "quanto o inimigo me tirou",
-    // em vez de só mostrar o saldo líquido do turno inteiro.
+    // nenhuma, se foi ataque) MAIS o tick de status do próprio jogador
+    // (Queimadura/Sangramento/Veneno que ELE carrega), ainda sem o
+    // contra-ataque do inimigo — ver combatController.js
+    // (vida_apos_sua_acao). Usado pra separar visualmente "quanto eu
+    // curei" de "quanto o inimigo me tirou", em vez de só mostrar o
+    // saldo líquido do turno inteiro.
     vidaAposAcaoJogador: number;
+
+    danoStatusJogador: number;
+    danoStatusInimigo: number;
 
     usouCura: boolean;
     // Poção de mana também não avança pra golpear (é um efeito sobre si
@@ -636,13 +829,18 @@ export default function CombatArena({
     // avançam até a distância de combate.
     const ficaParado = usouCura || usouManaPotion;
 
+    // Vida do jogador logo após a PRÓPRIA ação, ANTES do tick de status
+    // dele (vidaAposAcaoJogador já vem com o tick descontado — ver
+    // combatController.js) — isola a cura de verdade do dano de status,
+    // pra um dos dois nunca "engolir" o outro visualmente.
+    const vidaAntesDoTickJogador = vidaAposAcaoJogador + danoStatusJogador;
     // Cura de verdade (poder ou item) desse turno — independente do que
     // o inimigo faz em seguida. Antes disso, a cura só aparecia na tela
     // quando o SALDO do turno inteiro (cura menos o contra-ataque) desse
     // positivo — se o inimigo batesse mais forte que a cura, a poção
     // "sumia" da tela mesmo tendo funcionado (log dizia que curou, a
     // vida não subia visivelmente nunca).
-    const curaRecebida = Math.max(0, vidaAposAcaoJogador - vidaAtual);
+    const curaRecebida = Math.max(0, vidaAntesDoTickJogador - vidaAtual);
     // Dano real do contra-ataque do inimigo NESTE turno — não mais
     // inferido do saldo líquido (que confundia "esquivei" com "curei
     // mais do que apanhei"). "usouCura" nunca mais implica imunidade: o
@@ -662,6 +860,17 @@ export default function CombatArena({
       // refletia o saldo do turno inteiro lá no final (depois do
       // contra-ataque), e uma cura real podia nunca aparecer visível
       // na tela quando o inimigo batia mais forte que ela em seguida.
+      setVidaAtual(vidaAntesDoTickJogador);
+      await espera(400);
+    }
+
+    // Tick de status (Queimadura/Sangramento/Veneno) do PRÓPRIO jogador
+    // — acontece no fim do turno DELE (depois da ação, antes do
+    // contra-ataque do inimigo, ver combatController.js), então aparece
+    // aqui como número à parte, nunca somado à cura nem ao contra-ataque
+    // que vem a seguir.
+    if (danoStatusJogador > 0) {
+      triggerFloatingText("player", `-${danoStatusJogador} EFEITO`, "#b15cff");
       setVidaAtual(vidaAposAcaoJogador);
       await espera(400);
     }
@@ -713,10 +922,15 @@ export default function CombatArena({
       );
     }
 
-    // A barra de vida do inimigo só reflete o novo valor aqui, no
-    // instante em que o golpe visualmente chega (depois da caminhada) —
-    // ver comentário no cabeçalho da função.
-    setEnemy(novoEnemy);
+    // A barra de vida do inimigo só reflete o dano do GOLPE aqui, no
+    // instante em que ele visualmente chega (depois da caminhada) — o
+    // tick de status do próprio inimigo (se houver) só é mostrado mais
+    // abaixo, separado, no fim do turno dele (ver bloco logo antes do
+    // fim desta função).
+    const vidaInimigoAntesDoTick = novoEnemy.vida_atual + danoStatusInimigo;
+    setEnemy(
+      acabouNaVitoria ? novoEnemy : { ...novoEnemy, vida_atual: vidaInimigoAntesDoTick },
+    );
 
     const duracaoAcaoJogador = duracaoVisual(
       pastaSpriteJogador,
@@ -801,6 +1015,16 @@ export default function CombatArena({
 
     await espera(Math.max(duracaoAtaqueInimigo, duracaoReacaoJogador));
 
+    // Tick de status (Queimadura/Sangramento/Veneno) do PRÓPRIO inimigo
+    // — fim do turno DELE, depois do contra-ataque (mesma regra do
+    // tick do jogador lá em cima) — nunca somado ao dano do golpe que
+    // mostramos antes, mesmo quando os dois acontecem no mesmo turno.
+    if (danoStatusInimigo > 0) {
+      triggerFloatingText("enemy", `-${danoStatusInimigo} EFEITO`, "#b15cff");
+      setEnemy(novoEnemy);
+      await espera(400);
+    }
+
     setIsShieldActive(false);
     setIsManaGlowActive(false);
 
@@ -880,7 +1104,17 @@ export default function CombatArena({
 
       const data = response.data.data;
 
-      const danoInimigo = enemy.vida_atual - data.enemy.vida_atual;
+      // Dano do golpe (ataque/poder) separado do tick de status effect
+      // (DoT) do inimigo — bug relatado: antes inferíamos um único
+      // número pela diferença de vida_atual, que já vinha com os dois
+      // somados (golpe do jogador + Queimadura/Sangramento/Veneno que o
+      // inimigo carregava), como se o status tivesse saído da própria
+      // arma/atributo do ataque. Fallback pro cálculo antigo só pra
+      // respostas de servidor sem os campos novos (compatibilidade).
+      const danoInimigo =
+        data.danoCausadoNoInimigo ?? Math.max(0, enemy.vida_atual - data.enemy.vida_atual);
+      const danoStatusInimigo = data.danoStatusInimigo ?? 0;
+      const danoStatusJogador = data.danoStatusJogador ?? 0;
 
       const inimigoLevouDano = danoInimigo > 0;
 
@@ -889,6 +1123,23 @@ export default function CombatArena({
       const acabouNaDerrota = data.done && !data.victory;
 
       setLog((atual) => [...atual, ...data.log]);
+
+      // Progresso da Caçada ativa atualizado de graça aqui, sem round-trip
+      // extra — ver comentário no estado `cacadaAtiva` acima.
+      if (data.huntUpdate) {
+        const huntUpdate = data.huntUpdate;
+        setCacadaAtiva((atual) => {
+          if (!atual || atual.id !== huntUpdate.huntId) return atual;
+          if (huntUpdate.completed) return null;
+          return { ...atual, progress: huntUpdate.progress, quantityRequired: huntUpdate.quantityRequired };
+        });
+        if (huntUpdate.completed) {
+          setLog((atual) => [
+            ...atual,
+            `🏹 Caçada concluída! +${huntUpdate.goldReward ?? 0} ouro, +${huntUpdate.reputationReward ?? 0} reputação.`,
+          ]);
+        }
+      }
 
       // setEnemy/setVidaAtual NÃO são commitados aqui — ficam pra
       // tocarAnimacaoDoTurno, disparados no instante em que o golpe chega
@@ -947,6 +1198,9 @@ export default function CombatArena({
         // Ausente em respostas antigas (compatibilidade) — sem contra-
         // ataque separado pra mostrar, cai direto pro valor final.
         vidaAposAcaoJogador: data.character.vida_apos_sua_acao ?? data.character.vida_atual,
+
+        danoStatusJogador,
+        danoStatusInimigo,
 
         usouCura,
         usouManaPotion,
@@ -1230,27 +1484,30 @@ export default function CombatArena({
               Você está Paralisado — há chance de perder a ação neste turno.
             </p>
           )}
-          <CombatActionBar
-            podeAgir={!resultado && !statusControleDuro}
-            ocupado={carregando}
-            manaAtual={manaAtual}
-            onAtaqueBasico={() => executarAcao({ type: "attack" })}
-            poderes={abilities.map((habilidade) => ({
-              id: habilidade.Power.id,
-              nome: habilidade.Power.nome,
-              imagem_url: habilidade.Power.imagem_url,
-              custo_mana: habilidade.Power.custo_mana,
-              descricao: habilidade.Power.descricao,
-              escala_atributo: habilidade.Power.escala_atributo,
-              valor_escala: habilidade.Power.valor_escala,
-            }))}
-            onUsarPoder={(powerId) => executarAcao({ type: "power", powerId })}
-            consumiveis={consumiveis}
-            onUsarConsumivel={(itemId) =>
-              executarAcao({ type: "item", itemId })
-            }
-            cooldownsPorPoder={cooldownsPorPoder}
-          />
+          <div className="flex items-end justify-between gap-3">
+            <CombatActionBar
+              podeAgir={!resultado && !statusControleDuro}
+              ocupado={carregando}
+              manaAtual={manaAtual}
+              onAtaqueBasico={() => executarAcao({ type: "attack" })}
+              poderes={abilities.map((habilidade) => ({
+                id: habilidade.Power.id,
+                nome: habilidade.Power.nome,
+                imagem_url: habilidade.Power.imagem_url,
+                custo_mana: habilidade.Power.custo_mana,
+                descricao: habilidade.Power.descricao,
+                escala_atributo: habilidade.Power.escala_atributo,
+                valor_escala: habilidade.Power.valor_escala,
+              }))}
+              onUsarPoder={(powerId) => executarAcao({ type: "power", powerId })}
+              consumiveis={consumiveis}
+              onUsarConsumivel={(itemId) =>
+                executarAcao({ type: "item", itemId })
+              }
+              cooldownsPorPoder={cooldownsPorPoder}
+            />
+            <MissionsPanel missoes={missoesEmAndamento} />
+          </div>
         </div>
       )}
 

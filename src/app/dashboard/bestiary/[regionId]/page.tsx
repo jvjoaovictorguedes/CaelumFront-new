@@ -43,7 +43,11 @@ interface ZonaApi {
   nome: string;
   imagem_url: string | null;
   descobertos: number;
-  total: number;
+  // Mistério do Bestiário — null até descobrir todos os monstros desta
+  // região (ver bestiaryService.js no backend). `ha_nao_descobertos`
+  // avisa que ainda falta gente pra descobrir, sem dizer quantos.
+  total: number | null;
+  ha_nao_descobertos: boolean;
   maestria_nivel: number;
   maestria_numeral: string | null;
   progresso_pct_proximo_nivel: number;
@@ -121,7 +125,7 @@ export default async function BestiaryRegionPage({
         </Link>
         <h1 className="mt-1 font-imFeel text-4xl">{zona.nome}</h1>
         <p className="mt-1 text-sm text-white/70">
-          Descobertas: {zona.descobertos} / {zona.total} · Maestria:{" "}
+          Descobertas: {zona.total !== null ? `${zona.descobertos} / ${zona.total}` : zona.descobertos} · Maestria:{" "}
           {zona.maestria_numeral ? `Nível ${zona.maestria_numeral}` : "Bloqueada"}
           {zona.proximo_nivel && ` · Progresso para Maestria ${zona.proximo_nivel}: ${zona.progresso_pct_proximo_nivel}%`}
         </p>
@@ -163,20 +167,6 @@ export default async function BestiaryRegionPage({
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {monstros.map((monstro, indice) => {
-          if (!monstro.descoberto) {
-            return (
-              <div
-                key={indice}
-                className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-white/10 bg-black/40 p-6 text-center text-white/50"
-              >
-                <p className="font-imFeel text-3xl">???</p>
-                <p className="text-xs">Raridade: ???</p>
-                <p className="text-xs">Informações: ???</p>
-                <p className="text-xs">Drops: ???</p>
-              </div>
-            );
-          }
-
           const progressoRequisito =
             monstro.requisito_proximo_nivel != null
               ? Math.min(100, Math.round((monstro.abates / monstro.requisito_proximo_nivel) * 100))
@@ -237,6 +227,17 @@ export default async function BestiaryRegionPage({
           );
         })}
       </div>
+
+      {zona.ha_nao_descobertos && (
+        <div className="flex flex-col items-center justify-center gap-1 rounded-2xl border border-dashed border-white/15 bg-black/30 p-6 text-center text-white/50">
+          <p className="font-imFeel text-2xl">???</p>
+          <p className="text-sm">As lendas desta região ainda guardam segredos não revelados.</p>
+          <p className="text-xs text-white/40">
+            Dizem que uma fera rara ronda estas terras sem nunca ter sido vista — e caçadores
+            desavisados que cruzaram seu caminho não voltaram para contar a história.
+          </p>
+        </div>
+      )}
     </div>
   );
 }

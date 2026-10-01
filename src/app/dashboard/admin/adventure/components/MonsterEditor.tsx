@@ -10,10 +10,15 @@ import {
   listarZonasAdmin,
   mensagemDeErroAdmin,
   sincronizarLootMonstroAdmin,
+  sincronizarStatusEffectsMonstroAdmin,
+  CHAVES_STATUS_EFFECT,
+  NOME_STATUS_EFFECT,
   type AdventureMonsterApi,
   type AdventureMonsterDetailApi,
   type AdventureZoneApi,
   type LootMonstroItemPayload,
+  type MonsterStatusEffectApi,
+  type StatusEffectKey,
 } from "@/lib/api/admin";
 import { ItemSelect, formatarItemComId, useItensParaSelecaoAdmin } from "@/components/admin/ItemPicker";
 import { CombatPowerCard } from "./CombatPowerCard";
@@ -21,6 +26,7 @@ import { CombatPowerCard } from "./CombatPowerCard";
 const CATEGORIAS_LOOT = ["Principal", "Secundario", "Especial"] as const;
 
 type LinhaLoot = LootMonstroItemPayload & { chaveLocal: string; nomeItem?: string };
+type LinhaStatusEffect = MonsterStatusEffectApi & { chaveLocal: string };
 
 function novaChave() {
   return `novo-${Math.random().toString(36).slice(2)}`;
@@ -55,6 +61,7 @@ export function MonsterEditor({
   const [detalhe, setDetalhe] = useState<AdventureMonsterDetailApi | null>(null);
   const [form, setForm] = useState<Partial<AdventureMonsterApi>>({});
   const [drops, setDrops] = useState<LinhaLoot[]>([]);
+  const [efeitosStatus, setEfeitosStatus] = useState<LinhaStatusEffect[]>([]);
   const [zonasCatalogo, setZonasCatalogo] = useState<AdventureZoneApi[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
@@ -83,6 +90,17 @@ export function MonsterEditor({
           categoria: l.categoria,
           ativo: l.ativo,
           nomeItem: l.item?.nome,
+        })),
+      );
+      setEfeitosStatus(
+        d.efeitosDeStatus.map((e) => ({
+          chaveLocal: `existente-${e.id}`,
+          id: e.id,
+          status_key: e.status_key,
+          chance_ppm: e.chance_ppm,
+          duration_turns: e.duration_turns,
+          potency_base: e.potency_base,
+          ativo: e.ativo,
         })),
       );
       setSujo(false);
@@ -144,6 +162,33 @@ export function MonsterEditor({
     marcarSujo();
   }
 
+  // Ideia #3 da fila de melhorias — mesmo padrão de array-diff dos Drops,
+  // mas sincronizado inteiro só no "Salvar monstro" (sem exclusão
+  // imediata por linha: o backend não tem um DELETE avulso pra um único
+  // efeito, só o PUT de sincronização da lista inteira).
+  const chavesStatusJaUsadas = new Set(efeitosStatus.map((e) => e.status_key));
+  const chavesStatusDisponiveis = CHAVES_STATUS_EFFECT.filter((k) => !chavesStatusJaUsadas.has(k));
+
+  function adicionarEfeitoStatus() {
+    const chave = chavesStatusDisponiveis[0];
+    if (!chave) return;
+    setEfeitosStatus((lista) => [
+      ...lista,
+      { chaveLocal: novaChave(), status_key: chave, chance_ppm: 300000, duration_turns: 2, potency_base: 0, ativo: true },
+    ]);
+    marcarSujo();
+  }
+
+  function atualizarEfeitoStatus(chave: string, patch: Partial<LinhaStatusEffect>) {
+    setEfeitosStatus((lista) => lista.map((e) => (e.chaveLocal === chave ? { ...e, ...patch } : e)));
+    marcarSujo();
+  }
+
+  function removerEfeitoStatus(chave: string) {
+    setEfeitosStatus((lista) => lista.filter((e) => e.chaveLocal !== chave));
+    marcarSujo();
+  }
+
   const zonasDisponiveis = (zonasCatalogo ?? []).filter((z) => !detalhe?.zonas.some((v) => v.id_area === z.id));
 
   // Só atualiza `detalhe.zonas` (nunca form/drops/sujo) — recarregar o
@@ -195,6 +240,10 @@ export function MonsterEditor({
       await sincronizarLootMonstroAdmin(
         idMonstro,
         drops.map(({ chaveLocal: _chaveLocal, nomeItem: _nomeItem, ...resto }) => resto),
+      );
+      await sincronizarStatusEffectsMonstroAdmin(
+        idMonstro,
+        efeitosStatus.map(({ chaveLocal: _chaveLocal, ...resto }) => resto),
       );
       onSalvo();
     } catch (error) {
@@ -373,6 +422,103 @@ export function MonsterEditor({
               <button type="button" onClick={adicionarDrop} disabled={!itensDisponiveis.length} className="self-start rounded-lg border border-[#F3B43F]/40 px-3 py-1.5 text-xs font-bold text-[#F3B43F] hover:bg-[#F3B43F]/10 disabled:opacity-40">
                 + Adicionar drop
               </button>
+            </section>
+
+            <section className="flex flex-col gap-2 rounded-xl border border-white/10 bg-black/20 p-3">
+              <p className="text-xs font-bold uppercase text-white/50">Status effects do ataque básico</p>
+              <p className="text-[10px] text-white/40">
+                Opt-in: sem nenhuma linha aqui, o monstro ataca normal (sem aplicar status nenhum). Cada chance é
+                sorteada de novo a cada acerto do ataque básico contra o jogador.
+              </p>
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[520px] text-left text-xs">
+                  <thead>
+                    <tr className="text-white/50">
+                      <th className="pb-1 pr-2">Status</th>
+                      <th className="pb-1 pr-2">Chance</th>
+                      <th className="pb-1 pr-2">Duração (turnos)</th>
+                      <th className="pb-1 pr-2">Potência</th>
+                      <th className="pb-1 pr-2">Ativo</th>
+                      <th className="pb-1" />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {efeitosStatus.map((linha) => (
+                      <tr key={linha.chaveLocal} className={`border-t border-white/10 ${!linha.ativo ? "opacity-50" : ""}`}>
+                        <td className="py-1 pr-2">
+                          <select
+                            value={linha.status_key}
+                            onChange={(e) => atualizarEfeitoStatus(linha.chaveLocal, { status_key: e.target.value as StatusEffectKey })}
+                            className="rounded border border-white/20 bg-black/30 px-1 py-0.5"
+                          >
+                            {CHAVES_STATUS_EFFECT.filter((k) => k === linha.status_key || !chavesStatusJaUsadas.has(k)).map((k) => (
+                              <option key={k} value={k}>
+                                {NOME_STATUS_EFFECT[k]}
+                              </option>
+                            ))}
+                          </select>
+                        </td>
+                        <td className="py-1 pr-2">
+                          <input
+                            type="number"
+                            step="0.01"
+                            min={0.01}
+                            max={100}
+                            value={linha.chance_ppm / 10000}
+                            onChange={(e) => atualizarEfeitoStatus(linha.chaveLocal, { chance_ppm: Math.round(Number(e.target.value) * 10000) })}
+                            className="w-16 rounded border border-white/20 bg-black/30 px-1 py-0.5"
+                          />
+                          %
+                        </td>
+                        <td className="py-1 pr-2">
+                          <input
+                            type="number"
+                            min={1}
+                            value={linha.duration_turns}
+                            onChange={(e) => atualizarEfeitoStatus(linha.chaveLocal, { duration_turns: Number(e.target.value) })}
+                            className="w-16 rounded border border-white/20 bg-black/30 px-1 py-0.5"
+                          />
+                        </td>
+                        <td className="py-1 pr-2">
+                          <input
+                            type="number"
+                            step="0.1"
+                            value={linha.potency_base}
+                            onChange={(e) => atualizarEfeitoStatus(linha.chaveLocal, { potency_base: Number(e.target.value) })}
+                            className="w-16 rounded border border-white/20 bg-black/30 px-1 py-0.5"
+                          />
+                        </td>
+                        <td className="py-1 pr-2">
+                          <input type="checkbox" checked={linha.ativo} onChange={(e) => atualizarEfeitoStatus(linha.chaveLocal, { ativo: e.target.checked })} />
+                        </td>
+                        <td className="py-1">
+                          <button type="button" onClick={() => removerEfeitoStatus(linha.chaveLocal)} className="text-red-400 hover:underline">
+                            Excluir
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                    {efeitosStatus.length === 0 && (
+                      <tr>
+                        <td colSpan={6} className="py-3 text-center text-white/40">
+                          Nenhum status configurado — ataque básico normal.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+              <button
+                type="button"
+                onClick={adicionarEfeitoStatus}
+                disabled={!chavesStatusDisponiveis.length}
+                className="self-start rounded-lg border border-[#F3B43F]/40 px-3 py-1.5 text-xs font-bold text-[#F3B43F] hover:bg-[#F3B43F]/10 disabled:opacity-40"
+              >
+                + Adicionar status
+              </button>
+              {!chavesStatusDisponiveis.length && (
+                <span className="text-[10px] text-white/40">Já configurado com todos os status existentes.</span>
+              )}
             </section>
 
             <section className="flex flex-col gap-2 rounded-xl border border-white/10 bg-black/20 p-3">

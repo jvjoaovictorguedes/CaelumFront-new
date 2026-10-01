@@ -31,6 +31,10 @@ export interface WorldBossStatusApi {
   descricao?: string | null;
   lore?: string | null;
   imagem_url?: string | null;
+  // Fundo de batalha dedicado (WorldBossBattleScene.tsx) — ausente em
+  // Boss sem fundo cadastrado no admin, tratado como null nesse caso
+  // (a cena cai pro blur da própria imagem_url).
+  fundo_url?: string | null;
   mensagem_convocacao?: string | null;
   mensagem_fase_final?: string | null;
   mensagem_derrota?: string | null;
@@ -127,6 +131,12 @@ export interface WorldBossEntrarResultado {
   lutador: WorldBossLutadorApi;
   poderes: WorldBossPoderApi[];
   cooldowns: WorldBossCooldownsApi;
+  // "Turno" pessoal contra a Ameaça Mundial (bug relatado: dava pra
+  // apertar ataque/poder em sequência imediata, sem o intervalo que
+  // Aventura/Boss da Guilda sempre têm entre ações) — ms restantes até
+  // a PRÓXIMA ação do jogador valer; ausente em respostas antigas
+  // (compatibilidade), tratado como 0 nesse caso.
+  proxima_acao_jogador_em_ms?: number;
   status: WorldBossStatusApi;
 }
 
@@ -154,6 +164,9 @@ export interface WorldBossAcaoResultado {
   bloqueado?: boolean;
   motivoBloqueio?: string;
   cooldowns: WorldBossCooldownsApi;
+  // Mesmo "turno" pessoal de WorldBossEntrarResultado — ms restantes
+  // até a PRÓXIMA ação valer, já contando a que acabou de ser feita.
+  proxima_acao_jogador_em_ms?: number;
   lutador: { vida_atual: number; mana_atual: number; vida_max: number; mana_max: number };
   boss: { event_id: number; hp_max: number; hp_current: number; hp_percentual: number; derrotado: boolean };
 }

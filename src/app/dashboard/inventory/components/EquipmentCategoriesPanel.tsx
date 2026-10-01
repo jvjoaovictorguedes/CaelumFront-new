@@ -8,6 +8,7 @@ import { useCharacter } from "@/contexts/CharacterContext";
 import { formatarTier } from "@/utils/equipmentTier";
 import { agruparInstancias } from "@/utils/agruparInstancias";
 import ItemIcon from "@/components/Item/ItemIcon";
+import { ORDEM_RARIDADE, OPCOES_ORDENACAO, type CriterioOrdenacaoInventario } from "@/lib/inventorySort";
 
 type Slot =
   | "Cabeca"
@@ -187,6 +188,31 @@ const SECOES: {
   { slot: "Acessorio2", titulo: "Colar", filtro: (i) => i.tipo_item === "Acessorio2" },
 ];
 
+// Mesmo critério de MaterialsGrid/ConsumablesGrid (inventorySort.ts),
+// só que a forma do dado aqui é achatada (instancia.raridade direto,
+// não instancia.Item.raridade) — Equipamento já é organizado por slot
+// (SECOES acima), então isto só decide a ordem DENTRO de cada slot.
+function compararInstancias(a: InstanciaApi, b: InstanciaApi, criterio: CriterioOrdenacaoInventario) {
+  switch (criterio) {
+    case "raridade": {
+      const diff = (ORDEM_RARIDADE[b.raridade] ?? 0) - (ORDEM_RARIDADE[a.raridade] ?? 0);
+      return diff !== 0 ? diff : a.nome.localeCompare(b.nome, "pt-BR");
+    }
+    case "tipo": {
+      const diff = a.tipo_item.localeCompare(b.tipo_item, "pt-BR");
+      return diff !== 0 ? diff : a.nome.localeCompare(b.nome, "pt-BR");
+    }
+    case "nome":
+      return a.nome.localeCompare(b.nome, "pt-BR");
+    case "quantidade":
+    default:
+      // "Quantidade" não faz sentido por instância avulsa antes de
+      // agrupar (cada linha ainda é 1 cópia aqui) — cai pra nome, que é
+      // um critério estável e nunca gera uma ordem confusa.
+      return a.nome.localeCompare(b.nome, "pt-BR");
+  }
+}
+
 function iconeFallback(nome: string) {
   return (
     <div className="flex h-full w-full items-center justify-center text-lg font-bold text-[#F3B43F]/80">
@@ -203,6 +229,7 @@ export default function EquipmentCategoriesPanel() {
   const [mensagem, setMensagem] = useState("");
   const [processando, setProcessando] = useState(false);
   const [selecionado, setSelecionado] = useState<{ slot: Slot; idInstancia: number } | null>(null);
+  const [criterio, setCriterio] = useState<CriterioOrdenacaoInventario>("raridade");
 
   const carregar = useCallback(async () => {
     try {
@@ -276,9 +303,26 @@ export default function EquipmentCategoriesPanel() {
         <p className="rounded-xl bg-red-900/30 p-3 text-sm text-red-300">{mensagem}</p>
       )}
 
+      <div className="flex justify-end">
+        <label className="flex items-center gap-1 text-[11px] text-white/60">
+          Ordenar por:
+          <select
+            value={criterio}
+            onChange={(e) => setCriterio(e.target.value as CriterioOrdenacaoInventario)}
+            className="rounded-lg border border-white/20 bg-black/40 px-2 py-1 text-[11px] text-white"
+          >
+            {OPCOES_ORDENACAO.filter((o) => o.valor !== "quantidade").map((o) => (
+              <option key={o.valor} value={o.valor}>
+                {o.rotulo}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+
       {SECOES.map(({ slot, titulo, filtro }) => {
         const equipadoNoSlot = equipados[slot];
-        const disponiveis = instancias.filter(filtro);
+        const disponiveis = instancias.filter(filtro).sort((a, b) => compararInstancias(a, b, criterio));
 
         return (
           <div

@@ -353,8 +353,20 @@ function CardDrops({
   );
 }
 
-function CardEmboscada({ atual, onSalvo }: { atual: { CHANCE_MONSTRO_PPM: number }; onSalvo: () => void }) {
-  const [valor, setValor] = useState(atual.CHANCE_MONSTRO_PPM);
+interface EmboscadaBalance {
+  CHANCE_MONSTRO_PPM: number;
+  EMBOSCADA_XP_BASE: number;
+  EMBOSCADA_XP_POR_NIVEL: number;
+  EMBOSCADA_OURO_BASE: number;
+  EMBOSCADA_OURO_POR_NIVEL: number;
+}
+
+function CardEmboscada({ atual, onSalvo }: { atual: EmboscadaBalance; onSalvo: () => void }) {
+  const [chance, setChance] = useState(atual.CHANCE_MONSTRO_PPM);
+  const [xpBase, setXpBase] = useState(atual.EMBOSCADA_XP_BASE);
+  const [xpPorNivel, setXpPorNivel] = useState(atual.EMBOSCADA_XP_POR_NIVEL);
+  const [ouroBase, setOuroBase] = useState(atual.EMBOSCADA_OURO_BASE);
+  const [ouroPorNivel, setOuroPorNivel] = useState(atual.EMBOSCADA_OURO_POR_NIVEL);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState("");
   const [mensagem, setMensagem] = useState("");
@@ -364,8 +376,14 @@ function CardEmboscada({ atual, onSalvo }: { atual: { CHANCE_MONSTRO_PPM: number
     setErro("");
     setMensagem("");
     try {
-      await atualizarExpeditionBalanceAdmin("expedition.ambush", { CHANCE_MONSTRO_PPM: valor });
-      setMensagem("Chance de emboscada salva.");
+      await atualizarExpeditionBalanceAdmin("expedition.ambush", {
+        CHANCE_MONSTRO_PPM: chance,
+        EMBOSCADA_XP_BASE: xpBase,
+        EMBOSCADA_XP_POR_NIVEL: xpPorNivel,
+        EMBOSCADA_OURO_BASE: ouroBase,
+        EMBOSCADA_OURO_POR_NIVEL: ouroPorNivel,
+      });
+      setMensagem("Emboscada salva.");
       onSalvo();
     } catch (error) {
       setErro(mensagemDeErroAdmin(error, "Não foi possível salvar."));
@@ -379,15 +397,53 @@ function CardEmboscada({ atual, onSalvo }: { atual: { CHANCE_MONSTRO_PPM: number
       <p className="mb-1 font-imFeel text-xl text-[#F3B43F]">Emboscada</p>
       <p className="mb-3 text-xs text-white/50">
         Chance de uma coleta virar um combate contra monstro em vez do sorteio normal de recurso — independe da
-        profissão/região, só do azar do sorteio.
+        profissão/região, só do azar do sorteio. XP/Ouro abaixo são a recompensa por vencer esse monstro (fórmula:
+        base + nível do monstro × por nível).
       </p>
       <CardMensagem erro={erro} mensagem={mensagem} />
       <div className="flex flex-wrap items-end gap-3">
         <label className="flex flex-col gap-1 text-xs text-white/70">
           Chance (PPM, de 0 a 1.000.000)
-          <input type="number" min={0} max={1_000_000} className={`${INPUT} w-32`} value={valor} onChange={(e) => setValor(Number(e.target.value))} />
+          <input
+            type="number"
+            min={0}
+            max={1_000_000}
+            className={`${INPUT} w-32`}
+            value={chance}
+            onChange={(e) => setChance(Number(e.target.value))}
+          />
         </label>
-        <p className="pb-2 text-xs text-white/50">≈ {(valor / 10_000).toLocaleString("pt-BR", { maximumFractionDigits: 2 })}%</p>
+        <p className="pb-2 text-xs text-white/50">≈ {(chance / 10_000).toLocaleString("pt-BR", { maximumFractionDigits: 2 })}%</p>
+      </div>
+      <div className="mt-3 flex flex-wrap items-end gap-3">
+        <label className="flex flex-col gap-1 text-xs text-white/70">
+          XP base
+          <input type="number" min={0} className={`${INPUT} w-24`} value={xpBase} onChange={(e) => setXpBase(Number(e.target.value))} />
+        </label>
+        <label className="flex flex-col gap-1 text-xs text-white/70">
+          XP por nível do monstro
+          <input
+            type="number"
+            min={0}
+            className={`${INPUT} w-24`}
+            value={xpPorNivel}
+            onChange={(e) => setXpPorNivel(Number(e.target.value))}
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-xs text-white/70">
+          Ouro base
+          <input type="number" min={0} className={`${INPUT} w-24`} value={ouroBase} onChange={(e) => setOuroBase(Number(e.target.value))} />
+        </label>
+        <label className="flex flex-col gap-1 text-xs text-white/70">
+          Ouro por nível do monstro
+          <input
+            type="number"
+            min={0}
+            className={`${INPUT} w-24`}
+            value={ouroPorNivel}
+            onChange={(e) => setOuroPorNivel(Number(e.target.value))}
+          />
+        </label>
         <button type="button" disabled={salvando} onClick={salvar} className={BTN}>
           {salvando ? "Salvando..." : "Salvar"}
         </button>
@@ -512,6 +568,49 @@ function AbaGrupo({ dados, onSalvo }: { dados: ExpeditionBalanceCompletoApi; onS
         <label className="flex flex-col gap-1 text-xs text-white/70">
           +Dano por aventureiro extra (fração, ex.: 0.08 = +8%)
           <input type="number" min={0} step={0.01} className={`${INPUT} w-40`} value={form.FATOR_DIFICULDADE_DANO_POR_EXTRA} onChange={(e) => campo("FATOR_DIFICULDADE_DANO_POR_EXTRA", Number(e.target.value))} />
+        </label>
+      </div>
+
+      <p className="mb-1 mt-4 font-imFeel text-lg text-[#F3B43F]">Penalidade anti power-leveling</p>
+      <p className="mb-3 text-xs text-white/50">
+        Quando o personagem de MAIOR nível do grupo está muito acima do teto de nível da zona (ex.: nível 100 numa
+        área desenhada pra nível 5), a recompensa de XP e ouro cai pro GRUPO INTEIRO — desincentiva carregar um
+        personagem fraco numa área fácil demais pra farmar nível rápido. Não afeta grupos de nível parecido.
+      </p>
+      <div className="flex flex-wrap gap-3">
+        <label className="flex flex-col gap-1 text-xs text-white/70">
+          Tolerância acima do teto da zona (níveis)
+          <input
+            type="number"
+            min={0}
+            className={`${INPUT} w-40`}
+            value={form.LIMIAR_NIVEL_ACIMA_DA_ZONA}
+            onChange={(e) => campo("LIMIAR_NIVEL_ACIMA_DA_ZONA", Number(e.target.value))}
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-xs text-white/70">
+          Redução por nível excedente (fração, ex.: 0.05 = -5%)
+          <input
+            type="number"
+            min={0}
+            max={1}
+            step={0.01}
+            className={`${INPUT} w-48`}
+            value={form.REDUCAO_RECOMPENSA_POR_NIVEL_EXCEDENTE}
+            onChange={(e) => campo("REDUCAO_RECOMPENSA_POR_NIVEL_EXCEDENTE", Number(e.target.value))}
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-xs text-white/70">
+          Piso da recompensa (fração, ex.: 0.2 = nunca abaixo de 20%)
+          <input
+            type="number"
+            min={0}
+            max={1}
+            step={0.01}
+            className={`${INPUT} w-48`}
+            value={form.PISO_MULTIPLICADOR_RECOMPENSA}
+            onChange={(e) => campo("PISO_MULTIPLICADOR_RECOMPENSA", Number(e.target.value))}
+          />
         </label>
       </div>
       <button type="button" disabled={salvando} onClick={salvar} className={`${BTN} mt-3`}>

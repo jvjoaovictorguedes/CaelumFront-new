@@ -94,7 +94,10 @@ export interface PerfilPvp {
 
 export interface PerfilBestiario {
   criaturas_descobertas: number;
-  criaturas_totais: number;
+  // Mistério do Bestiário — null enquanto houver região incompleta, pra
+  // não entregar a contagem total de criaturas do jogo de quebra (ver
+  // bestiaryService.js no backend).
+  criaturas_totais: number | null;
   regioes_completas: number;
   regioes_totais: number;
   maestrias_v: number;

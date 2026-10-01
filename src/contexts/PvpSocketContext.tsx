@@ -257,6 +257,11 @@ export interface BatalhaGrupoIniciadaPayload {
   ordem: string[];
   turnoDe: string;
   prazoSegundos: number;
+  // Ideia #4 da fila de melhorias — aviso de power-leveling: presente
+  // (não-null) quando o membro de maior nível do grupo está muito acima
+  // do teto de nível da zona, e por isso a recompensa de XP/ouro do
+  // grupo INTEIRO vai sair reduzida nesta aventura.
+  penalidadePowerLeveling?: { multiplicador: number; excessoNivel: number } | null;
 }
 
 export interface TurnoGrupoPayload {
@@ -272,6 +277,15 @@ export interface TurnoGrupoPayload {
   // Precisão/Crítico (Velocidade) — ausente em respostas antigas
   // (compatibilidade), tratado como false nesse caso.
   critico?: boolean;
+  // Motor de Status (mesmo formato do Duelo ao vivo/PvP assíncrono) —
+  // agora também na Aventura em Grupo: monstro pode causar status
+  // configurado no admin, DoT tica no fim do turno de quem tá com ele
+  // (nunca na hora do golpe que aplicou), e hard control pode bloquear a
+  // ação de quem estiver agindo (aliado OU monstro).
+  bloqueado?: boolean;
+  logStatus?: string[];
+  statusInimigo?: StatusInstanceDuelo[];
+  statusAliados?: Record<string, StatusInstanceDuelo[]>;
   vidaInimigo?: number;
   vidaAliado?: number;
   manaAliado?: number;
@@ -291,6 +305,7 @@ export interface BatalhaGrupoFimPayload {
   motivo: string;
   recompensas: Record<string, { experiencia: number; dinheiro: number; nivel: number; pontos_distribuir: number }>;
   drops: Record<string, { tipo: "item" | "ouro"; item?: { id: number; nome: string; raridade: string }; dinheiro?: number }>;
+  penalidadePowerLeveling?: { multiplicador: number; excessoNivel: number } | null;
 }
 
 // Boss da Guilda V2.0 (batalha em tempo real) — mesmo modelo de payload

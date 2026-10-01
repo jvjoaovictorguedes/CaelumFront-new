@@ -574,6 +574,45 @@ export async function excluirMonstroAdmin(id: number): Promise<void> {
 // de Monstros" v3 §2.4/§4.2/§7.3) — ZoneEditor/MonsterEditor editam
 // tudo localmente e mandam UMA sincronização ao Salvar, em vez de um
 // PATCH por linha do roster/loot.
+// Ideia #3 da fila de melhorias — monstro causando status effect no
+// jogador. Mesmas 9 chaves do Motor de Status (ver statusEffectConfig.js
+// no backend); lista fixa aqui porque o <select> do admin precisa dela
+// antes de qualquer chamada de rede.
+export const CHAVES_STATUS_EFFECT = [
+  "BURN",
+  "BLEED",
+  "POISON",
+  "SILENCE",
+  "WEAKEN",
+  "FREEZE",
+  "STUN",
+  "PARALYZE",
+  "BLIND",
+] as const;
+export type StatusEffectKey = (typeof CHAVES_STATUS_EFFECT)[number];
+
+export const NOME_STATUS_EFFECT: Record<StatusEffectKey, string> = {
+  BURN: "Queimadura",
+  BLEED: "Sangramento",
+  POISON: "Veneno",
+  SILENCE: "Silêncio",
+  WEAKEN: "Enfraquecimento",
+  FREEZE: "Congelamento",
+  STUN: "Atordoamento",
+  PARALYZE: "Paralisia",
+  BLIND: "Cegueira",
+};
+
+export interface MonsterStatusEffectApi {
+  id?: number;
+  id_monstro?: number;
+  status_key: StatusEffectKey;
+  chance_ppm: number;
+  duration_turns: number;
+  potency_base: number;
+  ativo: boolean;
+}
+
 export interface AdventureMonsterDetailApi {
   monstro: AdventureMonsterApi;
   combat_power: {
@@ -586,6 +625,7 @@ export interface AdventureMonsterDetailApi {
     utilityFactor: number;
   };
   loot: AdventureMonsterLootApi[];
+  efeitosDeStatus: MonsterStatusEffectApi[];
   zonas: {
     id: number;
     id_area: number;
@@ -639,6 +679,17 @@ export async function sincronizarLootMonstroAdmin(idMonstro: number, loot: LootM
 // só pausa, mantendo chance/quantidade salvas pra reativar depois).
 export async function excluirLootAdmin(id: number): Promise<void> {
   await axiosInstance.delete(`/admin/adventure/loot/${id}`);
+}
+
+export async function sincronizarStatusEffectsMonstroAdmin(
+  idMonstro: number,
+  efeitos: MonsterStatusEffectApi[],
+): Promise<MonsterStatusEffectApi[]> {
+  const resposta = await axiosInstance.put<{ data: { efeitos: MonsterStatusEffectApi[] } }>(
+    `/admin/adventure/monsters/${idMonstro}/status-effects`,
+    { efeitos },
+  );
+  return resposta.data.data.efeitos;
 }
 
 // Simulador de Balanceamento (Admin Aventura) — roda N combates PvE
@@ -1702,6 +1753,7 @@ export interface WorldBossConfigApi {
   descricao: string;
   lore: string | null;
   imagem_url: string | null;
+  fundo_url: string | null;
   ativo: boolean;
   peso_selecao: number;
   vida_base: string;
@@ -1751,6 +1803,10 @@ export interface PayloadWorldBossConfigAdmin {
   descricao: string;
   lore?: string | null;
   imagem_url?: string | null;
+  // Fundo de batalha dedicado da cena de combate (WorldBossBattleScene.
+  // tsx) — sem isso o front caía de volta pro blur da própria
+  // imagem_url (retrato) como fundo.
+  fundo_url?: string | null;
   peso_selecao?: number;
   vida_base: number;
   defesa?: number;
@@ -2624,6 +2680,11 @@ export interface FishingTournamentAdminApi {
   termina_em: string;
   ativo: boolean;
   zona?: { id: number; nome: string } | null;
+  // Ideia #1 da fila de melhorias — preenchidos sozinhos pelo
+  // fishingTournamentScheduler.js quando termina_em passa.
+  finalizado_em?: string | null;
+  vencedor_character_id?: number | null;
+  vencedor_nome?: string | null;
 }
 
 export interface PayloadFishingTournamentAdmin {
@@ -3016,6 +3077,7 @@ export interface FishingBalanceGrupoApi<T = Record<string, unknown>> {
   padrao: T;
 }
 export interface FishingBalanceCompletoApi {
+  "fishing.levelCap": FishingBalanceGrupoApi<{ NIVEL_MAXIMO_PESCA: number }>;
   "fishing.progression": FishingBalanceGrupoApi<{ XP_NECESSARIO_POR_ETAPA_PESCA: Record<string, number>; XP_TOTAL_PARA_NIVEL_PESCA: Record<string, number>; NIVEL_MAXIMO_PESCA: number }>;
   "fishing.proficiency": FishingBalanceGrupoApi<{ PROFICIENCIA_PCT_POR_NIVEL: Record<string, number> }>;
 }
@@ -3412,7 +3474,13 @@ export interface ExpeditionBalanceCompletoApi {
     CHANCE_POR_NIVEL_PPM: Record<string, Record<string, number>>;
     QUANTIDADE_POR_NIVEL: Record<string, [number, number]>;
   }>;
-  "expedition.ambush": ExpeditionBalanceGrupoApi<{ CHANCE_MONSTRO_PPM: number }>;
+  "expedition.ambush": ExpeditionBalanceGrupoApi<{
+    CHANCE_MONSTRO_PPM: number;
+    EMBOSCADA_XP_BASE: number;
+    EMBOSCADA_XP_POR_NIVEL: number;
+    EMBOSCADA_OURO_BASE: number;
+    EMBOSCADA_OURO_POR_NIVEL: number;
+  }>;
   "adventure.danger": ExpeditionBalanceGrupoApi<{ MEDIO: number; ALTO: number }>;
   "party.balance": ExpeditionBalanceGrupoApi<{
     TAMANHO_MAXIMO_GRUPO: number;
@@ -3422,6 +3490,11 @@ export interface ExpeditionBalanceCompletoApi {
     MAX_RODADAS: number;
     FATOR_DIFICULDADE_VIDA_POR_EXTRA: number;
     FATOR_DIFICULDADE_DANO_POR_EXTRA: number;
+    // Ideia #4 da fila de melhorias — penalidade de XP/ouro pro grupo
+    // inteiro quando alguém está muito acima do nível da zona (power-leveling).
+    LIMIAR_NIVEL_ACIMA_DA_ZONA: number;
+    REDUCAO_RECOMPENSA_POR_NIVEL_EXCEDENTE: number;
+    PISO_MULTIPLICADOR_RECOMPENSA: number;
   }>;
 }
 export async function obterExpeditionBalanceAdmin(): Promise<ExpeditionBalanceCompletoApi> {

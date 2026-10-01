@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import axiosInstance from "@/utils/axiosIntance";
 import { useCharacter } from "@/contexts/CharacterContext";
 import { formatarTier } from "@/utils/equipmentTier";
@@ -693,6 +693,7 @@ function AbaVender() {
   // — vem sempre do backend (marketConfig.js), nunca hardcoded aqui, pra
   // nunca ficar desatualizada se o valor mudar do lado do servidor.
   const [taxaMercado, setTaxaMercado] = useState(0);
+  const painelVendaRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     axiosInstance
@@ -700,6 +701,15 @@ function AbaVender() {
       .then((resp) => setTaxaMercado(resp.data?.data?.taxa_mercado ?? 0))
       .catch((error) => console.error("Erro ao carregar configuração do mercado:", error));
   }, []);
+
+  // Jogador com muitos itens vendáveis via a grade crescer bastante — sem
+  // isso, escolher um item lá em cima não rolava a tela até o painel de
+  // preço/anúncio que aparece só depois de toda a grade.
+  useEffect(() => {
+    if (chaveSelecionada) {
+      painelVendaRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+  }, [chaveSelecionada]);
 
   const carregar = useCallback(async () => {
     try {
@@ -809,7 +819,10 @@ function AbaVender() {
           </div>
 
           {itemSelecionado && (
-            <div className="flex flex-col gap-3 rounded-xl border border-white/10 bg-black/20 p-3 sm:flex-row sm:items-end">
+            <div
+              ref={painelVendaRef}
+              className="flex flex-col gap-3 rounded-xl border border-white/10 bg-black/20 p-3 sm:flex-row sm:items-end"
+            >
               {!itemSelecionado.id_instancia && (
                 <div className="flex-1">
                   <label className="mb-1 block text-xs text-white/60">

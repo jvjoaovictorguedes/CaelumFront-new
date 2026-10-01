@@ -781,6 +781,11 @@ function AbaBalanceamento({ onErro }: { onErro: (m: string) => void }) {
   const [matriz, setMatriz] = useState<FishingMatrizLinhaApi[] | null>(null);
   const [carregandoMatriz, setCarregandoMatriz] = useState(false);
 
+  // Trocar o teto de nível regera a curva de XP do zero no backend — esse
+  // contador força SecaoXpPorNivel a remontar (via key) e recarregar do
+  // servidor, senão ela ficaria mostrando a curva antiga depois de salvar.
+  const [versaoCurva, setVersaoCurva] = useState(0);
+
   useEffect(() => {
     (async () => {
       setCarregandoCatalogo(true);
@@ -942,17 +947,95 @@ function AbaBalanceamento({ onErro }: { onErro: (m: string) => void }) {
         )}
       </Secao>
 
-      <SecaoXpPorNivel onErro={onErro} />
+      <SecaoNivelMaximo onErro={onErro} onAlterado={() => setVersaoCurva((v) => v + 1)} />
+      <SecaoXpPorNivel key={versaoCurva} onErro={onErro} />
       <SecaoProficiencia onErro={onErro} />
     </div>
   );
 }
 
+// Teto de nível de Pesca (pedido do jogador). Trocar o teto regera a
+// curva de XP do zero pro novo teto (mesma confirmação explícita que
+// a curva de XP já exige) — por isso onAlterado força SecaoXpPorNivel a
+// recarregar do servidor depois de salvar, senão ela mostraria a curva
+// antiga até a página ser recarregada manualmente.
+function SecaoNivelMaximo({ onErro, onAlterado }: { onErro: (m: string) => void; onAlterado: () => void }) {
+  const [nivelMaximo, setNivelMaximo] = useState(25);
+  const [carregando, setCarregando] = useState(true);
+  const [confirmar, setConfirmar] = useState(false);
+  const [salvando, setSalvando] = useState(false);
+  const [mensagem, setMensagem] = useState("");
+
+  const carregar = useCallback(async () => {
+    setCarregando(true);
+    try {
+      const dados = await obterFishingBalanceAdmin();
+      setNivelMaximo(dados["fishing.levelCap"].atual.NIVEL_MAXIMO_PESCA);
+    } catch (error) {
+      onErro(mensagemDeErroAdmin(error, "Não foi possível carregar o teto de nível de Pesca."));
+    } finally {
+      setCarregando(false);
+    }
+  }, [onErro]);
+
+  useEffect(() => {
+    carregar();
+  }, [carregar]);
+
+  async function salvar() {
+    setSalvando(true);
+    setMensagem("");
+    try {
+      await atualizarFishingBalanceAdmin("fishing.levelCap", { NIVEL_MAXIMO_PESCA: nivelMaximo, confirmado: true });
+      setMensagem("Teto de nível salvo — a curva de XP por nível foi resetada pro padrão do novo teto.");
+      setConfirmar(false);
+      await carregar();
+      onAlterado();
+    } catch (error) {
+      onErro(mensagemDeErroAdmin(error, "Não foi possível salvar o teto de nível."));
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  return (
+    <Secao titulo="Teto de nível de Pesca">
+      {carregando ? (
+        <p className="text-sm text-white/50">Carregando...</p>
+      ) : (
+        <>
+          <p className="mb-2 text-xs text-white/50">
+            Nível máximo que um personagem pode alcançar na Pesca. Mudar o teto RESETA a curva de XP por nível pro
+            padrão (mesma curva suave de sempre) — ajuste a curva de novo depois, se precisar, na seção abaixo.
+          </p>
+          <label className="flex flex-col gap-1 text-xs">
+            Nível máximo
+            <Input type="number" min={2} max={200} className="w-24" value={nivelMaximo} onChange={(e) => setNivelMaximo(Number(e.target.value))} />
+          </label>
+          <label className="mt-3 flex items-center gap-2 text-xs text-white/70">
+            <input type="checkbox" checked={confirmar} onChange={(e) => setConfirmar(e.target.checked)} />
+            Confirmo a mudança do teto de nível (reseta a curva de XP por nível de Pesca).
+          </label>
+          {mensagem && <p className="mt-2 text-sm text-[#F3B43F]">{mensagem}</p>}
+          <button
+            type="button"
+            disabled={!confirmar || salvando}
+            onClick={salvar}
+            className="mt-2 rounded-lg bg-[#BC8418] px-4 py-2 text-sm font-bold text-black hover:bg-[#a5710f] disabled:opacity-50"
+          >
+            {salvando ? "Salvando..." : "Salvar teto de nível"}
+          </button>
+        </>
+      )}
+    </Secao>
+  );
+}
+
 // XP necessário por nível de Pesca (pedido do jogador) — mesmo padrão de
 // PainelProgressao em AdminForgeClient.tsx (grupo "*.progression",
-// confirmação explícita antes de salvar). O teto de 25 níveis é fixo
-// (ver comentário em fishingConfig.js), só o CUSTO de cada etapa 1..24
-// é editável aqui.
+// confirmação explícita antes de salvar). O teto de nível agora é
+// editável (SecaoNivelMaximo acima) — mudar o teto reseta esta curva
+// pro padrão, então ela sempre reflete o teto atual.
 function SecaoXpPorNivel({ onErro }: { onErro: (m: string) => void }) {
   const [etapas, setEtapas] = useState<Record<string, number>>({});
   const [carregando, setCarregando] = useState(true);
@@ -991,13 +1074,18 @@ function SecaoXpPorNivel({ onErro }: { onErro: (m: string) => void }) {
     }
   }
 
+  const nivelMaximoAtual = Object.keys(etapas).length + 1;
+
   return (
-    <Secao titulo="XP necessário por nível de Pesca (1 → 25)">
+    <Secao titulo={`XP necessário por nível de Pesca (1 → ${nivelMaximoAtual})`}>
       {carregando ? (
         <p className="text-sm text-white/50">Carregando...</p>
       ) : (
         <>
-          <p className="mb-2 text-xs text-white/50">Quanto XP cada nível exige pra subir pro próximo. O teto de 25 níveis é fixo.</p>
+          <p className="mb-2 text-xs text-white/50">
+            Quanto XP cada nível exige pra subir pro próximo. Pra mudar o teto de {nivelMaximoAtual} níveis, use a
+            seção &quot;Teto de nível de Pesca&quot; acima.
+          </p>
           <div className="flex flex-wrap gap-2">
             {Object.entries(etapas).map(([etapa, xp]) => (
               <label key={etapa} className="flex flex-col gap-1 text-xs">
@@ -1910,9 +1998,15 @@ function AbaTorneios({ onErro }: { onErro: (m: string) => void }) {
                   <td className="px-3 py-2 text-white/60">{new Date(t.inicia_em).toLocaleString("pt-BR")}</td>
                   <td className="px-3 py-2 text-white/60">{new Date(t.termina_em).toLocaleString("pt-BR")}</td>
                   <td className="px-3 py-2">
-                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${t.ativo ? "bg-green-500/20 text-green-300" : "bg-white/10 text-white/60"}`}>
-                      {t.ativo ? "Ativo" : "Inativo"}
-                    </span>
+                    {t.finalizado_em ? (
+                      <span className="rounded-full bg-sky-500/20 px-2 py-0.5 text-[10px] font-bold uppercase text-sky-300">
+                        Finalizado{t.vencedor_nome ? ` — venceu: ${t.vencedor_nome}` : " — ninguém pontuou"}
+                      </span>
+                    ) : (
+                      <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${t.ativo ? "bg-green-500/20 text-green-300" : "bg-white/10 text-white/60"}`}>
+                        {t.ativo ? "Ativo" : "Inativo (desativado manualmente)"}
+                      </span>
+                    )}
                   </td>
                   <td className="px-3 py-2">
                     <div className="flex gap-2">

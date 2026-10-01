@@ -100,6 +100,7 @@ export default function WorldBossEditorDrawer({
           descricao: config.descricao,
           lore: config.lore ?? "",
           imagem_url: config.imagem_url ?? "",
+          fundo_url: config.fundo_url ?? "",
           peso_selecao: config.peso_selecao,
           vida_base: Number(config.vida_base),
           defesa: config.defesa,
