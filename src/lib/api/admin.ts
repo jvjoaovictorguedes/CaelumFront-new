@@ -574,6 +574,45 @@ export async function excluirMonstroAdmin(id: number): Promise<void> {
 // de Monstros" v3 §2.4/§4.2/§7.3) — ZoneEditor/MonsterEditor editam
 // tudo localmente e mandam UMA sincronização ao Salvar, em vez de um
 // PATCH por linha do roster/loot.
+// Ideia #3 da fila de melhorias — monstro causando status effect no
+// jogador. Mesmas 9 chaves do Motor de Status (ver statusEffectConfig.js
+// no backend); lista fixa aqui porque o <select> do admin precisa dela
+// antes de qualquer chamada de rede.
+export const CHAVES_STATUS_EFFECT = [
+  "BURN",
+  "BLEED",
+  "POISON",
+  "SILENCE",
+  "WEAKEN",
+  "FREEZE",
+  "STUN",
+  "PARALYZE",
+  "BLIND",
+] as const;
+export type StatusEffectKey = (typeof CHAVES_STATUS_EFFECT)[number];
+
+export const NOME_STATUS_EFFECT: Record<StatusEffectKey, string> = {
+  BURN: "Queimadura",
+  BLEED: "Sangramento",
+  POISON: "Veneno",
+  SILENCE: "Silêncio",
+  WEAKEN: "Enfraquecimento",
+  FREEZE: "Congelamento",
+  STUN: "Atordoamento",
+  PARALYZE: "Paralisia",
+  BLIND: "Cegueira",
+};
+
+export interface MonsterStatusEffectApi {
+  id?: number;
+  id_monstro?: number;
+  status_key: StatusEffectKey;
+  chance_ppm: number;
+  duration_turns: number;
+  potency_base: number;
+  ativo: boolean;
+}
+
 export interface AdventureMonsterDetailApi {
   monstro: AdventureMonsterApi;
   combat_power: {
@@ -586,6 +625,7 @@ export interface AdventureMonsterDetailApi {
     utilityFactor: number;
   };
   loot: AdventureMonsterLootApi[];
+  efeitosDeStatus: MonsterStatusEffectApi[];
   zonas: {
     id: number;
     id_area: number;
@@ -639,6 +679,17 @@ export async function sincronizarLootMonstroAdmin(idMonstro: number, loot: LootM
 // só pausa, mantendo chance/quantidade salvas pra reativar depois).
 export async function excluirLootAdmin(id: number): Promise<void> {
   await axiosInstance.delete(`/admin/adventure/loot/${id}`);
+}
+
+export async function sincronizarStatusEffectsMonstroAdmin(
+  idMonstro: number,
+  efeitos: MonsterStatusEffectApi[],
+): Promise<MonsterStatusEffectApi[]> {
+  const resposta = await axiosInstance.put<{ data: { efeitos: MonsterStatusEffectApi[] } }>(
+    `/admin/adventure/monsters/${idMonstro}/status-effects`,
+    { efeitos },
+  );
+  return resposta.data.data.efeitos;
 }
 
 // Simulador de Balanceamento (Admin Aventura) — roda N combates PvE
