@@ -18,6 +18,7 @@ import {
   type AdventureZoneApi,
   type LootMonstroItemPayload,
   type MonsterStatusEffectApi,
+  type StatusEffectKey,
 } from "@/lib/api/admin";
 import { ItemSelect, formatarItemComId, useItensParaSelecaoAdmin } from "@/components/admin/ItemPicker";
 import { CombatPowerCard } from "./CombatPowerCard";
@@ -444,7 +445,19 @@ export function MonsterEditor({
                   <tbody>
                     {efeitosStatus.map((linha) => (
                       <tr key={linha.chaveLocal} className={`border-t border-white/10 ${!linha.ativo ? "opacity-50" : ""}`}>
-                        <td className="py-1 pr-2 font-bold">{NOME_STATUS_EFFECT[linha.status_key]}</td>
+                        <td className="py-1 pr-2">
+                          <select
+                            value={linha.status_key}
+                            onChange={(e) => atualizarEfeitoStatus(linha.chaveLocal, { status_key: e.target.value as StatusEffectKey })}
+                            className="rounded border border-white/20 bg-black/30 px-1 py-0.5"
+                          >
+                            {CHAVES_STATUS_EFFECT.filter((k) => k === linha.status_key || !chavesStatusJaUsadas.has(k)).map((k) => (
+                              <option key={k} value={k}>
+                                {NOME_STATUS_EFFECT[k]}
+                              </option>
+                            ))}
+                          </select>
+                        </td>
                         <td className="py-1 pr-2">
                           <input
                             type="number"
