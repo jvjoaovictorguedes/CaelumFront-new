@@ -3,14 +3,17 @@ import Link from "next/link";
 import Explorer2DGame from "./Explorer2DGame";
 
 // PROTÓTIPO EXPERIMENTAL — prova de conceito isolada de exploração 2D
-// top-down (Phaser.js). NÃO integrado com o jogo de produção: sem
-// link em nenhum menu, sem checagem de personagem/sessão, fora do
-// matcher do middleware (src/middleware.ts só intercepta "/",
-// "/login", "/register", "/dashboard/*" e "/create/*" — esta rota
-// nunca passa por lá). Só existe pra validar a sensação de "andar
-// pelo mapa" antes de decidir se vale integrar de verdade com a
-// Aventura/zonas atuais — ver comentário completo no topo de
-// ExplorationScene.ts.
+// top-down (Phaser.js). Linkado pro Mapa de produção (/dashboard/map,
+// visível pra qualquer jogador — pedido explícito: "deixar o mapa 2d
+// pra todos ver"), mas NÃO integrado com o jogo de verdade: sem
+// checagem de personagem/sessão própria, fora do matcher do
+// middleware (src/middleware.ts só intercepta "/", "/login",
+// "/register", "/dashboard/*" e "/create/*" — esta rota nunca passa
+// por lá). O aviso de "ainda em desenvolvimento" abaixo precisa
+// continuar sempre visível — é o que deixa claro que isso não é o
+// jogo final. Só existe pra validar a sensação de "andar pelo mapa"
+// antes de decidir se vale integrar de verdade com a Aventura/zonas
+// atuais — ver comentário completo no topo de ExplorationScene.ts.
 export const metadata: Metadata = {
   title: "Protótipo 2D (experimental)",
   robots: { index: false, follow: false },

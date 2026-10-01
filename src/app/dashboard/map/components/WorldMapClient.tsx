@@ -105,7 +105,7 @@ function nodePassaNoFiltro(node: NodeApi, filtro: FiltroTipo, subfiltroExpedicao
 
 // Estado neutro fica sempre visível de fundo, mesmo filtrando Nodes
 // (spec §27: "territórios permanecem como camada de fundo").
-export default function WorldMapClient({ mapa, isAdmin = false }: { mapa: WorldMapApi; isAdmin?: boolean }) {
+export default function WorldMapClient({ mapa }: { mapa: WorldMapApi }) {
   const [filtro, setFiltro] = useState<FiltroTipo>("TODOS");
   const [subfiltroExpedicao, setSubfiltroExpedicao] = useState<SubfiltroExpedicao>(null);
   const [nodeSelecionadoId, setNodeSelecionadoId] = useState<number | null>(null);
@@ -136,15 +136,17 @@ export default function WorldMapClient({ mapa, isAdmin = false }: { mapa: WorldM
             ✕
           </Link>
           <h1 className="font-imFeel text-3xl text-white sm:text-4xl">Mapa de Caelum</h1>
-          {isAdmin && (
-            <Link
-              href="/prototype-2d"
-              title="Protótipo de exploração 2D (em desenvolvimento) — só admin"
-              className="rounded-full border border-dashed border-[#F3B43F]/50 px-3 py-1 text-xs font-bold text-[#F3B43F]/80 transition hover:border-[#F3B43F] hover:text-[#F3B43F]"
-            >
-              Protótipo 2D (admin)
-            </Link>
-          )}
+          {/* Liberado pra todos (pedido do jogador) — ainda é um
+              protótipo em desenvolvimento, não o Mapa de produção,
+              então o rótulo deixa isso claro mesmo fora da página em
+              si (ver aviso dentro de /prototype-2d). */}
+          <Link
+            href="/prototype-2d"
+            title="Protótipo de exploração 2D — ainda em desenvolvimento, vamos continuar melhorando"
+            className="rounded-full border border-dashed border-[#F3B43F]/50 px-3 py-1 text-xs font-bold text-[#F3B43F]/80 transition hover:border-[#F3B43F] hover:text-[#F3B43F]"
+          >
+            Protótipo 2D (em desenvolvimento)
+          </Link>
         </div>
         <WorldMapFilters
           filtro={filtro}
