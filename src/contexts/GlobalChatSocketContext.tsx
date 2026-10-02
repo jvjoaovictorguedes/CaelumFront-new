@@ -22,11 +22,24 @@ function socketUrlFromApiUrl(apiUrl: string) {
   return apiUrl.replace(/\/api\/?$/, "");
 }
 
+// Pedido do jogador: responder uma mensagem específica, igual WhatsApp.
+// nome/texto aqui são a citação CONGELADA no momento do envio (ver
+// globalChatService.persistirMensagem no backend) — nunca mudam
+// retroativamente, mesmo que o personagem original troque de nome ou a
+// mensagem citada já tenha sido apagada pela limpeza mensal.
+export interface RespostaChatGlobal {
+  id: number;
+  nome: string;
+  texto: string;
+}
+
 export interface MensagemChatGlobal {
+  id: number;
   idPersonagem: number;
   nome: string;
   texto: string;
   data: string;
+  respondendoA?: RespostaChatGlobal | null;
 }
 
 interface GlobalChatSocketContextValue {
@@ -35,7 +48,7 @@ interface GlobalChatSocketContextValue {
   mensagens: MensagemChatGlobal[];
   naoLidas: number;
   limparNaoLidas: () => void;
-  enviarMensagem: (texto: string) => void;
+  enviarMensagem: (texto: string, idMensagemRespondida?: number) => void;
 }
 
 const GlobalChatSocketContext = createContext<GlobalChatSocketContextValue>({
@@ -124,8 +137,8 @@ export function GlobalChatSocketProvider({ children }: { children: ReactNode }) 
 
   const limparNaoLidas = useCallback(() => setNaoLidas(0), []);
 
-  const enviarMensagem = useCallback((texto: string) => {
-    socketRef.current?.emit("globalchat:message", { texto });
+  const enviarMensagem = useCallback((texto: string, idMensagemRespondida?: number) => {
+    socketRef.current?.emit("globalchat:message", { texto, idMensagemRespondida });
   }, []);
 
   return (
