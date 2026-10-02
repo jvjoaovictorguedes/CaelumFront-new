@@ -1473,7 +1473,13 @@ export default function CombatArena({
       )}
 
       {!resultado && (
-        <div className="absolute inset-x-0 bottom-0 z-30 bg-gradient-to-t from-black/90 via-black/70 to-transparent px-3 pb-3 pt-10 sm:px-6">
+        // pr-14/pr-16 reserva o espaço do FloatingGlobalChatWidget (fixed
+        // bottom-3/4 right-3/4, z-[200]) — mesmo motivo do pr-14/pr-16 da
+        // barra superior pro FloatingMusicWidget: sem isso o botão de
+        // Missões em andamento (MissionsPanel, encostado na borda direita
+        // por causa do justify-between abaixo) ficava embaixo do balão do
+        // chat, impossível de clicar.
+        <div className="absolute inset-x-0 bottom-0 z-30 bg-gradient-to-t from-black/90 via-black/70 to-transparent px-3 pb-3 pt-10 pr-14 sm:px-6 sm:pr-16">
           {statusControleDuro && (
             <p className="mb-2 text-center text-xs font-bold text-[#F3B43F]">
               Você está {NOME_POR_STATUS[statusControleDuro]} — sua ação será perdida neste turno.
