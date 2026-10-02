@@ -26,9 +26,10 @@
 // ele vai pra forja") — pontos fixos no mapa que, ao serem tocados
 // pelo personagem OU clicados, navegam pra rota real do jogo
 // correspondente. Os ÍCONES já são os mesmos ícones de verdade do
-// menu lateral do jogo (public/icons/...), não é mais placeholder —
-// só o "selo" colorido atrás de cada um é gerado em runtime, pra dar
-// contraste contra a grama.
+// menu lateral do jogo (public/icons/...). Cada local agora tem um
+// PRÉDIO de verdade (public/buildings/ — recortado de um pack de
+// vilarejo fornecido pelo jogador) desenhado atrás do selo/ícone, em
+// vez de só grama vazia.
 import * as Phaser from "phaser";
 
 interface LocalInterativo {
@@ -40,16 +41,70 @@ interface LocalInterativo {
   cor: number;
   iconeKey: string;
   iconeUrl: string;
+  predioKey: string;
+  predioUrl: string;
+  placaKey?: string;
+  placaUrl?: string;
 }
 
 // Mesmos ícones que o NavMenu real usa pra essas telas (ver
-// src/app/dashboard/components/NavMenu.tsx) — Taverna reaproveita
-// loja.png porque é o que o PRÓPRIO menu do jogo já faz hoje.
+// src/app/dashboard/components/NavMenu.tsx). Prédios: Loja e Ferreiro
+// reaproveitam a MESMA casa pequena do pack (ferreiro espelhada, pra
+// não ficar idêntica), Taverna é a casa maior do pack (+ placa "INN"),
+// Guilda é a casa com alpendre (a mais "oficial" das 3 do pack).
 const LOCAIS_INTERATIVOS: LocalInterativo[] = [
-  { chave: "ferreiro", nome: "Ferreiro", rota: "/dashboard/forge", tileX: 6, tileY: 12, cor: 0xb0462a, iconeKey: "icon-forja", iconeUrl: "/icons/ui/forja.png" },
-  { chave: "loja", nome: "Loja", rota: "/dashboard/shop", tileX: 15, tileY: 5, cor: 0xc9a227, iconeKey: "icon-loja", iconeUrl: "/icons/loja.png" },
-  { chave: "taverna", nome: "Taverna", rota: "/dashboard/tavern", tileX: 6, tileY: 22, cor: 0x8a5a2b, iconeKey: "icon-loja", iconeUrl: "/icons/loja.png" },
-  { chave: "guilda", nome: "Guilda", rota: "/dashboard/guilds", tileX: 18, tileY: 22, cor: 0x2a6fb0, iconeKey: "icon-guildas", iconeUrl: "/icons/guildas.png" },
+  {
+    chave: "ferreiro",
+    nome: "Ferreiro",
+    rota: "/dashboard/forge",
+    tileX: 6,
+    tileY: 12,
+    cor: 0xb0462a,
+    iconeKey: "icon-forja",
+    iconeUrl: "/icons/ui/forja.png",
+    predioKey: "predio-ferreiro",
+    predioUrl: "/buildings/ferreiro.png",
+    placaKey: "placa-ferreiro",
+    placaUrl: "/buildings/sign-ferreiro.png",
+  },
+  {
+    chave: "loja",
+    nome: "Loja",
+    rota: "/dashboard/shop",
+    tileX: 15,
+    tileY: 5,
+    cor: 0xc9a227,
+    iconeKey: "icon-loja",
+    iconeUrl: "/icons/loja.png",
+    predioKey: "predio-loja",
+    predioUrl: "/buildings/loja.png",
+  },
+  {
+    chave: "taverna",
+    nome: "Taverna",
+    rota: "/dashboard/tavern",
+    tileX: 6,
+    tileY: 22,
+    cor: 0x8a5a2b,
+    iconeKey: "icon-loja",
+    iconeUrl: "/icons/loja.png",
+    predioKey: "predio-taverna",
+    predioUrl: "/buildings/taverna.png",
+    placaKey: "placa-taverna",
+    placaUrl: "/buildings/sign-inn.png",
+  },
+  {
+    chave: "guilda",
+    nome: "Guilda",
+    rota: "/dashboard/guilds",
+    tileX: 18,
+    tileY: 22,
+    cor: 0x2a6fb0,
+    iconeKey: "icon-guildas",
+    iconeUrl: "/icons/guildas.png",
+    predioKey: "predio-guilda",
+    predioUrl: "/buildings/guilda.png",
+  },
 ];
 
 const TILE = 32;
@@ -83,8 +138,11 @@ function construirMapa(): number[][] {
   // Longe o bastante dos Locais Interativos/blocos de rocha/spawn pra
   // nunca cercar um deles por completo (ver ocupado em create(), que já
   // evita árvore em cima — lagoa usa a mesma folga de posicionamento).
+  // Posições escolhidas pra nunca encostar na área ocupada pelos
+  // prédios de verdade dos Locais Interativos (ver PREDIO_PX_* abaixo
+  // e create(), onde o prédio é ancorado pela porta/tile do local).
   const lagoas = [
-    { cx: 15, cy: 18, raio: 3 },
+    { cx: 13, cy: 15, raio: 3 },
     { cx: 34, cy: 20, raio: 3 },
   ];
 
@@ -199,6 +257,12 @@ export class ExplorationScene extends Phaser.Scene {
     const iconesUnicos = new Map(LOCAIS_INTERATIVOS.map((l) => [l.iconeKey, l.iconeUrl]));
     for (const [key, url] of iconesUnicos) this.load.image(key, url);
 
+    // Prédio + placa de cada Local Interativo (public/buildings/).
+    for (const local of LOCAIS_INTERATIVOS) {
+      this.load.image(local.predioKey, local.predioUrl);
+      if (local.placaKey && local.placaUrl) this.load.image(local.placaKey, local.placaUrl);
+    }
+
     // Mesma pasta/arquivos que o combate da Aventura usa pro Guerreiro
     // (ver spriteUrl em spriteSheets.ts: `/${pasta}/${arquivo}`) — vem
     // de public/Knight_1, servido estático pelo Next.js.
@@ -245,22 +309,22 @@ export class ExplorationScene extends Phaser.Scene {
     textura.refresh();
   }
 
-  // "Selo" colorido atrás do ícone de um Local Interativo — só um
-  // círculo com borda, pra dar contraste contra a grama e servir de
-  // corpo físico pro overlap/clique. O ícone de verdade (imagem real)
-  // é desenhado POR CIMA dele em create(), como um segundo GameObject.
+  // "Selo" atrás do ícone de um Local Interativo — corpo físico pro
+  // overlap/clique na porta. Agora que cada local tem um PRÉDIO de
+  // verdade desenhado atrás (ver create()), virou só um anel fino e
+  // semitransparente marcando a porta/entrada, em vez do disco cheio
+  // de antes (que brigava visualmente com a arte do prédio).
   private gerarSeloLocal(local: LocalInterativo) {
     const chaveTextura = `selo-${local.chave}`;
     const textura = this.textures.createCanvas(chaveTextura, TILE, TILE)!;
     const ctx = textura.getContext();
     const cssCor = `#${local.cor.toString(16).padStart(6, "0")}`;
 
-    ctx.fillStyle = cssCor;
+    ctx.strokeStyle = cssCor;
+    ctx.lineWidth = 3;
+    ctx.globalAlpha = 0.85;
     ctx.beginPath();
-    ctx.arc(TILE / 2, TILE / 2, TILE / 2 - 2, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = "#1a1410";
-    ctx.lineWidth = 2;
+    ctx.arc(TILE / 2, TILE / 2, TILE / 2 - 3, 0, Math.PI * 2);
     ctx.stroke();
 
     textura.refresh();
@@ -361,9 +425,29 @@ export class ExplorationScene extends Phaser.Scene {
     // personagem "entra" nele (ver entrarNoLocal).
     const iconesDeLocais: Phaser.GameObjects.GameObject[] = [];
     const rotulosDeLocais: Phaser.GameObjects.GameObject[] = [];
+    // Prédios/placas são grandes/detalhados demais pro minimapa (igual
+    // às árvores) — ficam numa lista própria, nunca mostrada lá.
+    const construcoesDeLocais: Phaser.GameObjects.GameObject[] = [];
     for (const local of LOCAIS_INTERATIVOS) {
       const px = local.tileX * TILE + TILE / 2;
       const py = local.tileY * TILE + TILE / 2;
+
+      // Prédio ancorado PELA PORTA: origin (0.5, 1) encosta a base do
+      // prédio no tile de entrada (px, py + TILE/2), igual o personagem
+      // (ver player.setOrigin acima) — o resto da construção sobe/
+      // alarga a partir dali. Depth 0, mesma camada das árvores: o
+      // personagem (depth 1) sempre desenha por cima ao "entrar" nela.
+      const predio = this.add.image(px, py + TILE / 2, local.predioKey).setOrigin(0.5, 1).setDepth(0);
+      construcoesDeLocais.push(predio);
+
+      if (local.placaKey) {
+        // Placa pendurada do lado de fora, perto da porta.
+        const placa = this.add
+          .image(px + predio.displayWidth / 2 - 6, py - 4, local.placaKey)
+          .setOrigin(0.5, 1)
+          .setDepth(0);
+        construcoesDeLocais.push(placa);
+      }
 
       const selo = this.physics.add.staticImage(px, py, `selo-${local.chave}`);
       selo.setInteractive({ useHandCursor: true });
@@ -481,7 +565,15 @@ export class ExplorationScene extends Phaser.Scene {
     // nunca o personagem "de verdade", as árvores (viram poeira
     // ilegível reduzidas) nem os rótulos de texto nem o HUD/UI.
     this.cameras.main.ignore([this.debugText, this.mensagemEntrada, this.minimapFundo, this.playerDot]);
-    this.uiCamera.ignore([camada, this.player, this.playerDot, ...arvores, ...iconesDeLocais, ...rotulosDeLocais]);
+    this.uiCamera.ignore([
+      camada,
+      this.player,
+      this.playerDot,
+      ...arvores,
+      ...iconesDeLocais,
+      ...rotulosDeLocais,
+      ...construcoesDeLocais,
+    ]);
     this.minimapCamera.ignore([
       this.debugText,
       this.mensagemEntrada,
@@ -489,6 +581,7 @@ export class ExplorationScene extends Phaser.Scene {
       this.player,
       ...arvores,
       ...rotulosDeLocais,
+      ...construcoesDeLocais,
     ]);
 
     // Jogo agora é tela cheia (Scale.RESIZE, ver Explorer2DGame.tsx) —
