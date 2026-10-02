@@ -7,16 +7,19 @@
 // jogo, sem link em nenhum menu — só acessível digitando a URL
 // /prototype-2d direto.
 //
-// Personagem: reaproveita a spritesheet de verdade do Guerreiro
-// (public/Knight_1/Walk.png e Idle.png — mesma pasta usada no combate
-// da Aventura via PlayerSprite.tsx/spriteSheets.ts), em vez de um
-// desenho placeholder. É arte de visão LATERAL (só vira pra
-// esquerda/direita, espelhando a mesma folha — mesmo truque de `flip`
-// já usado no combate), sem frames de "de costas"/"de frente" — então
-// andar pra cima/baixo usa a mesma animação de caminhar sem trocar o
-// espelhamento. É uma limitação conhecida e aceitável pra este teste:
-// só valida a SENSAÇÃO de andar pelo mapa, a arte 4-direções de
-// verdade (se o protótipo validar a ideia) é trabalho futuro separado.
+// Personagem: reaproveita a spritesheet de verdade do Guerreiro OU do
+// Mago (public/Knight_1 ou public/Wanderer Magican — mesmas pastas
+// usadas no combate da Aventura via PlayerSprite.tsx/MageSprite.tsx/
+// spriteSheets.ts), escolhida pela CLASSE do personagem logado (ver
+// resolverSpriteDaClasse abaixo e registry.set("classeNome", ...) em
+// Explorer2DGame.tsx) — nunca mais fixo no Guerreiro. É arte de visão
+// LATERAL (só vira pra esquerda/direita, espelhando a mesma folha —
+// mesmo truque de `flip` já usado no combate), sem frames de "de
+// costas"/"de frente" — então andar pra cima/baixo usa a mesma
+// animação de caminhar sem trocar o espelhamento. É uma limitação
+// conhecida e aceitável pra este teste: só valida a SENSAÇÃO de andar
+// pelo mapa, a arte 4-direções de verdade (se o protótipo validar a
+// ideia) é trabalho futuro separado.
 //
 // Tileset do chão: arte real (public/tiles/terrain.png — 4 tiles de
 // 32x32 recortados de um pack de terreno fornecido pelo jogador:
@@ -205,10 +208,35 @@ function marcarCaminho(grade: number[][], x0: number, y0: number, x1: number, y1
   }
 }
 
-// Tamanho real de cada frame das folhas do Guerreiro (Knight_1) —
-// Walk.png tem 1024x128 (8 frames de 128x128), Idle.png tem 512x128 (4
-// frames). Mesmo valor que spriteSheets.ts já assume implicitamente
-// pros outros personagens dessa mesma pasta.
+// Distinção Mago x Guerreiro (pedido do jogador: "mago usa a sprite de
+// mago e guerreiro a de guerreiro") — mesma pasta/critério que o
+// combate da Aventura já usa (ver spriteFolderForClass em
+// spriteForClass.tsx: nome da classe contém "mago"/"mage" -> pasta
+// "Wanderer Magican", senão "Knight_1"). Walk.png não é usado no
+// combate (só telas de luta por turno, sem "andar"), então os frames
+// de walk de cada pasta vêm da largura real do arquivo (contados à
+// mão abaixo), não do SPRITE_CONFIGS de lá.
+interface SpriteDeClasse {
+  pasta: string;
+  walkFrames: number;
+  idleFrames: number;
+}
+
+const SPRITE_GUERREIRO: SpriteDeClasse = { pasta: "Knight_1", walkFrames: 8, idleFrames: 4 };
+// Wanderer Magican/Walk.png = 896x128 (7 frames); Idle.png = 1024x128
+// (8 frames, mesmo valor usado em SPRITE_CONFIGS["Wanderer Magican"]
+// pro combate).
+const SPRITE_MAGO: SpriteDeClasse = { pasta: "Wanderer Magican", walkFrames: 7, idleFrames: 8 };
+
+function resolverSpriteDaClasse(nomeClasse?: string): SpriteDeClasse {
+  const nome = (nomeClasse ?? "").toLowerCase();
+  if (nome.includes("mago") || nome.includes("mage")) return SPRITE_MAGO;
+  return SPRITE_GUERREIRO;
+}
+
+// Tamanho real de cada frame das folhas de personagem (Knight_1 E
+// Wanderer Magican têm frames de 128x128 — mesmo valor que
+// spriteSheets.ts já assume implicitamente pros dois).
 const FRAME_SRC = 128;
 // Escala pra caber num mapa de tiles de 32px sem ficar gigante —
 // 128 * 0.4 = ~51px de altura, um pouco mais que 1 tile (efeito comum
@@ -238,6 +266,7 @@ export class ExplorationScene extends Phaser.Scene {
   private minimapCamera!: Phaser.Cameras.Scene2D.Camera;
   private minimapFundo!: Phaser.GameObjects.Rectangle;
   private entrando = false;
+  private spriteDaClasse!: SpriteDeClasse;
 
   constructor() {
     super("ExplorationScene");
@@ -263,14 +292,17 @@ export class ExplorationScene extends Phaser.Scene {
       if (local.placaKey && local.placaUrl) this.load.image(local.placaKey, local.placaUrl);
     }
 
-    // Mesma pasta/arquivos que o combate da Aventura usa pro Guerreiro
-    // (ver spriteUrl em spriteSheets.ts: `/${pasta}/${arquivo}`) — vem
-    // de public/Knight_1, servido estático pelo Next.js.
-    this.load.spritesheet("knight-walk", "/Knight_1/Walk.png", {
+    // Classe do personagem logado (ver registry.set em
+    // Explorer2DGame.tsx) decide a pasta — mesmo critério usado no
+    // combate (spriteFolderForClass). Pasta/arquivos servidos estático
+    // pelo Next.js, igual Knight_1 já era.
+    const classeNome = this.registry.get("classeNome") as string | undefined;
+    this.spriteDaClasse = resolverSpriteDaClasse(classeNome);
+    this.load.spritesheet("player-walk", `/${this.spriteDaClasse.pasta}/Walk.png`, {
       frameWidth: FRAME_SRC,
       frameHeight: FRAME_SRC,
     });
-    this.load.spritesheet("knight-idle", "/Knight_1/Idle.png", {
+    this.load.spritesheet("player-idle", `/${this.spriteDaClasse.pasta}/Idle.png`, {
       frameWidth: FRAME_SRC,
       frameHeight: FRAME_SRC,
     });
@@ -346,14 +378,14 @@ export class ExplorationScene extends Phaser.Scene {
     this.physics.world.setBounds(0, 0, larguraMundo, alturaMundo);
 
     this.anims.create({
-      key: "knight-walk",
-      frames: this.anims.generateFrameNumbers("knight-walk", { start: 0, end: 7 }),
+      key: "player-walk",
+      frames: this.anims.generateFrameNumbers("player-walk", { start: 0, end: this.spriteDaClasse.walkFrames - 1 }),
       frameRate: 12,
       repeat: -1,
     });
     this.anims.create({
-      key: "knight-idle",
-      frames: this.anims.generateFrameNumbers("knight-idle", { start: 0, end: 3 }),
+      key: "player-idle",
+      frames: this.anims.generateFrameNumbers("player-idle", { start: 0, end: this.spriteDaClasse.idleFrames - 1 }),
       frameRate: 6,
       repeat: -1,
     });
@@ -362,7 +394,7 @@ export class ExplorationScene extends Phaser.Scene {
     // blocos de teste). Origin (0.5, 1) ancora o sprite PELOS PÉS — o
     // x/y do personagem fica exatamente na célula onde ele "está",
     // mesmo a arte sendo mais alta que um tile.
-    this.player = this.physics.add.sprite(3 * TILE + TILE / 2, 3 * TILE + TILE, "knight-idle", 0);
+    this.player = this.physics.add.sprite(3 * TILE + TILE / 2, 3 * TILE + TILE, "player-idle", 0);
     this.player.setOrigin(0.5, 1);
     this.player.setScale(ESCALA_PERSONAGEM);
     this.player.setCollideWorldBounds(true);
@@ -660,9 +692,9 @@ export class ExplorationScene extends Phaser.Scene {
     if (vx !== 0) this.player.setFlipX(vx < 0);
 
     if (emMovimento) {
-      this.player.anims.play("knight-walk", true);
+      this.player.anims.play("player-walk", true);
     } else {
-      this.player.anims.play("knight-idle", true);
+      this.player.anims.play("player-idle", true);
     }
 
     this.playerDot.setPosition(this.player.x, this.player.y);

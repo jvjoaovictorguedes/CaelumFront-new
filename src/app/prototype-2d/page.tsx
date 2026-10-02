@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import Explorer2DGame from "./Explorer2DGame";
+import { getCurrentCharacter } from "@/utils/character-session";
 
 // PROTÓTIPO EXPERIMENTAL — prova de conceito isolada de exploração 2D
 // top-down (Phaser.js). Linkado pro Mapa de produção (/dashboard/map,
@@ -14,17 +15,26 @@ import Explorer2DGame from "./Explorer2DGame";
 // jogo final. Só existe pra validar a sensação de "andar pelo mapa"
 // antes de decidir se vale integrar de verdade com a Aventura/zonas
 // atuais — ver comentário completo no topo de ExplorationScene.ts.
+//
+// getCurrentCharacter() aqui NÃO vira checagem de sessão (rota continua
+// acessível sem login) — é só pra saber a CLASSE do personagem, se
+// houver um logado, e escolher o sprite certo (Mago vs Guerreiro, ver
+// resolverSpriteDaClasse em ExplorationScene.ts). Sem personagem,
+// cai no Guerreiro (mesmo default de spriteForClass.tsx no combate).
 export const metadata: Metadata = {
   title: "Protótipo 2D (experimental)",
   robots: { index: false, follow: false },
 };
 
-export default function Prototype2DPage() {
+export default async function Prototype2DPage() {
+  const character = await getCurrentCharacter();
+  const classeNome = character?.Class?.nome;
+
   return (
     <div className="fixed inset-0 overflow-hidden bg-[#0f0c09] text-white">
       {/* Tela cheia (pedido do jogador) — o jogo Phaser cobre a página
           inteira, o resto aqui é só overlay HTML por cima dele. */}
-      <Explorer2DGame />
+      <Explorer2DGame classeNome={classeNome} />
 
       <div className="pointer-events-none absolute left-4 top-4 max-w-sm rounded-lg border border-[#F3B43F]/40 bg-black/70 p-3 backdrop-blur-sm">
         <p className="text-[10px] font-bold uppercase tracking-widest text-[#F3B43F]">

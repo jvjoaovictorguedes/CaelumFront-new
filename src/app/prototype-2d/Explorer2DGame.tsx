@@ -8,7 +8,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
-export default function Explorer2DGame() {
+export default function Explorer2DGame({ classeNome }: { classeNome?: string }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [erro, setErro] = useState<string | null>(null);
   const router = useRouter();
@@ -47,6 +47,13 @@ export default function Explorer2DGame() {
           },
           scene: [ExplorationScene],
         });
+
+        // Classe do personagem logado (se houver) — a cena lê isto em
+        // preload() pra escolher o sprite certo (Mago vs Guerreiro, ver
+        // resolverSpriteDaClasse em ExplorationScene.ts). Registry
+        // é o jeito padrão do Phaser de passar dado externo pra dentro
+        // de uma cena sem props de componente React.
+        jogo.registry.set("classeNome", classeNome ?? "");
 
         // Locais interativos (Ferreiro -> Forja, Loja -> Loja, etc.,
         // ver LOCAIS_INTERATIVOS em ExplorationScene.ts) — a cena
