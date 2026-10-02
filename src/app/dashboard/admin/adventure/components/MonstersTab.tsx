@@ -101,6 +101,7 @@ export function MonstersTab({ onSimular }: { onSimular: (idMonstro: number) => v
       ouro_recompensa: 10,
       defesa: 0,
       ativo: true,
+      disponivel_emboscada: true,
     });
     setMostrarCriacaoRapida(true);
   }
@@ -126,6 +127,19 @@ export function MonstersTab({ onSimular }: { onSimular: (idMonstro: number) => v
       await carregar();
     } catch (error) {
       setErro(mensagemDeErroAdmin(error, "Não foi possível mudar o status do monstro."));
+    }
+  }
+
+  // Pedido do jogador: admin escolhe quais monstros podem aparecer na
+  // Emboscada da Expedição (Mineração/Silvicultura/Exploração) — mesmo
+  // padrão on/off de alternarAtivo acima, só que não tira o monstro de
+  // circulação nas Áreas de Caça/Caçadas/Bestiário, só da emboscada.
+  async function alternarDisponivelEmboscada(monstro: AdventureMonsterApi) {
+    try {
+      await atualizarMonstroAdmin(monstro.id, { disponivel_emboscada: !monstro.disponivel_emboscada });
+      await carregar();
+    } catch (error) {
+      setErro(mensagemDeErroAdmin(error, "Não foi possível mudar a disponibilidade na emboscada."));
     }
   }
 
@@ -209,6 +223,9 @@ export function MonstersTab({ onSimular }: { onSimular: (idMonstro: number) => v
                 <p className="text-xs text-white/50">
                   XP {monstro.xp_recompensa ?? "?"} · Ouro {monstro.ouro_recompensa ?? "?"}
                 </p>
+                <p className={`text-xs ${monstro.disponivel_emboscada ? "text-white/50" : "text-red-400/80"}`}>
+                  {monstro.disponivel_emboscada ? "Aparece na emboscada" : "Fora da emboscada"}
+                </p>
               </div>
               <div className="flex shrink-0 flex-wrap justify-end gap-2 text-sm">
                 <button type="button" onClick={() => setMonstroEditando(monstro.id)} className="text-white/70 hover:underline">
@@ -219,6 +236,9 @@ export function MonstersTab({ onSimular }: { onSimular: (idMonstro: number) => v
                 </button>
                 <button type="button" onClick={() => alternarAtivo(monstro)} className="text-white/70 hover:underline">
                   {monstro.ativo ? "Desativar" : "Ativar"}
+                </button>
+                <button type="button" onClick={() => alternarDisponivelEmboscada(monstro)} className="text-white/70 hover:underline">
+                  {monstro.disponivel_emboscada ? "Tirar da emboscada" : "Pôr na emboscada"}
                 </button>
                 <button type="button" onClick={() => excluir(monstro)} className="text-red-400 hover:underline">
                   Excluir

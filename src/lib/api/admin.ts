@@ -501,6 +501,11 @@ export interface AdventureMonsterApi {
   // no backend); nunca calculada/duplicada aqui no frontend.
   defesa: number;
   ativo: boolean;
+  // Pedido do jogador: admin escolhe quais monstros do catálogo podem
+  // aparecer na Emboscada da Expedição (Mineração/Silvicultura/
+  // Exploração) — ver migration 20270114010000-monstro-disponivel-emboscada
+  // no backend. Default true (todo monstro começa elegível).
+  disponivel_emboscada: boolean;
   // Calculado no backend por linha da listagem (nunca persistido, §3.2/
   // §9) — presente em GET /admin/adventure/monsters; ausente em
   // respostas de criar/atualizar que não recalculam a lista inteira.

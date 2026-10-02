@@ -324,6 +324,14 @@ export function MonsterEditor({
                   <input type="number" min={1} value={form.velocidade ?? 2} onChange={(e) => atualizarCampo("velocidade", Number(e.target.value))} className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm" />
                 </label>
               </div>
+              <label className="mt-1 flex items-center gap-2 text-xs">
+                <input
+                  type="checkbox"
+                  checked={form.disponivel_emboscada ?? true}
+                  onChange={(e) => atualizarCampo("disponivel_emboscada", e.target.checked)}
+                />
+                Pode aparecer na Emboscada da Expedição (Mineração/Silvicultura/Exploração)
+              </label>
             </section>
 
             <section className="flex flex-col gap-2 rounded-xl border border-white/10 bg-black/20 p-3">
