@@ -1473,18 +1473,20 @@ export default function CombatArena({
       )}
 
       {!resultado && (
-        // pr-20/pr-24 reserva o espaço do FloatingGlobalChatWidget (fixed
-        // bottom-3/4 right-3/4, z-[200], h-12 w-12) — mesmo motivo do
-        // pr-14/pr-16 da barra superior pro FloatingMusicWidget: sem essa
-        // reserva o botão de Missões em andamento (hoje dentro da própria
-        // caixa da barra de ação, via rightSlot em CombatActionBar) ficava
-        // embaixo do balão do chat, impossível de clicar. Bug reportado:
-        // pr-14/pr-16 (usado antes aqui) deixava só ~4px de sobra no
-        // mobile e ZERO no desktop (sm:right-4 + h-12 do balão = 64px,
-        // igual ao próprio sm:pr-16) — os dois ícones ficavam encostados,
-        // cliques num fechavam o outro sem abrir o que o jogador queria.
-        // pr-20/pr-24 garante uma folga visível de verdade.
-        <div className="absolute inset-x-0 bottom-0 z-30 bg-gradient-to-t from-black/90 via-black/70 to-transparent px-3 pb-3 pt-10 pr-20 sm:px-6 sm:pr-24">
+        // Bug reportado (2 rodadas): 1) pr-20/pr-24 aqui encolhia a
+        // LARGURA TOTAL do container, deixando um vão morto vazio entre a
+        // borda direita da barra dourada e os ícones; 2) depois de mover
+        // Missões pra dentro da própria caixa (rightSlot, ver
+        // CombatActionBar.tsx), esse pr-20/pr-24 ficou órfão — não
+        // protegia mais nada (Missões já nasce dentro da borda) e
+        // continuava deixando aquele vão vazio antes da borda direita.
+        // Removido: a barra (CombatActionBar, único filho em bloco deste
+        // container) agora ocupa 100% da largura disponível sozinha,
+        // sem precisar de w-full/flex-1 explícito. A folga de verdade pro
+        // balão do chat global não empacar em cima do botão de Missões
+        // fica só no mr-16/mr-20 do wrapper do rightSlot logo abaixo —
+        // nunca no container inteiro.
+        <div className="absolute inset-x-0 bottom-0 z-30 bg-gradient-to-t from-black/90 via-black/70 to-transparent px-3 pb-3 pt-10 sm:px-6">
           {statusControleDuro && (
             <p className="mb-2 text-center text-xs font-bold text-[#F3B43F]">
               Você está {NOME_POR_STATUS[statusControleDuro]} — sua ação será perdida neste turno.
@@ -1495,9 +1497,12 @@ export default function CombatArena({
               Você está Paralisado — há chance de perder a ação neste turno.
             </p>
           )}
-          {/* Botão de Missões agora entra DENTRO da própria caixa com borda
-              da barra de ação (rightSlot) — jogador reportou que ele
-              ficava solto, fora da borda, com um vão vazio no meio. */}
+          {/* Botão de Missões entra DENTRO da própria caixa com borda da
+              barra de ação (rightSlot) — jogador reportou que ele ficava
+              solto, fora da borda. mr-16/mr-20 no wrapper é a folga de
+              verdade pro balão do chat global (fixed, h-12 w-12) não
+              ficar colado/embaixo dele — só o ícone de Missões recua, a
+              barra dourada ao lado não perde largura nenhuma. */}
           <CombatActionBar
             podeAgir={!resultado && !statusControleDuro}
             ocupado={carregando}
@@ -1518,7 +1523,11 @@ export default function CombatArena({
               executarAcao({ type: "item", itemId })
             }
             cooldownsPorPoder={cooldownsPorPoder}
-            rightSlot={<MissionsPanel missoes={missoesEmAndamento} />}
+            rightSlot={
+              <div className="mr-16 sm:mr-20">
+                <MissionsPanel missoes={missoesEmAndamento} />
+              </div>
+            }
           />
         </div>
       )}
