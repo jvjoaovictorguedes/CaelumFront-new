@@ -12,9 +12,11 @@ import {
   listarAlchemyEfeitosDoItemAdmin,
   listarAlchemyRecipesAdmin,
   mensagemDeErroAdmin,
+  preverAlchemyEfeitosAdmin,
   type AlchemyCategoriaReceita,
   type AlchemyEffectKey,
   type AlchemyModoDesbloqueio,
+  type AlchemyPreviewApi,
   type AlchemyRaridadeReceita,
   type AlchemyRecipeAdminApi,
   type ConsumableEffectAdminApi,
@@ -208,6 +210,96 @@ function resumoEfeito(efeito: ConsumableEffectAdminApi): string {
     default:
       return `${efeito.magnitude}`;
   }
+}
+
+// Preview server-side (spec Caldeirão §19) — simula o uso do item com
+// vida/mana HIPOTÉTICAS informadas pelo admin, nunca lendo/gravando
+// nenhum Character real. Mostra antes/depois lado a lado, consolidando
+// todos os efeitos do item numa visão só (cura, buffs, escudo, resistência).
+function PreviewPanel({ idItem }: { idItem: number }) {
+  const [vidaMaxima, setVidaMaxima] = useState(100);
+  const [vidaAtual, setVidaAtual] = useState(100);
+  const [manaMaxima, setManaMaxima] = useState(100);
+  const [manaAtual, setManaAtual] = useState(100);
+  const [resultado, setResultado] = useState<AlchemyPreviewApi | null>(null);
+  const [carregando, setCarregando] = useState(false);
+  const [erro, setErro] = useState("");
+
+  async function simular() {
+    setCarregando(true);
+    setErro("");
+    try {
+      const preview = await preverAlchemyEfeitosAdmin(idItem, { vidaAtual, vidaMaxima, manaAtual, manaMaxima });
+      setResultado(preview);
+    } catch (error) {
+      setErro(mensagemDeErroAdmin(error, "Não foi possível simular os efeitos do item."));
+    } finally {
+      setCarregando(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-2 rounded-lg border border-white/10 bg-black/10 p-2">
+      <p className="text-xs font-bold uppercase text-white/60">Preview (hipotético — não afeta nenhum personagem real)</p>
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <label className="flex flex-col gap-1 text-[11px]">Vida máxima
+          <Input type="number" min={1} value={vidaMaxima} onChange={(e) => setVidaMaxima(Number(e.target.value))} />
+        </label>
+        <label className="flex flex-col gap-1 text-[11px]">Vida atual
+          <Input type="number" min={0} value={vidaAtual} onChange={(e) => setVidaAtual(Number(e.target.value))} />
+        </label>
+        <label className="flex flex-col gap-1 text-[11px]">Mana máxima
+          <Input type="number" min={1} value={manaMaxima} onChange={(e) => setManaMaxima(Number(e.target.value))} />
+        </label>
+        <label className="flex flex-col gap-1 text-[11px]">Mana atual
+          <Input type="number" min={0} value={manaAtual} onChange={(e) => setManaAtual(Number(e.target.value))} />
+        </label>
+      </div>
+      <button
+        type="button"
+        onClick={simular}
+        disabled={carregando}
+        className="self-start rounded-lg border border-white/20 px-3 py-1 text-xs text-white/70 hover:bg-white/10 disabled:opacity-50"
+      >
+        {carregando ? "Simulando..." : "Simular uso"}
+      </button>
+      {erro && <p className="text-xs text-red-400">{erro}</p>}
+      {resultado && (
+        <div className="grid grid-cols-2 gap-3 rounded-lg border border-white/10 p-2 text-xs">
+          <div className="flex flex-col gap-0.5">
+            <p className="font-bold text-white/70">Antes</p>
+            <p>Vida: {resultado.antes.vidaAtual}</p>
+            <p>Mana: {resultado.antes.manaAtual}</p>
+            <p>Escudo: {resultado.antes.escudo ? `${resultado.antes.escudo.valor} (${resultado.antes.escudo.remainingTurns}t)` : "—"}</p>
+            <p>Dano de saída: x{resultado.antes.resumo.dano_saida_multiplicador}</p>
+            <p>Defesa bônus: +{resultado.antes.resumo.defesa_bonus}</p>
+            <p>Regen. Vida/turno: {resultado.antes.resumo.regen_vida_por_turno}</p>
+            <p>Regen. Mana/turno: {resultado.antes.resumo.regen_mana_por_turno}</p>
+            <p>Resist. a status: {resultado.antes.resumo.status_resistance_chance}%</p>
+          </div>
+          <div className="flex flex-col gap-0.5">
+            <p className="font-bold text-[#F3B43F]">Depois de usar</p>
+            <p>Vida: {resultado.depois.vidaAtual} <span className="text-green-400">(+{resultado.curaVida})</span></p>
+            <p>Mana: {resultado.depois.manaAtual} <span className="text-green-400">(+{resultado.curaMana})</span></p>
+            <p>Escudo: {resultado.depois.escudo ? `${resultado.depois.escudo.valor} (${resultado.depois.escudo.remainingTurns}t)` : "—"}</p>
+            <p>Dano de saída: x{resultado.depois.resumo.dano_saida_multiplicador}</p>
+            <p>Defesa bônus: +{resultado.depois.resumo.defesa_bonus}</p>
+            <p>Regen. Vida/turno: {resultado.depois.resumo.regen_vida_por_turno}</p>
+            <p>Regen. Mana/turno: {resultado.depois.resumo.regen_mana_por_turno}</p>
+            <p>Resist. a status: {resultado.depois.resumo.status_resistance_chance}%</p>
+          </div>
+          {resultado.log.length > 0 && (
+            <div className="col-span-2 border-t border-white/10 pt-2">
+              <p className="font-bold text-white/70">Log</p>
+              <ul className="list-disc pl-4 text-white/60">
+                {resultado.log.map((linha, indice) => <li key={indice}>{linha}</li>)}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
 
 function BotaoSalvar({ disabled }: { disabled: boolean }) {
@@ -668,6 +760,8 @@ export default function AdminAlchemyClient() {
                     + Adicionar efeito
                   </button>
                 )}
+
+                <PreviewPanel idItem={form.id_item_resultado} />
               </div>
             ) : (
               <p className="text-[11px] text-white/40">Escolha um item de resultado acima pra configurar os efeitos do consumível.</p>

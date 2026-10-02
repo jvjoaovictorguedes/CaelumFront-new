@@ -3716,6 +3716,46 @@ export async function excluirAlchemyEfeitoAdmin(id: number): Promise<void> {
   await axiosInstance.delete(`/admin/alchemy/effects/${id}`);
 }
 
+// Preview server-side (spec Caldeirão §19) — simula o uso do item com
+// vida/mana hipotéticas, sem ler/gravar nenhum Character real. Mesmo
+// motor (consumableEffectService) que o jogo usa de verdade.
+export interface AlchemyPreviewEstadoApi {
+  vidaAtual: number | null;
+  manaAtual: number | null;
+  statusEffects: unknown[];
+  combatBuffs: unknown[];
+  escudo: { valor: number; remainingTurns: number } | null;
+  resumo: {
+    dano_saida_multiplicador: number;
+    defesa_bonus: number;
+    regen_vida_por_turno: number;
+    regen_mana_por_turno: number;
+    status_resistance_chance: number;
+  };
+}
+export interface AlchemyPreviewApi {
+  item: { id: number; nome: string };
+  hipotetico: { vidaAtual: number; vidaMaxima: number; manaAtual: number; manaMaxima: number; quantidade: number };
+  antes: AlchemyPreviewEstadoApi;
+  depois: AlchemyPreviewEstadoApi;
+  curaVida: number;
+  curaMana: number;
+  log: string[];
+}
+export interface ParametrosPreviewAlchemy {
+  vidaAtual?: number;
+  vidaMaxima?: number;
+  manaAtual?: number;
+  manaMaxima?: number;
+  quantidade?: number;
+}
+export async function preverAlchemyEfeitosAdmin(idItem: number, parametros: ParametrosPreviewAlchemy = {}): Promise<AlchemyPreviewApi> {
+  const resposta = await axiosInstance.get<{ data: { preview: AlchemyPreviewApi } }>(`/admin/alchemy/items/${idItem}/preview`, {
+    params: parametros,
+  });
+  return resposta.data.data.preview;
+}
+
 // Painel Administrativo — Guilda: Balanceamento (guildConfig.js via
 // GameSetting, mesmo formato { atual, padrao } por grupo já usado em
 // Forja/Expedição) + os 3 catálogos geridos aqui (Níveis/Boss por Rank/
