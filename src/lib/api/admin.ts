@@ -3578,6 +3578,10 @@ export interface PayloadAlchemyRecipeIngredienteAdmin {
   quantidade: number;
 }
 
+// Alquimia V2 (spec §8.1/§11.1) — raridade da fórmula física (pergaminho),
+// nunca confundir com a raridade do próprio Item (gerida em AdminItemsClient).
+export type AlchemyRaridadeReceita = "Comum" | "Raro" | "Lendario";
+
 export interface AlchemyRecipeAdminApi {
   id: number;
   key: string;
@@ -3592,8 +3596,19 @@ export interface AlchemyRecipeAdminApi {
   modo_desbloqueio: AlchemyModoDesbloqueio;
   ativo: boolean;
   ordem: number;
+  // Fórmula física (Alquimia V2 §8.1/§11.1) — todos opcionais: uma receita
+  // DESCOBERTA pode ser concedida sem nunca ter um pergaminho físico.
+  id_item_receita: number | null;
+  raridade_receita: AlchemyRaridadeReceita | null;
+  negociavel_receita: boolean;
+  consome_ao_aprender: boolean;
+  pista_publica: string | null;
   item_resultado: ItemResumoApi | null;
+  item_receita: ItemResumoApi | null;
   ingredientes: AlchemyRecipeIngredienteAdminApi[];
+  // Construtor de Efeitos (spec Caldeirão §12) — ConsumableEffect do
+  // item_resultado, pré-carregado em lote pelo backend.
+  efeitos_consumivel: ConsumableEffectAdminApi[];
 }
 
 export interface PayloadAlchemyRecipeAdmin {
@@ -3610,6 +3625,11 @@ export interface PayloadAlchemyRecipeAdmin {
   ativo?: boolean;
   ordem?: number;
   ingredientes?: PayloadAlchemyRecipeIngredienteAdmin[];
+  id_item_receita?: number | null;
+  raridade_receita?: AlchemyRaridadeReceita | null;
+  negociavel_receita?: boolean;
+  consome_ao_aprender?: boolean;
+  pista_publica?: string | null;
 }
 
 export async function listarAlchemyRecipesAdmin(): Promise<AlchemyRecipeAdminApi[]> {
@@ -3623,6 +3643,72 @@ export async function criarAlchemyRecipeAdmin(payload: PayloadAlchemyRecipeAdmin
 export async function atualizarAlchemyRecipeAdmin(id: number, payload: PayloadAlchemyRecipeAdmin): Promise<AlchemyRecipeAdminApi> {
   const resposta = await axiosInstance.patch<{ data: { receita: AlchemyRecipeAdminApi } }>(`/admin/alchemy/recipes/${id}`, payload);
   return resposta.data.data.receita;
+}
+
+// Construtor de Efeitos (spec Caldeirão §12) — CRUD de ConsumableEffect
+// escopado por Item (nunca por receita: o endpoint em si não sabe nada de
+// receita, só o Admin sempre chega aqui a partir do item_resultado de uma).
+export type AlchemyEffectKey =
+  | "CLEANSE_STATUS"
+  | "CLEANSE_CATEGORY"
+  | "HEAL_HP_FLAT"
+  | "HEAL_HP_PERCENT"
+  | "RESTORE_MANA_FLAT"
+  | "RESTORE_MANA_PERCENT"
+  | "APPLY_COMBAT_BUFF"
+  | "GRANT_SHIELD";
+
+export interface ConsumableEffectAdminApi {
+  id: number;
+  id_item: number;
+  effect_key: AlchemyEffectKey;
+  magnitude: number;
+  duration_turns: number | null;
+  config: Record<string, unknown> | null;
+  ativo: boolean;
+}
+
+export interface PayloadConsumableEffectAdmin {
+  effect_key?: AlchemyEffectKey;
+  magnitude?: number;
+  duration_turns?: number | null;
+  config?: Record<string, unknown> | null;
+  ativo?: boolean;
+}
+
+// Metadados pro Admin montar o formulário certo pra cada effect_key sem
+// reimplementar a whitelist — single source of truth continua sendo o
+// backend (consumableEffectRegistry), isto aqui só descreve CAMPOS.
+export interface EffectTypeMetadataApi {
+  effect_key: AlchemyEffectKey;
+  exige_duracao: boolean;
+  exige_atributo_buff: boolean;
+  atributos_buff?: string[];
+  exige_status_key: boolean;
+  status_keys?: string[];
+  exige_category: boolean;
+  categorias?: string[];
+  exige_magnitude: boolean;
+}
+
+export async function listarAlchemyEffectTypesAdmin(): Promise<EffectTypeMetadataApi[]> {
+  const resposta = await axiosInstance.get<{ data: { tipos: EffectTypeMetadataApi[] } }>("/admin/alchemy/effect-types");
+  return resposta.data.data.tipos;
+}
+export async function listarAlchemyEfeitosDoItemAdmin(idItem: number): Promise<ConsumableEffectAdminApi[]> {
+  const resposta = await axiosInstance.get<{ data: { efeitos: ConsumableEffectAdminApi[] } }>(`/admin/alchemy/items/${idItem}/effects`);
+  return resposta.data.data.efeitos;
+}
+export async function criarAlchemyEfeitoAdmin(idItem: number, payload: PayloadConsumableEffectAdmin): Promise<ConsumableEffectAdminApi> {
+  const resposta = await axiosInstance.post<{ data: { efeito: ConsumableEffectAdminApi } }>(`/admin/alchemy/items/${idItem}/effects`, payload);
+  return resposta.data.data.efeito;
+}
+export async function atualizarAlchemyEfeitoAdmin(id: number, payload: PayloadConsumableEffectAdmin): Promise<ConsumableEffectAdminApi> {
+  const resposta = await axiosInstance.patch<{ data: { efeito: ConsumableEffectAdminApi } }>(`/admin/alchemy/effects/${id}`, payload);
+  return resposta.data.data.efeito;
+}
+export async function excluirAlchemyEfeitoAdmin(id: number): Promise<void> {
+  await axiosInstance.delete(`/admin/alchemy/effects/${id}`);
 }
 
 // Painel Administrativo — Guilda: Balanceamento (guildConfig.js via

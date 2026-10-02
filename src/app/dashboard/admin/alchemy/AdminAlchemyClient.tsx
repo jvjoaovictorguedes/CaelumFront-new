@@ -3,15 +3,25 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import {
+  atualizarAlchemyEfeitoAdmin,
   atualizarAlchemyRecipeAdmin,
+  criarAlchemyEfeitoAdmin,
   criarAlchemyRecipeAdmin,
+  excluirAlchemyEfeitoAdmin,
+  listarAlchemyEffectTypesAdmin,
+  listarAlchemyEfeitosDoItemAdmin,
   listarAlchemyRecipesAdmin,
   mensagemDeErroAdmin,
   type AlchemyCategoriaReceita,
+  type AlchemyEffectKey,
   type AlchemyModoDesbloqueio,
+  type AlchemyRaridadeReceita,
   type AlchemyRecipeAdminApi,
+  type ConsumableEffectAdminApi,
+  type EffectTypeMetadataApi,
   type PayloadAlchemyRecipeAdmin,
   type PayloadAlchemyRecipeIngredienteAdmin,
+  type PayloadConsumableEffectAdmin,
 } from "@/lib/api/admin";
 import { listarItensParaSelecaoAdmin, type AdminItemSelecionavelApi } from "@/lib/api/admin";
 import { ItemSelect, formatarItemComId, useItensParaSelecaoAdmin } from "@/components/admin/ItemPicker";
@@ -29,6 +39,28 @@ const ROTULO_MODO: Record<AlchemyModoDesbloqueio, string> = {
   NIVEL: "Por nível de Alquimia",
   DESCOBERTA: "Por descoberta",
 };
+const RARIDADES_RECEITA: AlchemyRaridadeReceita[] = ["Comum", "Raro", "Lendario"];
+
+const ROTULO_EFFECT_KEY: Record<AlchemyEffectKey, string> = {
+  CLEANSE_STATUS: "Remover status específico",
+  CLEANSE_CATEGORY: "Remover categoria de status (DoT/Controle)",
+  HEAL_HP_FLAT: "Curar Vida (valor fixo)",
+  HEAL_HP_PERCENT: "Curar Vida (% do máximo)",
+  RESTORE_MANA_FLAT: "Restaurar Mana (valor fixo)",
+  RESTORE_MANA_PERCENT: "Restaurar Mana (% do máximo)",
+  APPLY_COMBAT_BUFF: "Conceder buff de combate",
+  GRANT_SHIELD: "Conceder escudo",
+};
+const ROTULO_ATRIBUTO_BUFF: Record<string, string> = {
+  DANO_SAIDA_PCT: "Dano de saída (%)",
+  DEFESA_FLAT: "Defesa (valor fixo)",
+  REGEN_HP_FLAT: "Regen. de Vida por turno (valor fixo)",
+  REGEN_HP_PERCENT: "Regen. de Vida por turno (% do máximo)",
+  REGEN_MANA_FLAT: "Regen. de Mana por turno (valor fixo)",
+  REGEN_MANA_PERCENT: "Regen. de Mana por turno (% do máximo)",
+  STATUS_RESISTANCE_PCT: "Resistência a status (%)",
+};
+const ROTULO_CATEGORIA_CLEANSE: Record<string, string> = { DOT: "Dano ao longo do tempo", CONTROLE: "Controle" };
 
 function Secao({ titulo, children }: { titulo: string; children: React.ReactNode }) {
   return (
@@ -45,6 +77,137 @@ function Input(props: React.InputHTMLAttributes<HTMLInputElement>) {
 
 function Select(props: React.SelectHTMLAttributes<HTMLSelectElement>) {
   return <select {...props} className={`rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm text-white ${props.className ?? ""}`} />;
+}
+
+// Construtor de Efeitos (spec Caldeirão §12) — um ConsumableEffect por vez,
+// linha editável inline (mesmo padrão da lista de ingredientes acima).
+// `config` muda de forma conforme effect_key — nunca monta um JSON livre no
+// admin, sempre os campos que listEffectTypes() diz que aquela chave exige.
+function EfeitoForm({
+  tipos,
+  efeitoInicial,
+  onSalvar,
+  onCancelar,
+  salvando,
+}: {
+  tipos: EffectTypeMetadataApi[];
+  efeitoInicial: ConsumableEffectAdminApi | null;
+  onSalvar: (payload: PayloadConsumableEffectAdmin) => void;
+  onCancelar: () => void;
+  salvando: boolean;
+}) {
+  const configInicial = (efeitoInicial?.config ?? {}) as Record<string, string | undefined>;
+  const [effectKey, setEffectKey] = useState<AlchemyEffectKey>(efeitoInicial?.effect_key ?? tipos[0]?.effect_key ?? "HEAL_HP_FLAT");
+  const meta = tipos.find((t) => t.effect_key === effectKey);
+  const [magnitude, setMagnitude] = useState<number>(efeitoInicial?.magnitude ?? 10);
+  const [duracao, setDuracao] = useState<number>(efeitoInicial?.duration_turns ?? 1);
+  const [atributo, setAtributo] = useState<string>(configInicial.atributo ?? meta?.atributos_buff?.[0] ?? "");
+  const [statusKey, setStatusKey] = useState<string>(configInicial.status_key ?? meta?.status_keys?.[0] ?? "");
+  const [categoria, setCategoria] = useState<string>(configInicial.category ?? meta?.categorias?.[0] ?? "");
+  const [ativo, setAtivo] = useState<boolean>(efeitoInicial?.ativo ?? true);
+
+  function trocarEffectKey(novaChave: AlchemyEffectKey) {
+    setEffectKey(novaChave);
+    const novoMeta = tipos.find((t) => t.effect_key === novaChave);
+    setAtributo(novoMeta?.atributos_buff?.[0] ?? "");
+    setStatusKey(novoMeta?.status_keys?.[0] ?? "");
+    setCategoria(novoMeta?.categorias?.[0] ?? "");
+  }
+
+  function montarConfig(): Record<string, unknown> | null {
+    if (!meta) return null;
+    if (meta.exige_atributo_buff) return { atributo };
+    if (meta.exige_status_key) return { status_key: statusKey };
+    if (meta.exige_category) return { category: categoria };
+    return null;
+  }
+
+  function submeter(e: React.FormEvent) {
+    e.preventDefault();
+    onSalvar({
+      effect_key: effectKey,
+      magnitude: meta?.exige_magnitude ? magnitude : 0,
+      duration_turns: meta?.exige_duracao ? duracao : null,
+      config: montarConfig(),
+      ativo,
+    });
+  }
+
+  return (
+    <form onSubmit={submeter} className="flex flex-col gap-2 rounded-lg border border-[#F3B43F]/40 bg-black/20 p-3">
+      <label className="flex flex-col gap-1 text-xs">Efeito
+        <Select value={effectKey} onChange={(e) => trocarEffectKey(e.target.value as AlchemyEffectKey)}>
+          {tipos.map((t) => <option key={t.effect_key} value={t.effect_key}>{ROTULO_EFFECT_KEY[t.effect_key]}</option>)}
+        </Select>
+      </label>
+
+      {meta?.exige_magnitude && (
+        <label className="flex flex-col gap-1 text-xs">Magnitude
+          <Input type="number" step="any" value={magnitude} onChange={(e) => setMagnitude(Number(e.target.value))} />
+        </label>
+      )}
+
+      {meta?.exige_duracao && (
+        <label className="flex flex-col gap-1 text-xs">Duração (turnos)
+          <Input type="number" min={1} value={duracao} onChange={(e) => setDuracao(Number(e.target.value))} />
+        </label>
+      )}
+
+      {meta?.exige_atributo_buff && (
+        <label className="flex flex-col gap-1 text-xs">Atributo do buff
+          <Select value={atributo} onChange={(e) => setAtributo(e.target.value)}>
+            {(meta.atributos_buff ?? []).map((a) => <option key={a} value={a}>{ROTULO_ATRIBUTO_BUFF[a] ?? a}</option>)}
+          </Select>
+        </label>
+      )}
+
+      {meta?.exige_status_key && (
+        <label className="flex flex-col gap-1 text-xs">Status a remover
+          <Select value={statusKey} onChange={(e) => setStatusKey(e.target.value)}>
+            {(meta.status_keys ?? []).map((s) => <option key={s} value={s}>{s}</option>)}
+          </Select>
+        </label>
+      )}
+
+      {meta?.exige_category && (
+        <label className="flex flex-col gap-1 text-xs">Categoria a remover
+          <Select value={categoria} onChange={(e) => setCategoria(e.target.value)}>
+            {(meta.categorias ?? []).map((c) => <option key={c} value={c}>{ROTULO_CATEGORIA_CLEANSE[c] ?? c}</option>)}
+          </Select>
+        </label>
+      )}
+
+      {efeitoInicial && (
+        <label className="flex items-center gap-2 text-xs">
+          <input type="checkbox" checked={ativo} onChange={(e) => setAtivo(e.target.checked)} />
+          Ativo
+        </label>
+      )}
+
+      <div className="flex justify-end gap-2">
+        <button type="button" onClick={onCancelar} className="rounded-lg border border-white/20 px-3 py-1 text-xs text-white/70 hover:bg-white/10">Cancelar</button>
+        <button type="submit" disabled={salvando} className="rounded-lg bg-[#BC8418] px-3 py-1 text-xs font-bold text-black hover:bg-[#a5710f] disabled:opacity-50">
+          {salvando ? "Salvando..." : efeitoInicial ? "Salvar efeito" : "Adicionar efeito"}
+        </button>
+      </div>
+    </form>
+  );
+}
+
+function resumoEfeito(efeito: ConsumableEffectAdminApi): string {
+  const config = (efeito.config ?? {}) as Record<string, string | undefined>;
+  switch (efeito.effect_key) {
+    case "APPLY_COMBAT_BUFF":
+      return `${ROTULO_ATRIBUTO_BUFF[config.atributo ?? ""] ?? config.atributo} ${efeito.magnitude} por ${efeito.duration_turns} turno(s)`;
+    case "GRANT_SHIELD":
+      return `${efeito.magnitude} de escudo por ${efeito.duration_turns} turno(s)`;
+    case "CLEANSE_STATUS":
+      return `Remove ${config.status_key}`;
+    case "CLEANSE_CATEGORY":
+      return `Remove categoria ${ROTULO_CATEGORIA_CLEANSE[config.category ?? ""] ?? config.category}`;
+    default:
+      return `${efeito.magnitude}`;
+  }
 }
 
 function BotaoSalvar({ disabled }: { disabled: boolean }) {
@@ -73,6 +236,11 @@ const FORM_VAZIO: PayloadAlchemyRecipeAdmin = {
   ativo: true,
   ordem: 0,
   ingredientes: [],
+  id_item_receita: null,
+  raridade_receita: null,
+  negociavel_receita: false,
+  consome_ao_aprender: true,
+  pista_publica: "",
 };
 
 export default function AdminAlchemyClient() {
@@ -84,21 +252,34 @@ export default function AdminAlchemyClient() {
   const [salvando, setSalvando] = useState(false);
   const [form, setForm] = useState<PayloadAlchemyRecipeAdmin>(FORM_VAZIO);
 
-  // Itens Consumível pro resultado da receita, e catálogo geral (qualquer
-  // tipo) pros ingredientes — uma receita pode consumir Material, Item de
-  // Pesca etc.
+  // Itens Consumível pro resultado da receita, catálogo geral (qualquer
+  // tipo) pros ingredientes, e itens tipo Receita pra fórmula física
+  // (spec §8.1/§11.1 — o "pergaminho" em si é um Item separado).
   const [itensConsumiveis, setItensConsumiveis] = useState<AdminItemSelecionavelApi[]>([]);
+  const [itensReceita, setItensReceita] = useState<AdminItemSelecionavelApi[]>([]);
   const { itens: itensGerais } = useItensParaSelecaoAdmin();
+
+  // Construtor de Efeitos (spec Caldeirão §12) — metadados de effect_key
+  // carregados uma vez (não dependem do item), lista de efeitos vivendo
+  // junto do form (igual ingredientes), já que ambos só existem de fato
+  // depois que a receita tem um id_item_resultado salvo.
+  const [tiposDeEfeito, setTiposDeEfeito] = useState<EffectTypeMetadataApi[]>([]);
+  const [efeitos, setEfeitos] = useState<ConsumableEffectAdminApi[]>([]);
+  const [salvandoEfeito, setSalvandoEfeito] = useState(false);
 
   const carregar = useCallback(async () => {
     setCarregando(true);
     try {
-      const [lista, consumiveis] = await Promise.all([
+      const [lista, consumiveis, receitasItens, tipos] = await Promise.all([
         listarAlchemyRecipesAdmin(),
         listarItensParaSelecaoAdmin({ tipo_item: "Consumivel" }),
+        listarItensParaSelecaoAdmin({ tipo_item: "Receita" }),
+        listarAlchemyEffectTypesAdmin(),
       ]);
       setReceitas(lista);
       setItensConsumiveis(consumiveis);
+      setItensReceita(receitasItens);
+      setTiposDeEfeito(tipos);
     } catch (error) {
       setErro(mensagemDeErroAdmin(error, "Não foi possível carregar as receitas de Alquimia."));
     } finally {
@@ -110,10 +291,66 @@ export default function AdminAlchemyClient() {
     carregar();
   }, [carregar]);
 
+  // Recarrega os efeitos sempre que o item de resultado selecionado no form
+  // muda (inclui trocar pra um item diferente já existente, que pode já ter
+  // efeitos configurados de outra tela/receita) — nunca fica com a lista do
+  // item anterior.
+  useEffect(() => {
+    if (!mostrarForm || !form.id_item_resultado) {
+      setEfeitos([]);
+      return;
+    }
+    let cancelado = false;
+    listarAlchemyEfeitosDoItemAdmin(form.id_item_resultado)
+      .then((lista) => {
+        if (!cancelado) setEfeitos(lista);
+      })
+      .catch(() => {});
+    return () => {
+      cancelado = true;
+    };
+  }, [mostrarForm, form.id_item_resultado]);
+
+  const [mostrarFormEfeito, setMostrarFormEfeito] = useState(false);
+  const [efeitoEditando, setEfeitoEditando] = useState<ConsumableEffectAdminApi | null>(null);
+
+  async function salvarEfeito(payload: PayloadConsumableEffectAdmin) {
+    if (!form.id_item_resultado) return;
+    setSalvandoEfeito(true);
+    try {
+      if (efeitoEditando) {
+        await atualizarAlchemyEfeitoAdmin(efeitoEditando.id, payload);
+      } else {
+        await criarAlchemyEfeitoAdmin(form.id_item_resultado, payload);
+      }
+      const lista = await listarAlchemyEfeitosDoItemAdmin(form.id_item_resultado);
+      setEfeitos(lista);
+      setMostrarFormEfeito(false);
+      setEfeitoEditando(null);
+    } catch (error) {
+      setErro(mensagemDeErroAdmin(error, "Não foi possível salvar o efeito."));
+    } finally {
+      setSalvandoEfeito(false);
+    }
+  }
+
+  async function excluirEfeito(efeito: ConsumableEffectAdminApi) {
+    if (!form.id_item_resultado) return;
+    try {
+      await excluirAlchemyEfeitoAdmin(efeito.id);
+      const lista = await listarAlchemyEfeitosDoItemAdmin(form.id_item_resultado);
+      setEfeitos(lista);
+    } catch (error) {
+      setErro(mensagemDeErroAdmin(error, "Não foi possível excluir o efeito."));
+    }
+  }
+
   function abrirCriacao() {
     setEditando(null);
     setForm(FORM_VAZIO);
     setMostrarForm(true);
+    setMostrarFormEfeito(false);
+    setEfeitoEditando(null);
     setErro("");
   }
 
@@ -132,8 +369,15 @@ export default function AdminAlchemyClient() {
       ativo: receita.ativo,
       ordem: receita.ordem,
       ingredientes: receita.ingredientes.map((i) => ({ id_item: i.id_item, quantidade: i.quantidade })),
+      id_item_receita: receita.id_item_receita,
+      raridade_receita: receita.raridade_receita,
+      negociavel_receita: receita.negociavel_receita,
+      consome_ao_aprender: receita.consome_ao_aprender,
+      pista_publica: receita.pista_publica ?? "",
     });
     setMostrarForm(true);
+    setMostrarFormEfeito(false);
+    setEfeitoEditando(null);
     setErro("");
   }
 
@@ -258,7 +502,7 @@ export default function AdminAlchemyClient() {
           <form
             onSubmit={salvar}
             onClick={(e) => e.stopPropagation()}
-            className="flex w-full max-w-lg flex-col gap-3 rounded-2xl border-2 border-[#F3B43F] bg-[#292018] p-5 text-white shadow-2xl"
+            className="flex w-full max-w-xl flex-col gap-3 rounded-2xl border-2 border-[#F3B43F] bg-[#292018] p-5 text-white shadow-2xl"
           >
             <p className="font-imFeel text-xl text-[#F3B43F]">{editando ? "Editar receita" : "Nova receita"}</p>
 
@@ -306,6 +550,51 @@ export default function AdminAlchemyClient() {
               <Input type="number" value={form.ordem ?? 0} onChange={(e) => setForm((f) => ({ ...f, ordem: Number(e.target.value) }))} />
             </label>
 
+            {form.modo_desbloqueio === "DESCOBERTA" && (
+              <div className="flex flex-col gap-2 rounded-lg border border-white/10 p-2">
+                <p className="text-xs font-bold uppercase text-white/60">Fórmula física (opcional)</p>
+                <p className="text-[11px] text-white/50">
+                  Vincula um Item do tipo Receita como pergaminho físico que ensina esta receita (Livro de Fórmulas). Deixe
+                  em branco se esta receita só é concedida por outra via (Proeza, evento etc.).
+                </p>
+                <label className="flex flex-col gap-1 text-xs">Item da fórmula física (precisa ser do tipo Receita)
+                  <ItemSelect
+                    itens={itensReceita}
+                    value={form.id_item_receita ?? ""}
+                    onChange={(id) => setForm((f) => ({ ...f, id_item_receita: id === "" ? null : id }))}
+                  />
+                </label>
+                <label className="flex flex-col gap-1 text-xs">Raridade da fórmula
+                  <Select
+                    value={form.raridade_receita ?? ""}
+                    onChange={(e) => setForm((f) => ({ ...f, raridade_receita: (e.target.value || null) as AlchemyRaridadeReceita | null }))}
+                  >
+                    <option value="">—</option>
+                    {RARIDADES_RECEITA.map((r) => <option key={r} value={r}>{r}</option>)}
+                  </Select>
+                </label>
+                <label className="flex items-center gap-2 text-xs">
+                  <input
+                    type="checkbox"
+                    checked={form.negociavel_receita ?? false}
+                    onChange={(e) => setForm((f) => ({ ...f, negociavel_receita: e.target.checked }))}
+                  />
+                  Negociável (pode ser vendida/trocada entre jogadores)
+                </label>
+                <label className="flex items-center gap-2 text-xs">
+                  <input
+                    type="checkbox"
+                    checked={form.consome_ao_aprender ?? true}
+                    onChange={(e) => setForm((f) => ({ ...f, consome_ao_aprender: e.target.checked }))}
+                  />
+                  Consome o pergaminho ao aprender
+                </label>
+                <label className="flex flex-col gap-1 text-xs">Pista pública (exibida antes de descobrir a receita)
+                  <Input value={form.pista_publica ?? ""} onChange={(e) => setForm((f) => ({ ...f, pista_publica: e.target.value }))} />
+                </label>
+              </div>
+            )}
+
             <div className="flex flex-col gap-2 rounded-lg border border-white/10 p-2">
               <p className="text-xs font-bold uppercase text-white/60">Ingredientes</p>
               {(form.ingredientes ?? []).map((ing, indice) => (
@@ -331,6 +620,58 @@ export default function AdminAlchemyClient() {
                 + Adicionar ingrediente
               </button>
             </div>
+
+            {form.id_item_resultado ? (
+              <div className="flex flex-col gap-2 rounded-lg border border-white/10 p-2">
+                <p className="text-xs font-bold uppercase text-white/60">Construtor de Efeitos (do item de resultado)</p>
+                <p className="text-[11px] text-white/50">
+                  Efeitos modernos (ConsumableEffect) do Item selecionado acima — é o que o motor de combate de fato executa
+                  quando o jogador usa o consumível. Existem independente desta receita (pertencem ao Item, não à receita).
+                </p>
+                {efeitos.length === 0 && !mostrarFormEfeito && (
+                  <p className="text-xs text-white/50">Nenhum efeito configurado pra este item ainda.</p>
+                )}
+                {efeitos.map((efeito) => (
+                  <div key={efeito.id} className="flex items-center justify-between gap-2 rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-xs">
+                    <div>
+                      <span className="font-bold">{ROTULO_EFFECT_KEY[efeito.effect_key]}</span>
+                      <span className="ml-2 text-white/60">{resumoEfeito(efeito)}</span>
+                      {!efeito.ativo && <span className="ml-2 rounded-full bg-white/10 px-2 py-0.5 text-[10px] uppercase text-white/50">Inativo</span>}
+                    </div>
+                    <div className="flex shrink-0 gap-3">
+                      <button
+                        type="button"
+                        onClick={() => { setEfeitoEditando(efeito); setMostrarFormEfeito(true); }}
+                        className="text-[#F3B43F] hover:underline"
+                      >
+                        Editar
+                      </button>
+                      <button type="button" onClick={() => excluirEfeito(efeito)} className="text-red-400 hover:underline">Excluir</button>
+                    </div>
+                  </div>
+                ))}
+
+                {mostrarFormEfeito ? (
+                  <EfeitoForm
+                    tipos={tiposDeEfeito}
+                    efeitoInicial={efeitoEditando}
+                    salvando={salvandoEfeito}
+                    onSalvar={salvarEfeito}
+                    onCancelar={() => { setMostrarFormEfeito(false); setEfeitoEditando(null); }}
+                  />
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => { setEfeitoEditando(null); setMostrarFormEfeito(true); }}
+                    className="self-start rounded-lg border border-white/20 px-3 py-1 text-xs text-white/70 hover:bg-white/10"
+                  >
+                    + Adicionar efeito
+                  </button>
+                )}
+              </div>
+            ) : (
+              <p className="text-[11px] text-white/40">Escolha um item de resultado acima pra configurar os efeitos do consumível.</p>
+            )}
 
             {editando && (
               <label className="flex items-center gap-2 text-xs">
