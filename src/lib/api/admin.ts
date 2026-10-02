@@ -1221,6 +1221,43 @@ export async function removerWeaponStatusEffectAdmin(idItem: number, idEfeito: n
   await axiosInstance.delete(`/admin/items/${idItem}/weapon-status-effects/${idEfeito}`);
 }
 
+// PowerBook / Livro de Habilidade (Habilidades V2.0 §13) — montado sob
+// /admin/items/:idItem/power-book. Um item = uma linha (requisitos
+// opcionais; null = sem exigência naquele campo).
+export interface PowerBookApi {
+  id: number;
+  id_item: number;
+  id_power: number;
+  nivel_minimo: number | null;
+  id_classe: number | null;
+  id_raca: number | null;
+  natureza_magica: "Fogo" | "Agua" | "Terra" | "Ar" | "Luz" | "Escuridao" | "Raio" | "Yin&Yang" | null;
+  id_power_prerequisito: number | null;
+  nivel_power_prerequisito: number | null;
+  ativo: boolean;
+}
+export interface PayloadPowerBookAdmin {
+  id_power: number;
+  nivel_minimo?: number | null;
+  id_classe?: number | null;
+  id_raca?: number | null;
+  natureza_magica?: PowerBookApi["natureza_magica"];
+  id_power_prerequisito?: number | null;
+  nivel_power_prerequisito?: number | null;
+  ativo?: boolean;
+}
+export async function obterPowerBookAdmin(idItem: number): Promise<PowerBookApi | null> {
+  const resposta = await axiosInstance.get<{ data: { power_book: PowerBookApi | null } }>(`/admin/items/${idItem}/power-book`);
+  return resposta.data.data.power_book;
+}
+export async function salvarPowerBookAdmin(idItem: number, payload: PayloadPowerBookAdmin): Promise<PowerBookApi> {
+  const resposta = await axiosInstance.put<{ data: { power_book: PowerBookApi } }>(`/admin/items/${idItem}/power-book`, payload);
+  return resposta.data.data.power_book;
+}
+export async function removerPowerBookAdmin(idItem: number): Promise<void> {
+  await axiosInstance.delete(`/admin/items/${idItem}/power-book`);
+}
+
 // Classes/Raças — leitura pública, reaproveitada aqui só pra popular os
 // selects de vínculo (nenhuma escrita nova).
 export interface ClassPublicaApi {
