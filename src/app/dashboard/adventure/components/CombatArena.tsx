@@ -1473,13 +1473,18 @@ export default function CombatArena({
       )}
 
       {!resultado && (
-        // pr-14/pr-16 reserva o espaço do FloatingGlobalChatWidget (fixed
-        // bottom-3/4 right-3/4, z-[200]) — mesmo motivo do pr-14/pr-16 da
-        // barra superior pro FloatingMusicWidget: sem isso o botão de
-        // Missões em andamento (MissionsPanel, encostado na borda direita
-        // por causa do justify-between abaixo) ficava embaixo do balão do
-        // chat, impossível de clicar.
-        <div className="absolute inset-x-0 bottom-0 z-30 bg-gradient-to-t from-black/90 via-black/70 to-transparent px-3 pb-3 pt-10 pr-14 sm:px-6 sm:pr-16">
+        // pr-20/pr-24 reserva o espaço do FloatingGlobalChatWidget (fixed
+        // bottom-3/4 right-3/4, z-[200], h-12 w-12) — mesmo motivo do
+        // pr-14/pr-16 da barra superior pro FloatingMusicWidget: sem essa
+        // reserva o botão de Missões em andamento (MissionsPanel,
+        // encostado na borda direita por causa do justify-between abaixo)
+        // ficava embaixo do balão do chat, impossível de clicar. Bug
+        // reportado: pr-14/pr-16 (usado antes aqui) deixava só ~4px de
+        // sobra no mobile e ZERO no desktop (sm:right-4 + h-12 do balão =
+        // 64px, igual ao próprio sm:pr-16) — os dois ícones ficavam
+        // encostados, cliques num fechavam o outro sem abrir o que o
+        // jogador queria. pr-20/pr-24 garante uma folga visível de verdade.
+        <div className="absolute inset-x-0 bottom-0 z-30 bg-gradient-to-t from-black/90 via-black/70 to-transparent px-3 pb-3 pt-10 pr-20 sm:px-6 sm:pr-24">
           {statusControleDuro && (
             <p className="mb-2 text-center text-xs font-bold text-[#F3B43F]">
               Você está {NOME_POR_STATUS[statusControleDuro]} — sua ação será perdida neste turno.
