@@ -1044,6 +1044,96 @@ export async function catalogoStatusAdmin(): Promise<StatusCatalogEntryApi[]> {
   return resposta.data.data.catalogo;
 }
 
+// Habilidades V2.0 (doc "Habilidades V2.0" §7/§17) — Fase 4.
+// PowerCombatEffect: buffs/debuffs numéricos, escudo, regen, lifesteal,
+// crítico, cura, Mana, cooldown, dispel, gatilho — tudo que
+// PowerStatusEffect não representa.
+export interface PowerCombatEffectApi {
+  id: number;
+  id_power: number;
+  effect_key: string;
+  target: string;
+  trigger: string;
+  magnitude_base: number;
+  scale_attribute: "Forca" | "Vitalidade" | "Agilidade" | "Inteligencia" | "Velocidade" | null;
+  scale_value: number;
+  scale_with_ability_level: boolean;
+  chance_ppm: number;
+  duration_turns: number | null;
+  stack_group: string | null;
+  reapply_policy: string;
+  max_stacks: number | null;
+  condition_key: string | null;
+  condition_config: Record<string, unknown>;
+  dispellable: boolean;
+  config: Record<string, unknown>;
+  allow_pve: boolean;
+  allow_party: boolean;
+  allow_guild_boss: boolean;
+  allow_world_boss: boolean;
+  allow_pvp_casual: boolean;
+  allow_ranked: boolean;
+  allow_tournament: boolean;
+  ativo: boolean;
+}
+
+export interface PayloadCombatEffectAdmin {
+  effect_key: string;
+  target?: string;
+  trigger?: string;
+  magnitude_base?: number;
+  scale_attribute?: "Forca" | "Vitalidade" | "Agilidade" | "Inteligencia" | "Velocidade" | null;
+  scale_value?: number;
+  scale_with_ability_level?: boolean;
+  chance_ppm?: number;
+  duration_turns?: number | null;
+  stack_group?: string | null;
+  reapply_policy?: string;
+  max_stacks?: number | null;
+  condition_key?: string | null;
+  condition_config?: Record<string, unknown>;
+  dispellable?: boolean;
+  config?: Record<string, unknown>;
+  allow_pve?: boolean;
+  allow_party?: boolean;
+  allow_guild_boss?: boolean;
+  allow_world_boss?: boolean;
+  allow_pvp_casual?: boolean;
+  allow_ranked?: boolean;
+  allow_tournament?: boolean;
+  ativo?: boolean;
+}
+
+export async function listarCombatEffectsPowerAdmin(idPower: number): Promise<PowerCombatEffectApi[]> {
+  const resposta = await axiosInstance.get<{ data: { efeitos: PowerCombatEffectApi[] } }>(`/admin/powers/${idPower}/combat-effects`);
+  return resposta.data.data.efeitos;
+}
+export async function adicionarCombatEffectPowerAdmin(idPower: number, payload: PayloadCombatEffectAdmin): Promise<PowerCombatEffectApi> {
+  const resposta = await axiosInstance.post<{ data: { efeito: PowerCombatEffectApi } }>(`/admin/powers/${idPower}/combat-effects`, payload);
+  return resposta.data.data.efeito;
+}
+export async function atualizarCombatEffectPowerAdmin(idEfeito: number, payload: Partial<PayloadCombatEffectAdmin>): Promise<PowerCombatEffectApi> {
+  const resposta = await axiosInstance.patch<{ data: { efeito: PowerCombatEffectApi } }>(`/admin/powers/combat-effects/${idEfeito}`, payload);
+  return resposta.data.data.efeito;
+}
+export async function removerCombatEffectPowerAdmin(idEfeito: number): Promise<void> {
+  await axiosInstance.delete(`/admin/powers/combat-effects/${idEfeito}`);
+}
+
+export interface CombatEffectCatalogApi {
+  effectKeys: { key: string; label: string; unidade: string }[];
+  targets: string[];
+  triggers: { key: string; descricao: string }[];
+  reapplyPolicies: string[];
+  conditions: { key: string; campos: string[]; descricao: string }[];
+  contexts: { key: string; rotulo: string }[];
+}
+
+export async function catalogoCombatEffectsAdmin(): Promise<CombatEffectCatalogApi> {
+  const resposta = await axiosInstance.get<{ data: { catalogo: CombatEffectCatalogApi } }>("/admin/combat-effects/catalog");
+  return resposta.data.data.catalogo;
+}
+
 export interface PreviewEvolucaoPowerApi {
   power_id: number;
   nome: string;

@@ -44,6 +44,7 @@ import {
   type StatusCatalogEntryApi,
 } from "@/lib/api/admin";
 import { PowerSelect, usePowersParaSelecaoAdmin } from "@/components/admin/PowerPicker";
+import PowerCombatEffectsPanel from "./PowerCombatEffectsPanel";
 
 const TIPOS_PODER = ["Ativo", "Passivo"] as const;
 const ATRIBUTOS = ["Forca", "Vitalidade", "Agilidade", "Inteligencia", "Velocidade"] as const;
@@ -545,6 +546,8 @@ function DetalhePower({
             </div>
           </form>
         </div>
+
+        <PowerCombatEffectsPanel idPower={power.id} />
 
         <div className="flex flex-col gap-2 rounded-xl border border-white/10 p-3">
           <p className="text-xs font-bold uppercase text-[#F3B43F]/80">Simular evolução (nível 1-10)</p>
