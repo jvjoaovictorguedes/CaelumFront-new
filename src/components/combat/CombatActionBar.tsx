@@ -64,6 +64,11 @@ export default function CombatActionBar({
   // hoje só a Aventura solo (CombatArena.tsx) manda isso; o Duelo ao
   // vivo (LiveDuelArena.tsx) ainda não integra o motor de cooldown.
   cooldownsPorPoder = {},
+  // Opcional — só a Aventura solo (CombatArena.tsx) usa, pra barra
+  // ocupar a largura toda ao lado do painel de Missões em vez de
+  // encolher pro tamanho do conteúdo (ver comentário em CombatArena.tsx
+  // sobre o espaço vazio entre a barra e o botão de Missões).
+  className = "",
 }: {
   podeAgir: boolean;
   ocupado: boolean;
@@ -74,11 +79,14 @@ export default function CombatActionBar({
   consumiveis: ConsumivelAcao[];
   onUsarConsumivel: (idItem: number) => void;
   cooldownsPorPoder?: Record<number, number>;
+  className?: string;
 }) {
   const desabilitadoGeral = !podeAgir || ocupado;
 
   return (
-    <div className="flex flex-col gap-2.5 rounded-xl border-2 border-[#F3B43F]/50 bg-[#292018]/60 p-2.5 shadow-lg backdrop-blur-sm">
+    <div
+      className={`flex flex-col gap-2.5 rounded-xl border-2 border-[#F3B43F]/50 bg-[#292018]/60 p-2.5 shadow-lg backdrop-blur-sm ${className}`}
+    >
       <button
         type="button"
         onClick={onAtaqueBasico}

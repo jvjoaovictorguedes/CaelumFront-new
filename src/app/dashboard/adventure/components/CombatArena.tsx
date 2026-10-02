@@ -1490,8 +1490,13 @@ export default function CombatArena({
               Você está Paralisado — há chance de perder a ação neste turno.
             </p>
           )}
+          {/* flex-1 na barra de ação: ocupa toda a largura disponível (até
+              o painel de Missões, encostado na ponta pelo justify-between)
+              em vez de encolher pro tamanho do próprio conteúdo — sem
+              isso sobrava um vão vazio entre os dois, parecendo quebrado. */}
           <div className="flex items-end justify-between gap-3">
             <CombatActionBar
+              className="flex-1"
               podeAgir={!resultado && !statusControleDuro}
               ocupado={carregando}
               manaAtual={manaAtual}
