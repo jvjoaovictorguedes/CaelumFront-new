@@ -6,6 +6,7 @@ import { useCharacter } from "@/contexts/CharacterContext";
 import { formatarTier } from "@/utils/equipmentTier";
 import { resolveMediaUrl } from "@/utils/media-url";
 import ItemDescriptionTooltip from "@/components/Tooltip/ItemDescriptionTooltip";
+import PlayerShopsClient from "@/app/dashboard/player-shops/components/PlayerShopsClient";
 
 interface WeaponPropertiesApi {
   dano_min: number;
@@ -155,7 +156,11 @@ function IconeItem({ item }: { item: ItemApi }) {
   );
 }
 
-type Aba = "comprar" | "vender" | "meus-anuncios";
+// Pedido do jogador: "a loja do aventureiro era pra estar dentro de
+// mercado negro" — a Loja do Aventureiro vira uma aba daqui em vez de
+// uma página própria no menu lateral (continua sendo o mesmo
+// PlayerShopsClient, só montado como mais uma aba).
+type Aba = "comprar" | "vender" | "meus-anuncios" | "lojas";
 
 export default function MarketClient({ characterId }: { characterId: number }) {
   const [aba, setAba] = useState<Aba>("comprar");
@@ -175,6 +180,7 @@ export default function MarketClient({ characterId }: { characterId: number }) {
             { chave: "comprar", label: "Comprar" },
             { chave: "vender", label: "Vender" },
             { chave: "meus-anuncios", label: "Meus Anúncios" },
+            { chave: "lojas", label: "Lojas dos Aventureiros" },
           ] as const
         ).map(({ chave, label }) => (
           <button
@@ -192,6 +198,7 @@ export default function MarketClient({ characterId }: { characterId: number }) {
       {aba === "comprar" && <AbaComprar characterId={characterId} />}
       {aba === "vender" && <AbaVender />}
       {aba === "meus-anuncios" && <AbaMeusAnuncios />}
+      {aba === "lojas" && <PlayerShopsClient characterId={characterId} />}
     </div>
   );
 }
