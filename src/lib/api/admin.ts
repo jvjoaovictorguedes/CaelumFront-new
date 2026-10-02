@@ -616,6 +616,10 @@ export interface MonsterStatusEffectApi {
   chance_ppm: number;
   duration_turns: number;
   potency_base: number;
+  // Habilidades V2.0 §4/§21 — null = status continua no modo legado
+  // (potency_base como dano absoluto). Quando configurado, o tick vira
+  // essa % da Vida Máxima do alvo.
+  percentual_vida_maxima?: number | null;
   ativo: boolean;
 }
 
@@ -897,6 +901,10 @@ export interface PowerStatusEffectApi {
   potency_base: number;
   potency_scale_attribute: "Forca" | "Vitalidade" | "Agilidade" | "Inteligencia" | "Velocidade" | null;
   potency_scale_value: number;
+  // Habilidades V2.0 §4/§21 — null = status continua no modo legado
+  // (potency_base como dano absoluto). Quando configurado, o tick vira
+  // essa % da Vida Máxima do alvo.
+  percentual_vida_maxima?: number | null;
   target: "Self" | "Enemy";
   ativo: boolean;
 }
@@ -1009,6 +1017,7 @@ export interface PayloadStatusEffectAdmin {
   potency_base?: number;
   potency_scale_attribute?: "Forca" | "Vitalidade" | "Agilidade" | "Inteligencia" | "Velocidade" | null;
   potency_scale_value?: number;
+  percentual_vida_maxima?: number | null;
   target?: "Self" | "Enemy";
   ativo?: boolean;
 }
@@ -1180,6 +1189,7 @@ export interface WeaponStatusEffectApi {
   potency_base: number;
   potency_scale_attribute: "Forca" | "Vitalidade" | "Agilidade" | "Inteligencia" | "Velocidade" | null;
   potency_scale_value: number;
+  percentual_vida_maxima?: number | null;
   trigger: string;
   ativo: boolean;
 }
@@ -1190,6 +1200,7 @@ export interface PayloadWeaponStatusEffectAdmin {
   potency_base?: number;
   potency_scale_attribute?: "Forca" | "Vitalidade" | "Agilidade" | "Inteligencia" | "Velocidade" | null;
   potency_scale_value?: number;
+  percentual_vida_maxima?: number | null;
   trigger?: string;
   ativo?: boolean;
 }
