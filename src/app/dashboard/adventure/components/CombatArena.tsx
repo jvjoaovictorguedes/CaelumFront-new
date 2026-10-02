@@ -1495,35 +1495,31 @@ export default function CombatArena({
               Você está Paralisado — há chance de perder a ação neste turno.
             </p>
           )}
-          {/* flex-1 na barra de ação: ocupa toda a largura disponível (até
-              o painel de Missões, encostado na ponta pelo justify-between)
-              em vez de encolher pro tamanho do próprio conteúdo — sem
-              isso sobrava um vão vazio entre os dois, parecendo quebrado. */}
-          <div className="flex items-end justify-between gap-3">
-            <CombatActionBar
-              className="flex-1"
-              podeAgir={!resultado && !statusControleDuro}
-              ocupado={carregando}
-              manaAtual={manaAtual}
-              onAtaqueBasico={() => executarAcao({ type: "attack" })}
-              poderes={abilities.map((habilidade) => ({
-                id: habilidade.Power.id,
-                nome: habilidade.Power.nome,
-                imagem_url: habilidade.Power.imagem_url,
-                custo_mana: habilidade.Power.custo_mana,
-                descricao: habilidade.Power.descricao,
-                escala_atributo: habilidade.Power.escala_atributo,
-                valor_escala: habilidade.Power.valor_escala,
-              }))}
-              onUsarPoder={(powerId) => executarAcao({ type: "power", powerId })}
-              consumiveis={consumiveis}
-              onUsarConsumivel={(itemId) =>
-                executarAcao({ type: "item", itemId })
-              }
-              cooldownsPorPoder={cooldownsPorPoder}
-            />
-            <MissionsPanel missoes={missoesEmAndamento} />
-          </div>
+          {/* Botão de Missões agora entra DENTRO da própria caixa com borda
+              da barra de ação (rightSlot) — jogador reportou que ele
+              ficava solto, fora da borda, com um vão vazio no meio. */}
+          <CombatActionBar
+            podeAgir={!resultado && !statusControleDuro}
+            ocupado={carregando}
+            manaAtual={manaAtual}
+            onAtaqueBasico={() => executarAcao({ type: "attack" })}
+            poderes={abilities.map((habilidade) => ({
+              id: habilidade.Power.id,
+              nome: habilidade.Power.nome,
+              imagem_url: habilidade.Power.imagem_url,
+              custo_mana: habilidade.Power.custo_mana,
+              descricao: habilidade.Power.descricao,
+              escala_atributo: habilidade.Power.escala_atributo,
+              valor_escala: habilidade.Power.valor_escala,
+            }))}
+            onUsarPoder={(powerId) => executarAcao({ type: "power", powerId })}
+            consumiveis={consumiveis}
+            onUsarConsumivel={(itemId) =>
+              executarAcao({ type: "item", itemId })
+            }
+            cooldownsPorPoder={cooldownsPorPoder}
+            rightSlot={<MissionsPanel missoes={missoesEmAndamento} />}
+          />
         </div>
       )}
 
