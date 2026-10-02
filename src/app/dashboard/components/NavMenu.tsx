@@ -7,6 +7,7 @@ import { logout } from "@/app/login/action";
 import { CaelumBrasao } from "@/components/CaelumBrand/CaelumBrand";
 import OnlinePlayersBadge from "./OnlinePlayersBadge";
 import PatchNotesBell from "./PatchNotesBell";
+import MessagesBell from "./MessagesBell";
 import SidebarHealthBar from "./SidebarHealthBar";
 import SocialLinks from "./SocialLinks";
 import { useMessagesSocket } from "@/contexts/MessagesSocketContext";
@@ -160,8 +161,9 @@ export default function NavMenu({
         }`}
       >
         <div className="relative flex w-full flex-col items-center justify-center gap-3 border-b border-black/50 pb-4">
-          <div className="absolute right-2 top-0">
+          <div className="absolute right-2 top-0 flex flex-col items-center gap-2">
             <PatchNotesBell />
+            <MessagesBell />
           </div>
           <SocialLinks />
           <CaelumBrasao tamanho="xs" />
