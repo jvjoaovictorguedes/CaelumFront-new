@@ -77,6 +77,7 @@ export default function NavMenu({
     },
     { name: "Loja", iconUrl: "/icons/loja.png", path: "/dashboard/shop" },
     { name: "Mercado Negro", iconUrl: "/icons/ui/mercado.png", path: "/dashboard/market" },
+    { name: "Lojas dos Aventureiros", iconUrl: "/icons/loja.png", path: "/dashboard/player-shops" },
     { name: "Forja", iconUrl: "/icons/ui/forja.png", path: "/dashboard/forge" },
     { name: "Expedição", iconUrl: "/icons/ui/expedicao.png", path: "/dashboard/expedition" },
     { name: "Pesca", iconUrl: "/icons/ui/pesca.png", path: "/dashboard/fishing" },
