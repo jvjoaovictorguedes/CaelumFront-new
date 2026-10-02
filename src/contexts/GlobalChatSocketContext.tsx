@@ -17,6 +17,7 @@ import {
 } from "react";
 import { io, type Socket } from "socket.io-client";
 import axiosInstance from "@/utils/axiosIntance";
+import { useCharacter } from "@/contexts/CharacterContext";
 
 function socketUrlFromApiUrl(apiUrl: string) {
   return apiUrl.replace(/\/api\/?$/, "");
@@ -63,6 +64,7 @@ const GlobalChatSocketContext = createContext<GlobalChatSocketContextValue>({
 const LIMITE_MENSAGENS_EM_MEMORIA = 200;
 
 export function GlobalChatSocketProvider({ children }: { children: ReactNode }) {
+  const { character } = useCharacter();
   const [pronto, setPronto] = useState(false);
   const [erro, setErro] = useState("");
   const [mensagens, setMensagens] = useState<MensagemChatGlobal[]>([]);
@@ -72,6 +74,14 @@ export function GlobalChatSocketProvider({ children }: { children: ReactNode }) 
   // inicial — sem isso, as 200 mensagens do histórico já apareciam como
   // "200 não lidas" assim que a conexão abria.
   const historicoCarregadoRef = useRef(false);
+  // Sempre o id MAIS RECENTE do personagem logado, mesmo dentro do
+  // listener do socket (criado uma única vez, no useEffect abaixo com
+  // deps `[]`) — pedido do jogador: a própria mensagem enviada nunca
+  // deveria contar como "não lida".
+  const meuIdRef = useRef<number | null>(character?.id ?? null);
+  useEffect(() => {
+    meuIdRef.current = character?.id ?? null;
+  }, [character?.id]);
 
   useEffect(() => {
     const baseUrl = socketUrlFromApiUrl(process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api");
@@ -117,7 +127,12 @@ export function GlobalChatSocketProvider({ children }: { children: ReactNode }) 
 
     novoSocket.on("globalchat:message:new", (mensagem: MensagemChatGlobal) => {
       setMensagens((atual) => [...atual, mensagem].slice(-LIMITE_MENSAGENS_EM_MEMORIA));
-      if (historicoCarregadoRef.current) {
+      // Pedido do jogador: mensagem que EU mandei nunca conta como "não
+      // lida" — o servidor ecoa a própria mensagem de volta pra manter a
+      // lista sincronizada entre abas/dispositivos, mas quem escreveu já
+      // "leu" o que acabou de escrever.
+      const souEu = mensagem.idPersonagem === meuIdRef.current;
+      if (historicoCarregadoRef.current && !souEu) {
         setNaoLidas((atual) => atual + 1);
       }
     });
