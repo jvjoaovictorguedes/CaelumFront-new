@@ -136,6 +136,18 @@ export function MusicProvider({ children }: { children: React.ReactNode }) {
     if (ativo) ativo.volume = volumeEfetivo();
   }, [volumeEfetivo]);
 
+  // Bug real reportado: no mobile (Safari/iOS em especial — webview de
+  // apps costuma herdar a mesma restrição), `audio.volume = 0` é
+  // silenciosamente IGNORADO pelo navegador; só a propriedade nativa
+  // `.muted` silencia de verdade lá. Aplica nos DOIS players (não só no
+  // ativo) — durante um crossfade o player "novo" ainda não virou
+  // ativo quando começa a tocar, e não pode escapar do mute enquanto
+  // isso dura.
+  const aplicarMuteNosDoisPlayers = useCallback(() => {
+    if (audioARef.current) audioARef.current.muted = mutedRef.current;
+    if (audioBRef.current) audioBRef.current.muted = mutedRef.current;
+  }, []);
+
   useEffect(() => {
     volumeRef.current = volume;
     aplicarVolumeNoPlayerAtivo();
@@ -149,12 +161,13 @@ export function MusicProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     mutedRef.current = muted;
     aplicarVolumeNoPlayerAtivo();
+    aplicarMuteNosDoisPlayers();
     try {
       window.localStorage.setItem(STORAGE_KEYS.muted, muted ? "1" : "0");
     } catch {
       // idem — segue sem persistir.
     }
-  }, [muted, aplicarVolumeNoPlayerAtivo]);
+  }, [muted, aplicarVolumeNoPlayerAtivo, aplicarMuteNosDoisPlayers]);
 
   // Troca de faixa efetiva: crossfade real com os dois players internos
   // (§7.1). `track: null` é o caso "stop" — fade-out e pausa.
@@ -180,6 +193,7 @@ export function MusicProvider({ children }: { children: React.ReactNode }) {
       novo.src = track.src;
       novo.loop = track.loop ?? true;
       novo.volume = 0;
+      novo.muted = mutedRef.current;
       novo.currentTime = 0;
       // Com preload="none" (de propósito — nunca baixa nada sem pedido),
       // só trocar o .src não faz o navegador começar a buscar sozinho;
