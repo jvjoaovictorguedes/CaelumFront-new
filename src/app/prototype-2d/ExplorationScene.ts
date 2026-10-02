@@ -18,8 +18,9 @@
 // só valida a SENSAÇÃO de andar pelo mapa, a arte 4-direções de
 // verdade (se o protótipo validar a ideia) é trabalho futuro separado.
 //
-// Tileset do chão continua placeholder (desenhado em runtime via
-// Canvas Texture) — mapa ainda não tem arte final.
+// Tileset do chão: arte real (public/tiles/terrain.png — 4 tiles de
+// 32x32 recortados de um pack de terreno fornecido pelo jogador:
+// grama/rocha/caminho/água), não mais desenhado em runtime via Canvas.
 //
 // Locais interativos (pedido do jogador: "se eu entrar no ferreiro
 // ele vai pra forja") — pontos fixos no mapa que, ao serem tocados
@@ -64,12 +65,13 @@ const SPAWN_TILE_X = 3;
 const SPAWN_TILE_Y = 4;
 
 // 0 = grama (andável), 1 = rocha/montanha (bloqueado), 2 = caminho de
-// terra (andável, só visual) — índices do tileset gerado em
-// gerarTilesetPlaceholder(). Borda inteira bloqueada + alguns blocos
-// de rocha espalhados, e um caminho carvado do spawn até cada Local
-// Interativo pra dar a sensação de estradas ligando os pontos do mapa
-// (pedido do jogador: textura mais parecida com o Mapa de Caelum de
-// verdade, que tem estradas visíveis ligando os territórios).
+// terra (andável, só visual), 3 = água (bloqueado) — índices do
+// tileset real (public/tiles/terrain.png, ver preload()). Borda
+// inteira bloqueada + alguns blocos de rocha espalhados + duas lagoas,
+// e um caminho carvado do spawn até cada Local Interativo pra dar a
+// sensação de estradas ligando os pontos do mapa (pedido do jogador:
+// textura mais parecida com o Mapa de Caelum de verdade, que tem
+// estradas e lagoas visíveis ligando os territórios).
 function construirMapa(): number[][] {
   const linhas: number[][] = [];
   const blocos = [
@@ -78,6 +80,14 @@ function construirMapa(): number[][] {
     { x0: 30, x1: 31, y0: 25, y1: 30 },
     { x0: 38, x1: 42, y0: 10, y1: 12 },
   ];
+  // Longe o bastante dos Locais Interativos/blocos de rocha/spawn pra
+  // nunca cercar um deles por completo (ver ocupado em create(), que já
+  // evita árvore em cima — lagoa usa a mesma folga de posicionamento).
+  const lagoas = [
+    { cx: 15, cy: 18, raio: 3 },
+    { cx: 34, cy: 20, raio: 3 },
+  ];
+
   for (let y = 0; y < MAP_ROWS; y++) {
     const linha: number[] = [];
     for (let x = 0; x < MAP_COLS; x++) {
@@ -88,11 +98,29 @@ function construirMapa(): number[][] {
     linhas.push(linha);
   }
 
+  for (const lagoa of lagoas) marcarLagoa(linhas, lagoa.cx, lagoa.cy, lagoa.raio);
+
   for (const local of LOCAIS_INTERATIVOS) {
     marcarCaminho(linhas, SPAWN_TILE_X, SPAWN_TILE_Y, local.tileX, local.tileY);
   }
 
   return linhas;
+}
+
+// Lagoa circular com borda levemente irregular (jitter no raio de cada
+// célula) pra não parecer um círculo perfeito demais — só sobrescreve
+// grama (0), nunca um bloco de rocha (1) já colocado.
+function marcarLagoa(grade: number[][], cx: number, cy: number, raio: number) {
+  for (let y = cy - raio; y <= cy + raio; y++) {
+    if (y < 1 || y >= MAP_ROWS - 1) continue;
+    for (let x = cx - raio; x <= cx + raio; x++) {
+      if (x < 1 || x >= MAP_COLS - 1) continue;
+      const distancia = Math.hypot(x - cx, y - cy);
+      if (distancia <= raio - Math.random() * 0.8 && grade[y][x] === 0) {
+        grade[y][x] = 3;
+      }
+    }
+  }
 }
 
 // Carva um "L" de 2 tiles de largura entre dois pontos, só sobrescrevendo
@@ -158,7 +186,10 @@ export class ExplorationScene extends Phaser.Scene {
   }
 
   preload() {
-    this.gerarTilesetPlaceholder();
+    // Tileset real de terreno (grama/rocha/caminho/água), 4 tiles de
+    // 32x32 numa fileira só — Phaser fatia sozinho a partir da
+    // largura/altura passadas em addTilesetImage (ver create()).
+    this.load.image("tiles-terreno", "/tiles/terrain.png");
     this.gerarTexturaArvore();
     for (const local of LOCAIS_INTERATIVOS) this.gerarSeloLocal(local);
 
@@ -179,102 +210,6 @@ export class ExplorationScene extends Phaser.Scene {
       frameWidth: FRAME_SRC,
       frameHeight: FRAME_SRC,
     });
-  }
-
-  // Tileset de 3 frames (grama / rocha-montanha / caminho de terra)
-  // desenhado em runtime — Phaser fatia a imagem em tiles de 32x32
-  // automaticamente a partir da largura/altura passadas em
-  // addTilesetImage, então só precisamos desenhar os 3 quadrados lado
-  // a lado numa única textura. Pedido do jogador ("colocar as
-  // imagens"/textura parecida com o Mapa de Caelum de verdade) — ainda
-  // é tudo desenhado via Canvas (não tem arte pintada final pro
-  // protótipo), mas com bem mais variação/relevo que o placeholder
-  // anterior (manchas de grama, veios de rocha, pedrinhas no caminho).
-  private gerarTilesetPlaceholder() {
-    const textura = this.textures.createCanvas("tiles-placeholder", TILE * 3, TILE)!;
-    const ctx = textura.getContext();
-
-    // Frame 0 — grama (andável): base + manchas orgânicas de tom
-    // variado + tufos, em vez de um verde chapado.
-    ctx.fillStyle = "#3d7a3a";
-    ctx.fillRect(0, 0, TILE, TILE);
-    const manchas: [number, number, number, string][] = [
-      [4, 4, 7, "#468a42"],
-      [18, 9, 6, "#356b33"],
-      [10, 20, 8, "#4d9048"],
-      [24, 22, 5, "#336430"],
-      [2, 24, 6, "#43843f"],
-    ];
-    for (const [mx, my, mr, cor] of manchas) {
-      ctx.fillStyle = cor;
-      ctx.beginPath();
-      ctx.arc(mx, my, mr, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    ctx.strokeStyle = "#2a5528";
-    ctx.lineWidth = 1;
-    for (let i = 0; i < 10; i++) {
-      const px = 2 + ((i * 7) % (TILE - 4));
-      const py = 2 + ((i * 13) % (TILE - 4));
-      ctx.beginPath();
-      ctx.moveTo(px, py + 3);
-      ctx.lineTo(px + 1, py);
-      ctx.stroke();
-    }
-
-    // Frame 1 — rocha/montanha (bloqueado): gradiente cinza + veios/
-    // fendas escuras + um brilho claro, no lugar do bloco liso de
-    // antes — mais parecido com as formações rochosas do mapa real.
-    const offR = TILE;
-    const gradR = ctx.createLinearGradient(offR, 0, offR, TILE);
-    gradR.addColorStop(0, "#8a8a86");
-    gradR.addColorStop(1, "#5c5c58");
-    ctx.fillStyle = gradR;
-    ctx.fillRect(offR, 0, TILE, TILE);
-    ctx.strokeStyle = "#3d3d3a";
-    ctx.lineWidth = 1;
-    const fendas: [number, number, number, number][] = [
-      [offR + 4, 4, offR + 10, 14],
-      [offR + 20, 6, offR + 14, 18],
-      [offR + 8, 22, offR + 22, 26],
-    ];
-    for (const [x1, y1, x2, y2] of fendas) {
-      ctx.beginPath();
-      ctx.moveTo(x1, y1);
-      ctx.lineTo(x2, y2);
-      ctx.stroke();
-    }
-    ctx.strokeStyle = "#a8a8a4";
-    ctx.beginPath();
-    ctx.moveTo(offR + 6, 6);
-    ctx.lineTo(offR + 12, 10);
-    ctx.stroke();
-
-    // Frame 2 — caminho de terra (andável, só visual): tom terroso +
-    // pedrinhas espalhadas + borda sutil, carvado do spawn até cada
-    // Local Interativo (ver marcarCaminho).
-    const offP = TILE * 2;
-    ctx.fillStyle = "#a9814f";
-    ctx.fillRect(offP, 0, TILE, TILE);
-    ctx.fillStyle = "#96713f";
-    const pedrinhas: [number, number, number][] = [
-      [offP + 4, 6, 2],
-      [offP + 14, 10, 1.5],
-      [offP + 22, 4, 2],
-      [offP + 8, 20, 1.5],
-      [offP + 20, 24, 2],
-      [offP + 28, 16, 1.5],
-    ];
-    for (const [px, py, pr] of pedrinhas) {
-      ctx.beginPath();
-      ctx.arc(px, py, pr, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    ctx.strokeStyle = "#7d5c33";
-    ctx.lineWidth = 1;
-    ctx.strokeRect(offP + 0.5, 0.5, TILE - 1, TILE - 1);
-
-    textura.refresh();
   }
 
   // Árvore decorativa (estilo pinheiro, 3 camadas triangulares +
@@ -334,12 +269,13 @@ export class ExplorationScene extends Phaser.Scene {
   create() {
     const dados = construirMapa();
     const mapa = this.make.tilemap({ data: dados, tileWidth: TILE, tileHeight: TILE });
-    const tileset = mapa.addTilesetImage("tiles-placeholder", "tiles-placeholder", TILE, TILE);
+    const tileset = mapa.addTilesetImage("tiles-terreno", "tiles-terreno", TILE, TILE);
     if (!tileset) return;
     const camada = mapa.createLayer(0, tileset, 0, 0);
     if (!camada) return;
-    // Índice 1 (parede/água) é o único tile bloqueado do protótipo.
-    camada.setCollision(1);
+    // Índices 1 (rocha) e 3 (água) são os únicos tiles bloqueados —
+    // grama (0) e caminho (2) continuam livres.
+    camada.setCollision([1, 3]);
 
     const larguraMundo = MAP_COLS * TILE;
     const alturaMundo = MAP_ROWS * TILE;
