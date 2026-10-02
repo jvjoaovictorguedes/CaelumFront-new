@@ -257,11 +257,11 @@ export interface BatalhaGrupoIniciadaPayload {
   ordem: string[];
   turnoDe: string;
   prazoSegundos: number;
-  // Ideia #4 da fila de melhorias — aviso de power-leveling: presente
-  // (não-null) quando o membro de maior nível do grupo está muito acima
-  // do teto de nível da zona, e por isso a recompensa de XP/ouro do
-  // grupo INTEIRO vai sair reduzida nesta aventura.
-  penalidadePowerLeveling?: { multiplicador: number; excessoNivel: number } | null;
+  // Pedido do jogador — aviso de power-leveling: presente (não-null)
+  // quando a diferença de nível DENTRO do grupo (maior - menor) é grande
+  // demais, e por isso a recompensa de XP/ouro do grupo INTEIRO vai sair
+  // reduzida nesta aventura.
+  penalidadeDiferencaNivel?: { multiplicador: number; diferencaNivel: number } | null;
 }
 
 export interface TurnoGrupoPayload {
@@ -305,7 +305,7 @@ export interface BatalhaGrupoFimPayload {
   motivo: string;
   recompensas: Record<string, { experiencia: number; dinheiro: number; nivel: number; pontos_distribuir: number }>;
   drops: Record<string, { tipo: "item" | "ouro"; item?: { id: number; nome: string; raridade: string }; dinheiro?: number }>;
-  penalidadePowerLeveling?: { multiplicador: number; excessoNivel: number } | null;
+  penalidadeDiferencaNivel?: { multiplicador: number; diferencaNivel: number } | null;
 }
 
 // Boss da Guilda V2.0 (batalha em tempo real) — mesmo modelo de payload

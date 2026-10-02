@@ -3496,9 +3496,10 @@ export interface ExpeditionBalanceCompletoApi {
     MAX_RODADAS: number;
     FATOR_DIFICULDADE_VIDA_POR_EXTRA: number;
     FATOR_DIFICULDADE_DANO_POR_EXTRA: number;
-    // Ideia #4 da fila de melhorias — penalidade de XP/ouro pro grupo
-    // inteiro quando alguém está muito acima do nível da zona (power-leveling).
-    LIMIAR_NIVEL_ACIMA_DA_ZONA: number;
+    // Pedido do jogador — penalidade de XP/ouro pro grupo inteiro quando
+    // a diferença de nível DENTRO do grupo (maior - menor) é grande
+    // demais (power-leveling), independente do nível da zona.
+    LIMIAR_DIFERENCA_NIVEL_PARTY: number;
     REDUCAO_RECOMPENSA_POR_NIVEL_EXCEDENTE: number;
     PISO_MULTIPLICADOR_RECOMPENSA: number;
   }>;

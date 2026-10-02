@@ -791,19 +791,19 @@ function AbaGrupo({ dados, onSalvo }: { dados: ExpeditionBalanceCompletoApi; onS
 
       <p className="mb-1 mt-4 font-imFeel text-lg text-[#F3B43F]">Penalidade anti power-leveling</p>
       <p className="mb-3 text-xs text-white/50">
-        Quando o personagem de MAIOR nível do grupo está muito acima do teto de nível da zona (ex.: nível 100 numa
-        área desenhada pra nível 5), a recompensa de XP e ouro cai pro GRUPO INTEIRO — desincentiva carregar um
-        personagem fraco numa área fácil demais pra farmar nível rápido. Não afeta grupos de nível parecido.
+        Quando a DIFERENÇA DE NÍVEL DENTRO DO GRUPO (entre o personagem mais forte e o mais fraco) é grande demais,
+        a recompensa de XP e ouro cai pro GRUPO INTEIRO — desincentiva carregar um personagem fraco escondido atrás
+        de quem é muito mais forte. Não depende do nível da zona; grupos de nível parecido nunca são afetados.
       </p>
       <div className="flex flex-wrap gap-3">
         <label className="flex flex-col gap-1 text-xs text-white/70">
-          Tolerância acima do teto da zona (níveis)
+          Diferença de nível tolerada entre membros
           <input
             type="number"
             min={0}
             className={`${INPUT} w-40`}
-            value={form.LIMIAR_NIVEL_ACIMA_DA_ZONA}
-            onChange={(e) => campo("LIMIAR_NIVEL_ACIMA_DA_ZONA", Number(e.target.value))}
+            value={form.LIMIAR_DIFERENCA_NIVEL_PARTY}
+            onChange={(e) => campo("LIMIAR_DIFERENCA_NIVEL_PARTY", Number(e.target.value))}
           />
         </label>
         <label className="flex flex-col gap-1 text-xs text-white/70">
