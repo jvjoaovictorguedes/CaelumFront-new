@@ -132,12 +132,24 @@ export default async function AdventurePage() {
   // (validado no servidor, ver combatController.gerarInimigoParaPersonagem)
   // — sem sessão, mostra a tela de seleção de zona em vez de tentar
   // gerar um inimigo direto.
+  //
+  // Sessão e encontro-em-andamento não dependem uma da outra — iam em
+  // `await` sequenciais (2 round-trips ao backend, um atrás do outro,
+  // nesta página que carrega a cada entrada em /dashboard/adventure).
+  // Promise.allSettled dispara as duas de uma vez: mesma informação,
+  // metade da espera. (`zonas` acima fica de fora porque o branch de
+  // derrotado decide se renderiza ANTES de precisar de sessão/inimigo.)
   let sessao: NonNullable<SessaoResponse["data"]>["sessao"] = null;
-  try {
-    const response = await axiosInstance.get<SessaoResponse>("/adventure/session");
-    sessao = response.data?.data?.sessao ?? null;
-  } catch (error) {
-    console.error("Erro ao obter sessão de caça:", error);
+  let inimigoInicial: InimigoApi | null = null;
+  const [sessaoResult, inimigoResult] = await Promise.allSettled([
+    axiosInstance.get<SessaoResponse>("/adventure/session"),
+    axiosInstance.get<InimigoResponse>(`/combat/enemy/${character.id}`),
+  ]);
+
+  if (sessaoResult.status === "fulfilled") {
+    sessao = sessaoResult.value.data?.data?.sessao ?? null;
+  } else {
+    console.error("Erro ao obter sessão de caça:", sessaoResult.reason);
   }
 
   // Checa ANTES de decidir a tela se já existe um encontro pendurado no
@@ -153,14 +165,19 @@ export default async function AdventurePage() {
   // era barrado pelo 409 "Termine o combate em andamento antes de
   // entrar em outra Área de Caça." — bug relatado ("deu isso e não
   // consigo acessar onde estava pois era uma emboscada").
-  let inimigoInicial: InimigoApi | null = null;
-  try {
-    const response = await axiosInstance.get<InimigoResponse>(`/combat/enemy/${character.id}`);
-    inimigoInicial = response.data?.data?.enemy ?? null;
-  } catch (error) {
-    // 409 "Entre em uma Área de Caça..." é esperado aqui quando não há
-    // sessão nem encontro pendurado nenhum — cai no ZoneSelector abaixo.
-    console.error("Erro ao verificar encontro em andamento:", error);
+  if (inimigoResult.status === "fulfilled") {
+    inimigoInicial = inimigoResult.value.data?.data?.enemy ?? null;
+  } else {
+    // 409 "Entre em uma Área de Caça..." é o caso ESPERADO aqui sempre
+    // que não há sessão nem encontro pendurado nenhum (cai no
+    // ZoneSelector abaixo) — isso acontece em toda entrada normal na
+    // página pra quem não está no meio de uma caçada, então não é um
+    // erro de verdade: logar como error só inundava o log de produção
+    // a cada acesso. Só um status diferente de 409 é falha real.
+    const status = (inimigoResult.reason as { response?: { status?: number } })?.response?.status;
+    if (status !== 409) {
+      console.error("Erro ao verificar encontro em andamento:", inimigoResult.reason);
+    }
   }
 
   // PartyAdventureSection ficava dentro do "if (!sessao)" — jogador que
