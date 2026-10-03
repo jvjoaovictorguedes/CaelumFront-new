@@ -110,7 +110,23 @@ export default function WorldBossArena() {
     return <WorldBossResultScreen status={status} ranking={ranking} />;
   }
 
-  // status === "ACTIVE"
+  // Qualquer status que não seja ACTIVE (ex.: CANCELLED — admin
+  // cancelou o ciclo) nunca pode cair na renderização de combate
+  // abaixo: ela usa o HP/fase CONGELADOS do último evento visível
+  // (worldBossStatusService.obterStatusPublico também devolve
+  // CANCELLED como "status público"), o que mostrava uma barra de
+  // vida/fase "ativa" pra uma Ameaça que o join de verdade
+  // (worldBossCombatService.entrar, só aceita EVENT_STATUS.ACTIVE) já
+  // rejeita com "Não há Ameaça Mundial ativa agora." — bug só visual,
+  // nunca deixava ninguém lutar de verdade contra um evento cancelado.
+  if (status.status !== "ACTIVE") {
+    return (
+      <div className="rounded-2xl border-2 border-[#F3B43F] bg-[#292018]/90 p-5 text-center text-white shadow-xl">
+        <p className="text-white/70">Nenhuma Ameaça Mundial ativa no momento.</p>
+      </div>
+    );
+  }
+
   if (sessao) {
     return (
       <WorldBossBattleScene
