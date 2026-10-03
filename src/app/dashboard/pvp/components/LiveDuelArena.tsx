@@ -3,13 +3,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   usePvpSocket,
+  type CombatBuffInstanceDuelo,
   type ConsumivelDuelo,
   type RankedRatingUpdatePayload,
   type StatusInstanceDuelo,
 } from "@/contexts/PvpSocketContext";
 import { spriteForClass } from "../../adventure/components/sprites/spriteForClass";
 import CombatActionBar from "@/components/combat/CombatActionBar";
-import { StatusIconsRow } from "@/components/combat/StatusEffectIcons";
+import { StatusIconsRow, BuffIconsRow } from "@/components/combat/StatusEffectIcons";
 import { fundoDeBatalhaPorSemente } from "@/utils/battleBackground";
 
 function esperar(ms: number) {
@@ -43,6 +44,8 @@ export default function LiveDuelArena({ meuCharacterId }: { meuCharacterId: numb
   const [consumiveis, setConsumiveis] = useState<ConsumivelDuelo[]>([]);
   const [statusA, setStatusA] = useState<StatusInstanceDuelo[]>([]);
   const [statusB, setStatusB] = useState<StatusInstanceDuelo[]>([]);
+  const [combatBuffsA, setCombatBuffsA] = useState<CombatBuffInstanceDuelo[]>([]);
+  const [combatBuffsB, setCombatBuffsB] = useState<CombatBuffInstanceDuelo[]>([]);
 
   const processadosRef = useRef(0);
   const processandoRef = useRef(false);
@@ -56,6 +59,8 @@ export default function LiveDuelArena({ meuCharacterId }: { meuCharacterId: numb
     setManaB(duelo.manaB);
     setStatusA([]);
     setStatusB([]);
+    setCombatBuffsA([]);
+    setCombatBuffsB([]);
     setTurnoAtual(duelo.turnoDe);
     setPrazo(duelo.prazoSegundos);
     setLog([`Duelo começou na ${duelo.arena}! Vez de ${duelo.turnoDe === "A" ? duelo.a.nome : duelo.b.nome}.`]);
@@ -107,6 +112,8 @@ export default function LiveDuelArena({ meuCharacterId }: { meuCharacterId: numb
         setManaB(turno.manaB);
         if (turno.statusA) setStatusA(turno.statusA);
         if (turno.statusB) setStatusB(turno.statusB);
+        if (turno.combatBuffsA) setCombatBuffsA(turno.combatBuffsA);
+        if (turno.combatBuffsB) setCombatBuffsB(turno.combatBuffsB);
         setAnimA("");
         setAnimB("");
 
@@ -236,8 +243,8 @@ export default function LiveDuelArena({ meuCharacterId }: { meuCharacterId: numb
       </div>
 
       <div className="grid grid-cols-2 gap-4">
-        <BarraDeVida label={duelo.a.nome} atual={vidaA} maxima={duelo.vidaMaxA} mana={manaA} manaMax={duelo.manaMaxA} status={statusA} />
-        <BarraDeVida label={duelo.b.nome} atual={vidaB} maxima={duelo.vidaMaxB} mana={manaB} manaMax={duelo.manaMaxB} status={statusB} />
+        <BarraDeVida label={duelo.a.nome} atual={vidaA} maxima={duelo.vidaMaxA} mana={manaA} manaMax={duelo.manaMaxA} status={statusA} buffs={combatBuffsA} />
+        <BarraDeVida label={duelo.b.nome} atual={vidaB} maxima={duelo.vidaMaxB} mana={manaB} manaMax={duelo.manaMaxB} status={statusB} buffs={combatBuffsB} />
       </div>
 
       <div className="flex h-40 w-full flex-col-reverse overflow-y-auto rounded-2xl bg-black/85 p-4 text-sm text-white shadow-inner">
@@ -361,6 +368,7 @@ function BarraDeVida({
   mana,
   manaMax,
   status,
+  buffs,
 }: {
   label: string;
   atual: number;
@@ -368,6 +376,7 @@ function BarraDeVida({
   mana: number;
   manaMax: number;
   status?: StatusInstanceDuelo[];
+  buffs?: CombatBuffInstanceDuelo[];
 }) {
   return (
     <div className="rounded-xl border border-white/10 bg-[#292018]/90 p-3">
@@ -395,9 +404,10 @@ function BarraDeVida({
           style={{ width: `${Math.max(0, Math.min(100, (mana / manaMax) * 100))}%` }}
         />
       </div>
-      {status && status.length > 0 && (
-        <div className="mt-2">
-          <StatusIconsRow instancias={status} />
+      {((status && status.length > 0) || (buffs && buffs.length > 0)) && (
+        <div className="mt-2 flex flex-wrap items-center gap-1">
+          {status && <StatusIconsRow instancias={status} />}
+          {buffs && <BuffIconsRow buffs={buffs} />}
         </div>
       )}
     </div>
