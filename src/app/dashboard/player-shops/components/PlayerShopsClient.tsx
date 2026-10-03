@@ -31,9 +31,12 @@ interface MinhaLoja {
 
 interface ProdutoResumo {
   id: number;
+  id_instancia?: number | null;
+  quantidade_total: number;
   quantidade_restante: number;
   preco_unitario: number;
   status: string;
+  status_exibicao?: string;
   item: ItemResumo;
 }
 
@@ -572,15 +575,12 @@ function PerfilLojaView({
             <h3 className="mb-2 font-semibold text-[#F3B43F]">Produtos ({perfil.produtos.length})</h3>
             <div className="grid gap-2 sm:grid-cols-2">
               {perfil.produtos.map((produto) => (
-                <div key={produto.id} className="flex items-center gap-2 rounded-lg bg-black/30 p-2">
-                  <IconeItem item={produto.item} />
-                  <div className="flex-1">
-                    <p className="text-sm font-semibold">{produto.item.nome}</p>
-                    <p className="text-xs text-white/60">
-                      {produto.quantidade_restante}x por {produto.preco_unitario} ouro cada
-                    </p>
-                  </div>
-                </div>
+                <CardProdutoCompravel
+                  key={produto.id}
+                  produto={produto}
+                  ehDonoDaLoja={idPersonagemLoja === characterId}
+                  aoComprar={carregar}
+                />
               ))}
               {perfil.produtos.length === 0 && <p className="text-sm text-white/50">Nenhum produto ativo no momento.</p>}
             </div>
@@ -598,6 +598,81 @@ function PerfilLojaView({
         </div>
       )}
     </Cartao>
+  );
+}
+
+// Pedido do jogador: "não está dando pra comprar nada" — a lista de
+// produtos da loja só mostrava nome/quantidade/preço, sem nenhum botão
+// de compra. Reaproveita POST /market/listings/:id/buy (o produto da
+// loja é um MarketListing de verdade, mesmo endpoint do Mercado Negro).
+function CardProdutoCompravel({
+  produto,
+  ehDonoDaLoja,
+  aoComprar,
+}: {
+  produto: ProdutoResumo;
+  ehDonoDaLoja: boolean;
+  aoComprar: () => void;
+}) {
+  const ehEquipamento = Boolean(produto.id_instancia);
+  const [quantidade, setQuantidade] = useState(1);
+  const [comprando, setComprando] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+
+  async function comprar() {
+    setComprando(true);
+    setErro(null);
+    try {
+      await axiosInstance.post(`/market/listings/${produto.id}/buy`, {
+        quantidade: ehEquipamento ? undefined : quantidade,
+      });
+      aoComprar();
+    } catch (error: unknown) {
+      const msg =
+        error && typeof error === "object" && "response" in error
+          ? (error as { response?: { data?: { message?: string } } }).response?.data?.message
+          : undefined;
+      setErro(msg ?? "Erro ao comprar.");
+      setComprando(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-2 rounded-lg bg-black/30 p-2">
+      <div className="flex items-center gap-2">
+        <IconeItem item={produto.item} />
+        <div className="flex-1">
+          <p className="text-sm font-semibold">{produto.item.nome}</p>
+          <p className="text-xs text-white/60">
+            {produto.quantidade_restante}x por {produto.preco_unitario} ouro cada
+          </p>
+        </div>
+      </div>
+      {!ehDonoDaLoja && (
+        <div className="flex items-center gap-2">
+          {!ehEquipamento && (
+            <input
+              type="number"
+              min={1}
+              max={produto.quantidade_restante}
+              value={quantidade}
+              onChange={(e) =>
+                setQuantidade(Math.max(1, Math.min(produto.quantidade_restante, Number(e.target.value) || 1)))
+              }
+              className="w-16 rounded bg-black/40 px-2 py-1 text-xs"
+            />
+          )}
+          <button
+            onClick={comprar}
+            disabled={comprando}
+            className="flex-1 rounded bg-[#F3B43F] px-2 py-1 text-xs font-semibold text-black disabled:opacity-50"
+          >
+            {comprando ? "Comprando..." : `Comprar (${(ehEquipamento ? 1 : quantidade) * produto.preco_unitario} ouro)`}
+          </button>
+        </div>
+      )}
+      {erro && <p className="text-xs text-red-400">{erro}</p>}
+    </div>
   );
 }
 
@@ -767,6 +842,7 @@ function AbaMinhaLoja() {
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [minhasDemandas, setMinhasDemandas] = useState<DemandaApi[]>([]);
+  const [meusProdutos, setMeusProdutos] = useState<ProdutoResumo[]>([]);
 
   const carregar = useCallback(async () => {
     try {
@@ -780,6 +856,12 @@ function AbaMinhaLoja() {
       }
       const respDemandas = await axiosInstance.get("/player-shops/mine/demands");
       setMinhasDemandas(respDemandas.data?.data?.demandas ?? []);
+      // Produto da loja É um anúncio do Mercado Negro (mesmo
+      // MarketListing) — "meus produtos publicados" é só a listagem de
+      // /market/listings/mine que ainda está ativa.
+      const respProdutos = await axiosInstance.get("/market/listings/mine");
+      const todos: ProdutoResumo[] = respProdutos.data?.data?.listings ?? [];
+      setMeusProdutos(todos.filter((p) => p.status === "Ativo"));
     } catch {
       setErro("Não foi possível carregar sua loja.");
     }
@@ -850,6 +932,18 @@ function AbaMinhaLoja() {
           </Cartao>
 
           <Cartao>
+            <h3 className="mb-2 font-semibold text-[#F3B43F]">Meus produtos publicados</h3>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {meusProdutos.map((produto) => (
+                <MeuProdutoCard key={produto.id} produto={produto} aoAtualizar={carregar} />
+              ))}
+              {meusProdutos.length === 0 && (
+                <p className="text-sm text-white/50">Nenhum produto publicado ainda.</p>
+              )}
+            </div>
+          </Cartao>
+
+          <Cartao>
             <h3 className="mb-2 font-semibold text-[#F3B43F]">Publicar demanda (quero comprar)</h3>
             <PublicarDemandaForm aoPublicar={carregar} />
           </Cartao>
@@ -887,6 +981,114 @@ function AbaMinhaLoja() {
           </Cartao>
         </>
       )}
+    </div>
+  );
+}
+
+// Pedido do jogador: "não dá pra remover o item nem editar o preço" —
+// os produtos publicados não tinham NENHUMA listagem/gerência própria
+// na aba Minha Loja (só "Minhas demandas publicadas" existia). Cancelar
+// e editar preço usam os mesmos endpoints do Mercado Negro
+// (DELETE/PATCH /market/listings/:id), já que o produto É um
+// MarketListing.
+function MeuProdutoCard({ produto, aoAtualizar }: { produto: ProdutoResumo; aoAtualizar: () => void }) {
+  const [editando, setEditando] = useState(false);
+  const [novoPreco, setNovoPreco] = useState(produto.preco_unitario);
+  const [salvando, setSalvando] = useState(false);
+  const [cancelando, setCancelando] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+
+  async function salvarPreco() {
+    setSalvando(true);
+    setErro(null);
+    try {
+      await axiosInstance.patch(`/market/listings/${produto.id}`, { preco_unitario: novoPreco });
+      setEditando(false);
+      aoAtualizar();
+    } catch (error: unknown) {
+      const msg =
+        error && typeof error === "object" && "response" in error
+          ? (error as { response?: { data?: { message?: string } } }).response?.data?.message
+          : undefined;
+      setErro(msg ?? "Erro ao editar preço.");
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  async function cancelar() {
+    setCancelando(true);
+    setErro(null);
+    try {
+      await axiosInstance.delete(`/market/listings/${produto.id}`);
+      aoAtualizar();
+    } catch (error: unknown) {
+      const msg =
+        error && typeof error === "object" && "response" in error
+          ? (error as { response?: { data?: { message?: string } } }).response?.data?.message
+          : undefined;
+      setErro(msg ?? "Erro ao cancelar produto.");
+      setCancelando(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-2 rounded-lg bg-black/30 p-2">
+      <div className="flex items-center gap-2">
+        <IconeItem item={produto.item} />
+        <div className="flex-1">
+          <p className="text-sm font-semibold">{produto.item.nome}</p>
+          <p className="text-xs text-white/60">
+            {produto.quantidade_restante}/{produto.quantidade_total} restantes
+          </p>
+        </div>
+      </div>
+
+      {editando ? (
+        <div className="flex items-center gap-2">
+          <input
+            type="number"
+            min={1}
+            value={novoPreco}
+            onChange={(e) => setNovoPreco(Number(e.target.value) || 1)}
+            className="w-20 rounded bg-black/40 px-2 py-1 text-xs"
+          />
+          <button
+            onClick={salvarPreco}
+            disabled={salvando}
+            className="rounded bg-[#F3B43F] px-2 py-1 text-xs font-semibold text-black disabled:opacity-50"
+          >
+            {salvando ? "Salvando..." : "Salvar"}
+          </button>
+          <button
+            onClick={() => {
+              setEditando(false);
+              setNovoPreco(produto.preco_unitario);
+            }}
+            className="rounded bg-white/10 px-2 py-1 text-xs hover:bg-white/20"
+          >
+            Cancelar
+          </button>
+        </div>
+      ) : (
+        <div className="flex items-center gap-2">
+          <p className="flex-1 text-xs text-white/70">{produto.preco_unitario} ouro/un.</p>
+          <button
+            onClick={() => setEditando(true)}
+            className="rounded bg-white/10 px-2 py-1 text-xs hover:bg-white/20"
+          >
+            Editar preço
+          </button>
+          <button
+            onClick={cancelar}
+            disabled={cancelando}
+            className="rounded bg-red-500/80 px-2 py-1 text-xs font-semibold text-white disabled:opacity-50"
+          >
+            {cancelando ? "Removendo..." : "Remover"}
+          </button>
+        </div>
+      )}
+      {erro && <p className="text-xs text-red-400">{erro}</p>}
     </div>
   );
 }

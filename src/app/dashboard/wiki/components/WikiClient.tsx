@@ -3,21 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { listarWikiCategorias, obterWikiArtigo, type WikiArtigoApi, type WikiCategoriaApi } from "@/lib/api/wiki";
-
-// conteudo é texto plano — parágrafos separados por linha em branco
-// (mesma convenção do Pergaminho das Atualizações), nunca markdown.
-function Paragrafos({ texto }: { texto: string }) {
-  const paragrafos = texto.split(/\n{2,}/).filter((p) => p.trim().length > 0);
-  return (
-    <div className="flex flex-col gap-3">
-      {paragrafos.map((paragrafo, indice) => (
-        <p key={indice} className="whitespace-pre-line text-sm leading-relaxed text-white/80">
-          {paragrafo}
-        </p>
-      ))}
-    </div>
-  );
-}
+import WikiMarkdownContent from "@/components/wiki/WikiMarkdownContent";
 
 export default function WikiClient({ slugInicial }: { slugInicial?: string }) {
   const [categorias, setCategorias] = useState<WikiCategoriaApi[] | null>(null);
@@ -160,7 +146,7 @@ export default function WikiClient({ slugInicial }: { slugInicial?: string }) {
                   className="mb-4 max-h-72 w-full rounded-xl border border-black/30 object-cover"
                 />
               )}
-              <Paragrafos texto={artigo.conteudo} />
+              <WikiMarkdownContent conteudo={artigo.conteudo} />
             </article>
           ) : (
             <p className="text-sm text-white/60">Artigo não encontrado.</p>

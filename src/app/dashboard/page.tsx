@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getCurrentCharacter } from "@/utils/character-session";
 import { CaelumBrasao } from "@/components/CaelumBrand/CaelumBrand";
 import PageMusic from "@/components/music/PageMusic";
+import DashboardSummaryClient from "./components/DashboardSummaryClient";
 
 export default async function DashboardHomePage() {
   const character = await getCurrentCharacter();
@@ -33,6 +34,8 @@ export default async function DashboardHomePage() {
           <Resumo label="Moedas" valor={character.dinheiro ?? 0} />
         </section>
       )}
+
+      {character && <DashboardSummaryClient />}
 
       <section className="grid gap-4 md:grid-cols-2">
         <Link
