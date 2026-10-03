@@ -58,6 +58,10 @@ export default function PartyBattleArena() {
     resultadoGrupo,
     agirGrupo,
     limparBatalhaGrupo,
+    grupoAtual,
+    erroParty,
+    continuarAventuraEmGrupo,
+    limparErroParty,
   } = usePvpSocket();
 
   // Sorteia uma faixa do pool CONTEXT_COMBAT_PVE a cada BATALHA nova
@@ -92,6 +96,12 @@ export default function PartyBattleArena() {
   const [animInimigo, setAnimInimigo] = useState<EstadoAnimacao>("idle");
   const [avancoInimigo, setAvancoInimigo] = useState(false);
   const [processandoTurnos, setProcessandoTurnos] = useState(false);
+  // "Continuando..." no botão de "Continuar batalha" (ver resultado no
+  // fim do arquivo) — mesmo cuidado de PartyAdventureSection.tsx com
+  // "Iniciando...": precisa voltar a liberar o botão tanto quando dá
+  // erro (erroParty) quanto quando a próxima batalha de fato começa
+  // (batalhaGrupo muda), nunca ficar preso.
+  const [continuando, setContinuando] = useState(false);
 
   // Fila de turnos processados um de cada vez, cada um com sua própria
   // sequência de "caminhar até o alvo > golpear > voltar" (ver
@@ -120,7 +130,12 @@ export default function PartyBattleArena() {
     filaTurnosRef.current = [];
     processandoRef.current = false;
     setProcessandoTurnos(false);
+    setContinuando(false);
   }, [batalhaGrupo]);
+
+  useEffect(() => {
+    if (erroParty) setContinuando(false);
+  }, [erroParty]);
 
   useEffect(() => {
     if (turnosGrupo.length <= ultimoIndexEnfileiradoRef.current) return;
@@ -289,6 +304,10 @@ export default function PartyBattleArena() {
     () => batalhaGrupo?.membros.find((m) => m.id === meuId),
     [batalhaGrupo, meuId],
   );
+  // Só o anfitrião manda "Continuar batalha" (party:continuar — mesma
+  // regra de permissão de "Iniciar aventura em grupo", ver
+  // PartyAdventureSection.tsx).
+  const souHost = grupoAtual?.hostId === String(meuId);
 
   if (!batalhaGrupo) return null;
 
@@ -524,15 +543,55 @@ export default function PartyBattleArena() {
                   : `+${resultadoGrupo.drops[meuId].dinheiro} moedas extras encontradas!`}
               </p>
             )}
-            <button
-              onClick={() => {
-                limparBatalhaGrupo();
-                router.push("/dashboard/adventure");
-              }}
-              className="rounded-lg bg-[#BC8418] px-4 py-2 font-bold text-black hover:bg-[#a5710f]"
-            >
-              Voltar
-            </button>
+
+            {erroParty && (
+              <p className="mb-3 rounded-lg bg-red-900/50 p-2 text-sm text-red-200">
+                {erroParty}
+                <button type="button" onClick={limparErroParty} className="ml-2 underline">
+                  ok
+                </button>
+              </p>
+            )}
+
+            {/* Pedido do jogador ("Sugestão de Melhoria no Fluxo de
+                Batalha") — só o anfitrião vê "Continuar batalha": manda o
+                grupo direto pra PRÓXIMA luta na mesma Área de Caça
+                (party:continuar), sem reabrir o seletor de zona nem
+                exigir "pronto" de novo de quem já estava na luta
+                anterior. Mesma ideia de "Buscar outro inimigo" da
+                Aventura solo. */}
+            <div className="flex flex-wrap items-center justify-center gap-3">
+              {souHost && (
+                <button
+                  onClick={() => {
+                    setContinuando(true);
+                    continuarAventuraEmGrupo();
+                  }}
+                  disabled={continuando}
+                  className="rounded-lg bg-[#F3B43F] px-4 py-2 font-bold text-black transition hover:bg-[#e0a52f] disabled:opacity-50"
+                >
+                  {continuando ? "Continuando..." : "Continuar batalha"}
+                </button>
+              )}
+              <button
+                onClick={() => {
+                  limparBatalhaGrupo();
+                  router.push("/dashboard/adventure");
+                }}
+                className={
+                  souHost
+                    ? "rounded-lg border border-white/30 px-4 py-2 font-bold text-white transition hover:bg-white/10"
+                    : "rounded-lg bg-[#BC8418] px-4 py-2 font-bold text-black transition hover:bg-[#a5710f]"
+                }
+              >
+                Voltar
+              </button>
+            </div>
+            {!souHost && (
+              <p className="mt-2 text-xs text-white/50">
+                Só o anfitrião pode mandar o grupo continuar direto pra próxima luta.
+              </p>
+            )}
           </div>
         </div>
       )}

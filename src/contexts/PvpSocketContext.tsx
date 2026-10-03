@@ -462,6 +462,12 @@ interface PvpSocketContextValue {
   sairDoGrupo: () => void;
   expulsarDoGrupo: (idAlvo: number) => void;
   iniciarAventuraEmGrupo: (idZona: number) => void;
+  // Pedido do jogador ("Sugestão de Melhoria no Fluxo de Batalha") —
+  // depois de uma vitória, o anfitrião manda o grupo direto pra PRÓXIMA
+  // luta na MESMA Área de Caça (party:continuar no backend), sem reabrir
+  // o seletor de zona nem exigir "pronto" de novo de quem já estava na
+  // luta anterior. Mesma ideia de "Buscar outro inimigo" da Aventura solo.
+  continuarAventuraEmGrupo: () => void;
   agirGrupo: (tipo: "attack" | "power" | "item", id?: number) => void;
   limparBatalhaGrupo: () => void;
   limparErroParty: () => void;
@@ -908,6 +914,10 @@ export function PvpSocketProvider({
     socketRef.current?.emit("party:iniciar", { idZona });
   }, []);
 
+  const continuarAventuraEmGrupo = useCallback(() => {
+    socketRef.current?.emit("party:continuar");
+  }, []);
+
   const agirGrupo = useCallback((tipo: "attack" | "power" | "item", id?: number) => {
     socketRef.current?.emit("party:acao", {
       tipo,
@@ -987,6 +997,7 @@ export function PvpSocketProvider({
         sairDoGrupo,
         expulsarDoGrupo,
         iniciarAventuraEmGrupo,
+        continuarAventuraEmGrupo,
         agirGrupo,
         limparBatalhaGrupo,
         limparErroParty,
