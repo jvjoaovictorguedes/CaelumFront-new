@@ -66,6 +66,12 @@ export default async function AdventurePage() {
     velocidade: number;
 
     dano_base: number;
+
+    // Emboscada da Expedição (expeditionService.coletar) usa o mesmo
+    // campo encontro_pve do personagem, sem id_area/sessão nenhuma —
+    // essa flag é o que diferencia esse encontro "solto" do combate
+    // normal de uma Área de Caça (ver uso abaixo).
+    origemExpedicao?: boolean;
   }
 
   interface InimigoResponse {
@@ -134,6 +140,29 @@ export default async function AdventurePage() {
     console.error("Erro ao obter sessão de caça:", error);
   }
 
+  // Checa ANTES de decidir a tela se já existe um encontro pendurado no
+  // personagem — pode ser o combate normal de uma Área de Caça OU uma
+  // emboscada da Expedição (mesmo campo encontro_pve, ver
+  // expeditionService.coletar; gerarInimigoParaPersonagem já devolve
+  // esse encontro em andamento ANTES de checar sessão nenhuma). Sem essa
+  // checagem aqui também, um jogador emboscado que saísse da Expedição
+  // sem terminar a luta (navegação, refresh — inimigoInterrupcao em
+  // ExpeditionClient.tsx é só estado local, se perde) ficava sem NENHUM
+  // caminho de volta: esta página caía direto no ZoneSelector (sem
+  // sessão de Área de Caça pra mostrar), e entrar em qualquer zona nova
+  // era barrado pelo 409 "Termine o combate em andamento antes de
+  // entrar em outra Área de Caça." — bug relatado ("deu isso e não
+  // consigo acessar onde estava pois era uma emboscada").
+  let inimigoInicial: InimigoApi | null = null;
+  try {
+    const response = await axiosInstance.get<InimigoResponse>(`/combat/enemy/${character.id}`);
+    inimigoInicial = response.data?.data?.enemy ?? null;
+  } catch (error) {
+    // 409 "Entre em uma Área de Caça..." é esperado aqui quando não há
+    // sessão nem encontro pendurado nenhum — cai no ZoneSelector abaixo.
+    console.error("Erro ao verificar encontro em andamento:", error);
+  }
+
   // PartyAdventureSection ficava dentro do "if (!sessao)" — jogador que
   // aceitava convite de party e JÁ tinha uma sessão de caça solo aberta
   // caía direto no combate solo (CombatArena) e nunca chegava a montar
@@ -141,7 +170,7 @@ export default async function AdventurePage() {
   // aventura solo, não na party"). Ela é client-side e lê o estado do
   // grupo via socket (PvpSocketContext), então é segura de renderizar
   // em qualquer branch — só precisa deixar de estar presa a "sem sessão".
-  if (!sessao) {
+  if (!sessao && !inimigoInicial) {
     return (
       <div className="flex h-full flex-col gap-4">
         <PartyAdventureSection zonas={zonas} />
@@ -184,24 +213,43 @@ export default async function AdventurePage() {
     );
   }
 
-  let inimigoInicial:
-    | InimigoApi
-    | null = null;
+  // Encontro resgatado sem Área de Caça nenhuma por trás — o caso real
+  // é a emboscada da Expedição (origemExpedicao:true), mesma
+  // apresentação que ExpeditionClient.tsx já usa pra essa luta, só que
+  // resolvida por aqui; "Voltar à expedição" leva de volta pra lá (não
+  // tem sessão de caça pra encerrar nem zona pra mostrar no header). Um
+  // encontro de zona sem sessão (não deveria acontecer, mas sairia pelo
+  // mesmo caminho se acontecesse) cai no rótulo genérico "Aventura" em
+  // vez de travar sem UI nenhuma pra resolver o combate pendurado.
+  if (inimigoInicial && !sessao) {
+    const daExpedicao = inimigoInicial.origemExpedicao === true;
+    return (
+      <div className="flex h-full flex-col gap-2">
+        <PartyAdventureSection zonas={zonas} />
+        <CombatArena
+          key={`sem-sessao-${character.vida_atual}`}
+          character={character}
+          abilities={habilidades}
+          initialEnemy={inimigoInicial}
+          labelBotaoVitoria={daExpedicao ? "Voltar à expedição" : "Buscar outro inimigo"}
+          tituloZona={daExpedicao ? "Expedição" : "Aventura"}
+          tituloArena={daExpedicao ? "Emboscada!" : "Aventura"}
+          aoSairEndpoint={null}
+          aoSairRota={daExpedicao ? "/dashboard/expedition" : "/dashboard/adventure"}
+        />
+      </div>
+    );
+  }
 
-  try {
-    const response =
-      await axiosInstance.get<InimigoResponse>(
-        `/combat/enemy/${character.id}`,
-      );
-
-    inimigoInicial =
-      response.data?.data
-        ?.enemy ??
-      null;
-  } catch (error) {
-    console.error(
-      "Erro ao gerar inimigo:",
-      error,
+  if (!sessao) {
+    // Inalcançável na prática — o bloco acima já cobre "sem sessão"
+    // (com ou sem encontro pendurado); só serve de type guard pro TS
+    // enxergar `sessao` como não-nulo daqui pra baixo.
+    return (
+      <div className="flex h-full flex-col gap-4">
+        <PartyAdventureSection zonas={zonas} />
+        <ZoneSelector zonas={zonas} />
+      </div>
     );
   }
 
