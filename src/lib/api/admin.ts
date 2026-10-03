@@ -3701,6 +3701,30 @@ export async function atualizarExpedicaoPesoNaRegiaoAdmin(
   await axiosInstance.patch(`/admin/expedition/resources/region/${idRegiao}/${idRecurso}/weight`, { peso });
 }
 
+export type QualidadeExpedicaoAdmin = "Comum" | "Incomum" | "Raro" | "Epico" | "Lendario" | "Mitico";
+export const QUALIDADES_EXPEDICAO_ADMIN: QualidadeExpedicaoAdmin[] = [
+  "Comum",
+  "Incomum",
+  "Raro",
+  "Epico",
+  "Lendario",
+  "Mitico",
+];
+// Pedido do jogador: poder criar um recurso NOVO (não só mexer em
+// peso/ativo dos já cadastrados), já vinculado a um Item real por
+// qualidade — vínculo opcional por qualidade, nunca obrigatório
+// preencher as 6. Depois de criado, o recurso aparece em
+// `recursos_sem_regiao` até o admin usar atualizarExpedicaoPesoNaRegiaoAdmin
+// pra vinculá-lo a alguma região.
+export async function criarExpedicaoRecursoAdmin(payload: {
+  profissao: ProfissaoExpedicaoAdmin;
+  nome: string;
+  itens_por_qualidade: Partial<Record<QualidadeExpedicaoAdmin, number>>;
+}): Promise<ExpedicaoRecursoAdminApi> {
+  const resposta = await axiosInstance.post<{ data: ExpedicaoRecursoAdminApi }>("/admin/expedition/resources", payload);
+  return resposta.data.data;
+}
+
 // Painel Administrativo — Alquimia (Caldeirão): CRUD de receitas +
 // ingredientes. id_item_resultado/id_item são resolvidos em lote pelo
 // backend (sem include/alias — mesma convenção do resto do domínio de
