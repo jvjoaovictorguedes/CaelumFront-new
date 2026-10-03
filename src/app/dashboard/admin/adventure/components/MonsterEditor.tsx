@@ -279,16 +279,10 @@ export function MonsterEditor({
                 Descrição
                 <textarea value={form.descricao ?? ""} onChange={(e) => atualizarCampo("descricao", e.target.value)} rows={2} className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm" />
               </label>
-              <div className="grid grid-cols-2 gap-2">
-                <label className="flex flex-col gap-1 text-xs">
-                  Imagem (URL)
-                  <input value={form.imagem_url ?? ""} onChange={(e) => atualizarCampo("imagem_url", e.target.value)} className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm" />
-                </label>
-                <label className="flex flex-col gap-1 text-xs">
-                  Sprite key
-                  <input value={form.sprite_key ?? ""} onChange={(e) => atualizarCampo("sprite_key", e.target.value || null)} className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm" />
-                </label>
-              </div>
+              <label className="flex flex-col gap-1 text-xs">
+                Imagem (URL)
+                <input value={form.imagem_url ?? ""} onChange={(e) => atualizarCampo("imagem_url", e.target.value)} className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm" />
+              </label>
             </section>
 
             <section className="flex flex-col gap-2 rounded-xl border border-white/10 bg-black/20 p-3">

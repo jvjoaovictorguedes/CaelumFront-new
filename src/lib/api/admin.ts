@@ -487,7 +487,6 @@ export interface AdventureMonsterApi {
   nome: string;
   descricao: string | null;
   imagem_url: string | null;
-  sprite_key: string | null;
   nivel: number | null;
   vida_maxima: number | null;
   dano_min: number | null;
