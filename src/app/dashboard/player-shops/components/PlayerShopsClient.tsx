@@ -1557,6 +1557,11 @@ function NegociacaoAcoes({
   );
 }
 
+// Mesmos tipos de equipmentInstanceService.TIPOS_INSTANCIAVEIS (backend)
+// — item desses tipos exige id_instancia na entrega; os demais (stack,
+// como Material/Consumível) entregam a quantidade_acordada direto.
+const TIPOS_INSTANCIAVEIS_ENTREGA = ["Arma", "Armadura", "Capacete", "Escudo", "Acessorio1", "Acessorio2", "Ferramenta"];
+
 function EntregarEncomendaBox({
   encomenda,
   processando,
@@ -1566,20 +1571,41 @@ function EntregarEncomendaBox({
   processando: boolean;
   onEntregar: (idInstancia?: string) => void;
 }) {
-  const [idInstancia, setIdInstancia] = useState("");
+  const { itens, carregando } = useInventarioPublicavel();
+  const [chaveSelecionada, setChaveSelecionada] = useState<string | null>(null);
+
+  const precisaInstancia = TIPOS_INSTANCIAVEIS_ENTREGA.includes(encomenda.item.tipo_item);
+  const opcoes = itens.filter((i) => i.id_item === encomenda.id_item && i.id_instancia);
+  const selecionada = opcoes.find((i) => i.chave === chaveSelecionada) ?? null;
 
   return (
     <div className="mt-2 flex flex-col gap-2 rounded bg-black/30 p-2">
       <p className="text-sm text-white/70">
         Termos travados: {encomenda.quantidade_acordada}x por {encomenda.preco_total_acordado} ouro no total.
       </p>
-      <label className="flex flex-col gap-1 text-xs">
-        ID da instância (só se for equipamento)
-        <input value={idInstancia} onChange={(e) => setIdInstancia(e.target.value)} className="rounded bg-black/40 px-2 py-1" />
-      </label>
+      {precisaInstancia && (
+        <>
+          <p className="text-xs text-white/60">Escolha qual unidade de &ldquo;{encomenda.item.nome}&rdquo; do seu inventário você vai entregar:</p>
+          {carregando && <p className="text-sm text-white/50">Carregando seu inventário...</p>}
+          {!carregando && opcoes.length === 0 && (
+            <p className="text-sm text-yellow-400">
+              Você não tem nenhuma unidade de &ldquo;{encomenda.item.nome}&rdquo; solta no inventário (não equipada, não anunciada
+              no Mercado) pra entregar.
+            </p>
+          )}
+          {!carregando && opcoes.length > 0 && (
+            <SeletorItemInventario
+              itens={opcoes}
+              chaveSelecionada={chaveSelecionada}
+              onSelecionar={(item) => setChaveSelecionada(item.chave)}
+              carregando={carregando}
+            />
+          )}
+        </>
+      )}
       <button
-        onClick={() => onEntregar(idInstancia)}
-        disabled={processando}
+        onClick={() => onEntregar(selecionada?.id_instancia ? String(selecionada.id_instancia) : undefined)}
+        disabled={processando || (precisaInstancia && !selecionada)}
         className="self-start rounded bg-green-500/80 px-3 py-1 text-sm font-semibold text-white disabled:opacity-50"
       >
         Entregar encomenda
