@@ -3,6 +3,38 @@
 import { useCallback, useEffect, useState } from "react";
 import axiosInstance from "@/utils/axiosIntance";
 import { resolveMediaUrl } from "@/utils/media-url";
+import ItemDescriptionTooltip from "@/components/Tooltip/ItemDescriptionTooltip";
+
+interface WeaponPropertiesApi {
+  dano_min: number;
+  dano_max: number;
+  tipo_dano: "Fisico" | "Magico";
+  bonus_atributo: string;
+  valor_bonus_atributo: number;
+}
+
+interface ArmorPropertiesApi {
+  defesa: number;
+  bonus_forca: number;
+  bonus_vitalidade: number;
+  bonus_inteligencia: number;
+  bonus_agilidade: number;
+  bonus_velocidade: number;
+}
+
+interface ConsumablePropertiesApi {
+  efeito_vida: number;
+  efeito_mana: number;
+}
+
+interface FishingRodPropertiesApi {
+  forca_linha: number;
+  controle: number;
+  recolhimento: number;
+  precisao: number;
+  estabilidade: number;
+  nivel_pesca_minimo: number;
+}
 
 interface ItemResumo {
   id: number;
@@ -10,6 +42,17 @@ interface ItemResumo {
   tipo_item: string;
   raridade: string;
   imagem_url?: string | null;
+  // Bug relatado: "ao passar o mouse não se pode ver o status do item"
+  // — playerShopService.obterPerfilPublico não trazia nenhuma dessas
+  // propriedades no include do Item (mesmo bug já corrigido uma vez no
+  // Mercado Negro, ver marketController.INCLUDE_ITEM_COM_PROPRIEDADES);
+  // sem elas aqui, não tinha NENHUM dado pra mostrar, tooltip nenhum
+  // resolveria sozinho.
+  descricao?: string | null;
+  weaponProperties?: WeaponPropertiesApi | null;
+  armorProperties?: ArmorPropertiesApi | null;
+  consumableProperties?: ConsumablePropertiesApi | null;
+  fishingRodProperties?: FishingRodPropertiesApi | null;
 }
 
 interface LojaResumo {
@@ -141,6 +184,98 @@ function IconeItem({ item }: { item: ItemResumo }) {
       {imagem ? <img src={imagem} alt={item.nome} className="h-full w-full object-contain p-1" /> : <span>📦</span>}
     </div>
   );
+}
+
+const NOME_ATRIBUTO: Record<string, string> = {
+  Forca: "Força",
+  Vitalidade: "Vitalidade",
+  Inteligencia: "Inteligência",
+  Agilidade: "Agilidade",
+  Velocidade: "Velocidade",
+};
+
+// Mesmo critério de ListaDeAtributos (ShopItem.tsx) e AtributosNoTooltip
+// (MarketClient.tsx) — tipo_item decide qual bloco mostrar, nunca só a
+// presença do campo (item com linha órfã de outra propriedade no banco
+// não pode exibir o atributo errado).
+function AtributosDoProduto({ item }: { item: ItemResumo }) {
+  if (item.tipo_item === "Arma" && item.weaponProperties) {
+    const arma = item.weaponProperties;
+    return (
+      <ul className="mt-2 space-y-0.5 border-t border-[#3a2f24]/30 pt-2 text-xs">
+        <li>
+          <span className="font-bold">Dano:</span> {arma.dano_min}–{arma.dano_max}{" "}
+          ({arma.tipo_dano === "Fisico" ? "Físico" : "Mágico"})
+        </li>
+        {arma.valor_bonus_atributo > 0 && (
+          <li>
+            <span className="font-bold">+{arma.valor_bonus_atributo}</span>{" "}
+            {NOME_ATRIBUTO[arma.bonus_atributo] ?? arma.bonus_atributo}
+          </li>
+        )}
+      </ul>
+    );
+  }
+
+  if (item.tipo_item !== "Consumivel" && item.armorProperties) {
+    const armor = item.armorProperties;
+    const bonus = (
+      [
+        ["Força", armor.bonus_forca],
+        ["Vitalidade", armor.bonus_vitalidade],
+        ["Inteligência", armor.bonus_inteligencia],
+        ["Agilidade", armor.bonus_agilidade],
+        ["Velocidade", armor.bonus_velocidade],
+      ] as const
+    ).filter(([, valor]) => valor > 0);
+    return (
+      <ul className="mt-2 space-y-0.5 border-t border-[#3a2f24]/30 pt-2 text-xs">
+        <li>
+          <span className="font-bold">Defesa:</span> {armor.defesa}
+        </li>
+        {bonus.map(([nome, valor]) => (
+          <li key={nome}>
+            <span className="font-bold">+{valor}</span> {nome}
+          </li>
+        ))}
+      </ul>
+    );
+  }
+
+  if (item.consumableProperties) {
+    const consumivel = item.consumableProperties;
+    if (consumivel.efeito_vida <= 0 && consumivel.efeito_mana <= 0) return null;
+    return (
+      <ul className="mt-2 space-y-0.5 border-t border-[#3a2f24]/30 pt-2 text-xs">
+        {consumivel.efeito_vida > 0 && (
+          <li>
+            <span className="font-bold">+{consumivel.efeito_vida}%</span> Vida
+          </li>
+        )}
+        {consumivel.efeito_mana > 0 && (
+          <li>
+            <span className="font-bold">+{consumivel.efeito_mana}%</span> Mana
+          </li>
+        )}
+      </ul>
+    );
+  }
+
+  if (item.tipo_item === "Ferramenta" && item.fishingRodProperties) {
+    const vara = item.fishingRodProperties;
+    return (
+      <ul className="mt-2 space-y-0.5 border-t border-[#3a2f24]/30 pt-2 text-xs">
+        <li><span className="font-bold">Força da linha:</span> {vara.forca_linha}</li>
+        <li><span className="font-bold">Controle:</span> {vara.controle}</li>
+        <li><span className="font-bold">Recolhimento:</span> {vara.recolhimento}</li>
+        <li><span className="font-bold">Precisão:</span> {vara.precisao}</li>
+        <li><span className="font-bold">Estabilidade:</span> {vara.estabilidade}</li>
+        {vara.nivel_pesca_minimo > 1 && <li>Nível de pesca mínimo: {vara.nivel_pesca_minimo}</li>}
+      </ul>
+    );
+  }
+
+  return null;
 }
 
 // ---------------------------------------------------------------------------
@@ -639,15 +774,26 @@ function CardProdutoCompravel({
 
   return (
     <div className="flex flex-col gap-2 rounded-lg bg-black/30 p-2">
-      <div className="flex items-center gap-2">
-        <IconeItem item={produto.item} />
-        <div className="flex-1">
-          <p className="text-sm font-semibold">{produto.item.nome}</p>
-          <p className="text-xs text-white/60">
-            {produto.quantidade_restante}x por {produto.preco_unitario} ouro cada
-          </p>
+      <ItemDescriptionTooltip
+        className="relative block cursor-help"
+        label={
+          <>
+            <p className="mb-1 font-bold">{produto.item.nome}</p>
+            <p>{produto.item.descricao?.trim() || "Sem descrição."}</p>
+            <AtributosDoProduto item={produto.item} />
+          </>
+        }
+      >
+        <div className="flex items-center gap-2">
+          <IconeItem item={produto.item} />
+          <div className="flex-1">
+            <p className="text-sm font-semibold">{produto.item.nome}</p>
+            <p className="text-xs text-white/60">
+              {produto.quantidade_restante}x por {produto.preco_unitario} ouro cada
+            </p>
+          </div>
         </div>
-      </div>
+      </ItemDescriptionTooltip>
       {!ehDonoDaLoja && (
         <div className="flex items-center gap-2">
           {!ehEquipamento && (
@@ -1034,15 +1180,26 @@ function MeuProdutoCard({ produto, aoAtualizar }: { produto: ProdutoResumo; aoAt
 
   return (
     <div className="flex flex-col gap-2 rounded-lg bg-black/30 p-2">
-      <div className="flex items-center gap-2">
-        <IconeItem item={produto.item} />
-        <div className="flex-1">
-          <p className="text-sm font-semibold">{produto.item.nome}</p>
-          <p className="text-xs text-white/60">
-            {produto.quantidade_restante}/{produto.quantidade_total} restantes
-          </p>
+      <ItemDescriptionTooltip
+        className="relative block cursor-help"
+        label={
+          <>
+            <p className="mb-1 font-bold">{produto.item.nome}</p>
+            <p>{produto.item.descricao?.trim() || "Sem descrição."}</p>
+            <AtributosDoProduto item={produto.item} />
+          </>
+        }
+      >
+        <div className="flex items-center gap-2">
+          <IconeItem item={produto.item} />
+          <div className="flex-1">
+            <p className="text-sm font-semibold">{produto.item.nome}</p>
+            <p className="text-xs text-white/60">
+              {produto.quantidade_restante}/{produto.quantidade_total} restantes
+            </p>
+          </div>
         </div>
-      </div>
+      </ItemDescriptionTooltip>
 
       {editando ? (
         <div className="flex items-center gap-2">
