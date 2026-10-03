@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { cookies } from "next/headers";
 import axiosInstance from "./axiosIntance";
 
@@ -95,22 +96,42 @@ interface CurrentCharacterResponse {
   };
 }
 
-export async function getCurrentCharacter() {
-  // Usa /characters/me: o backend identifica o personagem pelo JWT (via
-  // authMiddleware + carregarPersonagemAtual), não por um ID que este
-  // cookie carrega — o cookie characterId não é mais a fonte de
-  // identidade, só um indicador de UI de que a conta já tem personagem
-  // (ver getCurrentCharacterId/notCharacter). Se o token não existir/
-  // expirou, o backend responde 401 e caímos no catch abaixo.
+// Usa /characters/me: o backend identifica o personagem pelo JWT (via
+// authMiddleware + carregarPersonagemAtual), não por um ID que este
+// cookie carrega — o cookie characterId não é mais a fonte de
+// identidade, só um indicador de UI de que a conta já tem personagem
+// (ver getCurrentCharacterId/notCharacter). Se o token não existir/
+// expirou, o backend responde 401 e caímos no catch abaixo.
+//
+// cache() do React memoiza por requisição: getCurrentCharacter(),
+// isCurrentUserAdmin() e getCurrentAdminPermissions() liam o MESMO
+// /characters/me cada uma com sua própria chamada via axios (o dedup
+// automático do Next.js só cobre fetch() nativo) — toda entrada em
+// qualquer tela do dashboard disparava esse endpoint 3x em série
+// (DashboardLayout chama as duas primeiras, a própria página chama a
+// primeira de novo), multiplicando carga no pool de conexão do banco
+// à toa. Buscar uma vez só e todo mundo ler do mesmo resultado.
+const buscarPersonagemAtualBruto = cache(async () => {
   try {
     const response = await axiosInstance.get<CurrentCharacterResponse>(
       "/characters/me",
+      // Mesma tolerância que isCurrentUserAdmin() já tinha: 404 ("ainda
+      // não tem personagem") também carrega isAdmin/adminPermissions —
+      // sem isso aqui, um admin recém-criado perderia essa informação
+      // enquanto getCurrentCharacter() simplesmente devolve null (igual
+      // ao comportamento anterior, que caía no catch pra 404).
+      { validateStatus: (status) => status === 200 || status === 404 },
     );
-    return response.data?.data?.character ?? null;
+    return response.data?.data ?? null;
   } catch (error) {
     console.error("Erro ao buscar personagem atual:", error);
     return null;
   }
+});
+
+export async function getCurrentCharacter() {
+  const data = await buscarPersonagemAtualBruto();
+  return data?.character ?? null;
 }
 
 export async function getCurrentCharacterId() {
@@ -127,20 +148,8 @@ export async function getCurrentCharacterId() {
  * que todo mundo já consome.
  */
 export async function isCurrentUserAdmin() {
-  try {
-    // 404 ("ainda não tem personagem") também carrega isAdmin desde o
-    // fix do Modo Manutenção — sem tolerar esse status aqui, o axios
-    // lançava e o catch abaixo devolvia false sem nunca ler o corpo,
-    // deixando um admin recém-criado (sem personagem ainda) preso na
-    // tela de manutenção igual um jogador comum.
-    const response = await axiosInstance.get<CurrentCharacterResponse>(
-      "/characters/me",
-      { validateStatus: (status) => status === 200 || status === 404 },
-    );
-    return Boolean(response.data?.data?.isAdmin);
-  } catch {
-    return false;
-  }
+  const data = await buscarPersonagemAtualBruto();
+  return Boolean(data?.isAdmin);
 }
 
 /**
@@ -167,12 +176,6 @@ export async function obterStatusManutencao(): Promise<{ enabled: boolean; messa
  * que relê o banco a cada request). Vazio pra quem não é isAdmin.
  */
 export async function getCurrentAdminPermissions(): Promise<string[]> {
-  try {
-    const response = await axiosInstance.get<CurrentCharacterResponse>(
-      "/characters/me",
-    );
-    return response.data?.data?.adminPermissions ?? [];
-  } catch {
-    return [];
-  }
+  const data = await buscarPersonagemAtualBruto();
+  return data?.adminPermissions ?? [];
 }
