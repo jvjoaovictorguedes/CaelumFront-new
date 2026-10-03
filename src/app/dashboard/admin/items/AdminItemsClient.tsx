@@ -10,13 +10,24 @@ import {
   criarItemAdmin,
   desativarItemAdmin,
   duplicarItemAdmin,
+  listarClassesPublicas,
   listarItensAdmin,
+  listarPowersAdmin,
+  listarRacasPublicas,
   listarWeaponStatusEffectsAdmin,
   mensagemDeErroAdmin,
+  obterPowerBookAdmin,
   reativarItemAdmin,
+  removerPowerBookAdmin,
   removerWeaponStatusEffectAdmin,
+  salvarPowerBookAdmin,
   type AdminItemApi,
+  type ClassPublicaApi,
   type PayloadItemAdmin,
+  type PayloadPowerBookAdmin,
+  type PowerApi,
+  type PowerBookApi,
+  type RacePublicaApi,
   type StatusCatalogEntryApi,
   type WeaponStatusEffectApi,
 } from "@/lib/api/admin";
@@ -33,6 +44,7 @@ function WeaponStatusEffectsEditor({ idItem, catalogo }: { idItem: number; catal
   const [chancePct, setChancePct] = useState(10);
   const [duracao, setDuracao] = useState(1);
   const [potenciaBase, setPotenciaBase] = useState(0);
+  const [percentualVidaMaxima, setPercentualVidaMaxima] = useState("");
   const [adicionando, setAdicionando] = useState(false);
 
   const carregar = useCallback(async () => {
@@ -61,8 +73,10 @@ function WeaponStatusEffectsEditor({ idItem, catalogo }: { idItem: number; catal
         chance_ppm: Math.round((chancePct / 100) * 1_000_000),
         duration_turns: duracao,
         potency_base: potenciaBase,
+        percentual_vida_maxima: percentualVidaMaxima === "" ? null : Number(percentualVidaMaxima),
       });
       setPotenciaBase(0);
+      setPercentualVidaMaxima("");
       await carregar();
     } catch (error) {
       setErro(mensagemDeErroAdmin(error, "Não foi possível adicionar o efeito."));
@@ -102,7 +116,11 @@ function WeaponStatusEffectsEditor({ idItem, catalogo }: { idItem: number; catal
           <div key={efeito.id} className="flex items-center justify-between rounded-lg bg-black/20 px-2 py-1 text-xs">
             <span className={efeito.ativo ? "" : "text-white/40"}>
               {catalogo.find((c) => c.status_key === efeito.status_key)?.nomeUi ?? efeito.status_key} · {(efeito.chance_ppm / 10000).toFixed(1)}% · {efeito.duration_turns} turno(s)
-              {efeito.potency_base ? ` · potência ${efeito.potency_base}` : ""}
+              {efeito.percentual_vida_maxima != null
+                ? ` · ${efeito.percentual_vida_maxima}% da Vida Máxima`
+                : efeito.potency_base
+                  ? ` · potência ${efeito.potency_base}`
+                  : ""}
             </span>
             <div className="flex gap-2">
               <button type="button" onClick={() => alternarAtivo(efeito)} className="text-white/70 hover:underline">
@@ -139,11 +157,206 @@ function WeaponStatusEffectsEditor({ idItem, catalogo }: { idItem: number; catal
           Potência base
           <input type="number" step="0.1" value={potenciaBase} onChange={(e) => setPotenciaBase(Number(e.target.value))} className="w-20 rounded-lg border border-white/20 bg-black/30 px-2 py-1 text-xs" />
         </label>
+        <label className="flex flex-col gap-1 text-[10px] text-white/60" title="Habilidades V2.0 — quando preenchido, o tick vira essa % da Vida Máxima do alvo (ignora Potência base legado).">
+          % Vida Máx. (opcional)
+          <input type="number" step="0.1" min={0} max={100} placeholder="—" value={percentualVidaMaxima} onChange={(e) => setPercentualVidaMaxima(e.target.value)} className="w-20 rounded-lg border border-white/20 bg-black/30 px-2 py-1 text-xs" />
+        </label>
         <button type="button" onClick={adicionar} disabled={adicionando} className="rounded-lg bg-[#BC8418] px-3 py-1 text-xs font-bold text-black hover:bg-[#a5710f] disabled:opacity-50">
           + Efeito
         </button>
       </div>
       <p className="text-[10px] text-white/40">Dispara só em ataque básico (trigger fixo — motor de combate hoje não suporta outro gatilho).</p>
+    </fieldset>
+  );
+}
+
+// Habilidades V2.0 §13 — Livro de Habilidade: configura qual Power este
+// item concede (permanentemente, via CharacterAbilities) e os
+// requisitos opcionais. Um item = uma linha (PUT faz upsert no backend).
+function PowerBookEditor({ idItem }: { idItem: number }) {
+  const [powerBook, setPowerBook] = useState<PowerBookApi | null>(null);
+  const [powers, setPowers] = useState<PowerApi[]>([]);
+  const [classes, setClasses] = useState<ClassPublicaApi[]>([]);
+  const [racas, setRacas] = useState<RacePublicaApi[]>([]);
+  const [carregando, setCarregando] = useState(true);
+  const [salvando, setSalvando] = useState(false);
+  const [erro, setErro] = useState("");
+
+  const [idPower, setIdPower] = useState("");
+  const [nivelMinimo, setNivelMinimo] = useState("");
+  const [idClasse, setIdClasse] = useState("");
+  const [idRaca, setIdRaca] = useState("");
+  const [naturezaMagica, setNaturezaMagica] = useState("");
+  const [idPowerPrerequisito, setIdPowerPrerequisito] = useState("");
+  const [nivelPowerPrerequisito, setNivelPowerPrerequisito] = useState("");
+
+  const carregar = useCallback(async () => {
+    setCarregando(true);
+    setErro("");
+    try {
+      const [atual, listaPowers, listaClasses, listaRacas] = await Promise.all([
+        obterPowerBookAdmin(idItem),
+        listarPowersAdmin(),
+        listarClassesPublicas(),
+        listarRacasPublicas(),
+      ]);
+      setPowerBook(atual);
+      setPowers(listaPowers);
+      setClasses(listaClasses);
+      setRacas(listaRacas);
+      setIdPower(atual ? String(atual.id_power) : "");
+      setNivelMinimo(atual?.nivel_minimo != null ? String(atual.nivel_minimo) : "");
+      setIdClasse(atual?.id_classe != null ? String(atual.id_classe) : "");
+      setIdRaca(atual?.id_raca != null ? String(atual.id_raca) : "");
+      setNaturezaMagica(atual?.natureza_magica ?? "");
+      setIdPowerPrerequisito(atual?.id_power_prerequisito != null ? String(atual.id_power_prerequisito) : "");
+      setNivelPowerPrerequisito(atual?.nivel_power_prerequisito != null ? String(atual.nivel_power_prerequisito) : "");
+    } catch (error) {
+      setErro(mensagemDeErroAdmin(error, "Não foi possível carregar o Livro de Habilidade."));
+    } finally {
+      setCarregando(false);
+    }
+  }, [idItem]);
+
+  useEffect(() => {
+    carregar();
+  }, [carregar]);
+
+  async function salvar() {
+    if (!idPower) {
+      setErro("Escolha qual Power este livro concede.");
+      return;
+    }
+    setSalvando(true);
+    setErro("");
+    try {
+      const payload: PayloadPowerBookAdmin = {
+        id_power: Number(idPower),
+        nivel_minimo: nivelMinimo === "" ? null : Number(nivelMinimo),
+        id_classe: idClasse === "" ? null : Number(idClasse),
+        id_raca: idRaca === "" ? null : Number(idRaca),
+        natureza_magica: (naturezaMagica || null) as PayloadPowerBookAdmin["natureza_magica"],
+        id_power_prerequisito: idPowerPrerequisito === "" ? null : Number(idPowerPrerequisito),
+        nivel_power_prerequisito: nivelPowerPrerequisito === "" ? null : Number(nivelPowerPrerequisito),
+      };
+      const salvo = await salvarPowerBookAdmin(idItem, payload);
+      setPowerBook(salvo);
+    } catch (error) {
+      setErro(mensagemDeErroAdmin(error, "Não foi possível salvar o Livro de Habilidade."));
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  async function remover() {
+    if (!powerBook) return;
+    setSalvando(true);
+    setErro("");
+    try {
+      await removerPowerBookAdmin(idItem);
+      await carregar();
+    } catch (error) {
+      setErro(mensagemDeErroAdmin(error, "Não foi possível remover o Livro de Habilidade."));
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  return (
+    <fieldset className="flex flex-col gap-2 rounded-lg border border-white/10 p-3">
+      <legend className="px-1 text-xs font-bold uppercase text-[#F3B43F]">Livro de Habilidade (concede uma Power)</legend>
+      {erro && <p className="rounded-lg bg-black/50 px-2 py-1 text-xs text-red-400">{erro}</p>}
+      {carregando ? (
+        <p className="text-xs text-white/50">Carregando...</p>
+      ) : (
+        <div className="flex flex-col gap-2">
+          <label className="flex flex-col gap-1 text-xs">
+            Power concedida
+            <select value={idPower} onChange={(e) => setIdPower(e.target.value)} className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm">
+              <option value="">Selecione...</option>
+              {powers.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.nome}
+                </option>
+              ))}
+            </select>
+          </label>
+          <p className="text-[10px] text-white/40">Requisitos abaixo são todos opcionais — em branco = sem exigência naquele campo.</p>
+          <div className="flex flex-wrap items-end gap-2">
+            <label className="flex flex-col gap-1 text-[10px] text-white/60">
+              Nível mínimo
+              <input type="number" min={1} placeholder="—" value={nivelMinimo} onChange={(e) => setNivelMinimo(e.target.value)} className="w-20 rounded-lg border border-white/20 bg-black/30 px-2 py-1 text-xs" />
+            </label>
+            <label className="flex flex-col gap-1 text-[10px] text-white/60">
+              Classe
+              <select value={idClasse} onChange={(e) => setIdClasse(e.target.value)} className="rounded-lg border border-white/20 bg-black/30 px-2 py-1 text-xs">
+                <option value="">Qualquer</option>
+                {classes.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.nome}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="flex flex-col gap-1 text-[10px] text-white/60">
+              Raça
+              <select value={idRaca} onChange={(e) => setIdRaca(e.target.value)} className="rounded-lg border border-white/20 bg-black/30 px-2 py-1 text-xs">
+                <option value="">Qualquer</option>
+                {racas.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.nome_masculino}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="flex flex-col gap-1 text-[10px] text-white/60">
+              Natureza Mágica
+              <select value={naturezaMagica} onChange={(e) => setNaturezaMagica(e.target.value)} className="rounded-lg border border-white/20 bg-black/30 px-2 py-1 text-xs">
+                <option value="">Qualquer</option>
+                {["Fogo", "Agua", "Terra", "Ar", "Luz", "Escuridao", "Raio", "Yin&Yang"].map((n) => (
+                  <option key={n} value={n}>
+                    {n}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <div className="flex flex-wrap items-end gap-2">
+            <label className="flex flex-col gap-1 text-[10px] text-white/60">
+              Power pré-requisito
+              <select value={idPowerPrerequisito} onChange={(e) => setIdPowerPrerequisito(e.target.value)} className="rounded-lg border border-white/20 bg-black/30 px-2 py-1 text-xs">
+                <option value="">Nenhuma</option>
+                {powers.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.nome}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="flex flex-col gap-1 text-[10px] text-white/60">
+              Nível da pré-requisito
+              <input
+                type="number"
+                min={1}
+                placeholder="—"
+                value={nivelPowerPrerequisito}
+                onChange={(e) => setNivelPowerPrerequisito(e.target.value)}
+                className="w-20 rounded-lg border border-white/20 bg-black/30 px-2 py-1 text-xs"
+              />
+            </label>
+          </div>
+          <div className="flex gap-2 pt-1">
+            <button type="button" onClick={salvar} disabled={salvando} className="rounded-lg bg-[#BC8418] px-3 py-1 text-xs font-bold text-black hover:bg-[#a5710f] disabled:opacity-50">
+              {powerBook ? "Atualizar" : "Salvar"}
+            </button>
+            {powerBook && (
+              <button type="button" onClick={remover} disabled={salvando} className="rounded-lg border border-red-400/50 px-3 py-1 text-xs font-bold text-red-400 hover:bg-red-400/10 disabled:opacity-50">
+                Remover vínculo
+              </button>
+            )}
+          </div>
+        </div>
+      )}
     </fieldset>
   );
 }
@@ -162,6 +375,7 @@ const TIPOS_ITEM = [
   "Espolio",
   "Ferramenta",
   "Receita",
+  "LivroHabilidade",
 ];
 const RARIDADES = ["Comum", "Incomum", "Raro", "Epico", "Lendario", "Mitico"];
 const TIPOS_DANO = ["Fisico", "Magico"];
@@ -796,6 +1010,10 @@ export default function AdminItemsClient() {
 
             {TIPOS_COM_ARMA.includes(tipoAtual) && editandoId && (
               <WeaponStatusEffectsEditor idItem={editandoId} catalogo={catalogoStatus} />
+            )}
+
+            {tipoAtual === "LivroHabilidade" && editandoId && (
+              <PowerBookEditor idItem={editandoId} />
             )}
 
             {TIPOS_COM_ARMADURA.includes(tipoAtual) && (
