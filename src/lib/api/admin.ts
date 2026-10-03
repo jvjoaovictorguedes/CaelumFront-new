@@ -4238,6 +4238,7 @@ export interface ResultadoSimuladorClassesApi {
   caminho_estagio1: { id: number; nome: string } | null;
   caminho_estagio2: { id: number; nome: string } | null;
   bonus_total: { forca: number; vitalidade: number; agilidade: number; inteligencia: number; velocidade: number; defesa: number };
+  efeitos_de_modificador: { effect_key: string; valor: number; caminho: string }[];
   habilidades_concedidas: { id_power: number; nome: string | null }[];
 }
 
