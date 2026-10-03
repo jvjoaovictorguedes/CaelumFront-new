@@ -89,11 +89,16 @@ export default function CharacterAttributes({
   });
 
   const [pontos, setPontos] = useState(character.pontos_distribuir ?? 0);
+  // Incremento aplicado a cada clique no "+" — padrão 1, mas o jogador
+  // pode escolher um atalho maior (ou digitar um valor) pra não precisar
+  // clicar centenas de vezes com pontos de reset/evolução acumulados.
+  const [incremento, setIncremento] = useState(1);
 
   const [carregando, setCarregando] = useState(false);
 
   async function adicionarPonto(campo: keyof typeof atributos) {
-    if (carregando || pontos <= 0) return;
+    const quantidade = Math.min(Math.max(1, incremento), pontos);
+    if (carregando || pontos <= 0 || quantidade <= 0) return;
 
     setCarregando(true);
 
@@ -102,7 +107,7 @@ export default function CharacterAttributes({
         `/attributes/${character.id}`,
         {
           atributo: campo,
-          quantidade: 1,
+          quantidade,
         },
       );
 
@@ -181,8 +186,48 @@ export default function CharacterAttributes({
     }
   }
 
+  const ATALHOS_INCREMENTO = [1, 10, 50, 100];
+
   return (
     <div className="grid grid-cols-1 gap-3 rounded-2xl border border-black/10 bg-[#3a2f24] p-5 shadow-lg sm:grid-cols-2">
+      <div className="sm:col-span-2 flex flex-wrap items-center gap-2 rounded-lg bg-[#F3B43F]/30 p-3">
+        <span className="text-sm font-bold text-white/80">Cada &ldquo;+&rdquo; adiciona:</span>
+        {ATALHOS_INCREMENTO.map((valor) => (
+          <button
+            key={valor}
+            type="button"
+            onClick={() => setIncremento(valor)}
+            className={`rounded-lg px-3 py-1 text-sm font-bold transition ${
+              incremento === valor
+                ? "bg-[#BC8418] text-black"
+                : "bg-black/20 text-white/70 hover:bg-black/30"
+            }`}
+          >
+            +{valor}
+          </button>
+        ))}
+        <button
+          type="button"
+          onClick={() => setIncremento(Math.max(1, pontos))}
+          className={`rounded-lg px-3 py-1 text-sm font-bold transition ${
+            incremento === Math.max(1, pontos) && pontos > 0
+              ? "bg-[#BC8418] text-black"
+              : "bg-black/20 text-white/70 hover:bg-black/30"
+          }`}
+        >
+          Tudo ({pontos})
+        </button>
+        <input
+          type="number"
+          min={1}
+          max={Math.max(1, pontos)}
+          value={incremento}
+          onChange={(e) => setIncremento(Math.max(1, Number(e.target.value) || 1))}
+          className="w-20 rounded-lg bg-black/30 px-2 py-1 text-sm text-white"
+          aria-label="Quantidade personalizada por clique"
+        />
+      </div>
+
       {ATRIBUTOS.map(({ label, campo, descricao }) => (
         <div
           key={campo}
@@ -205,9 +250,10 @@ export default function CharacterAttributes({
             type="button"
             onClick={() => adicionarPonto(campo)}
             disabled={carregando || pontos <= 0}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#BC8418] text-xl font-bold text-black transition hover:bg-[#a5710f] disabled:cursor-not-allowed disabled:opacity-40"
+            title={`Adicionar ${Math.min(Math.max(1, incremento), Math.max(1, pontos))} ponto(s)`}
+            className="flex h-9 min-w-9 shrink-0 items-center justify-center rounded-lg bg-[#BC8418] px-2 text-base font-bold text-black transition hover:bg-[#a5710f] disabled:cursor-not-allowed disabled:opacity-40"
           >
-            +
+            +{Math.min(Math.max(1, incremento), Math.max(1, pontos))}
           </button>
         </div>
       ))}
