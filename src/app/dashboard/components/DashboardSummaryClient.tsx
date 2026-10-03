@@ -133,6 +133,7 @@ export default function DashboardSummaryClient() {
               <Link
                 key={item.key}
                 href={item.href}
+                prefetch={false}
                 className={`rounded-xl border p-4 text-white shadow-lg transition hover:-translate-y-0.5 ${PRIORITY_STYLES[item.priority]}`}
               >
                 <p className="font-bold">{item.title}</p>
@@ -156,6 +157,7 @@ export default function DashboardSummaryClient() {
               <Link
                 key={atividade.key}
                 href={atividade.href}
+                prefetch={false}
                 className="rounded-xl border border-white/10 bg-[#292018]/60 p-4 text-white shadow-lg transition hover:-translate-y-0.5"
               >
                 <p className="font-bold">{atividade.title}</p>
@@ -187,6 +189,7 @@ function Card({ titulo, href, children }: { titulo: string; href: string; childr
   return (
     <Link
       href={href}
+      prefetch={false}
       className="flex flex-col gap-2 rounded-xl border border-[#F3B43F]/40 bg-[#292018]/60 p-4 text-white shadow-lg transition hover:-translate-y-0.5"
     >
       <p className="font-imFeel text-lg text-[#F3B43F]">{titulo}</p>
