@@ -7,26 +7,43 @@ import {
   buscarDetalheMonstroAdmin,
   criarAparicaoAdmin,
   excluirLootAdmin,
+  listarAbilitiesMonstroAdmin,
   listarZonasAdmin,
   mensagemDeErroAdmin,
+  sincronizarAbilitiesMonstroAdmin,
   sincronizarLootMonstroAdmin,
   sincronizarStatusEffectsMonstroAdmin,
   CHAVES_STATUS_EFFECT,
   NOME_STATUS_EFFECT,
+  AI_PROFILES,
+  NOME_AI_PROFILE,
+  TARGET_POLICIES_MONSTRO,
+  NOME_TARGET_POLICY_MONSTRO,
+  CONDITION_KEYS_MONSTRO,
+  NOME_CONDITION_KEY_MONSTRO,
+  CONDITION_CONFIG_SCHEMA,
   type AdventureMonsterApi,
   type AdventureMonsterDetailApi,
   type AdventureZoneApi,
+  type AiProfile,
+  type ConditionKeyMonstro,
   type LootMonstroItemPayload,
+  type MonsterAbilityApi,
+  type MonsterAbilityConditionApi,
   type MonsterStatusEffectApi,
   type StatusEffectKey,
+  type TargetPolicyMonstro,
 } from "@/lib/api/admin";
 import { ItemSelect, formatarItemComId, useItensParaSelecaoAdmin } from "@/components/admin/ItemPicker";
+import { PowerSelect, usePowersParaSelecaoAdmin } from "@/components/admin/PowerPicker";
 import { CombatPowerCard } from "./CombatPowerCard";
 
 const CATEGORIAS_LOOT = ["Principal", "Secundario", "Especial"] as const;
 
 type LinhaLoot = LootMonstroItemPayload & { chaveLocal: string; nomeItem?: string };
 type LinhaStatusEffect = MonsterStatusEffectApi & { chaveLocal: string };
+type LinhaCondicao = MonsterAbilityConditionApi & { chaveLocal: string };
+type LinhaHabilidade = Omit<MonsterAbilityApi, "conditions"> & { chaveLocal: string; conditions: LinhaCondicao[] };
 
 function novaChave() {
   return `novo-${Math.random().toString(36).slice(2)}`;
@@ -62,6 +79,7 @@ export function MonsterEditor({
   const [form, setForm] = useState<Partial<AdventureMonsterApi>>({});
   const [drops, setDrops] = useState<LinhaLoot[]>([]);
   const [efeitosStatus, setEfeitosStatus] = useState<LinhaStatusEffect[]>([]);
+  const [habilidades, setHabilidades] = useState<LinhaHabilidade[]>([]);
   const [zonasCatalogo, setZonasCatalogo] = useState<AdventureZoneApi[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
@@ -70,12 +88,19 @@ export function MonsterEditor({
   const [idZonaNova, setIdZonaNova] = useState<number | "">("");
   const [salvandoZona, setSalvandoZona] = useState(false);
   const { itens: itensDisponiveis } = useItensParaSelecaoAdmin();
+  const { powers: powersCatalogo } = usePowersParaSelecaoAdmin();
+  // §4.1/§4.5 — só Power usage_scope MONSTER/BOTH pode virar
+  // MonsterAbility, e só Ativo entra na seleção de ação de verdade
+  // (Passiva vinculada aqui nunca produz efeito nesta V1 — ver nota em
+  // monsterCombatAdapter.js) — filtrado aqui pra não oferecer no picker
+  // uma Power que o admin ligaria sem efeito nenhum.
+  const powersParaHabilidade = powersCatalogo.filter((p) => (p.usage_scope === "MONSTER" || p.usage_scope === "BOTH") && p.tipo_poder === "Ativo");
 
   const carregar = useCallback(async () => {
     setCarregando(true);
     setErro("");
     try {
-      const [d, zonas] = await Promise.all([buscarDetalheMonstroAdmin(idMonstro), listarZonasAdmin()]);
+      const [d, zonas, abilities] = await Promise.all([buscarDetalheMonstroAdmin(idMonstro), listarZonasAdmin(), listarAbilitiesMonstroAdmin(idMonstro)]);
       setDetalhe(d);
       setZonasCatalogo(zonas);
       setForm(d.monstro);
@@ -102,6 +127,13 @@ export function MonsterEditor({
           potency_base: e.potency_base,
           percentual_vida_maxima: e.percentual_vida_maxima ?? null,
           ativo: e.ativo,
+        })),
+      );
+      setHabilidades(
+        abilities.map((a) => ({
+          ...a,
+          chaveLocal: `existente-${a.id}`,
+          conditions: a.conditions.map((c) => ({ ...c, chaveLocal: `existente-${c.id}` })),
         })),
       );
       setSujo(false);
@@ -190,6 +222,79 @@ export function MonsterEditor({
     marcarSujo();
   }
 
+  // IA de Combate PvE & Habilidades de Monstros V1 (§4.2/§10.1) — mesmo
+  // padrão array-diff de Drops/Status effects acima, sincronizado inteiro
+  // só no "Salvar monstro" (o PUT de abilities substitui a lista toda).
+  const idsPowerJaUsados = new Set(habilidades.map((h) => h.id_power));
+  const powersAindaDisponiveis = powersParaHabilidade.filter((p) => !idsPowerJaUsados.has(p.id));
+
+  function adicionarHabilidade() {
+    const power = powersAindaDisponiveis[0];
+    if (!power) return;
+    setHabilidades((lista) => [
+      ...lista,
+      {
+        chaveLocal: novaChave(),
+        id_power: power.id,
+        prioridade_base: 0,
+        peso_uso: 1,
+        cooldown_override: null,
+        custo_mana_override: null,
+        target_policy: "PLAYER",
+        ativo: true,
+        ordem_admin: null,
+        conditions: [],
+        power: { id: power.id, nome: power.nome, tipo_poder: power.tipo_poder },
+      },
+    ]);
+    marcarSujo();
+  }
+
+  function atualizarHabilidade(chave: string, patch: Partial<LinhaHabilidade>) {
+    setHabilidades((lista) => lista.map((h) => (h.chaveLocal === chave ? { ...h, ...patch } : h)));
+    marcarSujo();
+  }
+
+  function removerHabilidade(chave: string) {
+    setHabilidades((lista) => lista.filter((h) => h.chaveLocal !== chave));
+    marcarSujo();
+  }
+
+  function adicionarCondicao(chaveHabilidade: string) {
+    setHabilidades((lista) =>
+      lista.map((h) =>
+        h.chaveLocal === chaveHabilidade
+          ? {
+              ...h,
+              conditions: [
+                ...h.conditions,
+                { chaveLocal: novaChave(), condition_key: "SELF_HP_BELOW_PCT", config: { thresholdPct: 30 }, score_bonus: 10, required: false, ativo: true },
+              ],
+            }
+          : h,
+      ),
+    );
+    marcarSujo();
+  }
+
+  function atualizarCondicao(chaveHabilidade: string, chaveCondicao: string, patch: Partial<LinhaCondicao>) {
+    setHabilidades((lista) =>
+      lista.map((h) =>
+        h.chaveLocal === chaveHabilidade
+          ? { ...h, conditions: h.conditions.map((c) => (c.chaveLocal === chaveCondicao ? { ...c, ...patch } : c)) }
+          : h,
+      ),
+    );
+    marcarSujo();
+  }
+
+  function removerCondicao(chaveHabilidade: string, chaveCondicao: string) {
+    setHabilidades((lista) =>
+      lista.map((h) => (h.chaveLocal === chaveHabilidade ? { ...h, conditions: h.conditions.filter((c) => c.chaveLocal !== chaveCondicao) } : h)),
+    );
+    marcarSujo();
+  }
+
   const zonasDisponiveis = (zonasCatalogo ?? []).filter((z) => !detalhe?.zonas.some((v) => v.id_area === z.id));
 
   // Só atualiza `detalhe.zonas` (nunca form/drops/sujo) — recarregar o
@@ -245,6 +350,13 @@ export function MonsterEditor({
       await sincronizarStatusEffectsMonstroAdmin(
         idMonstro,
         efeitosStatus.map(({ chaveLocal: _chaveLocal, ...resto }) => resto),
+      );
+      await sincronizarAbilitiesMonstroAdmin(
+        idMonstro,
+        habilidades.map(({ chaveLocal: _chaveLocal, power: _power, capabilities: _capabilities, conditions, ...resto }) => ({
+          ...resto,
+          conditions: conditions.map(({ chaveLocal: _chaveLocalCondicao, ...restoCondicao }) => restoCondicao),
+        })),
       );
       onSalvo();
     } catch (error) {
@@ -326,6 +438,23 @@ export function MonsterEditor({
                   onChange={(e) => atualizarCampo("disponivel_emboscada", e.target.checked)}
                 />
                 Pode aparecer na Emboscada da Expedição (Mineração/Silvicultura/Exploração)
+              </label>
+              <label className="mt-1 flex flex-col gap-1 text-xs">
+                Perfil de IA de combate
+                <select
+                  value={form.ai_profile ?? "BASIC"}
+                  onChange={(e) => atualizarCampo("ai_profile", e.target.value as AiProfile)}
+                  className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm"
+                >
+                  {AI_PROFILES.map((perfil) => (
+                    <option key={perfil} value={perfil}>
+                      {NOME_AI_PROFILE[perfil]}
+                    </option>
+                  ))}
+                </select>
+                <span className="text-[10px] text-white/40">
+                  Sem nenhuma Habilidade cadastrada abaixo, o monstro ataca normal independente do perfil escolhido.
+                </span>
               </label>
             </section>
 
@@ -541,6 +670,191 @@ export function MonsterEditor({
               </button>
               {!chavesStatusDisponiveis.length && (
                 <span className="text-[10px] text-white/40">Já configurado com todos os status existentes.</span>
+              )}
+            </section>
+
+            <section className="flex flex-col gap-3 rounded-xl border border-white/10 bg-black/20 p-3">
+              <div>
+                <p className="text-xs font-bold uppercase text-white/50">Habilidades de combate (IA)</p>
+                <p className="mt-0.5 text-[10px] text-white/40">
+                  Opt-in: sem nenhuma linha aqui, o monstro só usa ataque básico, qualquer que seja o Perfil de IA
+                  escolhido acima. Só Powers com &quot;Quem pode usar&quot; = Monstro/Personagem e monstro, e do tipo
+                  Ativo, aparecem na busca (configurável em Habilidades → Gerenciar).
+                </p>
+              </div>
+              <div className="flex flex-col gap-3">
+                {habilidades.map((hab) => (
+                  <div key={hab.chaveLocal} className={`rounded-lg border p-2.5 ${!hab.ativo ? "border-white/5 opacity-50" : "border-white/10"}`}>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <div className="min-w-[180px] flex-1">
+                        <span className="text-[10px] text-white/50">Power</span>
+                        <p className="text-sm font-bold text-[#F3B43F]">
+                          {hab.power?.nome ?? formatarItemComId("Power", hab.id_power)}
+                        </p>
+                        {hab.capabilities && hab.capabilities.length > 0 && (
+                          <p className="text-[10px] text-white/40">{hab.capabilities.join(", ")}</p>
+                        )}
+                      </div>
+                      <label className="flex items-center gap-1 text-xs text-white/70">
+                        <input type="checkbox" checked={hab.ativo} onChange={(e) => atualizarHabilidade(hab.chaveLocal, { ativo: e.target.checked })} />
+                        Ativo
+                      </label>
+                      <button type="button" onClick={() => removerHabilidade(hab.chaveLocal)} className="text-xs text-red-400 hover:underline">
+                        Excluir
+                      </button>
+                    </div>
+
+                    <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                      <label className="flex flex-col gap-1 text-[10px] text-white/60">
+                        Política de alvo
+                        <select
+                          value={hab.target_policy}
+                          onChange={(e) => atualizarHabilidade(hab.chaveLocal, { target_policy: e.target.value as TargetPolicyMonstro })}
+                          className="rounded border border-white/20 bg-black/30 px-1 py-1 text-xs"
+                        >
+                          {TARGET_POLICIES_MONSTRO.map((t) => (
+                            <option key={t} value={t}>
+                              {NOME_TARGET_POLICY_MONSTRO[t]}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className="flex flex-col gap-1 text-[10px] text-white/60">
+                        Prioridade base
+                        <input
+                          type="number"
+                          value={hab.prioridade_base}
+                          onChange={(e) => atualizarHabilidade(hab.chaveLocal, { prioridade_base: Number(e.target.value) })}
+                          className="rounded border border-white/20 bg-black/30 px-1 py-1 text-xs"
+                        />
+                      </label>
+                      <label className="flex flex-col gap-1 text-[10px] text-white/60">
+                        Peso de uso (desempate)
+                        <input
+                          type="number"
+                          min={1}
+                          value={hab.peso_uso}
+                          onChange={(e) => atualizarHabilidade(hab.chaveLocal, { peso_uso: Number(e.target.value) })}
+                          className="rounded border border-white/20 bg-black/30 px-1 py-1 text-xs"
+                        />
+                      </label>
+                      <label className="flex flex-col gap-1 text-[10px] text-white/60">
+                        Cooldown (vazio = do Power)
+                        <input
+                          type="number"
+                          min={0}
+                          placeholder="Do Power"
+                          value={hab.cooldown_override ?? ""}
+                          onChange={(e) => atualizarHabilidade(hab.chaveLocal, { cooldown_override: e.target.value === "" ? null : Number(e.target.value) })}
+                          className="rounded border border-white/20 bg-black/30 px-1 py-1 text-xs"
+                        />
+                      </label>
+                    </div>
+
+                    <div className="mt-2">
+                      <p className="mb-1 text-[10px] font-bold uppercase text-white/50">
+                        Condições (perfil Tático/Chefe pontuam por isso — sem nenhuma, só a Prioridade base decide)
+                      </p>
+                      <div className="flex flex-col gap-1.5">
+                        {hab.conditions.map((cond) => (
+                          <div key={cond.chaveLocal} className="flex flex-wrap items-center gap-1.5 rounded border border-white/10 bg-black/20 p-1.5">
+                            <select
+                              value={cond.condition_key}
+                              onChange={(e) => {
+                                const novaChaveCondicao = e.target.value as ConditionKeyMonstro;
+                                atualizarCondicao(hab.chaveLocal, cond.chaveLocal, { condition_key: novaChaveCondicao, config: {} });
+                              }}
+                              className="rounded border border-white/20 bg-black/30 px-1 py-1 text-[11px]"
+                            >
+                              {CONDITION_KEYS_MONSTRO.map((k) => (
+                                <option key={k} value={k}>
+                                  {NOME_CONDITION_KEY_MONSTRO[k]}
+                                </option>
+                              ))}
+                            </select>
+                            {CONDITION_CONFIG_SCHEMA[cond.condition_key].map((campo) => (
+                              <input
+                                key={campo}
+                                type={["thresholdPct", "turn", "abilityId"].includes(campo) ? "number" : "text"}
+                                placeholder={campo}
+                                value={cond.config[campo] ?? ""}
+                                onChange={(e) => {
+                                  const valorBruto = e.target.value;
+                                  const valor = ["thresholdPct", "turn", "abilityId"].includes(campo) ? (valorBruto === "" ? "" : Number(valorBruto)) : valorBruto;
+                                  atualizarCondicao(hab.chaveLocal, cond.chaveLocal, { config: { ...cond.config, [campo]: valor } });
+                                }}
+                                className="w-24 rounded border border-white/20 bg-black/30 px-1 py-1 text-[11px]"
+                              />
+                            ))}
+                            <label className="flex items-center gap-1 text-[10px] text-white/60">
+                              Bônus score
+                              <input
+                                type="number"
+                                value={cond.score_bonus}
+                                onChange={(e) => atualizarCondicao(hab.chaveLocal, cond.chaveLocal, { score_bonus: Number(e.target.value) })}
+                                className="w-14 rounded border border-white/20 bg-black/30 px-1 py-1 text-[11px]"
+                              />
+                            </label>
+                            <label className="flex items-center gap-1 text-[10px] text-white/60" title="Marcada: a habilidade fica inelegível se essa condição não for satisfeita. Desmarcada: só soma o bônus de score quando satisfeita.">
+                              <input type="checkbox" checked={cond.required} onChange={(e) => atualizarCondicao(hab.chaveLocal, cond.chaveLocal, { required: e.target.checked })} />
+                              Obrigatória
+                            </label>
+                            <button type="button" onClick={() => removerCondicao(hab.chaveLocal, cond.chaveLocal)} className="text-[10px] text-red-400 hover:underline">
+                              Excluir
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                      <button type="button" onClick={() => adicionarCondicao(hab.chaveLocal)} className="mt-1.5 text-[10px] font-bold text-[#F3B43F] hover:underline">
+                        + Adicionar condição
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                {habilidades.length === 0 && <p className="text-xs text-white/40">Nenhuma habilidade cadastrada — monstro ataca normal.</p>}
+              </div>
+              <div className="flex items-center gap-2">
+                <PowerSelect
+                  powers={powersAindaDisponiveis}
+                  value=""
+                  onChange={(id) => {
+                    if (id === "") return;
+                    const power = powersAindaDisponiveis.find((p) => p.id === id);
+                    if (!power) return;
+                    setHabilidades((lista) => [
+                      ...lista,
+                      {
+                        chaveLocal: novaChave(),
+                        id_power: power.id,
+                        prioridade_base: 0,
+                        peso_uso: 1,
+                        cooldown_override: null,
+                        custo_mana_override: null,
+                        target_policy: "PLAYER",
+                        ativo: true,
+                        ordem_admin: null,
+                        conditions: [],
+                        power: { id: power.id, nome: power.nome, tipo_poder: power.tipo_poder },
+                      },
+                    ]);
+                    marcarSujo();
+                  }}
+                  placeholderVazio="Buscar Power MONSTER/BOTH por ID ou nome..."
+                />
+              </div>
+              <button
+                type="button"
+                onClick={adicionarHabilidade}
+                disabled={!powersAindaDisponiveis.length}
+                className="self-start rounded-lg border border-[#F3B43F]/40 px-3 py-1.5 text-xs font-bold text-[#F3B43F] hover:bg-[#F3B43F]/10 disabled:opacity-40"
+              >
+                + Adicionar habilidade
+              </button>
+              {!powersAindaDisponiveis.length && powersParaHabilidade.length === 0 && (
+                <span className="text-[10px] text-white/40">
+                  Nenhuma Power com &quot;Quem pode usar&quot; = Monstro ou Personagem e monstro ainda — edite uma Power
+                  existente em Habilidades → Gerenciar pra liberar.
+                </span>
               )}
             </section>
 
