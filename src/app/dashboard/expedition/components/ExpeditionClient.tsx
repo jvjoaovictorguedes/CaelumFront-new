@@ -176,18 +176,6 @@ export default function ExpeditionClient() {
   const { character, refreshCharacter } = useCharacter();
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Popup rápido do resultado (bug reportado: no celular, o painel de
-  // resultado fica acima da lista de regiões — pra ver o que veio sem
-  // rolar a tela até lá, isto aqui some sozinho depois de ~2.5s, fixo
-  // na viewport independente de onde a página estiver rolada.
-  const [mostrarToast, setMostrarToast] = useState(false);
-  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => {
-    return () => {
-      if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
-    };
-  }, []);
-
   // Poderes pro combate de interrupção (ver CombatArena abaixo) — busca
   // uma vez, igual dashboard/adventure/page.tsx faz no servidor; aqui é
   // client-side porque a interrupção só se sabe depois de um clique em
@@ -310,9 +298,6 @@ export default function ExpeditionClient() {
       }
 
       setResultado(dados);
-      setMostrarToast(true);
-      if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
-      toastTimerRef.current = setTimeout(() => setMostrarToast(false), 2500);
       if (dados.item_ganho) await refreshCharacter();
     } catch (error: unknown) {
       const dadosErro = (error as { response?: { data?: { message?: string; disponivelEmMs?: number } } })?.response
@@ -382,33 +367,6 @@ export default function ExpeditionClient() {
           aoSairEndpoint={null}
           aoSairRota="/dashboard/expedition"
         />
-      )}
-
-      {mostrarToast && resultado && (
-        <div className="pointer-events-none fixed inset-x-0 top-20 z-[90] flex justify-center px-4">
-          <div
-            className={`flex items-center gap-2 rounded-full border-2 bg-[#292018]/95 px-4 py-2 text-white shadow-2xl ${bordaPorRaridade(
-              resultado.item_ganho?.raridade,
-            )}`}
-          >
-            {resultado.item_ganho ? (
-              <>
-                <ItemIcon
-                  imagemUrl={resolveMediaUrl(resultado.item_ganho.imagem_url)}
-                  nome={resultado.item_ganho.nome}
-                  className="h-7 w-7 shrink-0 rounded-md bg-[#3a2f24]"
-                  imgClassName="h-full w-full object-contain p-0.5"
-                  fallback={<span className="text-sm">📦</span>}
-                />
-                <span className="text-sm font-bold">
-                  +{resultado.quantidade} {resultado.item_ganho.nome}
-                </span>
-              </>
-            ) : (
-              <span className="text-sm font-bold text-[#F3B43F]">✦ +{resultado.xp_ganho} XP</span>
-            )}
-          </div>
-        </div>
       )}
 
       {erro && (

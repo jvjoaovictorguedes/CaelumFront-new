@@ -3,11 +3,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import { usePvpSocket, type TurnoGrupoPayload, type StatusInstanceDuelo, type CombatBuffInstanceDuelo } from "@/contexts/PvpSocketContext";
+import { usePvpSocket, type TurnoGrupoPayload, type StatusInstanceDuelo } from "@/contexts/PvpSocketContext";
 import { useCharacter } from "@/contexts/CharacterContext";
 import { useContextMusic } from "@/hooks/useContextMusic";
 import CombatActionBar from "@/components/combat/CombatActionBar";
-import { StatusIconsRow, BuffIconsRow } from "@/components/combat/StatusEffectIcons";
+import { StatusIconsRow } from "@/components/combat/StatusEffectIcons";
 import { spriteForClass, spriteFolderForClass } from "./sprites/spriteForClass";
 import { spriteForEnemy, spriteFolderForEnemy } from "./sprites/spriteForEnemy";
 import { getSpriteAnimationDurationMs, type EstadoSprite } from "./sprites/spriteSheets";
@@ -80,8 +80,6 @@ export default function PartyBattleArena() {
   // frente do golpe que os causou.
   const [statusInimigo, setStatusInimigo] = useState<StatusInstanceDuelo[]>([]);
   const [statusAliados, setStatusAliados] = useState<Record<number, StatusInstanceDuelo[]>>({});
-  const [combatBuffsInimigo, setCombatBuffsInimigo] = useState<CombatBuffInstanceDuelo[]>([]);
-  const [combatBuffsAliados, setCombatBuffsAliados] = useState<Record<number, CombatBuffInstanceDuelo[]>>({});
 
   // Animação: cada aliado tem seu próprio estado de sprite + se está
   // "avançado" (caminhando até o monstro pra golpear) — igual ao motor
@@ -114,8 +112,6 @@ export default function PartyBattleArena() {
     setAvancoInimigo(false);
     setStatusInimigo([]);
     setStatusAliados({});
-    setCombatBuffsInimigo([]);
-    setCombatBuffsAliados({});
     ultimoIndexEnfileiradoRef.current = 0;
     filaTurnosRef.current = [];
     processandoRef.current = false;
@@ -190,12 +186,6 @@ export default function PartyBattleArena() {
           Object.fromEntries(Object.entries(turno.statusAliados).map(([id, lista]) => [Number(id), lista])),
         );
       }
-      if (turno.combatBuffsInimigo) setCombatBuffsInimigo(turno.combatBuffsInimigo);
-      if (turno.combatBuffsAliados) {
-        setCombatBuffsAliados(
-          Object.fromEntries(Object.entries(turno.combatBuffsAliados).map(([id, lista]) => [Number(id), lista])),
-        );
-      }
 
       const duracaoAcao = duracaoVisual(pastaAtor, "attack");
       const duracaoReacaoInimigo = turno.dano > 0 ? duracaoVisual(pastaSpriteInimigo, "hurt") : DURACAO_MOVIMENTO_MS;
@@ -237,12 +227,6 @@ export default function PartyBattleArena() {
       if (turno.statusAliados) {
         setStatusAliados(
           Object.fromEntries(Object.entries(turno.statusAliados).map(([id, lista]) => [Number(id), lista])),
-        );
-      }
-      if (turno.combatBuffsInimigo) setCombatBuffsInimigo(turno.combatBuffsInimigo);
-      if (turno.combatBuffsAliados) {
-        setCombatBuffsAliados(
-          Object.fromEntries(Object.entries(turno.combatBuffsAliados).map(([id, lista]) => [Number(id), lista])),
         );
       }
 
@@ -411,7 +395,6 @@ export default function PartyBattleArena() {
                   {Math.max(0, Math.round(mana))}/{membro.manaMax}
                 </span>
                 <StatusIconsRow instancias={statusAliados[membro.id] ?? []} />
-                <BuffIconsRow buffs={combatBuffsAliados[membro.id] ?? []} />
               </div>
 
               <div className={daVez && vivo ? "turno-ativo" : ""}>
@@ -456,7 +439,6 @@ export default function PartyBattleArena() {
               {Math.max(0, Math.round(vidaInimigo))}/{vidaMaxInimigo}
             </span>
             <StatusIconsRow instancias={statusInimigo} />
-            <BuffIconsRow buffs={combatBuffsInimigo} />
           </div>
 
           {fotoInimigoCombate ? (

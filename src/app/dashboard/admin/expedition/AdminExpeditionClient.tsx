@@ -6,20 +6,14 @@ import {
   atualizarExpeditionBalanceAdmin,
   atualizarExpedicaoPesoNaRegiaoAdmin,
   atualizarExpedicaoRecursoAtivoAdmin,
-  atualizarMonstroAdmin,
-  criarExpedicaoRecursoAdmin,
   listarExpedicaoRecursosAdmin,
-  listarMonstrosAdmin,
   mensagemDeErroAdmin,
   obterExpeditionBalanceAdmin,
-  type AdventureMonsterApi,
   type ExpeditionBalanceCompletoApi,
   type ExpedicaoRecursosCompletoApi,
   type ProfissaoExpedicaoAdmin,
-  type QualidadeExpedicaoAdmin,
 } from "@/lib/api/admin";
 import { SimuladorBalanceamento } from "@/components/admin/SimuladorBalanceamento";
-import { ItemSelect, useItensParaSelecaoAdmin } from "@/components/admin/ItemPicker";
 
 type Aba = "expedicao" | "aventura" | "grupo" | "simulador";
 
@@ -460,86 +454,6 @@ function CardEmboscada({ atual, onSalvo }: { atual: EmboscadaBalance; onSalvo: (
           {salvando ? "Salvando..." : "Salvar"}
         </button>
       </div>
-
-      <SeletorMonstrosEmboscada />
-    </div>
-  );
-}
-
-// Pedido do jogador: "poder escolher quais monstros aparecem na
-// Emboscada" — o backend já tinha isso resolvido por monstro
-// (AdventureMonster.disponivel_emboscada, usado de verdade em
-// expeditionService.js pra filtrar o pool real da emboscada), mas o
-// toggle só existia na aba Monstros, bem longe do card de Emboscada
-// onde o admin foi procurar. Em vez de duplicar o catálogo de monstros
-// aqui, mostra a lista com checkbox DIRETO neste card, usando o MESMO
-// endpoint (atualizarMonstroAdmin) — fonte única, nunca um segundo
-// "monstros elegíveis à emboscada" guardado à parte.
-function SeletorMonstrosEmboscada() {
-  const [monstros, setMonstros] = useState<AdventureMonsterApi[]>([]);
-  const [carregando, setCarregando] = useState(true);
-  const [salvandoId, setSalvandoId] = useState<number | null>(null);
-  const [erro, setErro] = useState("");
-
-  const recarregar = useCallback(async () => {
-    setCarregando(true);
-    try {
-      setMonstros(await listarMonstrosAdmin());
-    } catch (error) {
-      setErro(mensagemDeErroAdmin(error, "Não foi possível carregar os monstros."));
-    } finally {
-      setCarregando(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    recarregar();
-  }, [recarregar]);
-
-  async function alternar(monstro: AdventureMonsterApi) {
-    setSalvandoId(monstro.id);
-    setErro("");
-    try {
-      await atualizarMonstroAdmin(monstro.id, { disponivel_emboscada: !monstro.disponivel_emboscada });
-      await recarregar();
-    } catch (error) {
-      setErro(mensagemDeErroAdmin(error, "Não foi possível atualizar o monstro."));
-    } finally {
-      setSalvandoId(null);
-    }
-  }
-
-  const elegiveis = monstros.filter((m) => m.ativo && m.disponivel_emboscada).length;
-
-  return (
-    <div className="mt-4 border-t border-white/10 pt-3">
-      <p className="mb-1 text-xs font-bold uppercase tracking-widest text-[#F3B43F]">
-        Monstros elegíveis ({elegiveis} de {monstros.filter((m) => m.ativo).length} ativos)
-      </p>
-      <p className="mb-2 text-[10px] text-white/50">
-        Quando a emboscada é sorteada, o jogo escolhe aleatoriamente entre os monstros marcados aqui (só os ativos
-        contam). Nenhum marcado = emboscada sem monstro curado disponível.
-      </p>
-      {erro && <p className="mb-2 text-xs text-red-400">{erro}</p>}
-      {carregando ? (
-        <p className="text-xs text-white/50">Carregando monstros...</p>
-      ) : (
-        <div className="grid max-h-56 grid-cols-1 gap-1 overflow-y-auto rounded-lg border border-white/10 p-2 sm:grid-cols-2 lg:grid-cols-3">
-          {monstros
-            .filter((m) => m.ativo)
-            .map((monstro) => (
-              <label key={monstro.id} className="flex items-center gap-2 text-xs text-white/80">
-                <input
-                  type="checkbox"
-                  checked={monstro.disponivel_emboscada}
-                  disabled={salvandoId === monstro.id}
-                  onChange={() => alternar(monstro)}
-                />
-                {monstro.nome} <span className="text-white/40">(Nv. {monstro.nivel})</span>
-              </label>
-            ))}
-        </div>
-      )}
     </div>
   );
 }
@@ -637,15 +551,6 @@ function CardRecursos() {
 
       <CardMensagem erro={erro} mensagem={mensagem} />
 
-      <FormNovoRecurso
-        profissao={profissao}
-        onCriado={() => {
-          setMensagem("Recurso criado.");
-          carregar(profissao);
-        }}
-        onErro={(msg) => setErro(msg)}
-      />
-
       {carregando ? (
         <p className="text-xs text-white/50">Carregando...</p>
       ) : !dados ? (
@@ -711,109 +616,6 @@ function CardRecursos() {
           )}
         </div>
       )}
-    </div>
-  );
-}
-
-// Pedido do jogador: poder criar um recurso NOVO (não só mexer em
-// peso/ativo dos já cadastrados), opcionalmente já vinculando um Item
-// real por qualidade — tudo opcional, nunca obrigatório preencher as 6
-// qualidades. Depois de criado, o recurso cai em "Sem vínculo com
-// nenhuma região" até o admin ajustar o peso dele numa região (o que já
-// cria o vínculo sozinho, sem precisar de outro passo).
-function FormNovoRecurso({
-  profissao,
-  onCriado,
-  onErro,
-}: {
-  profissao: ProfissaoExpedicaoAdmin;
-  onCriado: () => void;
-  onErro: (mensagem: string) => void;
-}) {
-  const [aberto, setAberto] = useState(false);
-  const [nome, setNome] = useState("");
-  const [itensPorQualidade, setItensPorQualidade] = useState<Partial<Record<QualidadeExpedicaoAdmin, number | "">>>({});
-  const [salvando, setSalvando] = useState(false);
-  const { itens } = useItensParaSelecaoAdmin();
-
-  async function criar() {
-    if (!nome.trim()) {
-      onErro("Nome do recurso é obrigatório.");
-      return;
-    }
-    setSalvando(true);
-    try {
-      const itensValidos = Object.fromEntries(
-        Object.entries(itensPorQualidade).filter(([, v]) => v !== "" && v != null),
-      ) as Partial<Record<QualidadeExpedicaoAdmin, number>>;
-      await criarExpedicaoRecursoAdmin({ profissao, nome: nome.trim(), itens_por_qualidade: itensValidos });
-      setNome("");
-      setItensPorQualidade({});
-      setAberto(false);
-      onCriado();
-    } catch (error) {
-      onErro(mensagemDeErroAdmin(error, "Não foi possível criar o recurso."));
-    } finally {
-      setSalvando(false);
-    }
-  }
-
-  if (!aberto) {
-    return (
-      <button
-        type="button"
-        onClick={() => setAberto(true)}
-        className="mb-3 rounded-lg border border-dashed border-[#F3B43F]/50 px-3 py-1.5 text-xs font-bold text-[#F3B43F] hover:bg-[#F3B43F]/10"
-      >
-        + Novo recurso
-      </button>
-    );
-  }
-
-  return (
-    <div className="mb-4 rounded-lg border border-[#F3B43F]/40 bg-black/20 p-3">
-      <p className="mb-2 text-xs font-bold uppercase tracking-widest text-[#F3B43F]">Novo recurso</p>
-      <label className="mb-3 flex flex-col gap-1 text-xs text-white/70">
-        Nome do recurso
-        <input
-          type="text"
-          className={INPUT}
-          value={nome}
-          onChange={(e) => setNome(e.target.value)}
-          placeholder="Ex.: Minério de Titânio"
-        />
-      </label>
-      <p className="mb-1 text-[10px] text-white/50">
-        Vincule um Item por qualidade (opcional — deixe em branco a qualidade que não quer usar ainda).
-      </p>
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-        {QUALIDADES.map((qualidade) => (
-          <label key={qualidade} className="flex flex-col gap-1 text-xs text-white/70">
-            {qualidade}
-            <ItemSelect
-              itens={itens}
-              value={itensPorQualidade[qualidade] ?? ""}
-              onChange={(id) => setItensPorQualidade((atual) => ({ ...atual, [qualidade]: id }))}
-            />
-          </label>
-        ))}
-      </div>
-      <div className="mt-3 flex gap-2">
-        <button type="button" onClick={criar} disabled={salvando} className={BTN}>
-          {salvando ? "Criando..." : "Criar recurso"}
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            setAberto(false);
-            setNome("");
-            setItensPorQualidade({});
-          }}
-          className="rounded-lg border border-white/20 px-4 py-2 text-sm text-white/70 hover:bg-white/10"
-        >
-          Cancelar
-        </button>
-      </div>
     </div>
   );
 }

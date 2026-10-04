@@ -17,15 +17,6 @@ const POSICAO_VERTICAL: Record<"top" | "bottom", string> = {
 // Respiro mínimo nunca colado na borda da tela.
 const MARGEM_VIEWPORT = 8;
 
-// Quanto tempo segurando o dedo até o tooltip aparecer no celular
-// (long-press) — relato de usuário: um toque rápido já abria o texto
-// em cima da barra de ações, poluindo a tela o tempo todo e, pior,
-// `onTouchStart` sem `onTouchEnd` correspondente deixava o tooltip
-// "preso" na tela (cobrindo o botão de ataque básico) até recarregar
-// a página. Agora só abre segurando por um tempo, e fecha garantido
-// ao soltar/cancelar o toque ou ao mover o dedo (scroll).
-const LONG_PRESS_MS = 400;
-
 export default function ActionTooltip({
   children,
   label,
@@ -38,24 +29,6 @@ export default function ActionTooltip({
   const [visivel, setVisivel] = useState(false);
   const [deslocamentoX, setDeslocamentoX] = useState(0);
   const tooltipRef = useRef<HTMLDivElement>(null);
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  function cancelarLongPress() {
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-      timeoutRef.current = null;
-    }
-  }
-
-  function iniciarLongPress() {
-    cancelarLongPress();
-    timeoutRef.current = setTimeout(() => setVisivel(true), LONG_PRESS_MS);
-  }
-
-  function esconder() {
-    cancelarLongPress();
-    setVisivel(false);
-  }
 
   // O tooltip nasce centralizado no gatilho (left-1/2 -translate-x-1/2).
   // Pra um ícone perto da borda da tela (ex.: primeiro Poder da barra de
@@ -83,16 +56,10 @@ export default function ActionTooltip({
       className="relative inline-block"
       onMouseEnter={() => setVisivel(true)}
       onMouseLeave={() => setVisivel(false)}
-      // Sem mouse (celular) o hover nunca dispara. Um toque rápido (tap)
-      // só executa a ação normalmente, sem abrir o tooltip — só segurando
-      // por LONG_PRESS_MS é que o texto aparece. touchend/touchcancel/
-      // touchmove sempre cancelam e escondem, então nunca fica preso na
-      // tela cobrindo o botão de ataque básico.
-      onTouchStart={iniciarLongPress}
-      onTouchEnd={esconder}
-      onTouchCancel={esconder}
-      onTouchMove={esconder}
-      onContextMenu={(e) => e.preventDefault()}
+      // Sem mouse (celular) o hover nunca dispara — um toque rápido antes
+      // do clique de verdade (que continua executando a ação normalmente)
+      // já é suficiente pra mostrar o tooltip com custo/efeito do poder.
+      onTouchStart={() => setVisivel(true)}
     >
       {children}
       {visivel && (

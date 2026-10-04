@@ -7,7 +7,6 @@ import { logout } from "@/app/login/action";
 import { CaelumBrasao } from "@/components/CaelumBrand/CaelumBrand";
 import OnlinePlayersBadge from "./OnlinePlayersBadge";
 import PatchNotesBell from "./PatchNotesBell";
-import MessagesBell from "./MessagesBell";
 import SidebarHealthBar from "./SidebarHealthBar";
 import SocialLinks from "./SocialLinks";
 import { useMessagesSocket } from "@/contexts/MessagesSocketContext";
@@ -78,6 +77,7 @@ export default function NavMenu({
     },
     { name: "Loja", iconUrl: "/icons/loja.png", path: "/dashboard/shop" },
     { name: "Mercado Negro", iconUrl: "/icons/ui/mercado.png", path: "/dashboard/market" },
+    { name: "Lojas dos Aventureiros", iconUrl: "/icons/loja.png", path: "/dashboard/player-shops" },
     { name: "Forja", iconUrl: "/icons/ui/forja.png", path: "/dashboard/forge" },
     { name: "Expedição", iconUrl: "/icons/ui/expedicao.png", path: "/dashboard/expedition" },
     { name: "Pesca", iconUrl: "/icons/ui/pesca.png", path: "/dashboard/fishing" },
@@ -161,9 +161,8 @@ export default function NavMenu({
         }`}
       >
         <div className="relative flex w-full flex-col items-center justify-center gap-3 border-b border-black/50 pb-4">
-          <div className="absolute right-2 top-0 flex flex-col items-center gap-2">
+          <div className="absolute right-2 top-0">
             <PatchNotesBell />
-            <MessagesBell />
           </div>
           <SocialLinks />
           <CaelumBrasao tamanho="xs" />
