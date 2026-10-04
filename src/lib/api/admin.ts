@@ -509,6 +509,127 @@ export interface AdventureMonsterApi {
   // §9) — presente em GET /admin/adventure/monsters; ausente em
   // respostas de criar/atualizar que não recalculam a lista inteira.
   combat_power?: number;
+  // IA de Combate PvE & Habilidades de Monstros V1 (§4.4) — BASIC
+  // (default, só ataque básico até o Admin montar uma build em
+  // MonsterAbility) -> TACTICAL -> BOSS -> ELITE_BOSS (reservado ao
+  // Templo, não liberado em nenhum monstro desta V1).
+  ai_profile?: AiProfile;
+}
+
+export const AI_PROFILES = ["BASIC", "TACTICAL", "BOSS", "ELITE_BOSS"] as const;
+export type AiProfile = (typeof AI_PROFILES)[number];
+export const NOME_AI_PROFILE: Record<AiProfile, string> = {
+  BASIC: "Básico (pouca análise, ataque básico dominante)",
+  TACTICAL: "Tático (usa condições, evita desperdício)",
+  BOSS: "Chefe (combina recursos/cooldowns/prioridades)",
+  ELITE_BOSS: "Chefe de elite (reservado — maior profundidade tática)",
+};
+
+// IA de Combate PvE & Habilidades de Monstros V1 (§4.2/§4.3/§6.1/§10.1)
+// — MonsterAbility vincula uma Power (usage_scope MONSTER/BOTH) a um
+// monstro como habilidade de combate. Mesmo catálogo de condition_key
+// whitelist do backend (config/monsterAbilityConfig.js) — nunca
+// expressão livre.
+export const TARGET_POLICIES_MONSTRO = ["SELF", "PLAYER", "LOWEST_HP", "HIGHEST_HP", "RANDOM", "ALL"] as const;
+export type TargetPolicyMonstro = (typeof TARGET_POLICIES_MONSTRO)[number];
+export const NOME_TARGET_POLICY_MONSTRO: Record<TargetPolicyMonstro, string> = {
+  SELF: "No próprio monstro",
+  PLAYER: "No jogador/alvo padrão",
+  LOWEST_HP: "Menor % de vida",
+  HIGHEST_HP: "Maior % de vida",
+  RANDOM: "Aleatório",
+  ALL: "Todos os oponentes vivos",
+};
+
+export const CONDITION_KEYS_MONSTRO = [
+  "SELF_HP_BELOW_PCT",
+  "SELF_HP_ABOVE_PCT",
+  "TARGET_HP_BELOW_PCT",
+  "TARGET_HP_ABOVE_PCT",
+  "SELF_HAS_STATUS",
+  "TARGET_HAS_STATUS",
+  "SELF_HAS_BUFF",
+  "TARGET_HAS_BUFF",
+  "SELF_MANA_BELOW_PCT",
+  "TURN_AT_LEAST",
+  "PHASE_IS",
+  "PREVIOUS_ACTION_WAS",
+] as const;
+export type ConditionKeyMonstro = (typeof CONDITION_KEYS_MONSTRO)[number];
+export const NOME_CONDITION_KEY_MONSTRO: Record<ConditionKeyMonstro, string> = {
+  SELF_HP_BELOW_PCT: "Própria vida abaixo de X%",
+  SELF_HP_ABOVE_PCT: "Própria vida acima de X%",
+  TARGET_HP_BELOW_PCT: "Vida do alvo abaixo de X%",
+  TARGET_HP_ABOVE_PCT: "Vida do alvo acima de X%",
+  SELF_HAS_STATUS: "Monstro está com status",
+  TARGET_HAS_STATUS: "Alvo está com status",
+  SELF_HAS_BUFF: "Monstro está com buff",
+  TARGET_HAS_BUFF: "Alvo está com buff",
+  SELF_MANA_BELOW_PCT: "Própria mana abaixo de X% (monstro não tem mana nesta V1 — nunca dispara)",
+  TURN_AT_LEAST: "Turno maior ou igual a X",
+  PHASE_IS: "Fase do combate é X",
+  PREVIOUS_ACTION_WAS: "Última ação foi X",
+};
+// Schema de `config` por condition_key — mesma whitelist de
+// monsterAbilityConfig.js no backend, só pro formulário saber quais
+// campos desenhar pra cada condição escolhida.
+export const CONDITION_CONFIG_SCHEMA: Record<ConditionKeyMonstro, string[]> = {
+  SELF_HP_BELOW_PCT: ["thresholdPct"],
+  SELF_HP_ABOVE_PCT: ["thresholdPct"],
+  TARGET_HP_BELOW_PCT: ["thresholdPct"],
+  TARGET_HP_ABOVE_PCT: ["thresholdPct"],
+  SELF_HAS_STATUS: ["statusKey"],
+  TARGET_HAS_STATUS: ["statusKey"],
+  SELF_HAS_BUFF: ["effectKey"],
+  TARGET_HAS_BUFF: ["effectKey"],
+  SELF_MANA_BELOW_PCT: ["thresholdPct"],
+  TURN_AT_LEAST: ["turn"],
+  PHASE_IS: ["phase"],
+  PREVIOUS_ACTION_WAS: ["actionType", "abilityId"],
+};
+
+export interface MonsterAbilityConditionApi {
+  id?: number;
+  condition_key: ConditionKeyMonstro;
+  config: Record<string, string | number>;
+  score_bonus: number;
+  required: boolean;
+  ativo: boolean;
+}
+
+export interface MonsterAbilityApi {
+  id?: number;
+  id_power: number;
+  prioridade_base: number;
+  peso_uso: number;
+  cooldown_override: number | null;
+  custo_mana_override: number | null;
+  target_policy: TargetPolicyMonstro;
+  ativo: boolean;
+  ordem_admin: number | null;
+  conditions: MonsterAbilityConditionApi[];
+  // Só presentes na resposta do GET (preview pro Admin) — nunca
+  // enviados de volta no PUT de sincronização.
+  power?: { id: number; nome: string; tipo_poder: "Ativo" | "Passivo" };
+  capabilities?: string[];
+}
+
+export async function listarAbilitiesMonstroAdmin(idMonstro: number): Promise<MonsterAbilityApi[]> {
+  const resposta = await axiosInstance.get<{ data: { abilities: Array<Omit<MonsterAbilityApi, "conditions"> & { condicoes: MonsterAbilityConditionApi[] }> } }>(
+    `/admin/adventure/monsters/${idMonstro}/abilities`,
+  );
+  // GET devolve a associação Sequelize como `condicoes` (alias em
+  // português); o PUT de sincronização espera `conditions` (campo do
+  // payload) — mapeado aqui pra manter o resto do frontend num só nome.
+  return resposta.data.data.abilities.map(({ condicoes, ...resto }) => ({ ...resto, conditions: condicoes ?? [] }));
+}
+
+export async function sincronizarAbilitiesMonstroAdmin(idMonstro: number, abilities: MonsterAbilityApi[]): Promise<MonsterAbilityApi[]> {
+  const resposta = await axiosInstance.put<{ data: { abilities: Array<Omit<MonsterAbilityApi, "conditions"> & { condicoes: MonsterAbilityConditionApi[] }> } }>(
+    `/admin/adventure/monsters/${idMonstro}/abilities`,
+    { abilities },
+  );
+  return resposta.data.data.abilities.map(({ condicoes, ...resto }) => ({ ...resto, conditions: condicoes ?? [] }));
 }
 
 export interface AdventureZoneMonsterApi {
@@ -900,6 +1021,18 @@ export interface PowerStatusEffectApi {
   ativo: boolean;
 }
 
+// IA de Combate PvE & Habilidades de Monstros V1 (§4.1) — diz QUEM pode
+// usar esta Power como ator de combate: CHARACTER (default, toda Power
+// existente) nunca pode virar habilidade de monstro; só MONSTER/BOTH
+// ficam disponíveis no picker de Habilidades do MonsterEditor.
+export const USAGE_SCOPES = ["CHARACTER", "MONSTER", "BOTH"] as const;
+export type UsageScope = (typeof USAGE_SCOPES)[number];
+export const NOME_USAGE_SCOPE: Record<UsageScope, string> = {
+  CHARACTER: "Personagem (padrão)",
+  MONSTER: "Só monstro",
+  BOTH: "Personagem e monstro",
+};
+
 export interface PowerApi {
   id: number;
   nome: string;
@@ -916,6 +1049,7 @@ export interface PowerApi {
   // Sistema de Proezas Únicas §9 — marca técnica de aquisição restrita
   // (sempre presente na resposta do backend, mesmo pra Powers normais).
   acquisition_scope?: "NORMAL" | "UNIQUE_FEAT";
+  usage_scope: UsageScope;
 }
 
 export interface PayloadPowerAdmin {
@@ -929,10 +1063,11 @@ export interface PayloadPowerAdmin {
   escala_atributo: "Forca" | "Vitalidade" | "Agilidade" | "Inteligencia" | "Velocidade";
   valor_escala?: number;
   imagem_url?: string | null;
+  usage_scope?: UsageScope;
 }
 
 export async function listarPowersAdmin(
-  filtros: { nome?: string; tipo_poder?: string; escala_atributo?: string } = {},
+  filtros: { nome?: string; tipo_poder?: string; escala_atributo?: string; usage_scope?: UsageScope } = {},
 ): Promise<PowerApi[]> {
   const resposta = await axiosInstance.get<{ data: { powers: PowerApi[] } }>("/admin/powers", { params: filtros });
   return resposta.data.data.powers;
