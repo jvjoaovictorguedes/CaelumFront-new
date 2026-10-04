@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import axios from "axios";
 import axiosInstance from "@/utils/axiosIntance";
 import { useCharacter } from "@/contexts/CharacterContext";
 import { formatarTier } from "@/utils/equipmentTier";
@@ -425,12 +426,13 @@ function AbaComprar({ characterId }: { characterId: number }) {
 
   const { refreshCharacter } = useCharacter();
 
-  const carregar = useCallback(async () => {
+  const carregar = useCallback(async (signal?: AbortSignal) => {
     setCarregando(true);
     try {
       const resp = await axiosInstance.get<{
         data?: { listings?: ListingApi[]; totalPaginas?: number };
       }>("/market/listings", {
+        signal,
         params: {
           nome: filtroNome || undefined,
           preco_min: precoMin || undefined,
@@ -457,15 +459,34 @@ function AbaComprar({ characterId }: { characterId: number }) {
         return novo;
       });
     } catch (error) {
+      // Cancelamento (debounce disparou de novo antes da resposta
+      // chegar) não é erro de verdade — a requisição mais nova já está
+      // cuidando do carregando/mensagem, nunca sobrescreve com um
+      // resultado desatualizado.
+      if (axios.isCancel(error)) return;
       console.error("Erro ao carregar anúncios:", error);
       setMensagem("Não foi possível carregar os anúncios.");
     } finally {
-      setCarregando(false);
+      if (!signal?.aborted) setCarregando(false);
     }
   }, [filtroNome, precoMin, precoMax, refinamentoMin, tierFiltro, raridadeFiltro, ordenar, pagina]);
 
+  // Debounce de 350ms nos filtros de texto/número (nome/preço/
+  // refinamento) — sem isso, cada tecla digitada disparava uma query
+  // nova pro backend. AbortController cancela a requisição anterior se
+  // o jogador digitar de novo antes dela voltar, evitando uma resposta
+  // antiga sobrescrever um resultado mais novo fora de ordem.
   useEffect(() => {
-    carregar();
+    const controller = new AbortController();
+    const temFiltroDeTexto = filtroNome || precoMin || precoMax || refinamentoMin;
+    const atraso = temFiltroDeTexto ? 350 : 0;
+    const timer = setTimeout(() => {
+      carregar(controller.signal);
+    }, atraso);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
   }, [carregar]);
 
   // Qualquer mudança de filtro volta pra página 1 — senão o jogador podia
