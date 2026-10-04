@@ -14,8 +14,6 @@ import {
   StatusIconsRow,
   NOME_POR_STATUS,
   type StatusKey,
-  BuffIconsRow,
-  type CombatBuffMinimo,
 } from "@/components/combat/StatusEffectIcons";
 
 import { spriteFolderForClass, spriteForClass } from "./sprites/spriteForClass";
@@ -189,13 +187,6 @@ interface StatusEffectsState {
   enemy: StatusInstance[];
 }
 
-// Habilidades V2.0 (item 10) — combatBuffs já vinha na resposta do
-// backend (combatController.js) sem nenhum consumidor no frontend.
-interface CombatBuffsState {
-  player: CombatBuffMinimo[];
-  enemy: CombatBuffMinimo[];
-}
-
 interface RespostaCombate {
   data: {
     log: string[];
@@ -244,7 +235,6 @@ interface RespostaCombate {
     // Ausentes em respostas antigas (compatibilidade) — tratado como
     // vazio nesse caso, ver useState abaixo.
     statusEffects?: StatusEffectsState;
-    combatBuffs?: CombatBuffsState;
     cooldowns?: { player?: Record<string, number> };
 
     // Precisão/Crítico (Velocidade) — ausentes em respostas antigas
@@ -366,7 +356,6 @@ export default function CombatArena({
   // /combat/action; vazio até o primeiro turno (ou pra sempre, num
   // combate sem nenhum status/cooldown envolvido).
   const [statusEffects, setStatusEffects] = useState<StatusEffectsState>({ player: [], enemy: [] });
-  const [combatBuffs, setCombatBuffs] = useState<CombatBuffsState>({ player: [], enemy: [] });
   // Hard control ativo no jogador — só pra evitar a chamada inútil
   // desabilitando os botões; quem decide de verdade que o turno foi
   // perdido é sempre o servidor (statusEffects vem da resposta dele).
@@ -1166,7 +1155,6 @@ export default function CombatArena({
       setPontosDistribuir(data.character.pontos_distribuir);
 
       setStatusEffects(data.statusEffects ?? { player: [], enemy: [] });
-      setCombatBuffs(data.combatBuffs ?? { player: [], enemy: [] });
       const cooldownsBrutos = data.cooldowns?.player ?? {};
       const cooldownsMapeados: Record<number, number> = {};
       for (const [chave, turnos] of Object.entries(cooldownsBrutos)) {
@@ -1415,7 +1403,6 @@ export default function CombatArena({
           />
           <div className="pointer-events-none absolute -top-5 left-1/2 z-10 flex -translate-x-1/2 gap-1">
             <StatusIconsRow instancias={statusEffects.player} />
-            <BuffIconsRow buffs={combatBuffs.player} />
           </div>
 
           <PlayerSprite
@@ -1457,7 +1444,6 @@ export default function CombatArena({
           />
           <div className="pointer-events-none absolute -top-5 left-1/2 z-10 flex -translate-x-1/2 gap-1">
             <StatusIconsRow instancias={statusEffects.enemy} />
-            <BuffIconsRow buffs={combatBuffs.enemy} />
           </div>
 
           {fotoInimigoCombate ? (
@@ -1487,19 +1473,6 @@ export default function CombatArena({
       )}
 
       {!resultado && (
-        // Bug reportado (2 rodadas): 1) pr-20/pr-24 aqui encolhia a
-        // LARGURA TOTAL do container, deixando um vão morto vazio entre a
-        // borda direita da barra dourada e os ícones; 2) depois de mover
-        // Missões pra dentro da própria caixa (rightSlot, ver
-        // CombatActionBar.tsx), esse pr-20/pr-24 ficou órfão — não
-        // protegia mais nada (Missões já nasce dentro da borda) e
-        // continuava deixando aquele vão vazio antes da borda direita.
-        // Removido: a barra (CombatActionBar, único filho em bloco deste
-        // container) agora ocupa 100% da largura disponível sozinha,
-        // sem precisar de w-full/flex-1 explícito. A folga de verdade pro
-        // balão do chat global não empacar em cima do botão de Missões
-        // fica só no mr-16/mr-20 do wrapper do rightSlot logo abaixo —
-        // nunca no container inteiro.
         <div className="absolute inset-x-0 bottom-0 z-30 bg-gradient-to-t from-black/90 via-black/70 to-transparent px-3 pb-3 pt-10 sm:px-6">
           {statusControleDuro && (
             <p className="mb-2 text-center text-xs font-bold text-[#F3B43F]">
@@ -1511,38 +1484,30 @@ export default function CombatArena({
               Você está Paralisado — há chance de perder a ação neste turno.
             </p>
           )}
-          {/* Botão de Missões entra DENTRO da própria caixa com borda da
-              barra de ação (rightSlot) — jogador reportou que ele ficava
-              solto, fora da borda. mr-16/mr-20 no wrapper é a folga de
-              verdade pro balão do chat global (fixed, h-12 w-12) não
-              ficar colado/embaixo dele — só o ícone de Missões recua, a
-              barra dourada ao lado não perde largura nenhuma. */}
-          <CombatActionBar
-            podeAgir={!resultado && !statusControleDuro}
-            ocupado={carregando}
-            manaAtual={manaAtual}
-            onAtaqueBasico={() => executarAcao({ type: "attack" })}
-            poderes={abilities.map((habilidade) => ({
-              id: habilidade.Power.id,
-              nome: habilidade.Power.nome,
-              imagem_url: habilidade.Power.imagem_url,
-              custo_mana: habilidade.Power.custo_mana,
-              descricao: habilidade.Power.descricao,
-              escala_atributo: habilidade.Power.escala_atributo,
-              valor_escala: habilidade.Power.valor_escala,
-            }))}
-            onUsarPoder={(powerId) => executarAcao({ type: "power", powerId })}
-            consumiveis={consumiveis}
-            onUsarConsumivel={(itemId) =>
-              executarAcao({ type: "item", itemId })
-            }
-            cooldownsPorPoder={cooldownsPorPoder}
-            rightSlot={
-              <div className="mr-16 sm:mr-20">
-                <MissionsPanel missoes={missoesEmAndamento} />
-              </div>
-            }
-          />
+          <div className="flex items-end justify-between gap-3">
+            <CombatActionBar
+              podeAgir={!resultado && !statusControleDuro}
+              ocupado={carregando}
+              manaAtual={manaAtual}
+              onAtaqueBasico={() => executarAcao({ type: "attack" })}
+              poderes={abilities.map((habilidade) => ({
+                id: habilidade.Power.id,
+                nome: habilidade.Power.nome,
+                imagem_url: habilidade.Power.imagem_url,
+                custo_mana: habilidade.Power.custo_mana,
+                descricao: habilidade.Power.descricao,
+                escala_atributo: habilidade.Power.escala_atributo,
+                valor_escala: habilidade.Power.valor_escala,
+              }))}
+              onUsarPoder={(powerId) => executarAcao({ type: "power", powerId })}
+              consumiveis={consumiveis}
+              onUsarConsumivel={(itemId) =>
+                executarAcao({ type: "item", itemId })
+              }
+              cooldownsPorPoder={cooldownsPorPoder}
+            />
+            <MissionsPanel missoes={missoesEmAndamento} />
+          </div>
         </div>
       )}
 

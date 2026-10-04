@@ -64,14 +64,6 @@ export default function CombatActionBar({
   // hoje só a Aventura solo (CombatArena.tsx) manda isso; o Duelo ao
   // vivo (LiveDuelArena.tsx) ainda não integra o motor de cooldown.
   cooldownsPorPoder = {},
-  // Opcional — só a Aventura solo (CombatArena.tsx) usa, pra barra
-  // ocupar a largura toda em vez de encolher pro tamanho do conteúdo.
-  className = "",
-  // Opcional — conteúdo extra (hoje só o MissionsPanel, ver
-  // CombatArena.tsx) ancorado no canto inferior direito, DENTRO da
-  // mesma caixa com borda — jogador reportou que o botão de Missões/
-  // chat ficava sozinho, solto, fora da borda da barra de ação.
-  rightSlot,
 }: {
   podeAgir: boolean;
   ocupado: boolean;
@@ -82,16 +74,11 @@ export default function CombatActionBar({
   consumiveis: ConsumivelAcao[];
   onUsarConsumivel: (idItem: number) => void;
   cooldownsPorPoder?: Record<number, number>;
-  className?: string;
-  rightSlot?: React.ReactNode;
 }) {
   const desabilitadoGeral = !podeAgir || ocupado;
 
   return (
-    <div
-      className={`flex flex-row items-end justify-between gap-3 rounded-xl border-2 border-[#F3B43F]/50 bg-[#292018]/60 p-2.5 shadow-lg backdrop-blur-sm ${className}`}
-    >
-      <div className="flex flex-1 flex-col gap-2.5">
+    <div className="flex flex-col gap-2.5 rounded-xl border-2 border-[#F3B43F]/50 bg-[#292018]/60 p-2.5 shadow-lg backdrop-blur-sm">
       <button
         type="button"
         onClick={onAtaqueBasico}
@@ -187,9 +174,6 @@ export default function CombatActionBar({
           </div>
         </div>
       )}
-      </div>
-
-      {rightSlot && <div className="shrink-0 self-end">{rightSlot}</div>}
     </div>
   );
 }

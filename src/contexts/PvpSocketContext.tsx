@@ -122,14 +122,6 @@ export interface StatusInstanceDuelo {
   stacks: number;
 }
 
-// Habilidades V2.0 (item 10) — buff/debuff temporário (combatBuffService
-// no backend), mesmo shape mínimo de StatusInstanceDuelo.
-export interface CombatBuffInstanceDuelo {
-  atributo: "DANO_SAIDA_PCT" | "DEFESA_FLAT" | "REGEN_HP_FLAT" | "REGEN_HP_PERCENT" | "REGEN_MANA_FLAT" | "REGEN_MANA_PERCENT" | "STATUS_RESISTANCE_PCT";
-  valor: number;
-  remainingTurns: number;
-}
-
 export interface TurnoResultadoPayload {
   duelId: number;
   atacante: "A" | "B";
@@ -145,10 +137,6 @@ export interface TurnoResultadoPayload {
   logStatus?: string[];
   statusA?: StatusInstanceDuelo[];
   statusB?: StatusInstanceDuelo[];
-  // Habilidades V2.0 (item 10) — buffs/debuffs TEMPORÁRIOS de combate
-  // (ConsumableEffect APPLY_COMBAT_BUFF), mesmo princípio de statusA/B.
-  combatBuffsA?: CombatBuffInstanceDuelo[];
-  combatBuffsB?: CombatBuffInstanceDuelo[];
   vidaA: number;
   vidaB: number;
   manaA: number;
@@ -298,8 +286,6 @@ export interface TurnoGrupoPayload {
   logStatus?: string[];
   statusInimigo?: StatusInstanceDuelo[];
   statusAliados?: Record<string, StatusInstanceDuelo[]>;
-  combatBuffsInimigo?: CombatBuffInstanceDuelo[];
-  combatBuffsAliados?: Record<string, CombatBuffInstanceDuelo[]>;
   vidaInimigo?: number;
   vidaAliado?: number;
   manaAliado?: number;
