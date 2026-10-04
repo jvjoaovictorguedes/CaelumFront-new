@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   atualizarWikiArtigoAdmin,
   criarWikiArtigoAdmin,
@@ -13,9 +13,245 @@ import {
   type PayloadWikiArticleAdmin,
   type WikiArticleAdminApi,
 } from "@/lib/api/admin";
+import { enviarMediaAdmin } from "../media/uploadMediaAction";
+import { resolveMediaUrl } from "@/utils/media-url";
+import WikiMarkdownContent from "@/components/wiki/WikiMarkdownContent";
 
 function formularioVazio(): PayloadWikiArticleAdmin {
   return { categoria: "", titulo: "", resumo: "", conteudo: "", slug: "", ordem: 0, imagem_url: "", publicado: true };
+}
+
+// Deriva um grupo de mídia único pra uma imagem de CORPO de artigo
+// (nunca reaproveita um grupo existente — ao contrário da Biblioteca de
+// Mídia em si, aqui cada imagem inserida no texto é sempre nova, então
+// não faz sentido pedir pro admin escolher/revisar um identificador).
+function grupoDeImagemDoCorpo(nomeArquivo: string): string {
+  const base = nomeArquivo
+    .replace(/\.[^./\\]+$/, "")
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 40);
+  const sufixo = Date.now().toString(36);
+  return `wiki-corpo-${base || "imagem"}-${sufixo}`;
+}
+
+// Pedido do jogador: "implementar formatação de texto — negrito,
+// imagens, fontes se possível" — editor de Markdown com barra de
+// atalhos (nunca pede pro admin saber a sintaxe de cor) + upload de
+// imagem reaproveitando a MESMA Biblioteca de Mídia (/admin/media) já
+// usada por Item/Power/etc, só numa categoria própria ("Outro") e um
+// grupo só da imagem (nunca versiona — cada inserção é uma imagem
+// nova). Prévia usa o MESMO componente de renderização da Wiki pública
+// (WikiMarkdownContent), pra nunca divergir do resultado real.
+function WikiConteudoEditor({ valor, onChange }: { valor: string; onChange: (novoValor: string) => void }) {
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const inputArquivoRef = useRef<HTMLInputElement>(null);
+  const [aba, setAba] = useState<"editar" | "preview">("editar");
+  const [enviandoImagem, setEnviandoImagem] = useState(false);
+  const [erroImagem, setErroImagem] = useState("");
+
+  // Envolve a seleção atual do textarea com prefixo/sufixo (negrito,
+  // itálico, link...) ou insere um texto de exemplo quando nada está
+  // selecionado — mesmo padrão de qualquer editor markdown simples.
+  function envolverSelecao(prefixo: string, sufixo: string, placeholder: string) {
+    const area = textareaRef.current;
+    if (!area) return;
+    const inicio = area.selectionStart;
+    const fim = area.selectionEnd;
+    const selecionado = valor.slice(inicio, fim) || placeholder;
+    const novoValor = valor.slice(0, inicio) + prefixo + selecionado + sufixo + valor.slice(fim);
+    onChange(novoValor);
+    requestAnimationFrame(() => {
+      area.focus();
+      area.setSelectionRange(inicio + prefixo.length, inicio + prefixo.length + selecionado.length);
+    });
+  }
+
+  // Prefixa cada LINHA selecionada (título/lista/citação precisam ficar
+  // no início da linha, nunca no meio do texto selecionado).
+  function prefixarLinhas(prefixo: string) {
+    const area = textareaRef.current;
+    if (!area) return;
+    const inicio = area.selectionStart;
+    const fim = area.selectionEnd;
+    const inicioLinha = valor.lastIndexOf("\n", inicio - 1) + 1;
+    const fimLinha = valor.indexOf("\n", fim);
+    const fimReal = fimLinha === -1 ? valor.length : fimLinha;
+    const trecho = valor.slice(inicioLinha, fimReal);
+    const comPrefixo = trecho
+      .split("\n")
+      .map((linha) => (linha.startsWith(prefixo) ? linha : prefixo + linha))
+      .join("\n");
+    const novoValor = valor.slice(0, inicioLinha) + comPrefixo + valor.slice(fimReal);
+    onChange(novoValor);
+    requestAnimationFrame(() => {
+      area.focus();
+      area.setSelectionRange(inicioLinha, inicioLinha + comPrefixo.length);
+    });
+  }
+
+  function inserirNoCursor(texto: string) {
+    const area = textareaRef.current;
+    if (!area) {
+      onChange(`${valor}\n${texto}\n`);
+      return;
+    }
+    const inicio = area.selectionStart;
+    const fim = area.selectionEnd;
+    const novoValor = valor.slice(0, inicio) + texto + valor.slice(fim);
+    onChange(novoValor);
+    requestAnimationFrame(() => {
+      area.focus();
+      const posicao = inicio + texto.length;
+      area.setSelectionRange(posicao, posicao);
+    });
+  }
+
+  async function enviarImagem(arquivo: File) {
+    setEnviandoImagem(true);
+    setErroImagem("");
+    try {
+      const formData = new FormData();
+      formData.append("grupo", grupoDeImagemDoCorpo(arquivo.name));
+      formData.append("categoria", "Outro");
+      formData.append("tipo", "imagem");
+      formData.append("arquivo", arquivo);
+      const resultado = await enviarMediaAdmin(formData);
+      if (!resultado.success || !resultado.asset) {
+        setErroImagem(resultado.message || "Não foi possível enviar a imagem.");
+        return;
+      }
+      const url = resolveMediaUrl(`/api/media/${resultado.asset.grupo}`) ?? "";
+      inserirNoCursor(`![${arquivo.name.replace(/\.[^./\\]+$/, "")}](${url})`);
+    } catch {
+      setErroImagem("Não foi possível enviar a imagem agora.");
+    } finally {
+      setEnviandoImagem(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-1 text-xs">
+      <div className="flex items-center justify-between">
+        <span>Conteúdo (Markdown)</span>
+        <div className="flex gap-1">
+          <button
+            type="button"
+            onClick={() => setAba("editar")}
+            className={`rounded px-2 py-0.5 text-[11px] font-bold ${aba === "editar" ? "bg-[#BC8418] text-black" : "text-white/60 hover:bg-white/10"}`}
+          >
+            Editar
+          </button>
+          <button
+            type="button"
+            onClick={() => setAba("preview")}
+            className={`rounded px-2 py-0.5 text-[11px] font-bold ${aba === "preview" ? "bg-[#BC8418] text-black" : "text-white/60 hover:bg-white/10"}`}
+          >
+            Pré-visualizar
+          </button>
+        </div>
+      </div>
+
+      {aba === "editar" ? (
+        <>
+          <div className="flex flex-wrap gap-1 rounded-t-lg border border-b-0 border-white/20 bg-black/40 p-1.5">
+            <button
+              type="button"
+              title="Negrito"
+              onClick={() => envolverSelecao("**", "**", "texto em negrito")}
+              className="rounded px-2 py-1 font-bold text-white hover:bg-white/10"
+            >
+              N
+            </button>
+            <button
+              type="button"
+              title="Itálico"
+              onClick={() => envolverSelecao("*", "*", "texto em itálico")}
+              className="rounded px-2 py-1 italic text-white hover:bg-white/10"
+            >
+              I
+            </button>
+            <button
+              type="button"
+              title="Título"
+              onClick={() => prefixarLinhas("## ")}
+              className="rounded px-2 py-1 font-imFeel text-white hover:bg-white/10"
+            >
+              Título
+            </button>
+            <button
+              type="button"
+              title="Lista"
+              onClick={() => prefixarLinhas("- ")}
+              className="rounded px-2 py-1 text-white hover:bg-white/10"
+            >
+              • Lista
+            </button>
+            <button
+              type="button"
+              title="Citação"
+              onClick={() => prefixarLinhas("> ")}
+              className="rounded px-2 py-1 text-white hover:bg-white/10"
+            >
+              &gt; Citação
+            </button>
+            <button
+              type="button"
+              title="Link"
+              onClick={() => envolverSelecao("[", "](https://)", "texto do link")}
+              className="rounded px-2 py-1 text-white underline hover:bg-white/10"
+            >
+              Link
+            </button>
+            <button
+              type="button"
+              title="Inserir imagem"
+              disabled={enviandoImagem}
+              onClick={() => inputArquivoRef.current?.click()}
+              className="rounded px-2 py-1 text-white hover:bg-white/10 disabled:opacity-50"
+            >
+              {enviandoImagem ? "Enviando..." : "🖼 Imagem"}
+            </button>
+            <input
+              ref={inputArquivoRef}
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/gif"
+              className="hidden"
+              onChange={(e) => {
+                const arquivo = e.target.files?.[0];
+                e.target.value = "";
+                if (arquivo) enviarImagem(arquivo);
+              }}
+            />
+          </div>
+          {erroImagem && <p className="text-red-400">{erroImagem}</p>}
+          <textarea
+            ref={textareaRef}
+            required
+            value={valor}
+            onChange={(e) => onChange(e.target.value)}
+            className="rounded-b-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm"
+            rows={12}
+          />
+          <p className="text-white/40">
+            Negrito **assim**, itálico *assim*, título com ##, lista com -, citação com &gt;, link [texto](url) e
+            imagem pelo botão acima.
+          </p>
+        </>
+      ) : (
+        <div className="min-h-[200px] rounded-lg border border-white/20 bg-[#1b140d] p-3">
+          {valor.trim() ? (
+            <WikiMarkdownContent conteudo={valor} />
+          ) : (
+            <p className="text-white/40">Nada pra mostrar ainda — escreva algo na aba Editar.</p>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function AdminWikiClient() {
@@ -307,19 +543,14 @@ export default function AdminWikiClient() {
               />
             </label>
 
-            <label className="flex flex-col gap-1 text-xs">
-              Conteúdo (texto plano — separe parágrafos com uma linha em branco)
-              <textarea
-                required
-                value={form.conteudo}
-                onChange={(e) => setForm((f) => ({ ...f, conteudo: e.target.value }))}
-                className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm"
-                rows={12}
-              />
-            </label>
+            <WikiConteudoEditor
+              valor={form.conteudo}
+              onChange={(novoValor) => setForm((f) => ({ ...f, conteudo: novoValor }))}
+            />
 
             <label className="flex flex-col gap-1 text-xs">
-              Imagem (URL, opcional)
+              Imagem de destaque (URL, opcional — aparece no topo do artigo; pra imagens DENTRO do texto use o botão
+              🖼 Imagem acima)
               <input
                 value={form.imagem_url ?? ""}
                 onChange={(e) => setForm((f) => ({ ...f, imagem_url: e.target.value }))}

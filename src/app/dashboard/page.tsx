@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getCurrentCharacter } from "@/utils/character-session";
 import { CaelumBrasao } from "@/components/CaelumBrand/CaelumBrand";
 import PageMusic from "@/components/music/PageMusic";
+import DashboardSummaryClient from "./components/DashboardSummaryClient";
 
 export default async function DashboardHomePage() {
   const character = await getCurrentCharacter();
@@ -34,9 +35,12 @@ export default async function DashboardHomePage() {
         </section>
       )}
 
+      {character && <DashboardSummaryClient />}
+
       <section className="grid gap-4 md:grid-cols-2">
         <Link
           href="/dashboard/adventure"
+          prefetch={false}
           className="rounded-2xl border-2 border-[#F3B43F] bg-[#BC8418] p-6 text-xl font-bold text-black shadow-lg transition hover:-translate-y-1 hover:bg-[#d69a20]"
         >
           Partir para a aventura
@@ -46,6 +50,7 @@ export default async function DashboardHomePage() {
         </Link>
         <Link
           href="/dashboard/inventory"
+          prefetch={false}
           className="rounded-2xl border-2 border-[#F3B43F] bg-[#292018] p-6 text-xl font-bold text-white shadow-lg transition hover:-translate-y-1"
         >
           Abrir inventário

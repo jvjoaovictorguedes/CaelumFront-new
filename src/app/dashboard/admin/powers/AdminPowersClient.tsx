@@ -46,6 +46,7 @@ import {
   NOME_USAGE_SCOPE,
 } from "@/lib/api/admin";
 import { PowerSelect, usePowersParaSelecaoAdmin } from "@/components/admin/PowerPicker";
+import PowerCombatEffectsPanel from "./PowerCombatEffectsPanel";
 
 const TIPOS_PODER = ["Ativo", "Passivo"] as const;
 const ATRIBUTOS = ["Forca", "Vitalidade", "Agilidade", "Inteligencia", "Velocidade"] as const;
@@ -119,6 +120,7 @@ function DetalhePower({
   const [novaPotenciaBase, setNovaPotenciaBase] = useState(0);
   const [novoAtributoEscala, setNovoAtributoEscala] = useState("");
   const [novoValorEscala, setNovoValorEscala] = useState(0);
+  const [novoPercentualVidaMaxima, setNovoPercentualVidaMaxima] = useState("");
   const [adicionandoEfeito, setAdicionandoEfeito] = useState(false);
 
   const [evolucao, setEvolucao] = useState<PreviewEvolucaoPowerApi | null>(null);
@@ -250,10 +252,12 @@ function DetalhePower({
         potency_base: novaPotenciaBase,
         potency_scale_attribute: (novoAtributoEscala || null) as PayloadPowerAdmin["escala_atributo"] | null,
         potency_scale_value: novoValorEscala,
+        percentual_vida_maxima: novoPercentualVidaMaxima === "" ? null : Number(novoPercentualVidaMaxima),
       });
       setNovaPotenciaBase(0);
       setNovoValorEscala(0);
       setNovoAtributoEscala("");
+      setNovoPercentualVidaMaxima("");
       onMudou();
     } catch (error) {
       setErro(mensagemDeErroAdmin(error, "Não foi possível adicionar o efeito."));
@@ -499,7 +503,11 @@ function DetalhePower({
             <div key={efeito.id} className="flex items-center justify-between rounded-lg bg-black/20 px-2 py-1 text-sm">
               <span className={efeito.ativo ? "" : "text-white/40"}>
                 {catalogo.find((c) => c.status_key === efeito.status_key)?.nomeUi ?? efeito.status_key} · {efeito.target} · {(efeito.chance_ppm / 10000).toFixed(1)}% · {efeito.duration_turns} turno(s)
-                {efeito.potency_base ? ` · potência base ${efeito.potency_base}` : ""}
+                {efeito.percentual_vida_maxima != null
+                  ? ` · ${efeito.percentual_vida_maxima}% da Vida Máxima`
+                  : efeito.potency_base
+                    ? ` · potência base ${efeito.potency_base}`
+                    : ""}
                 {efeito.potency_scale_attribute ? ` +${efeito.potency_scale_value} por pt de ${efeito.potency_scale_attribute}` : ""}
               </span>
               <div className="flex gap-2 text-xs">
@@ -557,12 +565,27 @@ function DetalhePower({
                 Valor por ponto
                 <input type="number" step="0.01" value={novoValorEscala} onChange={(e) => setNovoValorEscala(Number(e.target.value))} className="w-24 rounded-lg border border-white/20 bg-black/30 px-2 py-1 text-sm" />
               </label>
+              <label className="flex flex-col gap-1 text-[10px] text-white/60" title="Habilidades V2.0 — quando preenchido, o tick vira essa % da Vida Máxima do alvo (ignora Potência base legado).">
+                % Vida Máx. (opcional)
+                <input
+                  type="number"
+                  step="0.1"
+                  min={0}
+                  max={100}
+                  placeholder="—"
+                  value={novoPercentualVidaMaxima}
+                  onChange={(e) => setNovoPercentualVidaMaxima(e.target.value)}
+                  className="w-24 rounded-lg border border-white/20 bg-black/30 px-2 py-1 text-sm"
+                />
+              </label>
               <button type="submit" disabled={adicionandoEfeito} className="rounded-lg bg-[#BC8418] px-3 py-1.5 text-xs font-bold text-black hover:bg-[#a5710f] disabled:opacity-50">
                 + Efeito
               </button>
             </div>
           </form>
         </div>
+
+        <PowerCombatEffectsPanel idPower={power.id} />
 
         <div className="flex flex-col gap-2 rounded-xl border border-white/10 p-3">
           <p className="text-xs font-bold uppercase text-[#F3B43F]/80">Simular evolução (nível 1-10)</p>

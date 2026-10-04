@@ -125,6 +125,7 @@ export function MonsterEditor({
           chance_ppm: e.chance_ppm,
           duration_turns: e.duration_turns,
           potency_base: e.potency_base,
+          percentual_vida_maxima: e.percentual_vida_maxima ?? null,
           ativo: e.ativo,
         })),
       );
@@ -206,7 +207,7 @@ export function MonsterEditor({
     if (!chave) return;
     setEfeitosStatus((lista) => [
       ...lista,
-      { chaveLocal: novaChave(), status_key: chave, chance_ppm: 300000, duration_turns: 2, potency_base: 0, ativo: true },
+      { chaveLocal: novaChave(), status_key: chave, chance_ppm: 300000, duration_turns: 2, potency_base: 0, percentual_vida_maxima: null, ativo: true },
     ]);
     marcarSujo();
   }
@@ -568,7 +569,8 @@ export function MonsterEditor({
                       <th className="pb-1 pr-2">Status</th>
                       <th className="pb-1 pr-2">Chance</th>
                       <th className="pb-1 pr-2">Duração (turnos)</th>
-                      <th className="pb-1 pr-2">Potência</th>
+                      <th className="pb-1 pr-2">Potência (legado)</th>
+                      <th className="pb-1 pr-2">% Vida Máx.</th>
                       <th className="pb-1 pr-2">Ativo</th>
                       <th className="pb-1" />
                     </tr>
@@ -617,7 +619,26 @@ export function MonsterEditor({
                             value={linha.potency_base}
                             onChange={(e) => atualizarEfeitoStatus(linha.chaveLocal, { potency_base: Number(e.target.value) })}
                             className="w-16 rounded border border-white/20 bg-black/30 px-1 py-0.5"
+                            title="Dano absoluto por tick (modo legado) — ignorado quando % Vida Máx. estiver preenchido."
                           />
+                        </td>
+                        <td className="py-1 pr-2">
+                          <input
+                            type="number"
+                            step="0.1"
+                            min={0}
+                            max={100}
+                            placeholder="—"
+                            value={linha.percentual_vida_maxima ?? ""}
+                            onChange={(e) =>
+                              atualizarEfeitoStatus(linha.chaveLocal, {
+                                percentual_vida_maxima: e.target.value === "" ? null : Number(e.target.value),
+                              })
+                            }
+                            className="w-16 rounded border border-white/20 bg-black/30 px-1 py-0.5"
+                            title="Habilidades V2.0 — quando preenchido, o tick vira essa % da Vida Máxima do alvo (ignora Potência legado)."
+                          />
+                          %
                         </td>
                         <td className="py-1 pr-2">
                           <input type="checkbox" checked={linha.ativo} onChange={(e) => atualizarEfeitoStatus(linha.chaveLocal, { ativo: e.target.checked })} />
@@ -631,7 +652,7 @@ export function MonsterEditor({
                     ))}
                     {efeitosStatus.length === 0 && (
                       <tr>
-                        <td colSpan={6} className="py-3 text-center text-white/40">
+                        <td colSpan={7} className="py-3 text-center text-white/40">
                           Nenhum status configurado — ataque básico normal.
                         </td>
                       </tr>

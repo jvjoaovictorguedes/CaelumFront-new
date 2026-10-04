@@ -204,6 +204,18 @@ export default function SmeltingPanel({
                                 }
                                 className="w-16 rounded border border-white/20 bg-black/30 px-2 py-1 text-sm text-white"
                               />
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setQuantidades((atual) => ({
+                                    ...atual,
+                                    [k]: Math.max(1, Math.floor(opcao.fragmentos_disponiveis / opcao.fragmentos_por_barra)),
+                                  }))
+                                }
+                                className="rounded border border-[#F3B43F]/60 px-2 py-1 text-xs font-bold text-[#F3B43F] transition hover:bg-[#F3B43F]/10"
+                              >
+                                Máx
+                              </button>
                               <span className="text-xs text-white/50">Custo: {necessario} fragmentos</span>
                             </div>
                           </>
