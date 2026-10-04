@@ -12,7 +12,7 @@ export default function NotFound() {
           O link que você seguiu não leva a lugar nenhum em Caelum. Pode ter sido movido, ou o
           endereço está errado.
         </p>
-        <Link
+        <Link prefetch={false}
           href="/dashboard"
           className="mt-5 inline-block rounded-lg bg-[#BC8418] px-4 py-2 font-bold text-black transition hover:bg-[#a5710f]"
         >

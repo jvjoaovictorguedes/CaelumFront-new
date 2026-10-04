@@ -46,7 +46,7 @@ export default async function Prototype2DPage() {
         </p>
       </div>
 
-      <Link
+      <Link prefetch={false}
         href="/dashboard/map"
         aria-label="Fechar protótipo"
         title="Fechar protótipo"

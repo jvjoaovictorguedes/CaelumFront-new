@@ -113,14 +113,14 @@ export default function AdminClassesClient() {
   return (
     <div className="flex flex-col gap-4">
       <div>
-        <Link href="/dashboard/admin" className="text-sm text-[#F3B43F]/80 hover:underline">
+        <Link prefetch={false} href="/dashboard/admin" className="text-sm text-[#F3B43F]/80 hover:underline">
           ← Painel Administrativo
         </Link>
         <h1 className="mt-1 font-imFeel text-3xl text-[#F3B43F]">Classes</h1>
         <p className="mt-1 text-sm text-white/60">
           Identidade, gameplay, árvore de evolução em 2 estágios (Lv.40/Lv.100), requisitos, habilidades e
           efeitos concedidos. Auditoria completa em{" "}
-          <Link href="/dashboard/admin/audit" className="text-[#F3B43F] hover:underline">
+          <Link prefetch={false} href="/dashboard/admin/audit" className="text-[#F3B43F] hover:underline">
             Auditoria
           </Link>
           .

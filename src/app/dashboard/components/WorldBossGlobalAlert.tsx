@@ -17,7 +17,7 @@ export default function WorldBossGlobalAlert() {
   const desperta = status.status === "DISCOVERED";
 
   return (
-    <Link
+    <Link prefetch={false}
       href="/dashboard/quests"
       className="fixed inset-x-0 top-0 z-[60] flex items-center justify-center gap-3 bg-gradient-to-r from-red-900 via-red-700 to-red-900 px-4 py-2 text-center text-sm font-bold text-white shadow-lg hover:brightness-110"
     >

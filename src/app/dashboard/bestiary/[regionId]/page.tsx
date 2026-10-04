@@ -108,7 +108,7 @@ export default async function BestiaryRegionPage({
         <div className="flex flex-col items-center gap-3 rounded-2xl border border-[#F3B43F]/30 bg-[#292018]/80 p-6 text-center text-white shadow-xl">
           <h1 className="font-imFeel text-4xl">Bestiário</h1>
           <p className="text-lg text-white/80">Região não encontrada.</p>
-          <Link href="/dashboard/bestiary" className="text-[#F3B43F] underline">
+          <Link prefetch={false} href="/dashboard/bestiary" className="text-[#F3B43F] underline">
             Voltar
           </Link>
         </div>
@@ -120,7 +120,7 @@ export default async function BestiaryRegionPage({
     <div className="flex h-full flex-col gap-4">
       <PageMusic slot="PAGE_BESTIARY" />
       <div>
-        <Link href="/dashboard/bestiary" className="text-sm text-[#F3B43F]/80 hover:underline">
+        <Link prefetch={false} href="/dashboard/bestiary" className="text-sm text-[#F3B43F]/80 hover:underline">
           ← Bestiário
         </Link>
         <h1 className="mt-1 font-imFeel text-4xl">{zona.nome}</h1>
