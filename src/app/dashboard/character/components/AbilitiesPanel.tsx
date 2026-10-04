@@ -337,6 +337,14 @@ export default function AbilitiesPanel({ characterId }: { characterId: number })
   // esta seção, um poder concedido assim ficava gravado certinho no
   // personagem mas invisível pra ele na aba de Habilidades.
   const deEvolucao = poderes.filter((p) => p.origem === "evolucao");
+  // Bug reportado: jogadores que conquistaram uma Proeza Única (feito
+  // raro, ex.: vitória real com 1 de vida) tinham o poder gravado certo
+  // em CharacterAbilities (origem="legado" já vem do backend, ver
+  // characterController.js) mas NUNCA apareciam aqui — não existia
+  // seção nenhuma filtrando origem === "legado", só "classe"/"raca"
+  // (chamada de "unicas" acima, sem relação com Proeza Única)/"evolucao".
+  // O poder existia no banco, invisível na própria tela de Habilidades.
+  const legados = poderes.filter((p) => p.origem === "legado");
 
   // Se o poder selecionado sumiu da lista (ex.: dados recarregados), some
   // com o detalhe em vez de mostrar informação desatualizada.
@@ -400,6 +408,12 @@ export default function AbilitiesPanel({ characterId }: { characterId: number })
       <GradeDePoderes
         titulo="Habilidades de Evolução"
         poderes={deEvolucao}
+        selecionadoId={selecionadoAtual?.id_power ?? null}
+        onSelecionar={setSelecionado}
+      />
+      <GradeDePoderes
+        titulo="Legados de Proeza Única"
+        poderes={legados}
         selecionadoId={selecionadoAtual?.id_power ?? null}
         onSelecionar={setSelecionado}
       />

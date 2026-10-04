@@ -3,6 +3,38 @@
 import { useCallback, useEffect, useState } from "react";
 import axiosInstance from "@/utils/axiosIntance";
 import { resolveMediaUrl } from "@/utils/media-url";
+import ItemDescriptionTooltip from "@/components/Tooltip/ItemDescriptionTooltip";
+
+interface WeaponPropertiesApi {
+  dano_min: number;
+  dano_max: number;
+  tipo_dano: "Fisico" | "Magico";
+  bonus_atributo: string;
+  valor_bonus_atributo: number;
+}
+
+interface ArmorPropertiesApi {
+  defesa: number;
+  bonus_forca: number;
+  bonus_vitalidade: number;
+  bonus_inteligencia: number;
+  bonus_agilidade: number;
+  bonus_velocidade: number;
+}
+
+interface ConsumablePropertiesApi {
+  efeito_vida: number;
+  efeito_mana: number;
+}
+
+interface FishingRodPropertiesApi {
+  forca_linha: number;
+  controle: number;
+  recolhimento: number;
+  precisao: number;
+  estabilidade: number;
+  nivel_pesca_minimo: number;
+}
 
 interface ItemResumo {
   id: number;
@@ -10,6 +42,17 @@ interface ItemResumo {
   tipo_item: string;
   raridade: string;
   imagem_url?: string | null;
+  // Bug relatado: "ao passar o mouse não se pode ver o status do item"
+  // — playerShopService.obterPerfilPublico não trazia nenhuma dessas
+  // propriedades no include do Item (mesmo bug já corrigido uma vez no
+  // Mercado Negro, ver marketController.INCLUDE_ITEM_COM_PROPRIEDADES);
+  // sem elas aqui, não tinha NENHUM dado pra mostrar, tooltip nenhum
+  // resolveria sozinho.
+  descricao?: string | null;
+  weaponProperties?: WeaponPropertiesApi | null;
+  armorProperties?: ArmorPropertiesApi | null;
+  consumableProperties?: ConsumablePropertiesApi | null;
+  fishingRodProperties?: FishingRodPropertiesApi | null;
 }
 
 interface LojaResumo {
@@ -31,9 +74,12 @@ interface MinhaLoja {
 
 interface ProdutoResumo {
   id: number;
+  id_instancia?: number | null;
+  quantidade_total: number;
   quantidade_restante: number;
   preco_unitario: number;
   status: string;
+  status_exibicao?: string;
   item: ItemResumo;
 }
 
@@ -138,6 +184,98 @@ function IconeItem({ item }: { item: ItemResumo }) {
       {imagem ? <img src={imagem} alt={item.nome} className="h-full w-full object-contain p-1" /> : <span>📦</span>}
     </div>
   );
+}
+
+const NOME_ATRIBUTO: Record<string, string> = {
+  Forca: "Força",
+  Vitalidade: "Vitalidade",
+  Inteligencia: "Inteligência",
+  Agilidade: "Agilidade",
+  Velocidade: "Velocidade",
+};
+
+// Mesmo critério de ListaDeAtributos (ShopItem.tsx) e AtributosNoTooltip
+// (MarketClient.tsx) — tipo_item decide qual bloco mostrar, nunca só a
+// presença do campo (item com linha órfã de outra propriedade no banco
+// não pode exibir o atributo errado).
+function AtributosDoProduto({ item }: { item: ItemResumo }) {
+  if (item.tipo_item === "Arma" && item.weaponProperties) {
+    const arma = item.weaponProperties;
+    return (
+      <ul className="mt-2 space-y-0.5 border-t border-[#3a2f24]/30 pt-2 text-xs">
+        <li>
+          <span className="font-bold">Dano:</span> {arma.dano_min}–{arma.dano_max}{" "}
+          ({arma.tipo_dano === "Fisico" ? "Físico" : "Mágico"})
+        </li>
+        {arma.valor_bonus_atributo > 0 && (
+          <li>
+            <span className="font-bold">+{arma.valor_bonus_atributo}</span>{" "}
+            {NOME_ATRIBUTO[arma.bonus_atributo] ?? arma.bonus_atributo}
+          </li>
+        )}
+      </ul>
+    );
+  }
+
+  if (item.tipo_item !== "Consumivel" && item.armorProperties) {
+    const armor = item.armorProperties;
+    const bonus = (
+      [
+        ["Força", armor.bonus_forca],
+        ["Vitalidade", armor.bonus_vitalidade],
+        ["Inteligência", armor.bonus_inteligencia],
+        ["Agilidade", armor.bonus_agilidade],
+        ["Velocidade", armor.bonus_velocidade],
+      ] as const
+    ).filter(([, valor]) => valor > 0);
+    return (
+      <ul className="mt-2 space-y-0.5 border-t border-[#3a2f24]/30 pt-2 text-xs">
+        <li>
+          <span className="font-bold">Defesa:</span> {armor.defesa}
+        </li>
+        {bonus.map(([nome, valor]) => (
+          <li key={nome}>
+            <span className="font-bold">+{valor}</span> {nome}
+          </li>
+        ))}
+      </ul>
+    );
+  }
+
+  if (item.consumableProperties) {
+    const consumivel = item.consumableProperties;
+    if (consumivel.efeito_vida <= 0 && consumivel.efeito_mana <= 0) return null;
+    return (
+      <ul className="mt-2 space-y-0.5 border-t border-[#3a2f24]/30 pt-2 text-xs">
+        {consumivel.efeito_vida > 0 && (
+          <li>
+            <span className="font-bold">+{consumivel.efeito_vida}%</span> Vida
+          </li>
+        )}
+        {consumivel.efeito_mana > 0 && (
+          <li>
+            <span className="font-bold">+{consumivel.efeito_mana}%</span> Mana
+          </li>
+        )}
+      </ul>
+    );
+  }
+
+  if (item.tipo_item === "Ferramenta" && item.fishingRodProperties) {
+    const vara = item.fishingRodProperties;
+    return (
+      <ul className="mt-2 space-y-0.5 border-t border-[#3a2f24]/30 pt-2 text-xs">
+        <li><span className="font-bold">Força da linha:</span> {vara.forca_linha}</li>
+        <li><span className="font-bold">Controle:</span> {vara.controle}</li>
+        <li><span className="font-bold">Recolhimento:</span> {vara.recolhimento}</li>
+        <li><span className="font-bold">Precisão:</span> {vara.precisao}</li>
+        <li><span className="font-bold">Estabilidade:</span> {vara.estabilidade}</li>
+        {vara.nivel_pesca_minimo > 1 && <li>Nível de pesca mínimo: {vara.nivel_pesca_minimo}</li>}
+      </ul>
+    );
+  }
+
+  return null;
 }
 
 // ---------------------------------------------------------------------------
@@ -572,15 +710,12 @@ function PerfilLojaView({
             <h3 className="mb-2 font-semibold text-[#F3B43F]">Produtos ({perfil.produtos.length})</h3>
             <div className="grid gap-2 sm:grid-cols-2">
               {perfil.produtos.map((produto) => (
-                <div key={produto.id} className="flex items-center gap-2 rounded-lg bg-black/30 p-2">
-                  <IconeItem item={produto.item} />
-                  <div className="flex-1">
-                    <p className="text-sm font-semibold">{produto.item.nome}</p>
-                    <p className="text-xs text-white/60">
-                      {produto.quantidade_restante}x por {produto.preco_unitario} ouro cada
-                    </p>
-                  </div>
-                </div>
+                <CardProdutoCompravel
+                  key={produto.id}
+                  produto={produto}
+                  ehDonoDaLoja={idPersonagemLoja === characterId}
+                  aoComprar={carregar}
+                />
               ))}
               {perfil.produtos.length === 0 && <p className="text-sm text-white/50">Nenhum produto ativo no momento.</p>}
             </div>
@@ -598,6 +733,92 @@ function PerfilLojaView({
         </div>
       )}
     </Cartao>
+  );
+}
+
+// Pedido do jogador: "não está dando pra comprar nada" — a lista de
+// produtos da loja só mostrava nome/quantidade/preço, sem nenhum botão
+// de compra. Reaproveita POST /market/listings/:id/buy (o produto da
+// loja é um MarketListing de verdade, mesmo endpoint do Mercado Negro).
+function CardProdutoCompravel({
+  produto,
+  ehDonoDaLoja,
+  aoComprar,
+}: {
+  produto: ProdutoResumo;
+  ehDonoDaLoja: boolean;
+  aoComprar: () => void;
+}) {
+  const ehEquipamento = Boolean(produto.id_instancia);
+  const [quantidade, setQuantidade] = useState(1);
+  const [comprando, setComprando] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+
+  async function comprar() {
+    setComprando(true);
+    setErro(null);
+    try {
+      await axiosInstance.post(`/market/listings/${produto.id}/buy`, {
+        quantidade: ehEquipamento ? undefined : quantidade,
+      });
+      aoComprar();
+    } catch (error: unknown) {
+      const msg =
+        error && typeof error === "object" && "response" in error
+          ? (error as { response?: { data?: { message?: string } } }).response?.data?.message
+          : undefined;
+      setErro(msg ?? "Erro ao comprar.");
+      setComprando(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-2 rounded-lg bg-black/30 p-2">
+      <ItemDescriptionTooltip
+        className="relative block cursor-help"
+        label={
+          <>
+            <p className="mb-1 font-bold">{produto.item.nome}</p>
+            <p>{produto.item.descricao?.trim() || "Sem descrição."}</p>
+            <AtributosDoProduto item={produto.item} />
+          </>
+        }
+      >
+        <div className="flex items-center gap-2">
+          <IconeItem item={produto.item} />
+          <div className="flex-1">
+            <p className="text-sm font-semibold">{produto.item.nome}</p>
+            <p className="text-xs text-white/60">
+              {produto.quantidade_restante}x por {produto.preco_unitario} ouro cada
+            </p>
+          </div>
+        </div>
+      </ItemDescriptionTooltip>
+      {!ehDonoDaLoja && (
+        <div className="flex items-center gap-2">
+          {!ehEquipamento && (
+            <input
+              type="number"
+              min={1}
+              max={produto.quantidade_restante}
+              value={quantidade}
+              onChange={(e) =>
+                setQuantidade(Math.max(1, Math.min(produto.quantidade_restante, Number(e.target.value) || 1)))
+              }
+              className="w-16 rounded bg-black/40 px-2 py-1 text-xs"
+            />
+          )}
+          <button
+            onClick={comprar}
+            disabled={comprando}
+            className="flex-1 rounded bg-[#F3B43F] px-2 py-1 text-xs font-semibold text-black disabled:opacity-50"
+          >
+            {comprando ? "Comprando..." : `Comprar (${(ehEquipamento ? 1 : quantidade) * produto.preco_unitario} ouro)`}
+          </button>
+        </div>
+      )}
+      {erro && <p className="text-xs text-red-400">{erro}</p>}
+    </div>
   );
 }
 
@@ -767,6 +988,7 @@ function AbaMinhaLoja() {
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [minhasDemandas, setMinhasDemandas] = useState<DemandaApi[]>([]);
+  const [meusProdutos, setMeusProdutos] = useState<ProdutoResumo[]>([]);
 
   const carregar = useCallback(async () => {
     try {
@@ -780,6 +1002,12 @@ function AbaMinhaLoja() {
       }
       const respDemandas = await axiosInstance.get("/player-shops/mine/demands");
       setMinhasDemandas(respDemandas.data?.data?.demandas ?? []);
+      // Produto da loja É um anúncio do Mercado Negro (mesmo
+      // MarketListing) — "meus produtos publicados" é só a listagem de
+      // /market/listings/mine que ainda está ativa.
+      const respProdutos = await axiosInstance.get("/market/listings/mine");
+      const todos: ProdutoResumo[] = respProdutos.data?.data?.listings ?? [];
+      setMeusProdutos(todos.filter((p) => p.status === "Ativo"));
     } catch {
       setErro("Não foi possível carregar sua loja.");
     }
@@ -850,6 +1078,18 @@ function AbaMinhaLoja() {
           </Cartao>
 
           <Cartao>
+            <h3 className="mb-2 font-semibold text-[#F3B43F]">Meus produtos publicados</h3>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {meusProdutos.map((produto) => (
+                <MeuProdutoCard key={produto.id} produto={produto} aoAtualizar={carregar} />
+              ))}
+              {meusProdutos.length === 0 && (
+                <p className="text-sm text-white/50">Nenhum produto publicado ainda.</p>
+              )}
+            </div>
+          </Cartao>
+
+          <Cartao>
             <h3 className="mb-2 font-semibold text-[#F3B43F]">Publicar demanda (quero comprar)</h3>
             <PublicarDemandaForm aoPublicar={carregar} />
           </Cartao>
@@ -887,6 +1127,125 @@ function AbaMinhaLoja() {
           </Cartao>
         </>
       )}
+    </div>
+  );
+}
+
+// Pedido do jogador: "não dá pra remover o item nem editar o preço" —
+// os produtos publicados não tinham NENHUMA listagem/gerência própria
+// na aba Minha Loja (só "Minhas demandas publicadas" existia). Cancelar
+// e editar preço usam os mesmos endpoints do Mercado Negro
+// (DELETE/PATCH /market/listings/:id), já que o produto É um
+// MarketListing.
+function MeuProdutoCard({ produto, aoAtualizar }: { produto: ProdutoResumo; aoAtualizar: () => void }) {
+  const [editando, setEditando] = useState(false);
+  const [novoPreco, setNovoPreco] = useState(produto.preco_unitario);
+  const [salvando, setSalvando] = useState(false);
+  const [cancelando, setCancelando] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+
+  async function salvarPreco() {
+    setSalvando(true);
+    setErro(null);
+    try {
+      await axiosInstance.patch(`/market/listings/${produto.id}`, { preco_unitario: novoPreco });
+      setEditando(false);
+      aoAtualizar();
+    } catch (error: unknown) {
+      const msg =
+        error && typeof error === "object" && "response" in error
+          ? (error as { response?: { data?: { message?: string } } }).response?.data?.message
+          : undefined;
+      setErro(msg ?? "Erro ao editar preço.");
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  async function cancelar() {
+    setCancelando(true);
+    setErro(null);
+    try {
+      await axiosInstance.delete(`/market/listings/${produto.id}`);
+      aoAtualizar();
+    } catch (error: unknown) {
+      const msg =
+        error && typeof error === "object" && "response" in error
+          ? (error as { response?: { data?: { message?: string } } }).response?.data?.message
+          : undefined;
+      setErro(msg ?? "Erro ao cancelar produto.");
+      setCancelando(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-2 rounded-lg bg-black/30 p-2">
+      <ItemDescriptionTooltip
+        className="relative block cursor-help"
+        label={
+          <>
+            <p className="mb-1 font-bold">{produto.item.nome}</p>
+            <p>{produto.item.descricao?.trim() || "Sem descrição."}</p>
+            <AtributosDoProduto item={produto.item} />
+          </>
+        }
+      >
+        <div className="flex items-center gap-2">
+          <IconeItem item={produto.item} />
+          <div className="flex-1">
+            <p className="text-sm font-semibold">{produto.item.nome}</p>
+            <p className="text-xs text-white/60">
+              {produto.quantidade_restante}/{produto.quantidade_total} restantes
+            </p>
+          </div>
+        </div>
+      </ItemDescriptionTooltip>
+
+      {editando ? (
+        <div className="flex items-center gap-2">
+          <input
+            type="number"
+            min={1}
+            value={novoPreco}
+            onChange={(e) => setNovoPreco(Number(e.target.value) || 1)}
+            className="w-20 rounded bg-black/40 px-2 py-1 text-xs"
+          />
+          <button
+            onClick={salvarPreco}
+            disabled={salvando}
+            className="rounded bg-[#F3B43F] px-2 py-1 text-xs font-semibold text-black disabled:opacity-50"
+          >
+            {salvando ? "Salvando..." : "Salvar"}
+          </button>
+          <button
+            onClick={() => {
+              setEditando(false);
+              setNovoPreco(produto.preco_unitario);
+            }}
+            className="rounded bg-white/10 px-2 py-1 text-xs hover:bg-white/20"
+          >
+            Cancelar
+          </button>
+        </div>
+      ) : (
+        <div className="flex items-center gap-2">
+          <p className="flex-1 text-xs text-white/70">{produto.preco_unitario} ouro/un.</p>
+          <button
+            onClick={() => setEditando(true)}
+            className="rounded bg-white/10 px-2 py-1 text-xs hover:bg-white/20"
+          >
+            Editar preço
+          </button>
+          <button
+            onClick={cancelar}
+            disabled={cancelando}
+            className="rounded bg-red-500/80 px-2 py-1 text-xs font-semibold text-white disabled:opacity-50"
+          >
+            {cancelando ? "Removendo..." : "Remover"}
+          </button>
+        </div>
+      )}
+      {erro && <p className="text-xs text-red-400">{erro}</p>}
     </div>
   );
 }
@@ -1355,6 +1714,11 @@ function NegociacaoAcoes({
   );
 }
 
+// Mesmos tipos de equipmentInstanceService.TIPOS_INSTANCIAVEIS (backend)
+// — item desses tipos exige id_instancia na entrega; os demais (stack,
+// como Material/Consumível) entregam a quantidade_acordada direto.
+const TIPOS_INSTANCIAVEIS_ENTREGA = ["Arma", "Armadura", "Capacete", "Escudo", "Acessorio1", "Acessorio2", "Ferramenta"];
+
 function EntregarEncomendaBox({
   encomenda,
   processando,
@@ -1364,20 +1728,41 @@ function EntregarEncomendaBox({
   processando: boolean;
   onEntregar: (idInstancia?: string) => void;
 }) {
-  const [idInstancia, setIdInstancia] = useState("");
+  const { itens, carregando } = useInventarioPublicavel();
+  const [chaveSelecionada, setChaveSelecionada] = useState<string | null>(null);
+
+  const precisaInstancia = TIPOS_INSTANCIAVEIS_ENTREGA.includes(encomenda.item.tipo_item);
+  const opcoes = itens.filter((i) => i.id_item === encomenda.id_item && i.id_instancia);
+  const selecionada = opcoes.find((i) => i.chave === chaveSelecionada) ?? null;
 
   return (
     <div className="mt-2 flex flex-col gap-2 rounded bg-black/30 p-2">
       <p className="text-sm text-white/70">
         Termos travados: {encomenda.quantidade_acordada}x por {encomenda.preco_total_acordado} ouro no total.
       </p>
-      <label className="flex flex-col gap-1 text-xs">
-        ID da instância (só se for equipamento)
-        <input value={idInstancia} onChange={(e) => setIdInstancia(e.target.value)} className="rounded bg-black/40 px-2 py-1" />
-      </label>
+      {precisaInstancia && (
+        <>
+          <p className="text-xs text-white/60">Escolha qual unidade de &ldquo;{encomenda.item.nome}&rdquo; do seu inventário você vai entregar:</p>
+          {carregando && <p className="text-sm text-white/50">Carregando seu inventário...</p>}
+          {!carregando && opcoes.length === 0 && (
+            <p className="text-sm text-yellow-400">
+              Você não tem nenhuma unidade de &ldquo;{encomenda.item.nome}&rdquo; solta no inventário (não equipada, não anunciada
+              no Mercado) pra entregar.
+            </p>
+          )}
+          {!carregando && opcoes.length > 0 && (
+            <SeletorItemInventario
+              itens={opcoes}
+              chaveSelecionada={chaveSelecionada}
+              onSelecionar={(item) => setChaveSelecionada(item.chave)}
+              carregando={carregando}
+            />
+          )}
+        </>
+      )}
       <button
-        onClick={() => onEntregar(idInstancia)}
-        disabled={processando}
+        onClick={() => onEntregar(selecionada?.id_instancia ? String(selecionada.id_instancia) : undefined)}
+        disabled={processando || (precisaInstancia && !selecionada)}
         className="self-start rounded bg-green-500/80 px-3 py-1 text-sm font-semibold text-white disabled:opacity-50"
       >
         Entregar encomenda

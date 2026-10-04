@@ -187,8 +187,14 @@ export default function FloatingGlobalChatWidget() {
     setSugestaoAtiva(null);
   }
 
+  // right-4/right-7 (em vez de right-3/right-4): a barra de ação da
+  // Aventura (CombatArena.tsx) vai até a borda da tela com px-3/sm:px-6
+  // de recuo — com right-3/right-4 o balão ficava com o right MENOR que
+  // o da barra (3<3 empatava, mas 4<6 no desktop), estourando 8px pra
+  // fora da borda dourada. Esses valores deixam uma margem de verdade
+  // (4px) pra dentro da borda, nos dois breakpoints.
   return (
-    <div ref={raizRef} className="fixed bottom-3 right-3 z-[200] sm:bottom-4 sm:right-4">
+    <div ref={raizRef} className="fixed bottom-3 right-4 z-[200] sm:bottom-4 sm:right-7">
       {aberto && (
         <div className="mb-2 flex h-96 w-80 max-w-[90vw] flex-col overflow-hidden rounded-xl border-2 border-[#F3B43F]/70 bg-[#292018]/95 shadow-xl backdrop-blur-sm">
           <div className="flex items-center justify-between border-b border-white/10 px-3 py-2">

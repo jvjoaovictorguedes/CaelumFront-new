@@ -1041,8 +1041,9 @@ function AbaSimulador({ classes, setErro }: { classes: ClassAdminApi[]; setErro:
   return (
     <Secao titulo="Simulador de Evolução">
       <p className="mb-3 text-xs text-white/60">
-        Soma os bônus de atributos, o efeito de defesa (DAMAGE_REDUCTION) e as habilidades concedidas pelos
-        caminhos escolhidos — os mesmos dados que o jogo lê de verdade, sem precisar de um personagem real.
+        Soma os bônus de atributos, os efeitos de combate implementados (DAMAGE_REDUCTION e os demais) e as
+        habilidades concedidas pelos caminhos escolhidos — os mesmos dados que o jogo lê de verdade, sem
+        precisar de um personagem real.
       </p>
       <div className="flex flex-wrap items-end gap-2">
         <label className="flex flex-col gap-1 text-xs">Classe
@@ -1080,6 +1081,15 @@ function AbaSimulador({ classes, setErro }: { classes: ClassAdminApi[]; setErro:
               </span>
             ))}
           </div>
+          {resultado.efeitos_de_modificador.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-2 text-xs">
+              {resultado.efeitos_de_modificador.map((e, i) => (
+                <span key={i} className="rounded bg-white/10 px-2 py-1 text-white/80">
+                  {e.effect_key}: {e.valor > 0 ? "+" : ""}{e.valor} <span className="text-white/40">({e.caminho})</span>
+                </span>
+              ))}
+            </div>
+          )}
           {resultado.habilidades_concedidas.length > 0 && (
             <div className="mt-2 text-xs text-white/70">
               Habilidades: {resultado.habilidades_concedidas.map((h) => h.nome ?? `#${h.id_power}`).join(", ")}
