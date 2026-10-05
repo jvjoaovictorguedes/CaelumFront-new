@@ -12,6 +12,7 @@ const MAX_SLOTS = 5;
 interface PoderApi {
   id_power: number;
   nome: string;
+  descricao?: string | null;
   tipo_poder: "Ativo" | "Passivo";
   imagem_url?: string | null;
   aprendido: boolean;
@@ -76,7 +77,7 @@ function SeletorModal({
   onFechar,
 }: {
   titulo: string;
-  opcoes: { id: number; nome: string; imagemUrl?: string | null }[];
+  opcoes: { id: number; nome: string; imagemUrl?: string | null; descricao?: string | null }[];
   onEscolher: (id: number) => void;
   onFechar: () => void;
 }) {
@@ -103,26 +104,29 @@ function SeletorModal({
         {opcoes.length === 0 ? (
           <p className="text-sm text-white/60">Nada disponível pra selecionar agora.</p>
         ) : (
-          <div className="grid grid-cols-4 gap-3">
+          <div className="flex flex-col gap-2">
             {opcoes.map((opcao) => (
               <button
                 key={opcao.id}
                 type="button"
                 onClick={() => onEscolher(opcao.id)}
-                className="flex flex-col items-center gap-1 rounded-xl border-2 border-white/10 p-2 transition hover:border-[#F3B43F]/60"
+                className="flex items-center gap-3 rounded-xl border-2 border-white/10 p-2 text-left transition hover:border-[#F3B43F]/60"
               >
                 <ItemIcon
                   imagemUrl={resolveMediaUrl(opcao.imagemUrl)}
                   nome={opcao.nome}
                   permiteClique={false}
                   position="bottom"
-                  className="h-14 w-14"
+                  className="h-14 w-14 shrink-0"
                   imgClassName="h-full w-full object-cover"
                   fallback={thumbFallback(opcao.nome)}
                 />
-                <span className="text-center text-[10px] font-bold text-white/80">
-                  {opcao.nome}
-                </span>
+                <div className="min-w-0">
+                  <p className="text-sm font-bold text-white/90">{opcao.nome}</p>
+                  {opcao.descricao && (
+                    <p className="mt-0.5 text-xs leading-snug text-white/60">{opcao.descricao}</p>
+                  )}
+                </div>
               </button>
             ))}
           </div>
@@ -297,6 +301,7 @@ export default function CombatLoadoutPanel({ characterId }: { characterId: numbe
             id: p.id_power,
             nome: p.nome,
             imagemUrl: p.imagem_url,
+            descricao: p.descricao,
           }))}
           onEscolher={(idPower) => {
             const poder = ativasDisponiveis.find((p) => p.id_power === idPower);
