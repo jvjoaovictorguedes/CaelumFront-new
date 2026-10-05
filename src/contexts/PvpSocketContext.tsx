@@ -268,6 +268,7 @@ export interface BatalhaGrupoIniciadaPayload {
   membros: AliadoBatalhaGrupo[];
   ordem: string[];
   turnoDe: string;
+  rodada: number;
   prazoSegundos: number;
   // Pedido do jogador — aviso de power-leveling: presente (não-null)
   // quando a diferença de nível DENTRO do grupo (maior - menor) é grande
@@ -549,9 +550,22 @@ export function PvpSocketProvider({
         .then((resp) => {
           const ticket = resp.data?.data?.ticket;
           if (!ticket) return;
-          socket.emit("identificar", { ticket });
-          socket.emit("pvp:listar-online", {}, (resposta: { online?: string[] }) => {
-            setOnlineIds(new Set((resposta?.online ?? []).map(Number)));
+          // Callback de ack: o handler de "identificar" é assíncrono no
+          // servidor, então emitir os resyncs abaixo sem esperar essa
+          // confirmação corria o risco de chegar ANTES do servidor setar
+          // socket.characterId (resync silenciosamente ignorado). Só
+          // depois do ack é garantido que o personagem já está
+          // identificado pra qualquer evento seguinte.
+          socket.emit("identificar", { ticket }, () => {
+            socket.emit("pvp:listar-online", {}, (resposta: { online?: string[] }) => {
+              setOnlineIds(new Set((resposta?.online ?? []).map(Number)));
+            });
+            // Resync após F5/reconexão (bug reportado): se o personagem já
+            // estava numa batalha em grupo em andamento, o servidor
+            // reenvia o estado ATUAL — sem isso a tela nunca repovoava
+            // sozinha, só o processo do servidor continuava rodando a
+            // luta.
+            socket.emit("party:entrar-batalha");
           });
         })
         .catch(() => {
@@ -727,7 +741,20 @@ export function PvpSocketProvider({
       setTurnosGrupo([]);
       setBatalhaGrupo(payload);
       setTurnoAtualGrupo(payload.turnoDe);
-      setRodadaAtualGrupo(1);
+      setRodadaAtualGrupo(payload.rodada);
+      router.push("/dashboard/adventure");
+    });
+
+    // Resync após F5/reconexão (bug reportado: a tela de batalha em
+    // grupo nunca repovoava sozinha, só o INÍCIO da luta disparava
+    // "party:batalha-iniciada") — MESMO formato de payload (ver
+    // montarPayloadBatalha no backend), com os valores ATUAIS da luta.
+    socket.on("party:batalha-estado", (payload: BatalhaGrupoIniciadaPayload) => {
+      setResultadoGrupo(null);
+      setTurnosGrupo([]);
+      setBatalhaGrupo(payload);
+      setTurnoAtualGrupo(payload.turnoDe);
+      setRodadaAtualGrupo(payload.rodada);
       router.push("/dashboard/adventure");
     });
 

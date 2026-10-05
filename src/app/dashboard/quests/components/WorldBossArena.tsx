@@ -85,6 +85,24 @@ export default function WorldBossArena() {
     }
   }
 
+  // Resync após F5/reconexão (bug reportado): a sessão de combate
+  // pessoal fica só neste `sessao` (useState local, nasce null), sem
+  // nada que a repovoasse — um F5 no meio da luta pessoal deixava essa
+  // aba sem a cena de batalha, mesmo com worldBossCombatService.entrar
+  // já sendo idempotente (reaproveita a sessão ATIVA existente em vez
+  // de criar outra; não cura nem reseta nada). Entra de novo sozinho
+  // sempre que a Ameaça estiver ACTIVE e esta aba ainda não tiver a
+  // sessão carregada — se o personagem nunca entrou na luta, isso o
+  // junta a ela automaticamente ao abrir a aba (decisão aceitável aqui:
+  // a arquitetura do Boss Mundial nunca causa dano de volta, então
+  // entrar sozinho na luta não arrisca nada).
+  useEffect(() => {
+    if (status?.status === "ACTIVE" && !sessao && !entrando) {
+      entrar();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status?.status, sessao]);
+
   if (!status || status.status === "Nenhum") {
     return (
       <div className="rounded-2xl border-2 border-[#F3B43F] bg-[#292018]/90 p-5 text-center text-white shadow-xl">

@@ -42,6 +42,8 @@ import {
   type RaceAbilityApi,
   type RacePublicaApi,
   type StatusCatalogEntryApi,
+  USAGE_SCOPES,
+  NOME_USAGE_SCOPE,
 } from "@/lib/api/admin";
 import { PowerSelect, usePowersParaSelecaoAdmin } from "@/components/admin/PowerPicker";
 import PowerCombatEffectsPanel from "./PowerCombatEffectsPanel";
@@ -62,6 +64,7 @@ function formularioPowerVazio(): PayloadPowerAdmin {
     escala_atributo: "Forca",
     valor_escala: 0,
     imagem_url: "",
+    usage_scope: "CHARACTER",
   };
 }
 
@@ -95,6 +98,7 @@ function DetalhePower({
     escala_atributo: power.escala_atributo,
     valor_escala: power.valor_escala,
     imagem_url: power.imagem_url ?? "",
+    usage_scope: power.usage_scope,
   });
   const [salvandoInfo, setSalvandoInfo] = useState(false);
 
@@ -347,6 +351,20 @@ function DetalhePower({
               <input type="number" step="0.01" value={form.valor_escala ?? 0} onChange={(e) => setForm((f) => ({ ...f, valor_escala: Number(e.target.value) }))} className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm" />
             </label>
           </div>
+          <label className="flex flex-col gap-1 text-[10px] text-white/60">
+            Quem pode usar (IA de Combate PvE V1 — só MONSTER/BOTH aparecem no picker de Habilidades de monstro)
+            <select
+              value={form.usage_scope ?? "CHARACTER"}
+              onChange={(e) => setForm((f) => ({ ...f, usage_scope: e.target.value as PayloadPowerAdmin["usage_scope"] }))}
+              className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm"
+            >
+              {USAGE_SCOPES.map((u) => (
+                <option key={u} value={u}>
+                  {NOME_USAGE_SCOPE[u]}
+                </option>
+              ))}
+            </select>
+          </label>
           <div className="flex gap-2">
             <label className="flex flex-1 flex-col gap-1 text-[10px] text-white/60">
               Custo de mana
@@ -1173,6 +1191,16 @@ export default function AdminPowersClient() {
                 </select>
               </label>
             </div>
+            <label className="flex flex-col gap-1 text-xs">
+              Quem pode usar
+              <select value={novoForm.usage_scope ?? "CHARACTER"} onChange={(e) => setNovoForm((f) => ({ ...f, usage_scope: e.target.value as PayloadPowerAdmin["usage_scope"] }))} className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm">
+                {USAGE_SCOPES.map((u) => (
+                  <option key={u} value={u}>
+                    {NOME_USAGE_SCOPE[u]}
+                  </option>
+                ))}
+              </select>
+            </label>
             <p className="text-[11px] text-white/50">Depois de criada, use &quot;Gerenciar&quot; pra ajustar números, vincular Classe/Raça e configurar efeitos de status.</p>
             <div className="mt-2 flex justify-end gap-2">
               <button type="button" onClick={() => setMostrarCriacao(false)} className="rounded-lg border border-white/20 px-4 py-2 text-sm text-white/70 hover:bg-white/10">
