@@ -151,7 +151,7 @@ function AtributosDaRaca({ raca }: { raca: RaceData }) {
         return (
           <span
             key={chave}
-            className={`w-full rounded px-2 py-1 text-center text-xs font-bold sm:text-sm ${
+            className={`w-full rounded px-2 py-1 text-center text-sm font-bold sm:text-base ${
               valor > 0 ? "bg-green-900/40 text-green-300" : "bg-red-900/40 text-red-300"
             }`}
           >
@@ -625,7 +625,7 @@ export default function CharacterCreation() {
                           backgroundPosition: "center",
                         }}
                       ></div>
-                      <p className="text-center text-sm text-[#F3B43F] sm:text-base">
+                      <p className="text-center text-base text-[#F3B43F] sm:text-lg">
                         {gender === "Masculino" ? race.nome_masculino : race.nome_feminino}
                       </p>
                     </div>
@@ -634,13 +634,13 @@ export default function CharacterCreation() {
 
               {currentRace && (
                 <div className="mb-2 rounded-md border-2 border-[#F3B43F] bg-[#DFC492] p-3">
-                  <p className="mb-2 text-center text-sm font-bold leading-relaxed text-[#1f1813] sm:text-base">
+                  <p className="mb-2 text-center text-base font-bold leading-relaxed text-[#1f1813] sm:text-lg">
                     {currentRaceDescription}
                   </p>
                   <div className="mb-2 flex justify-center">
                     <AtributosDaRaca raca={currentRace} />
                   </div>
-                  <p className="text-center text-xs font-bold uppercase tracking-wide text-[#8D6825]">
+                  <p className="text-center text-sm font-bold uppercase tracking-wide text-[#8D6825]">
                     {recomendarBuildDeRaca({
                       forca: currentRace.bonus_forca,
                       vitalidade: currentRace.bonus_vitalidade,
@@ -658,7 +658,7 @@ export default function CharacterCreation() {
               <h3 className="mb-3 text-center text-xl text-[#F3B43F] sm:text-2xl">Classe</h3>
               {ganhouClasseRara && (
                 <div className="bg-[#DFC492] border-2 border-[#F3B43F] p-2 rounded-md mb-3 flex items-center justify-center text-center">
-                  <h4 className="text-xs text-center text-[#292018]">
+                  <h4 className="text-sm text-center text-[#292018]">
                     Ao reencarnar você sente um toque sutil, e os Deuses o abençoaram....
                   </h4>
                 </div>
@@ -682,32 +682,32 @@ export default function CharacterCreation() {
                         backgroundPosition: "center",
                       }}
                     ></div>
-                    <p className="text-center text-sm text-[#F3B43F] sm:text-base">{cls.nome}</p>
+                    <p className="text-center text-base text-[#F3B43F] sm:text-lg">{cls.nome}</p>
                   </div>
                 ))}
               </div>
 
               {currentClass && (
                 <div className="mb-2 rounded-md border-2 border-[#F3B43F] bg-[#DFC492] p-3">
-                  <p className="mb-2 text-center text-sm font-bold leading-relaxed text-[#1f1813] sm:text-base">
+                  <p className="mb-2 text-center text-base font-bold leading-relaxed text-[#1f1813] sm:text-lg">
                     {currentClassDescription}
                   </p>
-                  <p className="mb-2 text-center text-xs font-bold uppercase tracking-wide text-[#8D6825]">
+                  <p className="mb-2 text-center text-sm font-bold uppercase tracking-wide text-[#8D6825]">
                     {recomendarBuildDeClasse(currentClass)}
                   </p>
 
                   <div className="rounded border border-[#8D6825]/40 bg-black/10 p-2">
-                    <p className="mb-1 text-center text-[10px] font-bold uppercase tracking-wide text-[#8D6825]">
+                    <p className="mb-1 text-center text-sm font-bold uppercase tracking-wide text-[#8D6825]">
                       Evoluções desta classe
                     </p>
                     {evolucoesDaClasseAtual === "carregando" && (
-                      <p className="text-center text-xs text-[#1f1813]/70">Carregando...</p>
+                      <p className="text-center text-sm text-[#1f1813]/70">Carregando...</p>
                     )}
                     {evolucoesDaClasseAtual === "erro" && (
-                      <p className="text-center text-xs text-[#1f1813]/70">Não foi possível carregar.</p>
+                      <p className="text-center text-sm text-[#1f1813]/70">Não foi possível carregar.</p>
                     )}
                     {Array.isArray(evolucoesDaClasseAtual) && evolucoesDaClasseAtual.length === 0 && (
-                      <p className="text-center text-xs text-[#1f1813]/70">
+                      <p className="text-center text-sm text-[#1f1813]/70">
                         Sem árvore de evolução cadastrada pra essa classe ainda.
                       </p>
                     )}
@@ -715,13 +715,13 @@ export default function CharacterCreation() {
                       <div className="flex flex-col gap-1.5">
                         {evolucoesDaClasseAtual.map((caminho) => (
                           <div key={caminho.id} className="rounded bg-white/40 px-2 py-1">
-                            <p className="text-xs font-bold text-[#1f1813]">
+                            <p className="text-sm font-bold text-[#1f1813]">
                               {caminho.nome}{" "}
                               <span className="font-normal text-[#1f1813]/70">
                                 (nível {caminho.nivel_necessario})
                               </span>
                             </p>
-                            <p className="text-[11px] text-[#1f1813]/80">{caminho.descricao}</p>
+                            <p className="text-sm text-[#1f1813]/80">{caminho.descricao}</p>
                           </div>
                         ))}
                       </div>
