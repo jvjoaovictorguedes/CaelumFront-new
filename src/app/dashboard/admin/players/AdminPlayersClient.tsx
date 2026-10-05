@@ -48,7 +48,7 @@ export default function AdminPlayersClient() {
   return (
     <div className="flex flex-col gap-4">
       <div>
-        <Link href="/dashboard/admin" className="text-sm text-[#F3B43F]/80 hover:underline">
+        <Link prefetch={false} href="/dashboard/admin" className="text-sm text-[#F3B43F]/80 hover:underline">
           ← Painel Administrativo
         </Link>
         <h1 className="mt-1 font-imFeel text-3xl text-[#F3B43F]">Busca de Jogador</h1>
@@ -142,10 +142,10 @@ export default function AdminPlayersClient() {
             </div>
           </div>
           <div className="mt-4 flex flex-wrap gap-3 text-sm">
-            <Link href={`/dashboard/admin/inventory?id=${detalhe.id}`} className="text-[#F3B43F] hover:underline">
+            <Link prefetch={false} href={`/dashboard/admin/inventory?id=${detalhe.id}`} className="text-[#F3B43F] hover:underline">
               Ver/corrigir inventário →
             </Link>
-            <Link href="/dashboard/admin/grants" className="text-[#F3B43F] hover:underline">
+            <Link prefetch={false} href="/dashboard/admin/grants" className="text-[#F3B43F] hover:underline">
               Conceder premiação →
             </Link>
           </div>

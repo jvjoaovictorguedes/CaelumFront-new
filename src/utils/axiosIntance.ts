@@ -9,8 +9,15 @@ const isServer = typeof window === "undefined";
 // Next.js) é quem tem acesso pra anexar o Authorization de verdade.
 // No servidor (Server Components/Actions), chama o backend direto e
 // anexa o header aqui mesmo, via interceptor (também lendo o cookie).
+//
+// INTERNAL_API_URL (sem NEXT_PUBLIC_, nunca vai pro bundle do navegador)
+// é opcional: quando setada, aponta pra rede privada do Railway
+// (*.railway.internal) em vez do domínio público — servidor-a-servidor
+// fica dentro da rede do Railway, sem o round-trip de sair pra internet
+// e voltar. Sem essa variável, cai no mesmo NEXT_PUBLIC_API_URL de
+// sempre (comportamento idêntico a antes, nada quebra).
 const baseURL = isServer
-  ? process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api"
+  ? process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api"
   : "/api/backend";
 
 // Rotas cujo próprio 401 é o resultado esperado (credencial errada, ou

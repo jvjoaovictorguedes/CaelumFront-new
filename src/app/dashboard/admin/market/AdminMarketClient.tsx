@@ -26,7 +26,7 @@ export default function AdminMarketClient() {
   return (
     <div className="flex flex-col gap-4">
       <div>
-        <Link href="/dashboard/admin" className="text-sm text-[#F3B43F]/80 hover:underline">
+        <Link prefetch={false} href="/dashboard/admin" className="text-sm text-[#F3B43F]/80 hover:underline">
           ← Painel Administrativo
         </Link>
         <h1 className="mt-1 font-imFeel text-3xl text-[#F3B43F]">Mercado P2P</h1>

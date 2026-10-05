@@ -133,7 +133,7 @@ export default function AdminHubClient({ permissoes }: { permissoes: string[] })
                 return <div key={modulo.titulo}>{conteudo}</div>;
               }
               return (
-                <Link key={modulo.titulo} href={modulo.href!}>
+                <Link key={modulo.titulo} href={modulo.href!} prefetch={false}>
                   {conteudo}
                 </Link>
               );

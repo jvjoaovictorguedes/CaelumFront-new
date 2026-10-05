@@ -96,13 +96,30 @@ export default async function AdventurePage() {
   // PartyAdventureSection precisa dela pro anfitrião escolher a área do
   // grupo, e essa seção agora é renderizada em toda entrada na página —
   // ver comentário abaixo sobre o bug do convite de party.
-  let zonas: ZonaApi[] = [];
-  try {
-    const response = await axiosInstance.get<ZonasResponse>("/adventure/zones");
-    zonas = response.data?.data?.zonas ?? [];
-  } catch (error) {
-    console.error("Erro ao listar áreas de caça:", error);
-  }
+  //
+  // Disparada ANTES de session/enemy (não depois) e sem `await` ainda —
+  // as três saem ao mesmo tempo (zonas + sessão + inimigo), uma única
+  // leva de rede em vez de duas. `zonas` precisa ser conhecida já aqui
+  // porque o branch de derrotado logo abaixo decide o retorno ANTES de
+  // precisar de sessão/inimigo (por isso zonasPromise é resolvida
+  // primeiro, separado do Promise.allSettled de combatePromise mais
+  // abaixo — mas ambos já estão em voo juntos desde esta linha).
+  const zonasPromise = axiosInstance
+    .get<ZonasResponse>("/adventure/zones")
+    .catch((error) => {
+      console.error("Erro ao listar áreas de caça:", error);
+      return null;
+    });
+
+  // Sessão e encontro-em-andamento disparam JUNTO com zonas (acima),
+  // não depois — mesmo princípio, mesma economia de uma leva de rede.
+  const combatePromise = Promise.allSettled([
+    axiosInstance.get<SessaoResponse>("/adventure/session"),
+    axiosInstance.get<InimigoResponse>(`/combat/enemy/${character.id}`),
+  ]);
+
+  const zonasResponse = await zonasPromise;
+  const zonas: ZonaApi[] = zonasResponse?.data?.data?.zonas ?? [];
 
   // Derrotado não pode caçar sozinho, mas pode ter aceitado um convite
   // de party enquanto se recuperava em outra aba — DerrotadoGate esconde
@@ -132,19 +149,9 @@ export default async function AdventurePage() {
   // (validado no servidor, ver combatController.gerarInimigoParaPersonagem)
   // — sem sessão, mostra a tela de seleção de zona em vez de tentar
   // gerar um inimigo direto.
-  //
-  // Sessão e encontro-em-andamento não dependem uma da outra — iam em
-  // `await` sequenciais (2 round-trips ao backend, um atrás do outro,
-  // nesta página que carrega a cada entrada em /dashboard/adventure).
-  // Promise.allSettled dispara as duas de uma vez: mesma informação,
-  // metade da espera. (`zonas` acima fica de fora porque o branch de
-  // derrotado decide se renderiza ANTES de precisar de sessão/inimigo.)
   let sessao: NonNullable<SessaoResponse["data"]>["sessao"] = null;
   let inimigoInicial: InimigoApi | null = null;
-  const [sessaoResult, inimigoResult] = await Promise.allSettled([
-    axiosInstance.get<SessaoResponse>("/adventure/session"),
-    axiosInstance.get<InimigoResponse>(`/combat/enemy/${character.id}`),
-  ]);
+  const [sessaoResult, inimigoResult] = await combatePromise;
 
   if (sessaoResult.status === "fulfilled") {
     sessao = sessaoResult.value.data?.data?.sessao ?? null;

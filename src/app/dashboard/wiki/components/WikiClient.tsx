@@ -104,6 +104,7 @@ export default function WikiClient({ slugInicial }: { slugInicial?: string }) {
                           <li key={a.slug}>
                             <Link
                               href={`/dashboard/wiki/${a.slug}`}
+                              prefetch={false}
                               className={`block rounded-md px-2 py-1 text-sm transition ${
                                 artigo?.slug === a.slug
                                   ? "bg-[#BC8418] font-bold text-black"

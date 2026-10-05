@@ -39,7 +39,7 @@ export default function AdminGuildClient() {
   return (
     <div className="flex flex-col gap-4">
       <div>
-        <Link href="/dashboard/admin" className="text-sm text-[#F3B43F]/80 hover:underline">
+        <Link prefetch={false} href="/dashboard/admin" className="text-sm text-[#F3B43F]/80 hover:underline">
           ← Painel Administrativo
         </Link>
         <h1 className="mt-1 font-imFeel text-3xl text-[#F3B43F]">Guilda</h1>
@@ -47,7 +47,7 @@ export default function AdminGuildClient() {
           Requisitos de promoção de Rank, carência anti-exploit, Buffs (XP/Gold/Forja), pontuação de Contribuição e o
           Boss ao vivo (frações de recompensa + tamanho/turno/escalada de dano), além dos catálogos de Nível e Boss
           por Rank. Missões de Guilda ficam em{" "}
-          <Link href="/dashboard/admin/missions" className="text-[#F3B43F] hover:underline">
+          <Link prefetch={false} href="/dashboard/admin/missions" className="text-[#F3B43F] hover:underline">
             Conteúdo → Missões
           </Link>{" "}
           (aba &quot;Missões de Guilda&quot;), e Permissões por cargo (quem pode convidar/expulsar/etc.) são
