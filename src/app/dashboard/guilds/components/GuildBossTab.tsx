@@ -93,6 +93,22 @@ export default function GuildBossTab({
     carregar();
   }, [carregar]);
 
+  // Resync após F5/reconexão (bug reportado): o backend (guildboss:entrar
+  // em guildBossSocket.js) já é idempotente e devolve o estado ATUAL da
+  // luta se o personagem já estava nela — só nunca era chamado sozinho,
+  // só no clique manual de "Atacar o Boss". Sem isso, dar F5 no meio de
+  // uma luta de Boss da Guilda deixava a tela sem a arena, mesmo com a
+  // luta continuando a rodar no servidor; o jogador só via de novo
+  // clicando "Atacar o Boss" (o que reentraria na mesma luta, mas não
+  // sozinho). Entra de novo sempre que a tentativa estiver Ativa e ainda
+  // não houver luta carregada aqui — cobre tanto o mount quanto outro
+  // membro liberando o Boss enquanto esta aba já está aberta.
+  useEffect(() => {
+    if (status?.tentativa?.status === "Ativo" && !batalhaBossGuilda) {
+      entrarNoBossGuilda();
+    }
+  }, [status?.tentativa?.status, batalhaBossGuilda, entrarNoBossGuilda]);
+
   async function liberarBoss() {
     if (processando) return;
     setProcessando(true);
