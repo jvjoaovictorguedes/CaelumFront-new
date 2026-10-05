@@ -23,6 +23,7 @@ import { useCharacter } from "@/contexts/CharacterContext";
 import { useWorldBossSocket } from "@/contexts/WorldBossSocketContext";
 import {
   atacarWorldBoss,
+  passarTurnoWorldBoss,
   sairWorldBoss,
   usarPoderWorldBoss,
   mensagemDeErroWorldBoss,
@@ -482,6 +483,7 @@ export default function WorldBossBattleScene({
             }}
             consumiveis={[]}
             onUsarConsumivel={() => {}}
+            onPassarTurno={() => executar(passarTurnoWorldBoss, false, false)}
             cooldownsPorPoder={cooldownsConvertidos}
           />
         </div>
