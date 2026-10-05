@@ -164,6 +164,11 @@ export interface WorldBossAcaoResultado {
   morreuAoFimDoTurno?: boolean;
   bloqueado?: boolean;
   motivoBloqueio?: string;
+  // "Passar o turno" (bug relatado: atordoado/congelado sem nenhuma
+  // ação disponível travava o jogador infinitamente contra a Ameaça
+  // Mundial, que só tem ataque/poder, nenhum item) — ação voluntária,
+  // nunca bloqueada por nenhum status.
+  passou?: boolean;
   cooldowns: WorldBossCooldownsApi;
   // Mesmo "turno" pessoal de WorldBossEntrarResultado — ms restantes
   // até a PRÓXIMA ação valer, já contando a que acabou de ser feita.
@@ -179,6 +184,15 @@ export async function atacarWorldBoss(): Promise<WorldBossAcaoResultado> {
 
 export async function usarPoderWorldBoss(idPoder: number): Promise<WorldBossAcaoResultado> {
   const resposta = await axiosInstance.post<{ data: WorldBossAcaoResultado }>("/world-boss/action", { tipo: "power", idPoder });
+  return resposta.data.data;
+}
+
+// "Passar o turno" — bug relatado: atordoado/congelado sem nenhuma
+// ação disponível (a Ameaça Mundial só tem ataque/poder, nenhum item)
+// travava o jogador infinitamente, sem nenhum botão clicável. "pass"
+// nunca é bloqueado por nenhum status (ver statusEffectConfig.js).
+export async function passarTurnoWorldBoss(): Promise<WorldBossAcaoResultado> {
+  const resposta = await axiosInstance.post<{ data: WorldBossAcaoResultado }>("/world-boss/action", { tipo: "pass" });
   return resposta.data.data;
 }
 

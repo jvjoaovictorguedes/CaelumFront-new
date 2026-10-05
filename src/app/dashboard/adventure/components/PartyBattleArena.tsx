@@ -496,6 +496,7 @@ export default function PartyBattleArena() {
               onUsarPoder={(powerId) => agirGrupo("power", powerId)}
               consumiveis={meuMembro?.consumiveis ?? []}
               onUsarConsumivel={(itemId) => agirGrupo("item", itemId)}
+              onPassarTurno={() => agirGrupo("pass")}
             />
           ) : (
             <p className="pb-4 text-center text-sm text-white/70">

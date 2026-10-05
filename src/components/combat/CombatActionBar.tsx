@@ -53,6 +53,15 @@ function IconeAcao({ nome, imagemUrl }: { nome: string; imagemUrl?: string | nul
 
 export default function CombatActionBar({
   podeAgir,
+  // Gate SEPARADO pro consumível (bug relatado: atordoado/congelado, o
+  // jogador não tinha NENHUMA ação disponível — nem item — e ficava
+  // travado no turno infinitamente; ITEM não é mais bloqueado por hard
+  // control no motor de status, então o botão de item não pode mais
+  // depender do mesmo `podeAgir` do ataque/poder). Default = `podeAgir`
+  // pra quem ainda não passa isso explicitamente (Duelo/Grupo/Ameaça
+  // Mundial já nunca desabilitam a barra por status, só por turno) se
+  // comportar exatamente como antes.
+  podeUsarItem,
   ocupado,
   manaAtual,
   onAtaqueBasico,
@@ -60,6 +69,13 @@ export default function CombatActionBar({
   onUsarPoder,
   consumiveis,
   onUsarConsumivel,
+  // Opcional — "passar o turno", sempre liberado (nunca bloqueado por
+  // nenhum status, ver ACTION_TYPE.PASS). Sem essa ação explícita, um
+  // jogador atordoado/congelado sem nenhum item pra usar ficava sem
+  // NENHUM botão clicável, travado no turno infinitamente — o próprio
+  // bug relatado. Só renderiza o botão quando o chamador passa o
+  // callback (hoje: Aventura solo, Duelo, Grupo, Ameaça Mundial).
+  onPassarTurno,
   // Turnos restantes de cooldown por id de Power (§42 da Especificação
   // Consolidada Poder/Status/Cooldown/Balanceamento) — opcional porque
   // hoje só a Aventura solo (CombatArena.tsx) manda isso; o Duelo ao
@@ -75,6 +91,7 @@ export default function CombatActionBar({
   rightSlot,
 }: {
   podeAgir: boolean;
+  podeUsarItem?: boolean;
   ocupado: boolean;
   manaAtual: number;
   onAtaqueBasico: () => void;
@@ -82,6 +99,7 @@ export default function CombatActionBar({
   onUsarPoder: (id: number) => void;
   consumiveis: ConsumivelAcao[];
   onUsarConsumivel: (idItem: number) => void;
+  onPassarTurno?: () => void;
   cooldownsPorPoder?: Record<number, number>;
   className?: string;
   rightSlot?: React.ReactNode;
@@ -90,12 +108,14 @@ export default function CombatActionBar({
     ? Array.from({ length: 5 }, (_, slot) => poderes.find((p) => p.combat_slot === slot) ?? null)
     : poderes;
   const desabilitadoGeral = !podeAgir || ocupado;
+  const desabilitadoItem = !(podeUsarItem ?? podeAgir) || ocupado;
 
   return (
     <div
       className={`flex flex-row items-end justify-between gap-3 rounded-xl border-2 border-[#F3B43F]/50 bg-[#292018]/60 p-2.5 shadow-lg backdrop-blur-sm ${className}`}
     >
       <div className="flex flex-1 flex-col gap-2.5">
+      <div className="flex flex-wrap items-start gap-2">
       <button
         type="button"
         onClick={onAtaqueBasico}
@@ -104,6 +124,18 @@ export default function CombatActionBar({
       >
         Ataque básico
       </button>
+
+      {onPassarTurno && (
+        <button
+          type="button"
+          onClick={onPassarTurno}
+          disabled={ocupado}
+          className="self-start rounded-lg border-2 border-white/40 bg-white/10 px-3 py-1.5 text-sm font-bold text-white/90 shadow-md transition hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          Passar turno
+        </button>
+      )}
+      </div>
 
       {poderes.length > 0 && (
         <div>
@@ -178,7 +210,7 @@ export default function CombatActionBar({
                   <button
                     type="button"
                     onClick={() => onUsarConsumivel(item.id_item)}
-                    disabled={desabilitadoGeral || semEstoque}
+                    disabled={desabilitadoItem || semEstoque}
                     className="relative h-10 w-10 overflow-hidden rounded-md border-2 border-[#F3B43F]/50 bg-[#3a2f24]/70 shadow-md transition hover:border-[#F3B43F] disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     <IconeAcao nome={item.nome} imagemUrl={item.imagem_url} />
