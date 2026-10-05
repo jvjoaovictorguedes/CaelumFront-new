@@ -433,7 +433,7 @@ interface PvpSocketContextValue {
   resultadoFinal: DueloFimPayload | null;
   desafiar: (idDesafiado: number) => void;
   responderDesafio: (aceitar: boolean) => void;
-  agir: (tipo: "attack" | "power" | "item", id?: number) => void;
+  agir: (tipo: "attack" | "power" | "item" | "pass", id?: number) => void;
   limparDuelo: () => void;
   limparErro: () => void;
   // Arena Ranqueada
@@ -463,7 +463,7 @@ interface PvpSocketContextValue {
   sairDoGrupo: () => void;
   expulsarDoGrupo: (idAlvo: number) => void;
   iniciarAventuraEmGrupo: (idZona: number) => void;
-  agirGrupo: (tipo: "attack" | "power" | "item", id?: number) => void;
+  agirGrupo: (tipo: "attack" | "power" | "item" | "pass", id?: number) => void;
   limparBatalhaGrupo: () => void;
   limparErroParty: () => void;
   // Boss da Guilda V2.0 (batalha em tempo real) — sem sala de espera,
@@ -852,7 +852,7 @@ export function PvpSocketProvider({
     if (!aceitar) setDesafioRecebido(null);
   }, []);
 
-  const agir = useCallback((tipo: "attack" | "power" | "item", id?: number) => {
+  const agir = useCallback((tipo: "attack" | "power" | "item" | "pass", id?: number) => {
     socketRef.current?.emit("pvp:acao", {
       tipo,
       idPoder: tipo === "power" ? id : undefined,
@@ -935,7 +935,7 @@ export function PvpSocketProvider({
     socketRef.current?.emit("party:iniciar", { idZona });
   }, []);
 
-  const agirGrupo = useCallback((tipo: "attack" | "power" | "item", id?: number) => {
+  const agirGrupo = useCallback((tipo: "attack" | "power" | "item" | "pass", id?: number) => {
     socketRef.current?.emit("party:acao", {
       tipo,
       idPoder: tipo === "power" ? id : undefined,

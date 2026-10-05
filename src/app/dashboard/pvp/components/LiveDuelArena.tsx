@@ -181,7 +181,7 @@ export default function LiveDuelArena({ meuCharacterId }: { meuCharacterId: numb
   const SpriteA = spriteForClass(duelo.a.classe);
   const SpriteB = spriteForClass(duelo.b.classe);
 
-  function agirEDesabilitar(tipo: "attack" | "power" | "item", id?: number) {
+  function agirEDesabilitar(tipo: "attack" | "power" | "item" | "pass", id?: number) {
     if (!minhaVez || enviando) return;
     setEnviando(true);
     agir(tipo, id);
@@ -285,6 +285,7 @@ export default function LiveDuelArena({ meuCharacterId }: { meuCharacterId: numb
               onUsarPoder={(id) => agirEDesabilitar("power", id)}
               consumiveis={consumiveis}
               onUsarConsumivel={(idItem) => agirEDesabilitar("item", idItem)}
+              onPassarTurno={() => agirEDesabilitar("pass")}
             />
           ) : (
             <div className="rounded-2xl border-2 border-[#F3B43F]/60 bg-[#292018]/90 p-4 text-white shadow-lg">

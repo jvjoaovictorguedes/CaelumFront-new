@@ -1064,6 +1064,9 @@ export default function CombatArena({
       | {
           type: "item";
           itemId: number;
+        }
+      | {
+          type: "pass";
         },
   ) {
     if (carregando || resultado) {
@@ -1503,7 +1506,8 @@ export default function CombatArena({
         <div className="absolute inset-x-0 bottom-0 z-30 bg-gradient-to-t from-black/90 via-black/70 to-transparent px-3 pb-3 pt-10 sm:px-6">
           {statusControleDuro && (
             <p className="mb-2 text-center text-xs font-bold text-[#F3B43F]">
-              Você está {NOME_POR_STATUS[statusControleDuro]} — sua ação será perdida neste turno.
+              Você está {NOME_POR_STATUS[statusControleDuro]} — não pode atacar nem usar poderes neste turno, mas
+              ainda pode usar um consumível ou passar o turno.
             </p>
           )}
           {!statusControleDuro && statusEffects.player.some((s) => s.key === "PARALYZE") && (
@@ -1519,9 +1523,17 @@ export default function CombatArena({
               barra dourada ao lado não perde largura nenhuma. */}
           <CombatActionBar
             podeAgir={!resultado && !statusControleDuro}
+            // Bug relatado: atordoado/congelado, o jogador não tinha
+            // NENHUMA ação disponível (item também ficava desabilitado
+            // só por causa do mesmo `statusControleDuro`) e travava no
+            // turno infinitamente. ITEM não é mais bloqueado por hard
+            // control no motor de status (statusEffectConfig.js) — só
+            // precisa continuar fechado quando o combate já terminou.
+            podeUsarItem={!resultado}
             ocupado={carregando}
             manaAtual={manaAtual}
             onAtaqueBasico={() => executarAcao({ type: "attack" })}
+            onPassarTurno={() => executarAcao({ type: "pass" })}
             poderes={abilities.map((habilidade) => ({
               id: habilidade.Power.id,
               nome: habilidade.Power.nome,
