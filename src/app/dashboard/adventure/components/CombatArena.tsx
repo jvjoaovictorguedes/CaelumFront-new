@@ -790,6 +790,7 @@ export default function CombatArena({
 
     usouCura,
     usouManaPotion,
+    usouPass,
     manaRecebida,
     usouPoder,
     usouPoderDeFogo,
@@ -823,6 +824,11 @@ export default function CombatArena({
     // mesmo, igual cura de vida), mas usa cor/texto próprios — nunca
     // deve parecer que curou vida quando só recarregou mana.
     usouManaPotion: boolean;
+    // "Passar o turno" — ação sobre si mesmo, igual cura/mana: nunca
+    // avança nem golpeia (bug relatado: o personagem ia atacar mesmo
+    // sem causar dano nenhum, porque `ficaParado` não conhecia essa
+    // ação ainda).
+    usouPass: boolean;
     manaRecebida: number;
     usouPoder: boolean;
     usouPoderDeFogo: boolean;
@@ -835,10 +841,10 @@ export default function CombatArena({
     novoEnemy: EnemyState;
     novaVidaJogador: number;
   }) {
-    // Qualquer ação "sobre si mesmo" (cura ou mana) fica parada no
-    // lugar — só ações que atingem o inimigo (ataque, poder ofensivo)
-    // avançam até a distância de combate.
-    const ficaParado = usouCura || usouManaPotion;
+    // Qualquer ação "sobre si mesmo" (cura, mana ou passar o turno)
+    // fica parada no lugar — só ações que atingem o inimigo (ataque,
+    // poder ofensivo) avançam até a distância de combate.
+    const ficaParado = usouCura || usouManaPotion || usouPass;
 
     // Vida do jogador logo após a PRÓPRIA ação, ANTES do tick de status
     // dele (vidaAposAcaoJogador já vem com o tick descontado — ver
@@ -1100,6 +1106,13 @@ export default function CombatArena({
 
     const usouPoder = action.type === "power";
 
+    // Bug relatado: "Passar turno" fazia o personagem andar e golpear
+    // como se fosse um ataque de verdade (o servidor não causa dano
+    // nenhum, mas a animação não sabia disso — ver `ficaParado` em
+    // tocarAnimacaoDoTurno, abaixo). "Passar" é uma ação sobre si
+    // mesmo, igual cura/mana: fica parado, sem avançar nem golpear.
+    const usouPass = action.type === "pass";
+
     const usouPoderDeFogo = Boolean(
       poderUsado && poderUsado.nome.toLowerCase().includes("fogo"),
     );
@@ -1219,6 +1232,7 @@ export default function CombatArena({
 
         usouCura,
         usouManaPotion,
+        usouPass,
         manaRecebida: Math.max(0, data.character.mana_atual - manaAntesDaAcao),
         usouPoder,
         usouPoderDeFogo,
