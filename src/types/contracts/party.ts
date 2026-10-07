@@ -88,6 +88,7 @@ export interface BatalhaGrupoIniciadaPayload {
 }
 
 export interface TurnoGrupoPayload {
+  damageResolution?: import("@/types/contracts/combatTyping").DamageResolution|null;
   battleId: number;
   origem: "aliado" | "monstro";
   idAtor?: string;

@@ -1,4 +1,6 @@
 "use client";
+import axiosInstance from "@/utils/axiosIntance";
+import TypingEditor from "@/components/combat-typing/TypingEditor";
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
@@ -425,6 +427,8 @@ function formularioVazio(): PayloadItemAdmin {
 }
 
 export default function AdminItemsClient() {
+  const [weaponTypes,setWeaponTypes]=useState<import("@/components/combat-typing/types").CatalogRow[]>([]);
+  useEffect(()=>{axiosInstance.get("/admin/combat-typing/catalog/weapons").then(r=>setWeaponTypes(r.data.data)).catch(()=>{});},[]);
   const [itens, setItens] = useState<AdminItemApi[]>([]);
   const [total, setTotal] = useState(0);
   const [pagina, setPagina] = useState(1);
@@ -966,17 +970,7 @@ export default function AdminItemsClient() {
                   </label>
                   <label className="flex flex-1 flex-col gap-1 text-xs">
                     Tipo de arma
-                    <select
-                      value={form.weapon?.tipo_arma ?? "Espada"}
-                      onChange={(e) => setForm((f) => ({ ...f, weapon: { ...f.weapon!, tipo_arma: e.target.value as WeaponPropertiesTipo } }))}
-                      className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm"
-                    >
-                      {TIPOS_ARMA.map((t) => (
-                        <option key={t} value={t}>
-                          {t}
-                        </option>
-                      ))}
-                    </select>
+                    <select value={form.weapon?.weapon_type_id??weaponTypes.find(t=>t.legacy_tipo_arma===form.weapon?.tipo_arma)?.id??""} onChange={e=>{const t=weaponTypes.find(t=>t.id===Number(e.target.value));if(t)setForm(f=>({...f,weapon:{...f.weapon!,weapon_type_id:t.id,tipo_arma:(t.legacy_tipo_arma??null) as WeaponPropertiesTipo,tipo_dano:t.default_damage_nature as "Fisico"|"Magico",damage_nature_override:null}}));}} className="rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-sm"><option value="">Selecione</option>{weaponTypes.filter(t=>t.ativo).map(t=><option key={t.id} value={t.id}>{t.nome}</option>)}</select>
                   </label>
                 </div>
                 <div className="flex gap-2">
@@ -1008,6 +1002,8 @@ export default function AdminItemsClient() {
               </fieldset>
             )}
 
+            {editandoId&&<TypingEditor kind="equipment" id={editandoId}/>}
+            {TIPOS_COM_ARMA.includes(tipoAtual)&&editandoId&&<TypingEditor kind="weapons" id={editandoId}/>}
             {TIPOS_COM_ARMA.includes(tipoAtual) && editandoId && (
               <WeaponStatusEffectsEditor idItem={editandoId} catalogo={catalogoStatus} />
             )}

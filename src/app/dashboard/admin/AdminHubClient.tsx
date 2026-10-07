@@ -28,6 +28,7 @@ const CATEGORIAS: CategoriaAdmin[] = [
   {
     titulo: "Conteúdo",
     modulos: [
+      { titulo: "Tipagens e afinidades", descricao: "Famílias, perfis e especializações PvE.", href: "/dashboard/admin/combat-typing", permissao: "combat_typing.view" },
       { titulo: "Anti-automação", descricao: "Sinais, revisão e rollout.", href: "/dashboard/admin/anti-automation", permissao: "anti_automation.view" },
       { titulo: "Itens", descricao: "Criar, editar e desativar itens e propriedades.", href: "/dashboard/admin/items", permissao: "items.manage" },
       { titulo: "Conjuntos de Equipamentos", descricao: "Peças, thresholds e bônus de conjunto.", href: "/dashboard/admin/equipment-sets", permissao: "equipmentsets.manage" },

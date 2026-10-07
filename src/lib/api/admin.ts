@@ -15,7 +15,9 @@ export interface WeaponPropertiesApi {
   dano_min: number;
   dano_max: number;
   tipo_dano: "Fisico" | "Magico";
-  tipo_arma: "Espada" | "Machado" | "Cajado" | "Adaga" | "Lança" | "Orbe";
+  tipo_arma: "Espada" | "Machado" | "Cajado" | "Adaga" | "Lança" | "Orbe" | null;
+  weapon_type_id?:number|null;
+  damage_nature_override?:"Fisico"|"Magico"|null;
   bonus_atributo: "Forca" | "Vitalidade" | "Inteligencia" | "Agilidade" | "Velocidade";
   valor_bonus_atributo: number;
 }

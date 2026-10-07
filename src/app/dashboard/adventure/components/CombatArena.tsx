@@ -1,4 +1,5 @@
 "use client";
+import {DamageBreakdown} from "@/components/combat-typing/TypingFeedback";
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -108,6 +109,7 @@ interface ItemInventarioApi {
 }
 
 interface EnemyState {
+  lastDamageResolution?:import("@/components/combat-typing/types").DamageResolution|null;
   combatTurn?: number;
   encounterId?: string;
   nome: string;
@@ -1773,6 +1775,7 @@ export default function CombatArena({
 
             <div className="flex flex-1 flex-col-reverse overflow-y-auto rounded-xl bg-black/85 p-4 text-sm shadow-inner">
               <div>
+                <DamageBreakdown value={enemy?.lastDamageResolution}/>
                 {log.map((linha, indice) => (
                   <p
                     key={indice}

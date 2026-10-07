@@ -1,0 +1,534 @@
+"use client";
+import { useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import api from "@/utils/axiosIntance";
+import TypingEditor, {
+  RelationEditor,
+} from "@/components/combat-typing/TypingEditor";
+import {
+  ResistanceList,
+  DamageBreakdown,
+} from "@/components/combat-typing/TypingFeedback";
+import type {
+  CatalogRow,
+  Catalogs,
+  DamageResolution,
+} from "@/components/combat-typing/types";
+type Values = Record<string, string | number | boolean | null>;
+const groups = [
+  ["affinities", "Afinidades", "DamageAffinityType"],
+  ["weapons", "Tipos de arma", "WeaponType"],
+  ["families", "Famílias", "MonsterFamily"],
+  ["profiles", "Perfis defensivos", "CombatAffinityProfile"],
+] as const;
+const entityKinds = [
+  ["monsters", "Monstros"],
+  ["weapons", "Armas"],
+  ["equipment", "Equipamentos defensivos"],
+  ["powers", "Powers"],
+  ["guild-bosses", "Bosses de guilda"],
+  ["world-bosses", "World bosses"],
+];
+const label: Record<string, string> = {
+  key: "Key",
+  nome: "Nome",
+  descricao: "Descrição",
+  icon_key: "Ícone",
+  imagem_url: "Imagem URL",
+  ordem: "Ordem",
+  ativo: "Ativo",
+  categoria: "Categoria",
+  default_damage_nature: "Natureza padrão",
+  default_affinity_id: "Afinidade padrão",
+  default_affinity_profile_id: "Perfil defensivo padrão",
+};
+export default function AdminCombatTyping() {
+  const params = useSearchParams();
+  const [familyPreview, setFamilyPreview] = useState<
+    import("@/types/contracts/combatTyping").DefensiveAffinity[]
+  >([]);
+  const [catalogs, setCatalogs] = useState<Catalogs | null>(null),
+    [config, setConfig] = useState<Record<string, unknown>>({}),
+    [kind, setKind] = useState<string>("affinities"),
+    [selected, setSelected] = useState<number | null>(null),
+    [values, setValues] = useState<Values>({
+      key: "",
+      nome: "",
+      ativo: true,
+      ordem: 0,
+      categoria: "PHYSICAL",
+    }),
+    [relations, setRelations] = useState<Record<string, number>[]>([]),
+    [reason, setReason] = useState(""),
+    [message, setMessage] = useState(""),
+    [entityKind, setEntityKind] = useState(params.get("kind") ?? "monsters"),
+    [entities, setEntities] = useState<Values[]>([]),
+    [entityId, setEntityId] = useState(Number(params.get("id")) || 0),
+    [sim, setSim] = useState({
+      amount: 100,
+      weaponId: 0,
+      powerId: 0,
+      targetKind: "monsters",
+      targetId: 0,
+    }),
+    [result, setResult] = useState<DamageResolution | null>(null),
+    [busy, setBusy] = useState(false);
+  const load = useCallback(async () => {
+    try {
+      const r = await api.get("/admin/combat-typing");
+      setCatalogs(r.data.data.catalogs);
+      setConfig(r.data.data.config);
+    } catch {
+      setMessage("Não foi possível carregar. Verifique suas permissões.");
+    }
+  }, []);
+  useEffect(() => {
+    void load();
+  }, [load]);
+  useEffect(() => {
+    api
+      .get(`/admin/combat-typing/entities/${entityKind}`)
+      .then((r) => setEntities(r.data.data))
+      .catch(() => setMessage("Falha ao carregar entidades."));
+  }, [entityKind]);
+  const choose = (nextKind: string, row?: CatalogRow) => {
+    setFamilyPreview([]);
+    if (row && ["families", "profiles"].includes(nextKind))
+      api
+        .get(`/admin/combat-typing/preview/${nextKind}/${row.id}`)
+        .then((r) => setFamilyPreview(r.data.data.affinities))
+        .catch(() => {});
+    setKind(nextKind);
+    setSelected(row?.id ?? null);
+    setValues(
+      row
+        ? { ...row }
+        : {
+            key: "",
+            nome: "",
+            ativo: true,
+            ordem: 0,
+            ...(nextKind === "affinities"
+              ? { categoria: "PHYSICAL" }
+              : nextKind === "weapons"
+                ? { default_damage_nature: "Fisico", default_affinity_id: null }
+                : nextKind === "families"
+                  ? { default_affinity_profile_id: null }
+                  : {}),
+          },
+    );
+    setRelations(
+      nextKind === "profiles"
+        ? (catalogs?.CombatAffinityProfileEntry ?? [])
+            .filter((e) => e.id_profile === row?.id)
+            .map((e) => ({
+              id_affinity: Number(e.id_affinity),
+              multiplier: Number(e.multiplier),
+            }))
+        : nextKind === "weapons"
+          ? (catalogs?.WeaponTypeFamilyBonus ?? [])
+              .filter((e) => e.weapon_type_id === row?.id)
+              .map((e) => ({
+                monster_family_id: Number(e.monster_family_id),
+                damage_bonus_pct: Number(e.damage_bonus_pct),
+              }))
+          : [],
+    );
+  };
+  const save = async () => {
+    setBusy(true);
+    try {
+      const body = {
+        values,
+        reason,
+        ...(kind === "profiles"
+          ? { entries: relations }
+          : kind === "weapons"
+            ? { familyBonuses: relations }
+            : {}),
+      };
+      if (selected)
+        await api.put(`/admin/combat-typing/catalog/${kind}/${selected}`, body);
+      else await api.post(`/admin/combat-typing/catalog/${kind}`, body);
+      await load();
+      setReason("");
+      setMessage("Catálogo salvo.");
+    } catch (e) {
+      setMessage(
+        (e as { response?: { data?: { message?: string } } }).response?.data
+          ?.message ?? "Falha ao salvar.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
+  const saveConfig = async () => {
+    try {
+      await api.put("/admin/combat-typing/config", { values: config, reason });
+      await load();
+      setMessage("Configuração salva.");
+    } catch (e) {
+      setMessage(
+        (e as { response?: { data?: { message?: string } } }).response?.data
+          ?.message ?? "Falha ao salvar configuração.",
+      );
+    }
+  };
+  const simulate = async () => {
+    try {
+      const r = await api.post("/admin/combat-typing/simulate", {
+        ...sim,
+        weaponId: sim.weaponId || undefined,
+        powerId: sim.powerId || undefined,
+      });
+      setResult(r.data.data);
+    } catch (e) {
+      setMessage(
+        (e as { response?: { data?: { message?: string } } }).response?.data
+          ?.message ?? "Simulação recusada.",
+      );
+    }
+  };
+  if (!catalogs) return <p className="p-5">{message || "Carregando…"}</p>;
+  const rows = catalogs[groups.find((g) => g[0] === kind)![2]];
+  const configLabels: Record<string, string> = {
+    min_multiplier: "Multiplicador mínimo",
+    max_multiplier: "Multiplicador máximo",
+    family_bonus_cap: "Cap de bônus contra família (%)",
+    effective_min: "Efetivo a partir de",
+    weakened_max: "Enfraquecido até",
+    ineffective_max: "Ineficaz até",
+  };
+  return (
+    <main className="mx-auto max-w-6xl space-y-6 p-4 text-white">
+      <h1 className="text-2xl text-amber-300">
+        Tipagens, afinidades e famílias
+      </h1>
+      <p>
+        Catálogos e conteúdo PvE. PvP permanece desativado na V1. Desativar um
+        cadastro preserva referências existentes.
+      </p>
+      {message && (
+        <p role="status" className="rounded border p-3">
+          {message}
+        </p>
+      )}
+      <section className="space-y-4 rounded border border-amber-900/50 p-4">
+        <h2>Catálogos</h2>
+        <nav className="flex flex-wrap gap-2">
+          {groups.map((g) => (
+            <button
+              className="rounded border p-2"
+              key={g[0]}
+              onClick={() => choose(g[0])}
+            >
+              {g[1]}
+            </button>
+          ))}
+        </nav>
+        <div className="grid gap-4 md:grid-cols-[1fr_2fr]">
+          <div className="max-h-96 overflow-y-auto">
+            {rows.map((row) => (
+              <button
+                className="block w-full border-b p-2 text-left"
+                key={row.id}
+                onClick={() => choose(kind, row)}
+              >
+                {row.nome} {!row.ativo && "(inativo)"}
+              </button>
+            ))}
+            <button className="mt-3 border p-2" onClick={() => choose(kind)}>
+              Novo cadastro
+            </button>
+          </div>
+          <div className="space-y-3">
+            {Object.keys(label)
+              .filter(
+                (k) =>
+                  [
+                    "key",
+                    "nome",
+                    "descricao",
+                    "icon_key",
+                    "imagem_url",
+                    "ordem",
+                    "ativo",
+                  ].includes(k) ||
+                  (kind === "affinities" && k === "categoria") ||
+                  (kind === "weapons" &&
+                    k.startsWith("default_") &&
+                    k !== "default_affinity_profile_id") ||
+                  (kind === "families" && k === "default_affinity_profile_id"),
+              )
+              .map((k) => (
+                <label className="grid gap-1" key={k}>
+                  {label[k]}
+                  {k === "ativo" ? (
+                    <input
+                      type="checkbox"
+                      checked={values[k] === true}
+                      onChange={(e) =>
+                        setValues({ ...values, [k]: e.target.checked })
+                      }
+                    />
+                  ) : k.endsWith("_id") ? (
+                    <select
+                      className="bg-stone-900 p-2"
+                      value={String(values[k] ?? "")}
+                      onChange={(e) =>
+                        setValues({
+                          ...values,
+                          [k]: e.target.value ? Number(e.target.value) : null,
+                        })
+                      }
+                    >
+                      <option value="">Neutro / nenhum</option>
+                      {(k === "default_affinity_id"
+                        ? catalogs.DamageAffinityType
+                        : catalogs.CombatAffinityProfile
+                      ).map((a) => (
+                        <option key={a.id} value={a.id}>
+                          {a.nome}
+                        </option>
+                      ))}
+                    </select>
+                  ) : k === "categoria" || k === "default_damage_nature" ? (
+                    <select
+                      className="bg-stone-900 p-2"
+                      value={String(values[k] ?? "")}
+                      onChange={(e) =>
+                        setValues({ ...values, [k]: e.target.value })
+                      }
+                    >
+                      {(k === "categoria"
+                        ? [
+                            ["PHYSICAL", "Física"],
+                            ["ELEMENTAL", "Elemental"],
+                          ]
+                        : [
+                            ["Fisico", "Físico"],
+                            ["Magico", "Mágico"],
+                          ]
+                      ).map(([v, l]) => (
+                        <option key={v} value={v}>
+                          {l}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      type={k === "ordem" ? "number" : "text"}
+                      className="bg-stone-900 p-2"
+                      value={String(values[k] ?? "")}
+                      onChange={(e) =>
+                        setValues({
+                          ...values,
+                          [k]:
+                            k === "ordem"
+                              ? Number(e.target.value)
+                              : e.target.value,
+                        })
+                      }
+                    />
+                  )}
+                </label>
+              ))}
+            {kind === "profiles" && (
+              <RelationEditor
+                title="Multiplicadores (1 = neutro)"
+                rows={relations}
+                setRows={setRelations}
+                choices={catalogs.DamageAffinityType}
+                target="id_affinity"
+                value="multiplier"
+                valueLabel="Multiplicador"
+              />
+            )}
+            {kind === "weapons" && (
+              <RelationEditor
+                title="Especializações do tipo de arma"
+                rows={relations}
+                setRows={setRelations}
+                choices={catalogs.MonsterFamily}
+                target="monster_family_id"
+                value="damage_bonus_pct"
+                valueLabel="Bônus (%)"
+              />
+            )}
+            <ResistanceList values={familyPreview} />
+            {kind === "families" && selected && (
+              <div>
+                <h3>Tipos de arma especializados nesta família</h3>
+                {catalogs.WeaponTypeFamilyBonus.filter(
+                  (b) => b.monster_family_id === selected,
+                ).map((b) => (
+                  <p key={b.id}>
+                    {
+                      catalogs.WeaponType.find((w) => w.id === b.weapon_type_id)
+                        ?.nome
+                    }
+                    : +{String(b.damage_bonus_pct)}%
+                  </p>
+                ))}
+              </div>
+            )}
+            <label>
+              Motivo
+              <input
+                className="ml-2 bg-stone-900 p-2"
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+              />
+            </label>
+            <button
+              className="ml-2 rounded border p-2"
+              disabled={busy || reason.trim().length < 5}
+              onClick={() => void save()}
+            >
+              Salvar catálogo
+            </button>
+          </div>
+        </div>
+      </section>
+      <section className="space-y-3">
+        <h2 className="text-xl">Conteúdo do jogo</h2>
+        <select
+          className="bg-stone-900 p-2"
+          value={entityKind}
+          onChange={(e) => {
+            setEntityKind(e.target.value);
+            setEntityId(0);
+          }}
+        >
+          {entityKinds.map(([v, l]) => (
+            <option key={v} value={v}>
+              {l}
+            </option>
+          ))}
+        </select>
+        <select
+          className="ml-2 max-w-full bg-stone-900 p-2"
+          value={entityId}
+          onChange={(e) => setEntityId(Number(e.target.value))}
+        >
+          <option value={0}>Escolha um registro</option>
+          {entities.map((row) => {
+            const id = Number(row.id ?? row.id_item);
+            return (
+              <option key={id} value={id}>
+                {String(row.nome ?? row.nome_chefe ?? row.tipo_arma ?? "Arma")}{" "}
+                — #{id}
+              </option>
+            );
+          })}
+        </select>
+        {entityId > 0 && <TypingEditor kind={entityKind} id={entityId} />}
+      </section>
+      <details className="space-y-3 rounded border p-4">
+        <summary>Caps, faixas e labels</summary>
+        <label className="block">
+          <input
+            type="checkbox"
+            checked={config.pve_enabled === true}
+            onChange={(e) =>
+              setConfig({ ...config, pve_enabled: e.target.checked })
+            }
+          />{" "}
+          Afinidades ativas no PvE
+        </label>
+        <p>PvP: desativado</p>
+        {Object.entries(configLabels).map(([k, l]) => (
+          <label className="block" key={k}>
+            {l}
+            <input
+              type="number"
+              step="0.01"
+              className="ml-2 bg-stone-900 p-2"
+              value={Number(config[k])}
+              onChange={(e) =>
+                setConfig({ ...config, [k]: Number(e.target.value) })
+              }
+            />
+          </label>
+        ))}
+        {Object.entries((config.labels ?? {}) as Record<string, string>).map(
+          ([k, v]) => (
+            <label className="block" key={k}>
+              Label {k}
+              <input
+                className="ml-2 bg-stone-900 p-2"
+                value={v}
+                onChange={(e) =>
+                  setConfig({
+                    ...config,
+                    labels: {
+                      ...(config.labels as Record<string, string>),
+                      [k]: e.target.value,
+                    },
+                  })
+                }
+              />
+            </label>
+          ),
+        )}
+        <p>Usa o motivo informado no formulário de catálogo.</p>
+        <button
+          className="rounded border p-2"
+          disabled={reason.trim().length < 5}
+          onClick={() => void saveConfig()}
+        >
+          Salvar configuração
+        </button>
+      </details>
+      <section className="space-y-3 rounded border p-4">
+        <h2>Simulador de resolução de dano</h2>
+        <p>
+          Informe o dano bruto já escalado; o servidor aplica defesa,
+          afinidades, componentes e especializações usando o resolver de
+          produção.
+        </p>
+        {(["amount", "weaponId", "powerId", "targetId"] as const).map((k) => (
+          <label className="mr-3 inline-block" key={k}>
+            {
+              {
+                amount: "Dano bruto",
+                weaponId: "ID da arma (opcional)",
+                powerId: "ID da Power (opcional)",
+                targetId: "ID do alvo",
+              }[k]
+            }
+            <input
+              type="number"
+              min="0"
+              className="ml-2 w-24 bg-stone-900 p-2"
+              value={sim[k]}
+              onChange={(e) => setSim({ ...sim, [k]: Number(e.target.value) })}
+            />
+          </label>
+        ))}
+        <select
+          className="bg-stone-900 p-2"
+          value={sim.targetKind}
+          onChange={(e) => setSim({ ...sim, targetKind: e.target.value })}
+        >
+          {entityKinds
+            .filter(([k]) =>
+              ["monsters", "guild-bosses", "world-bosses"].includes(k),
+            )
+            .map(([v, l]) => (
+              <option key={v} value={v}>
+                {l}
+              </option>
+            ))}
+        </select>
+        <button
+          className="ml-2 rounded border p-2"
+          onClick={() => void simulate()}
+        >
+          Simular
+        </button>
+        <DamageBreakdown value={result} />
+      </section>
+    </main>
+  );
+}

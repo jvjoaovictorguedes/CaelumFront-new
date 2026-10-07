@@ -6,6 +6,7 @@
 // pra não duplicar o grid de botões com ícone + tooltip de mana/efeito
 // nos dois lugares.
 "use client";
+import PowerTypingDetails from "@/components/combat-typing/PowerTypingDetails";
 
 import { resolveMediaUrl } from "@/utils/media-url";
 import ActionTooltip from "@/components/Tooltip/ActionTooltip";
@@ -158,6 +159,7 @@ export default function CombatActionBar({
                           {poder.valor_escala ? ` (x${poder.valor_escala})` : ""}
                         </p>
                       )}
+                      <PowerTypingDetails powerId={poder.id}/>
                       {poder.descricao && (
                         <p className="mt-1 text-xs text-[#3a2f24]/80">{poder.descricao}</p>
                       )}

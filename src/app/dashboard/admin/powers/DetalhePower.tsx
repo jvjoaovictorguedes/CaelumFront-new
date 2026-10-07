@@ -1,4 +1,5 @@
 "use client";
+import TypingEditor from "@/components/combat-typing/TypingEditor";
 
 import { useCallback, useEffect, useState } from "react";
 import { adicionarStatusEffectPowerAdmin, atualizarPowerAdmin, atualizarStatusEffectPowerAdmin, desvincularClassePowerAdmin, desvincularNaturezaPowerAdmin, desvincularRacaPowerAdmin, jogadoresAfetadosPowerAdmin, listarVinculosPowerAdmin, mensagemDeErroAdmin, NATUREZAS_MAGICAS, previewEvolucaoPowerAdmin, previewStatusPowerAdmin, removerStatusEffectPowerAdmin, vincularClassePowerAdmin, vincularNaturezaPowerAdmin, vincularRacaPowerAdmin, type ClassAbilityApi, type ClassPublicaApi, type NatureAbilityApi, type NaturezaMagica, type PayloadPowerAdmin, type PowerApi, type PreviewEvolucaoPowerApi, type PreviewStatusPowerApi, type RaceAbilityApi, type RacePublicaApi, type StatusCatalogEntryApi, USAGE_SCOPES, NOME_USAGE_SCOPE } from "@/lib/api/admin";
@@ -250,6 +251,7 @@ export default function DetalhePower({
             ✕
           </button>
         </div>
+        <TypingEditor kind="powers" id={power.id}/>
         {erro && <p className="rounded-lg bg-black/50 px-3 py-2 text-sm text-red-400">{erro}</p>}
         {mensagem && <p className="rounded-lg bg-black/50 px-3 py-2 text-sm text-[#F3B43F]">{mensagem}</p>}
         {afetados !== null && afetados > 0 && (

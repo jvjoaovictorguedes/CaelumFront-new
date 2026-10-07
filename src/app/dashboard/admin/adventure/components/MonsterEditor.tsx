@@ -1,4 +1,5 @@
 "use client";
+import TypingEditor from "@/components/combat-typing/TypingEditor";
 
 import { useCallback, useEffect, useState } from "react";
 import {
@@ -380,6 +381,7 @@ export function MonsterEditor({
         <p className="font-imFeel text-2xl text-[#F3B43F]">Editar Monstro: {detalhe?.monstro.nome}</p>
         {erro && <p className="rounded-lg bg-black/50 px-3 py-2 text-sm text-red-400">{erro}</p>}
 
+        <TypingEditor kind="monsters" id={idMonstro}/>
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-[2fr_1fr]">
           <div className="flex flex-col gap-4">
             <section className="flex flex-col gap-2 rounded-xl border border-white/10 bg-black/20 p-3">

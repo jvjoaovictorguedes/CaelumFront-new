@@ -1,4 +1,5 @@
 "use client";
+import ItemTypingDetails from "@/components/combat-typing/ItemTypingDetails";
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
@@ -426,6 +427,7 @@ export default function EquipmentCategoriesPanel() {
                       >
                         <span className="block text-[10px] font-bold leading-tight text-white">
                           {instancia.nome}
+                          <ItemTypingDetails itemId={instancia.id_item}/>
                           {instancia.refinamento > 0 && ` +${instancia.refinamento}`}
                           {grupo.quantidade > 1 && ` (x${grupo.quantidade})`}
                         </span>
@@ -444,6 +446,7 @@ export default function EquipmentCategoriesPanel() {
               </div>
             )}
 
+            {selecionado?.slot===slot&&<ItemTypingDetails itemId={instancias.find(i=>i.id===selecionado.idInstancia)?.id_item??0} compare/>}
             <div className="mt-3 flex justify-center">
               <button
                 type="button"
@@ -515,6 +518,7 @@ function VarasDePescaSecao({ instancias }: { instancias: InstanciaApi[] }) {
               <div className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-2 w-40 -translate-x-1/2 rounded-md bg-black/90 p-2 text-center opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
                 <span className="block text-[10px] font-bold leading-tight text-white">
                   {instancia.nome}
+                          <ItemTypingDetails itemId={instancia.id_item}/>
                   {instancia.refinamento > 0 && ` +${instancia.refinamento}`}
                   {grupo.quantidade > 1 && ` (x${grupo.quantidade})`}
                 </span>

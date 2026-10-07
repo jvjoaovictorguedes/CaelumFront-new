@@ -1,5 +1,6 @@
 "use client";
 
+import { ResistanceList } from "@/components/combat-typing/TypingFeedback";
 import { useState } from "react";
 import axios from "axios";
 import axiosInstance from "@/utils/axiosIntance";
@@ -49,6 +50,7 @@ interface BonusAtributos {
 
 interface CharacterAttributesProps {
   character: {
+    effective_affinities?: import("@/types/contracts/combatTyping").DefensiveAffinity[];
     id: number;
     forca: number;
     vitalidade: number;
@@ -61,6 +63,7 @@ interface CharacterAttributesProps {
 }
 interface CharacterResponse {
   character: {
+    effective_affinities?: import("@/types/contracts/combatTyping").DefensiveAffinity[];
     id: number;
     forca: number;
     vitalidade: number;
@@ -190,6 +193,7 @@ export default function CharacterAttributes({
 
   return (
     <div className="grid grid-cols-1 gap-3 rounded-2xl border border-black/10 bg-[#3a2f24] p-5 shadow-lg sm:grid-cols-2">
+      <div className="sm:col-span-2"><ResistanceList values={character.effective_affinities}/></div>
       <div className="sm:col-span-2 flex flex-wrap items-center gap-2 rounded-lg bg-[#F3B43F]/30 p-3">
         <span className="text-sm font-bold text-white/80">Cada &ldquo;+&rdquo; adiciona:</span>
         {ATALHOS_INCREMENTO.map((valor) => (

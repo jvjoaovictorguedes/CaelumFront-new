@@ -1,4 +1,5 @@
 "use client";
+import TypingEditor from "@/components/combat-typing/TypingEditor";
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
@@ -825,6 +826,7 @@ function AbaBoss() {
       </div>
 
       <div className={CARD}>
+        {editandoId&&<TypingEditor kind="guild-bosses" id={editandoId}/>}
         <p className="mb-1 font-imFeel text-xl text-[#F3B43F]">{editandoId ? `Editando Boss (rank ${form.rank})` : "Novo Boss"}</p>
         <p className="mb-3 text-xs text-white/50">Um Boss por Rank (F..S) — não promove mais Rank, só concede XP de Guilda fixo + recompensa individual.</p>
         <CardMensagem erro={erro} mensagem={mensagem} />

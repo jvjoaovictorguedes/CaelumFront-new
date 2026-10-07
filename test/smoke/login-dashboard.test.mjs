@@ -163,6 +163,16 @@ test(
         "navigation must retain the shared connection",
       );
 
+      socket.emit("party:turno-resultado",{battleId:20,origem:"aliado",idAtor:"1",nomeAcao:"Golpe tipado",dano:125,cura:0,manaCurada:0,esquivou:false,vidaInimigo:40,damageResolution:{totalDamage:125,defenderFamily:{id:1,nome:"Construto"},components:[{nature:"Magico",affinity:{id:1,key:"FIRE",nome:"Fogo",categoria:"ELEMENTAL"},affinityMultiplier:1.25,effectivenessLabel:"EFETIVO",familyBonusPct:0,finalDamage:125}]}});
+      await page.getByText("Detalhes do dano: 125",{exact:true}).waitFor();
+      mock.setAdminMode(true);
+      await page.goto(`${origin}/dashboard/admin/combat-typing?kind=monsters&id=1`);
+      await page.getByRole("heading",{name:"Tipagens, afinidades e famílias",exact:true}).waitFor();
+      await page.getByRole("heading",{name:/Tipagens e afinidades — Golem Smoke/}).waitFor();
+      assert.equal(await page.getByRole("columnheader",{name:"Herdado",exact:true}).count(),1);
+      assert.equal(await page.getByRole("columnheader",{name:"Override",exact:true}).count(),1);
+      assert.equal(await page.getByRole("columnheader",{name:"Efetivo",exact:true}).count(),1);
+
       // Challenge is lazy and completes without retrying a mutable request.
       assert.equal(await page.locator('script[data-caelum-turnstile]').count(),0);
       await page.evaluate(()=>window.dispatchEvent(new Event("caelum:verification-required")));

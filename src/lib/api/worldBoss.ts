@@ -152,6 +152,7 @@ export async function sairWorldBoss(): Promise<{ encerrada: boolean } | null> {
 }
 
 export interface WorldBossAcaoResultado {
+  damageResolution?: import("@/types/contracts/combatTyping").DamageResolution|null;
   nomeAcao: string | null;
   dano: number;
   esquivou: boolean;

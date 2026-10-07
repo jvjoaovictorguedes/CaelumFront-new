@@ -1,4 +1,5 @@
 "use client";
+import TypingEditor from "@/components/combat-typing/TypingEditor";
 
 // Ameaça Mundial V2 §13.1/§13.2 — editor completo do catálogo, em tela
 // cheia (nunca mais o modal pequeno de antes): Identidade, Atributos +
@@ -200,6 +201,7 @@ export default function WorldBossEditorDrawer({
           <p className="text-sm text-white/50">Salve o catálogo na aba Identidade (ou qualquer outra com o botão &quot;Salvar catálogo&quot;) antes de configurar isto.</p>
         ) : (
           <div className="mx-auto max-w-4xl">
+            {configId&&<TypingEditor kind="world-bosses" id={configId}/>}
             {aba === "identidade" && <WorldBossIdentityTab form={form} setForm={setForm} editando={configId !== null} />}
             {aba === "atributos" && <WorldBossAttributesTab form={form} setForm={setForm} />}
             {aba === "fases" && <WorldBossPhasesTab form={form} setForm={setForm} habilidades={habilidades} />}

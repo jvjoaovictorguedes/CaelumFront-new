@@ -1,4 +1,6 @@
 "use client";
+import {DamageBreakdown} from "@/components/combat-typing/TypingFeedback";
+import type {DamageResolution} from "@/types/contracts/combatTyping";
 
 // Cena de batalha da Ameaça Mundial — bug relatado ("não tá igual
 // aventura"): WorldBossArena.tsx era só um painel de texto/botões
@@ -121,6 +123,7 @@ export default function WorldBossBattleScene({
   const [agindo, setAgindo] = useState(false);
   const [erro, setErro] = useState("");
   const [log, setLog] = useState<string[]>([]);
+  const [damageResolution,setDamageResolution]=useState<DamageResolution|null>(null);
   const [encerrada, setEncerrada] = useState<"vitoria" | "derrota" | null>(null);
   const [mostrarPainelLateral, setMostrarPainelLateral] = useState(false);
 
@@ -166,7 +169,7 @@ export default function WorldBossBattleScene({
   }, [status?.hp_current, status?.hp_max, status?.hp_percentual]);
 
   const adicionarLog = useCallback((texto: string) => {
-    setLog((atual) => [texto, ...atual].slice(0, 20));
+setLog((atual) => [texto, ...atual].slice(0, 20));
   }, []);
 
   function triggerFloatingJogador(text: string, color: string) {
@@ -251,6 +254,7 @@ export default function WorldBossBattleScene({
         setAnimBoss("anim-atingido");
         setHpBoss({ atual: resultado.boss.hp_current, max: resultado.boss.hp_max, percentual: resultado.boss.hp_percentual });
       }
+      setDamageResolution(resultado.damageResolution??null);
       if (resultado.cura > 0) triggerFloatingJogador(`+${resultado.cura}`, "#44ff44");
 
       adicionarLog(
@@ -444,6 +448,7 @@ export default function WorldBossBattleScene({
         <div className="absolute inset-x-3 top-24 z-30 grid grid-cols-1 gap-3 sm:inset-x-auto sm:right-4 sm:w-80">
           <div className="max-h-48 overflow-y-auto rounded-xl border border-white/10 bg-black/70 p-3 text-xs backdrop-blur">
             <p className="mb-1 text-[10px] font-bold uppercase text-white/50">Combate</p>
+            <DamageBreakdown value={damageResolution}/>
             {log.length === 0 ? <p className="text-white/40">Nenhuma ação ainda.</p> : log.map((linha, i) => <p key={i} className="text-white/70">{linha}</p>)}
           </div>
           <div className="rounded-xl border border-white/10 bg-black/70 p-3 backdrop-blur">

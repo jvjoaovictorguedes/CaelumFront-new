@@ -51,6 +51,7 @@ export interface CastStartBossGuildaPayload {
 }
 
 export interface TurnoBossGuildaPayload {
+  damageResolution?: import("@/types/contracts/combatTyping").DamageResolution|null;
   battleId: number;
   origem: "aliado" | "chefe";
   idAtor?: string;
