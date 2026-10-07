@@ -108,6 +108,8 @@ interface ItemInventarioApi {
 }
 
 interface EnemyState {
+  combatTurn?: number;
+  encounterId?: string;
   nome: string;
   nivel: number;
 
@@ -1125,7 +1127,7 @@ export default function CombatArena({
           characterId: character.id,
 
           enemy,
-
+          ...(actionEndpoint === "/combat/action" ? {stateVersion:enemy.combatTurn || 0,encounterId:enemy.encounterId} : {}),
           action,
         },
       );

@@ -78,6 +78,11 @@ export function useCombatTransport(
     scope.on("disconnect", () => setConectado(false));
 
     const disposeDomains = registerDomains(socket);
+    for (const event of ["pvp:erro","party:erro","guildboss:erro"]) {
+      scope.on(event,(error: {code?:string}) => {
+        if(error.code === "ANTI_AUTOMATION_CHALLENGE_REQUIRED") window.dispatchEvent(new Event("caelum:verification-required"));
+      });
+    }
     scope.on(
       SOCKET_EVENTS.PVP.FICOU_ONLINE,
       ({ characterId: id }: { characterId: string }) => {

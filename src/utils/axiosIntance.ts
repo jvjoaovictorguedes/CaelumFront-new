@@ -52,6 +52,9 @@ function criarInstanciaReal(): AxiosInstance {
       (resposta) => resposta,
       (erro) => {
         const status = erro?.response?.status;
+        if (erro?.response?.data?.code === "ANTI_AUTOMATION_CHALLENGE_REQUIRED") {
+          window.dispatchEvent(new Event("caelum:verification-required"));
+        }
         const url: string = erro?.config?.url ?? "";
         const rotaIsenta = ROTAS_SEM_REDIRECT_NO_401.some((rota) => url.includes(rota));
         const jaEstaNoLogin = window.location.pathname.startsWith("/login");

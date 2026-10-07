@@ -1,4 +1,5 @@
 import React from "react";
+import AutomationVerification from "@/components/AutomationVerification";
 import NavMenu from "./components/NavMenu";
 import { getCurrentCharacter, getCurrentCharacterId, isCurrentUserAdmin } from "@/utils/character-session";
 import { PvpSocketProvider } from "@/contexts/PvpSocketContext";
@@ -30,6 +31,7 @@ export default async function DashboardLayout({
     <ToastProvider>
       <CharacterProvider initialCharacter={character}>
         <SessionKeepAlive />
+        <AutomationVerification />
         <PvpSocketProvider characterId={characterId ? Number(characterId) : undefined}>
           <WorldBossSocketProvider>
             <UniqueFeatSocketProvider>

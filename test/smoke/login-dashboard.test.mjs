@@ -71,7 +71,9 @@ test(
       page.on("pageerror", (error) => errors.push(error.message));
       page.on("dialog", (dialog) => dialog.accept());
       await page.route("**/*", async (route) => {
-        const host = new URL(route.request().url()).hostname;
+        const url=route.request().url();
+        if(url.startsWith("https://challenges.cloudflare.com/turnstile/v0/api.js")) return route.fulfill({contentType:"application/javascript",body:'window.turnstile={render:function(node,options){node.innerHTML="<button id=smoke-verify>Verificar</button>";node.querySelector("button").onclick=function(){options.callback("mock-turnstile-token");};return "widget";},remove:function(){}};'});
+        const host = new URL(url).hostname;
         if (!["127.0.0.1", "localhost"].includes(host)) await route.abort();
         else await route.continue();
       });
@@ -160,6 +162,13 @@ test(
         1,
         "navigation must retain the shared connection",
       );
+
+      // Challenge is lazy and completes without retrying a mutable request.
+      assert.equal(await page.locator('script[data-caelum-turnstile]').count(),0);
+      await page.evaluate(()=>window.dispatchEvent(new Event("caelum:verification-required")));
+      await page.getByRole("dialog",{name:"Verificação de segurança"}).waitFor();
+      await page.locator("#smoke-verify").click();
+      await page.getByRole("dialog",{name:"Verificação de segurança"}).waitFor({state:"detached"});
       const forbidden = await page.evaluate(() =>
         fetch("/api/backend/smoke/forbidden").then(
           (response) => response.status,

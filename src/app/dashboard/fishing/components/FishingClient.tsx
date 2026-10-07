@@ -336,7 +336,7 @@ export default function FishingClient() {
           ocupado={ocupado}
           onCast={() => acao(() => fishingApi.cast(sessao.id))}
           onHook={() => acao(() => fishingApi.hook(sessao.id))}
-          onReel={(active) => acao(() => fishingApi.reel(sessao.id, active))}
+          onReel={(active) => acao(() => fishingApi.reel(sessao.id, active, sessao.sequence))}
           onAbandon={() => acao(() => fishingApi.abandon(sessao.id))}
           onNovaSessao={() => setSessao(null)}
         />

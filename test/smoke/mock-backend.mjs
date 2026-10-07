@@ -70,7 +70,9 @@ export async function startMockBackend(port = 3101) {
     }
     let status = 200;
     let payload = { status: "success", data: [] };
-    if (route === "/maintenance/status")
+    if(route === "/anti-automation/status") payload={data:{required:true,challengeId:"00000000-0000-4000-8000-000000000001",siteKey:"smoke-sitekey"}};
+    else if(route === "/anti-automation/verify")payload={data:{verified:true}};
+    else if (route === "/maintenance/status")
       payload = { enabled: false, message: "" };
     else if (route === "/users/login")
       payload = { token: "smoke-session-token", data: { user: { id: "1" } } };

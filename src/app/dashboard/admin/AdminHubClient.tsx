@@ -28,6 +28,7 @@ const CATEGORIAS: CategoriaAdmin[] = [
   {
     titulo: "Conteúdo",
     modulos: [
+      { titulo: "Anti-automação", descricao: "Sinais, revisão e rollout.", href: "/dashboard/admin/anti-automation", permissao: "anti_automation.view" },
       { titulo: "Itens", descricao: "Criar, editar e desativar itens e propriedades.", href: "/dashboard/admin/items", permissao: "items.manage" },
       { titulo: "Conjuntos de Equipamentos", descricao: "Peças, thresholds e bônus de conjunto.", href: "/dashboard/admin/equipment-sets", permissao: "equipmentsets.manage" },
       { titulo: "Habilidades", descricao: "Catálogo de Habilidades (Power), vínculos e evolução 1-10.", href: "/dashboard/admin/powers", permissao: "powers.manage" },

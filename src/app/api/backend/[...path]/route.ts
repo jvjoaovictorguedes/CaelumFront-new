@@ -45,6 +45,9 @@ async function encaminhar(request: NextRequest, path: string[]) {
       headers: { "content-type": respostaBackend.headers.get("content-type") || "application/json" },
     });
 
+    const retryAfter = respostaBackend.headers.get("retry-after");
+    if (retryAfter) resposta.headers.set("retry-after",retryAfter);
+
     // 401 do backend = token ausente/inválido/expirado (authMiddleware
     // agora usa esse código só pra isso — 403 continua sendo "autenticado
     // mas sem permissão pra essa ação específica", que não deve derrubar
