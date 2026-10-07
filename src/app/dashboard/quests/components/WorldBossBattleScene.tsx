@@ -469,6 +469,7 @@ export default function WorldBossBattleScene({
             onAtaqueBasico={() => executar(atacarWorldBoss, false, false)}
             poderes={poderes.map((p) => ({
               id: p.id,
+              combat_slot: p.combat_slot,
               nome: p.nome,
               imagem_url: p.imagem_url,
               custo_mana: p.custo_mana,

@@ -66,6 +66,7 @@ interface Power {
 }
 
 interface Ability {
+  combat_slot?: number | null;
   id: number;
   Power: Power;
 }
@@ -1524,6 +1525,7 @@ export default function CombatArena({
             onAtaqueBasico={() => executarAcao({ type: "attack" })}
             poderes={abilities.map((habilidade) => ({
               id: habilidade.Power.id,
+              combat_slot: habilidade.combat_slot,
               nome: habilidade.Power.nome,
               imagem_url: habilidade.Power.imagem_url,
               custo_mana: habilidade.Power.custo_mana,

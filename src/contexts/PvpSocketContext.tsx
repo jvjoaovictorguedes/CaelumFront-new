@@ -25,6 +25,7 @@ export interface PoderDuelo {
   nome: string;
   imagem_url?: string | null;
   custo_mana: number;
+  combat_slot?: number | null;
   dano_base: number;
   cura_base: number;
   escala_atributo?: string;
@@ -222,6 +223,7 @@ export interface PoderGrupo {
   nome: string;
   imagem_url?: string | null;
   custo_mana: number;
+  combat_slot?: number | null;
   dano_base: number;
   cura_base: number;
   escala_atributo?: string;

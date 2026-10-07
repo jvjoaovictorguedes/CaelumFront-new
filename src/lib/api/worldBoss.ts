@@ -105,6 +105,7 @@ export interface WorldBossPoderApi {
   nome: string;
   imagem_url: string | null;
   custo_mana: number;
+  combat_slot?: number | null;
   dano_base: number;
   cooldown: number | null;
   nivel_habilidade: number;

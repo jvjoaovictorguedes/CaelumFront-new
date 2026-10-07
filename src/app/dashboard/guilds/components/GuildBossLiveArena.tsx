@@ -357,6 +357,7 @@ export default function GuildBossLiveArena() {
               }}
               poderes={(meuMembro?.poderes ?? []).map((p) => ({
                 id: p.id,
+                combat_slot: p.combat_slot,
                 nome: p.nome,
                 imagem_url: p.imagem_url,
                 custo_mana: p.custo_mana,
