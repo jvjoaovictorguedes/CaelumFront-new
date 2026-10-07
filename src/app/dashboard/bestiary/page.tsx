@@ -88,6 +88,7 @@ export default async function BestiaryPage() {
             <Link
               key={regiao.id}
               href={`/dashboard/bestiary/${regiao.id}`}
+              prefetch={false}
               className={`flex flex-col justify-between rounded-2xl border p-4 text-white shadow-xl transition hover:border-[#F3B43F] ${
                 maestriaV
                   ? "border-[#F3B43F] bg-gradient-to-br from-[#3a2c14] to-[#292018]"

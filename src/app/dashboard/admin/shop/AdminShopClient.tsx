@@ -93,13 +93,13 @@ export default function AdminShopClient() {
   return (
     <div className="flex flex-col gap-4">
       <div>
-        <Link href="/dashboard/admin" className="text-sm text-[#F3B43F]/80 hover:underline">
+        <Link prefetch={false} href="/dashboard/admin" className="text-sm text-[#F3B43F]/80 hover:underline">
           ← Painel Administrativo
         </Link>
         <h1 className="mt-1 font-imFeel text-3xl text-[#F3B43F]">Loja NPC</h1>
         <p className="mt-1 text-sm text-white/60">
           Preços e disponibilidade dos itens na Loja NPC. Reaproveita o mesmo cadastro de Itens — pra editar outros
-          campos (raridade, tipo, propriedades), use <Link href="/dashboard/admin/items" className="text-[#F3B43F] hover:underline">Itens</Link>.
+          campos (raridade, tipo, propriedades), use <Link prefetch={false} href="/dashboard/admin/items" className="text-[#F3B43F] hover:underline">Itens</Link>.
         </p>
       </div>
 

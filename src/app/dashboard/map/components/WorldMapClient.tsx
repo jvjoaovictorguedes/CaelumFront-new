@@ -127,7 +127,7 @@ export default function WorldMapClient({ mapa }: { mapa: WorldMapApi }) {
           {/* O mapa cobre a tela toda (fixed inset-0) por cima do menu
               lateral/hambúrguer — sem isso não existe como sair da
               página, nem no mobile nem no desktop. */}
-          <Link
+          <Link prefetch={false}
             href="/dashboard"
             aria-label="Fechar mapa"
             title="Fechar mapa"
@@ -140,7 +140,7 @@ export default function WorldMapClient({ mapa }: { mapa: WorldMapApi }) {
               protótipo em desenvolvimento, não o Mapa de produção,
               então o rótulo deixa isso claro mesmo fora da página em
               si (ver aviso dentro de /prototype-2d). */}
-          <Link
+          <Link prefetch={false}
             href="/prototype-2d"
             title="Protótipo de exploração 2D — ainda em desenvolvimento, vamos continuar melhorando"
             className="rounded-full border border-dashed border-[#F3B43F]/50 px-3 py-1 text-xs font-bold text-[#F3B43F]/80 transition hover:border-[#F3B43F] hover:text-[#F3B43F]"

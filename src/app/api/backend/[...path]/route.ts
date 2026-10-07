@@ -11,7 +11,11 @@ import { TOKEN_KEY } from "@/constants";
 // o cookie httpOnly da requisição recebida (o navegador manda automático,
 // é uma chamada same-origin pra própria página) e repassa pro backend de
 // verdade com o header certo. O navegador nunca vê o token.
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api";
+//
+// INTERNAL_API_URL (sem NEXT_PUBLIC_) é opcional — ver mesmo comentário
+// em utils/axiosIntance.ts: quando setada, usa a rede privada do Railway
+// em vez do domínio público pra essa chamada servidor-a-servidor.
+const API_BASE_URL = process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api";
 
 async function encaminhar(request: NextRequest, path: string[]) {
   const cookieStore = await cookies();

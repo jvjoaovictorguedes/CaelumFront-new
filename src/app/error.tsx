@@ -32,7 +32,7 @@ export default function ErrorBoundary({
           >
             Tentar de novo
           </button>
-          <Link
+          <Link prefetch={false}
             href="/dashboard"
             className="rounded-lg border-2 border-white/30 px-4 py-2 font-bold text-white transition hover:bg-white/10"
           >

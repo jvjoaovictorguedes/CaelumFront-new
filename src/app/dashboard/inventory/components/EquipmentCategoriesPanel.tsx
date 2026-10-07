@@ -483,7 +483,7 @@ function VarasDePescaSecao({ instancias }: { instancias: InstanciaApi[] }) {
       </div>
       <p className="mb-3 text-center text-xs text-white/50">
         Escolha a vara ativa na{" "}
-        <Link href="/dashboard/fishing" className="text-[#F3B43F] underline hover:text-white">
+        <Link prefetch={false} href="/dashboard/fishing" className="text-[#F3B43F] underline hover:text-white">
           Pesca
         </Link>
         .
