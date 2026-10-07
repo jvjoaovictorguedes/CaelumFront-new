@@ -11,6 +11,7 @@ const MAX_SLOTS = 5;
 
 interface PoderApi {
   id_power: number;
+  combat_slot?: number | null;
   nome: string;
   descricao?: string | null;
   tipo_poder: "Ativo" | "Passivo";
@@ -145,7 +146,7 @@ export default function CombatLoadoutPanel({ characterId }: { characterId: numbe
   const [mensagem, setMensagem] = useState("");
   const [processando, setProcessando] = useState(false);
   const [seletorAberto, setSeletorAberto] = useState<
-    "habilidade" | { tipo: "item"; slot: number } | null
+    { tipo: "habilidade" | "item"; slot: number } | null
   >(null);
 
   const carregar = useCallback(async () => {
@@ -176,9 +177,6 @@ export default function CombatLoadoutPanel({ characterId }: { characterId: numbe
   const ativasAtivas = poderes.filter(
     (p) => p.tipo_poder === "Ativo" && p.aprendido && p.ativo,
   );
-  const ativasDisponiveis = poderes.filter(
-    (p) => p.tipo_poder === "Ativo" && p.aprendido && !p.ativo,
-  );
 
   const slotsConsumiveis = Array.from(
     { length: MAX_SLOTS },
@@ -189,13 +187,14 @@ export default function CombatLoadoutPanel({ characterId }: { characterId: numbe
       entrada.Item.tipo_item === "Consumivel" && !slotsConsumiveis.includes(entrada.id_item),
   );
 
-  async function alternarHabilidade(idCharacterAbility: number | null, ativar: boolean) {
+  async function alternarHabilidade(idCharacterAbility: number | null, ativar: boolean, slot?: number) {
     if (!idCharacterAbility || processando) return;
     setProcessando(true);
     setMensagem("");
     try {
       await axiosInstance.patch(`/character-abilities/${idCharacterAbility}/toggle`, {
         is_active: ativar,
+        combat_slot: slot,
       });
       await carregar();
       setSeletorAberto(null);
@@ -256,13 +255,13 @@ export default function CombatLoadoutPanel({ characterId }: { characterId: numbe
         </div>
         <div className="grid grid-cols-3 gap-3 sm:grid-cols-5">
           {Array.from({ length: MAX_SLOTS }).map((_, i) => {
-            const poder = ativasAtivas[i];
+            const poder = ativasAtivas.find((p) => p.combat_slot === i);
             return (
               <Slot
                 key={i}
                 nome={poder?.nome}
                 imagemUrl={poder?.imagem_url}
-                onSelecionar={() => setSeletorAberto("habilidade")}
+                onSelecionar={() => setSeletorAberto({ tipo: "habilidade", slot: i })}
                 onRemover={
                   poder ? () => alternarHabilidade(poder.id_character_ability, false) : undefined
                 }
@@ -294,18 +293,18 @@ export default function CombatLoadoutPanel({ characterId }: { characterId: numbe
         </div>
       </div>
 
-      {seletorAberto === "habilidade" && (
+      {seletorAberto?.tipo === "habilidade" && (
         <SeletorModal
           titulo="Selecionar habilidade"
-          opcoes={ativasDisponiveis.map((p) => ({
+          opcoes={poderes.filter((p) => p.tipo_poder === "Ativo" && p.aprendido).map((p) => ({
             id: p.id_power,
             nome: p.nome,
             imagemUrl: p.imagem_url,
             descricao: p.descricao,
           }))}
           onEscolher={(idPower) => {
-            const poder = ativasDisponiveis.find((p) => p.id_power === idPower);
-            if (poder) alternarHabilidade(poder.id_character_ability, true);
+            const poder = poderes.find((p) => p.id_power === idPower);
+            if (poder) alternarHabilidade(poder.id_character_ability, true, seletorAberto.slot);
           }}
           onFechar={() => setSeletorAberto(null)}
         />

@@ -20,6 +20,7 @@ const NOME_ATRIBUTO: Record<string, string> = {
 
 export interface PoderAcao {
   id: number;
+  combat_slot?: number | null;
   nome: string;
   imagem_url?: string | null;
   custo_mana: number;
@@ -103,6 +104,9 @@ export default function CombatActionBar({
   className?: string;
   rightSlot?: React.ReactNode;
 }) {
+  const slotsPoderes: (PoderAcao | null)[] = poderes.some((p) => p.combat_slot != null)
+    ? Array.from({ length: 5 }, (_, slot) => poderes.find((p) => p.combat_slot === slot) ?? null)
+    : poderes;
   const desabilitadoGeral = !podeAgir || ocupado;
   const desabilitadoItem = !(podeUsarItem ?? podeAgir) || ocupado;
 
@@ -137,7 +141,8 @@ export default function CombatActionBar({
         <div>
           <p className="mb-1 text-[10px] font-bold uppercase tracking-widest text-[#F3B43F]/90">Poderes</p>
           <div className="flex flex-wrap gap-1.5">
-            {poderes.map((poder) => {
+            {slotsPoderes.map((poder, slot) => {
+              if (!poder) return <div key={`slot-${slot}`} aria-label={`Slot de habilidade ${slot + 1} vazio`} className="h-12 w-12 rounded-lg border-2 border-white/10 bg-black/20" />;
               const semMana = manaAtual < poder.custo_mana;
               const emCooldown = (cooldownsPorPoder[poder.id] ?? 0) > 0;
               return (
