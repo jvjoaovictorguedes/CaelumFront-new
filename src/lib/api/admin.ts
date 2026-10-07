@@ -1263,13 +1263,47 @@ export async function removerCombatEffectPowerAdmin(idEfeito: number): Promise<v
   await axiosInstance.delete(`/admin/powers/combat-effects/${idEfeito}`);
 }
 
+export interface CombatEffectFieldApi {
+  key: string;
+  label: string;
+  type: "number" | "select" | "text";
+  required?: boolean;
+  min?: number;
+  max?: number;
+  maxLength?: number;
+  optionsSource?: "statusKeys" | "stackGroups";
+  options?: { value: string; label: string }[];
+}
+
+export interface CombatEffectSupportApi {
+  status: "FUNCTIONAL" | "PARTIAL" | "UNSUPPORTED";
+  label: string;
+  description?: string;
+}
+
+export interface CombatEffectMetadataApi {
+  key: string;
+  label: string;
+  unidade: "PERCENTUAL" | "FLAT" | "TURNOS" | "SEM_MAGNITUDE";
+  previewTemplate: string;
+  configFields: CombatEffectFieldApi[];
+  supportByTrigger: Record<string, CombatEffectSupportApi>;
+}
+
 export interface CombatEffectCatalogApi {
-  effectKeys: { key: string; label: string; unidade: string }[];
+  effectKeys: CombatEffectMetadataApi[];
   targets: string[];
-  triggers: { key: string; descricao: string }[];
+  targetDescriptions: Record<string, string>;
+  targetSubjects: Record<string, string>;
+  triggers: { key: string; descricao: string; previewPrefix: string; support: CombatEffectSupportApi }[];
   reapplyPolicies: string[];
-  conditions: { key: string; campos: string[]; descricao: string }[];
-  contexts: { key: string; rotulo: string }[];
+  reapplyPolicyDescriptions: Record<string, string>;
+  conditions: { key: string; campos: string[]; descricao: string; fields: CombatEffectFieldApi[] }[];
+  contexts: { key: string; rotulo: string; field: keyof PayloadCombatEffectAdmin }[];
+  statusKeys: { value: string; label: string }[];
+  scaleAttributes: NonNullable<PayloadCombatEffectAdmin["scale_attribute"]>[];
+  stackGroups: string[];
+  engineNotes: Record<string, string>;
 }
 
 export async function catalogoCombatEffectsAdmin(): Promise<CombatEffectCatalogApi> {

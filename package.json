@@ -6,7 +6,8 @@
     "dev": "next dev --turbopack",
     "build": "next build && cp -r public .next/standalone/ && cp -r .next/static .next/standalone/.next/",
     "start": "HOSTNAME=0.0.0.0 node .next/standalone/server.js",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test:combat-effects": "node --experimental-strip-types --test test/combatEffectEditor.test.mjs"
   },
   "dependencies": {
     "axios": "^1.10.0",
