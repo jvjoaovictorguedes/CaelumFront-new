@@ -12,11 +12,12 @@ test("history retains received order without mutating previous state", () => {
 });
 
 test("tournament updates merge only into the matching series", () => {
-  const initial = { serieId: 1, readyA: true, placarA: 0 };
-  const merged = mergeTournamentSeries(initial, { serieId: 1, placarA: 1 });
+  const initial = { serieId: 1, readyA: true, placar: { a: 0, b: 0 } };
+  const merged = mergeTournamentSeries(initial, { serieId: 1, placar: { a: 1 } });
   assert.equal(merged.readyA, true);
-  assert.equal(initial.placarA, 0);
-  const other = { serieId: 2, placarA: 0 };
+  assert.equal(initial.placar.a, 0);
+  assert.deepEqual(merged.placar, { a: 1 });
+  const other = { serieId: 2, placar: { a: 0 } };
   assert.equal(mergeTournamentSeries(initial, other), other);
 });
 

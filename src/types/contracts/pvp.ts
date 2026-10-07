@@ -1,9 +1,11 @@
+import type { ResumoTierPayload } from "./ranked";
 export interface LutadorDuelo {
   id: number;
   nome: string;
   genero: string;
   classe?: string;
   chave: "A" | "B";
+  controladoPorIA?: boolean;
 }
 
 export interface PoderDuelo {
@@ -12,6 +14,7 @@ export interface PoderDuelo {
   imagem_url?: string | null;
   custo_mana: number;
   combat_slot?: number | null;
+  nivel_habilidade?: number;
   dano_base: number;
   cura_base: number;
   escala_atributo?: string;
@@ -34,7 +37,14 @@ export interface DueloIniciadoPayload {
   // Partida de torneio: é um duelo ao vivo como qualquer outro (mesma
   // tela), só marcado pra a UI saber que faz parte de uma série. O
   // backend manda um objeto (nunca `true`) — {serieId, round, formato}.
-  torneio?: { serieId: number; round: string; formato: string } | boolean;
+  torneio?: { serieId: number; round: string; formato: string } | boolean | null;
+  assincrono?: boolean;
+  rankedMatchId?: number;
+  temporada?: { id: number };
+  tierA?: ResumoTierPayload;
+  tierB?: ResumoTierPayload;
+  consumiveisHabilitados?: boolean;
+  resync?: boolean;
   ratingA?: number;
   ratingB?: number;
   ligaA?: string;

@@ -28,6 +28,7 @@ export interface PoderGrupo {
   imagem_url?: string | null;
   custo_mana: number;
   combat_slot?: number | null;
+  nivel_habilidade?: number;
   dano_base: number;
   cura_base: number;
   escala_atributo?: string;

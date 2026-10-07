@@ -102,7 +102,6 @@ export function useCombatTransport(
       socket.disconnect();
       socketRef.current = null;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [characterId, setErro, registerDomains]);
   return { socketRef, conectado, onlineIds };
 }

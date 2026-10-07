@@ -25,7 +25,7 @@ export function registerTournamentListeners(
   // Torneio — cada jogo de uma série (MD3/MD5) é um duelo ao vivo
   // normal emitido pelo MESMO evento SOCKET_EVENTS.PVP.DUELO_INICIADO (tratado
   // acima), só com `payload.torneio = {serieId, round, formato}`. Não
-  // existe um evento SOCKET_EVENTS.TORNEIO.DUELO_INICIADO separado no backend.
+  // existe evento próprio de início de duelo de torneio no backend.
   //
   // Ready-check da série: entra na sala com SOCKET_EVENTS.TORNEIO.ENTRAR_SALA e
   // ouve as atualizações — é o único jeito de saber quem já confirmou
