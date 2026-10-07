@@ -1,4 +1,3 @@
-
 export interface TorneioSerieAtualizadaPayload {
   serieId: number;
   status?: string;

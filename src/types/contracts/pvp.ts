@@ -1,4 +1,3 @@
-
 export interface LutadorDuelo {
   id: number;
   nome: string;
@@ -63,7 +62,16 @@ export interface DueloIniciadoPayload {
 // nenhuma mudança de comportamento).
 
 export interface StatusInstanceDuelo {
-  key: "BURN" | "BLEED" | "POISON" | "SILENCE" | "WEAKEN" | "FREEZE" | "STUN" | "PARALYZE" | "BLIND";
+  key:
+    | "BURN"
+    | "BLEED"
+    | "POISON"
+    | "SILENCE"
+    | "WEAKEN"
+    | "FREEZE"
+    | "STUN"
+    | "PARALYZE"
+    | "BLIND";
   remainingTurns: number;
   stacks: number;
 }
@@ -72,7 +80,14 @@ export interface StatusInstanceDuelo {
 // no backend), mesmo shape mínimo de StatusInstanceDuelo.
 
 export interface CombatBuffInstanceDuelo {
-  atributo: "DANO_SAIDA_PCT" | "DEFESA_FLAT" | "REGEN_HP_FLAT" | "REGEN_HP_PERCENT" | "REGEN_MANA_FLAT" | "REGEN_MANA_PERCENT" | "STATUS_RESISTANCE_PCT";
+  atributo:
+    | "DANO_SAIDA_PCT"
+    | "DEFESA_FLAT"
+    | "REGEN_HP_FLAT"
+    | "REGEN_HP_PERCENT"
+    | "REGEN_MANA_FLAT"
+    | "REGEN_MANA_PERCENT"
+    | "STATUS_RESISTANCE_PCT";
   valor: number;
   remainingTurns: number;
 }

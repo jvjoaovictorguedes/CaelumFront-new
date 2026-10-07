@@ -1,4 +1,3 @@
-
 export interface RankedQueueUpdatePayload {
   emFila: boolean;
   tempoNaFilaMs?: number;

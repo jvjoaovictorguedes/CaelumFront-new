@@ -84,7 +84,12 @@ export interface RecompensasBossGuilda {
   xpGuilda: number;
   subiuNivel: boolean;
   niveisGanhos: number;
-  participantes: { idPersonagem: number; dinheiro: number; xp: number; nivel?: number }[];
+  participantes: {
+    idPersonagem: number;
+    dinheiro: number;
+    xp: number;
+    nivel?: number;
+  }[];
   premioMaiorDano: { idPersonagem: number; ouro: number } | null;
 }
 

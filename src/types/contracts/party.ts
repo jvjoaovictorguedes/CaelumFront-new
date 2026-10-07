@@ -80,7 +80,10 @@ export interface BatalhaGrupoIniciadaPayload {
   // quando a diferença de nível DENTRO do grupo (maior - menor) é grande
   // demais, e por isso a recompensa de XP/ouro do grupo INTEIRO vai sair
   // reduzida nesta aventura.
-  penalidadeDiferencaNivel?: { multiplicador: number; diferencaNivel: number } | null;
+  penalidadeDiferencaNivel?: {
+    multiplicador: number;
+    diferencaNivel: number;
+  } | null;
 }
 
 export interface TurnoGrupoPayload {
@@ -124,9 +127,27 @@ export interface BatalhaGrupoFimPayload {
   battleId: number;
   vitoria: boolean;
   motivo: string;
-  recompensas: Record<string, { experiencia: number; dinheiro: number; nivel: number; pontos_distribuir: number }>;
-  drops: Record<string, { tipo: "item" | "ouro"; item?: { id: number; nome: string; raridade: string }; dinheiro?: number }>;
-  penalidadeDiferencaNivel?: { multiplicador: number; diferencaNivel: number } | null;
+  recompensas: Record<
+    string,
+    {
+      experiencia: number;
+      dinheiro: number;
+      nivel: number;
+      pontos_distribuir: number;
+    }
+  >;
+  drops: Record<
+    string,
+    {
+      tipo: "item" | "ouro";
+      item?: { id: number; nome: string; raridade: string };
+      dinheiro?: number;
+    }
+  >;
+  penalidadeDiferencaNivel?: {
+    multiplicador: number;
+    diferencaNivel: number;
+  } | null;
 }
 
 // Boss da Guilda V2.0 (batalha em tempo real) — mesmo modelo de payload
