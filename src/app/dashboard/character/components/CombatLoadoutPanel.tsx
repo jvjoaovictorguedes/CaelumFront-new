@@ -8,12 +8,34 @@ import ItemIcon from "@/components/Item/ItemIcon";
 import { useCharacter } from "@/contexts/CharacterContext";
 
 const MAX_SLOTS = 5;
+const NOME_ATRIBUTO: Record<string, string> = {
+  Forca: "Força",
+  Vitalidade: "Vitalidade",
+  Agilidade: "Agilidade",
+  Inteligencia: "Inteligência",
+  Velocidade: "Velocidade",
+};
+
+function detalhesHabilidade(poder: PoderApi): string[] {
+  const detalhes = [`Dano base: ${(poder.dano_base ?? 0).toLocaleString("pt-BR")}`];
+  if (poder.cura_base) detalhes.push(`Cura base: ${poder.cura_base.toLocaleString("pt-BR")}`);
+  detalhes.push(
+    poder.valor_escala === 0
+      ? "Sem escalamento de atributo"
+      : `Escalamento: ${NOME_ATRIBUTO[poder.escala_atributo] ?? poder.escala_atributo} × ${poder.valor_escala.toLocaleString("pt-BR")} (${(poder.valor_escala * 100).toLocaleString("pt-BR")}%)`,
+  );
+  return detalhes;
+}
 
 interface PoderApi {
   id_power: number;
   combat_slot?: number | null;
   nome: string;
   descricao?: string | null;
+  dano_base: number | null;
+  cura_base: number | null;
+  escala_atributo: string;
+  valor_escala: number;
   tipo_poder: "Ativo" | "Passivo";
   imagem_url?: string | null;
   aprendido: boolean;
@@ -78,7 +100,7 @@ function SeletorModal({
   onFechar,
 }: {
   titulo: string;
-  opcoes: { id: number; nome: string; imagemUrl?: string | null; descricao?: string | null }[];
+  opcoes: { id: number; nome: string; imagemUrl?: string | null; descricao?: string | null; detalhes?: string[] }[];
   onEscolher: (id: number) => void;
   onFechar: () => void;
 }) {
@@ -127,6 +149,11 @@ function SeletorModal({
                   {opcao.descricao && (
                     <p className="mt-0.5 text-xs leading-snug text-white/60">{opcao.descricao}</p>
                   )}
+                  {opcao.detalhes?.map((detalhe) => (
+                    <p key={detalhe} className="mt-1 text-xs leading-snug text-[#F3B43F]/90">
+                      {detalhe}
+                    </p>
+                  ))}
                 </div>
               </button>
             ))}
@@ -300,7 +327,8 @@ export default function CombatLoadoutPanel({ characterId }: { characterId: numbe
             id: p.id_power,
             nome: p.nome,
             imagemUrl: p.imagem_url,
-            descricao: p.descricao,
+            descricao: p.descricao?.trim() || "Sem descrição cadastrada.",
+            detalhes: detalhesHabilidade(p),
           }))}
           onEscolher={(idPower) => {
             const poder = poderes.find((p) => p.id_power === idPower);
