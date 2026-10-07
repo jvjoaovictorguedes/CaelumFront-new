@@ -2,14 +2,14 @@ import type { DefensiveAffinity, DamageResolution } from "./types";
 export function ResistanceList({ values }: { values?: DefensiveAffinity[] }) {
   if (!values?.length) return null;
   return (
-    <section className="space-y-2 rounded border border-amber-900/50 p-3">
-      <h3 className="font-semibold text-amber-300">
+    <section className="space-y-2 rounded-2xl border-2 border-[#F3B43F]/40 bg-[#292018]/80 p-3">
+      <h3 className="font-imFeel text-lg text-[#F3B43F]">
         Resistências e vulnerabilidades
       </h3>
       <p className="text-xs opacity-70">
         Efetividade do ataque recebido. Valores neutros não alteram o dano.
       </p>
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
         {values.map((a) => (
           <div
             key={a.id}
@@ -30,8 +30,10 @@ export function DamageBreakdown({
 }) {
   if (!value) return null;
   return (
-    <details className="rounded border border-amber-900/50 p-2">
-      <summary>Detalhes do dano: {value.totalDamage}</summary>
+    <details className="rounded-lg border border-[#F3B43F]/30 bg-black/20 p-3 text-sm">
+      <summary className="cursor-pointer text-[#F3B43F]">
+        Detalhes do dano: {value.totalDamage}
+      </summary>
       {value.components.map((c, i) => (
         <p key={i}>
           {c.affinity?.nome ?? c.nature}: {c.finalDamage}{" "}

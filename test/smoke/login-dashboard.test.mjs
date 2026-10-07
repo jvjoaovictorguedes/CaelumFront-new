@@ -172,6 +172,9 @@ test(
       assert.equal(await page.getByRole("columnheader",{name:"Herdado",exact:true}).count(),1);
       assert.equal(await page.getByRole("columnheader",{name:"Override",exact:true}).count(),1);
       assert.equal(await page.getByRole("columnheader",{name:"Efetivo",exact:true}).count(),1);
+      assert.equal(await page.getByRole("link", {name: "← Voltar ao Admin", exact: true}).getAttribute("href"), "/dashboard/admin");
+      await page.getByRole("link", {name: "← Voltar ao Admin", exact: true}).click();
+      await waitUntil(() => page.url().endsWith("/dashboard/admin"), "return to admin hub");
 
       // Challenge is lazy and completes without retrying a mutable request.
       assert.equal(await page.locator('script[data-caelum-turnstile]').count(),0);

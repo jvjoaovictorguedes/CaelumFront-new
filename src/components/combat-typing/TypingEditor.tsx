@@ -70,13 +70,15 @@ export function RelationEditor({
   valueLabel: string;
 }) {
   return (
-    <fieldset className="space-y-2 rounded border border-amber-900/50 p-3">
-      <legend>{title}</legend>
+    <fieldset className="space-y-2 rounded-2xl border-2 border-[#F3B43F]/40 bg-[#292018]/80 p-3">
+      <legend className="px-2 font-imFeel text-lg text-[#F3B43F]">
+        {title}
+      </legend>
       {rows.map((r, i) => (
         <div className="flex flex-wrap gap-2" key={i}>
           <select
             aria-label={`${title}: tipo`}
-            className="bg-stone-900 p-2"
+            className="rounded-lg border border-white/10 bg-black/30 p-2 text-sm text-white focus:border-[#F3B43F]/60 focus:outline-none"
             value={r[target] ?? ""}
             onChange={(e) =>
               setRows(
@@ -97,7 +99,7 @@ export function RelationEditor({
           <label>
             {valueLabel}
             <input
-              className="ml-2 w-24 bg-stone-900 p-2"
+              className="ml-2 w-24 rounded-lg border border-white/10 bg-black/30 p-2 text-sm text-white focus:border-[#F3B43F]/60 focus:outline-none"
               type="number"
               step="0.01"
               value={r[value]}
@@ -112,6 +114,7 @@ export function RelationEditor({
           </label>
           <button
             type="button"
+            className="rounded-lg border border-red-400/30 px-3 py-2 text-xs text-red-300 hover:bg-red-400/10"
             onClick={() => setRows(rows.filter((_, j) => j !== i))}
           >
             Remover
@@ -120,7 +123,7 @@ export function RelationEditor({
       ))}
       <button
         type="button"
-        className="rounded border p-2"
+        className="rounded-lg border border-[#F3B43F]/50 px-3 py-2 text-sm font-bold text-[#F3B43F] hover:bg-[#F3B43F]/10 disabled:opacity-50"
         onClick={() => setRows([...rows, { [target]: 0, [value]: 0 }])}
       >
         Adicionar
@@ -208,8 +211,8 @@ export default function TypingEditor({
           ? catalogs.CombatAffinityProfile
           : catalogs.DamageAffinityType;
   return (
-    <section className="space-y-4 rounded border border-amber-900/50 p-4 text-white">
-      <h3 className="text-lg text-amber-300">
+    <section className="space-y-4 rounded-2xl border-2 border-[#F3B43F]/40 bg-[#292018]/80 p-4 text-white">
+      <h3 className="font-imFeel text-xl text-[#F3B43F]">
         Tipagens e afinidades —{" "}
         {String(values.nome ?? values.nome_chefe ?? `#${id}`)}
       </h3>
@@ -229,11 +232,11 @@ export default function TypingEditor({
               ),
           )
           .map((k) => (
-            <label key={k} className="grid gap-1">
+            <label key={k} className="grid gap-1 text-sm text-white/80">
               {labels[k]}
               {k.endsWith("_id") ? (
                 <select
-                  className="bg-stone-900 p-2"
+                  className="rounded-lg border border-white/10 bg-black/30 p-2 text-sm text-white focus:border-[#F3B43F]/60 focus:outline-none"
                   value={String(values[k] ?? "")}
                   onChange={(e) =>
                     setValues({
@@ -252,7 +255,7 @@ export default function TypingEditor({
                 </select>
               ) : k.includes("nature") || k === "affinity_mode" ? (
                 <select
-                  className="bg-stone-900 p-2"
+                  className="rounded-lg border border-white/10 bg-black/30 p-2 text-sm text-white focus:border-[#F3B43F]/60 focus:outline-none"
                   value={String(values[k] ?? "")}
                   onChange={(e) =>
                     setValues({ ...values, [k]: e.target.value || null })
@@ -286,7 +289,7 @@ export default function TypingEditor({
                   type="number"
                   min={k === "defensive_received_pct" ? "-95" : "0"}
                   step={k.includes("turns") ? "1" : "0.01"}
-                  className="bg-stone-900 p-2"
+                  className="rounded-lg border border-white/10 bg-black/30 p-2 text-sm text-white focus:border-[#F3B43F]/60 focus:outline-none"
                   value={Number(values[k] ?? 0)}
                   onChange={(e) =>
                     setValues({ ...values, [k]: Number(e.target.value) })
@@ -297,33 +300,37 @@ export default function TypingEditor({
           ))}
       </div>
       {preview?.multipliers && (
-        <table className="w-full text-sm">
-          <caption>
-            Perfil defensivo salvo — alterações aparecem após salvar
-          </caption>
-          <thead>
-            <tr>
-              <th>Afinidade</th>
-              <th>Herdado</th>
-              <th>Override</th>
-              <th>Efetivo</th>
-            </tr>
-          </thead>
-          <tbody>
-            {catalogs.DamageAffinityType.map((a) => (
-              <tr key={a.id}>
-                <td>{a.nome}</td>
-                <td>{Number(preview.inherited?.[a.id] ?? 1).toFixed(2)}x</td>
-                <td>
-                  {preview.overrides?.[a.id] == null
-                    ? "—"
-                    : `${Number(preview.overrides[a.id]).toFixed(2)}x`}
-                </td>
-                <td>{Number(preview.multipliers?.[a.id] ?? 1).toFixed(2)}x</td>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm [&_th]:p-2 [&_th]:text-[#F3B43F] [&_td]:border-t [&_td]:border-white/10 [&_td]:p-2">
+            <caption>
+              Perfil defensivo salvo — alterações aparecem após salvar
+            </caption>
+            <thead>
+              <tr>
+                <th>Afinidade</th>
+                <th>Herdado</th>
+                <th>Override</th>
+                <th>Efetivo</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {catalogs.DamageAffinityType.map((a) => (
+                <tr key={a.id}>
+                  <td>{a.nome}</td>
+                  <td>{Number(preview.inherited?.[a.id] ?? 1).toFixed(2)}x</td>
+                  <td>
+                    {preview.overrides?.[a.id] == null
+                      ? "—"
+                      : `${Number(preview.overrides[a.id]).toFixed(2)}x`}
+                  </td>
+                  <td>
+                    {Number(preview.multipliers?.[a.id] ?? 1).toFixed(2)}x
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
       {preview?.type && (
         <p>
@@ -364,7 +371,7 @@ export default function TypingEditor({
       <label className="block">
         Motivo
         <input
-          className="ml-2 rounded bg-stone-900 p-2"
+          className="ml-2 rounded-lg border border-white/10 bg-black/30 p-2 text-sm text-white focus:border-[#F3B43F]/60 focus:outline-none"
           value={reason}
           onChange={(e) => setReason(e.target.value)}
           minLength={5}
@@ -373,7 +380,7 @@ export default function TypingEditor({
       </label>
       <button
         type="button"
-        className="rounded border p-2"
+        className="rounded-lg border border-[#F3B43F]/50 px-3 py-2 text-sm font-bold text-[#F3B43F] hover:bg-[#F3B43F]/10 disabled:opacity-50"
         disabled={busy || reason.trim().length < 5}
         onClick={() => void save()}
       >

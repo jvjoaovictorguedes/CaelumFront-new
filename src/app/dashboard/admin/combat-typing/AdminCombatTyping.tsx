@@ -1,5 +1,6 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import api from "@/utils/axiosIntance";
 import TypingEditor, {
@@ -189,7 +190,24 @@ export default function AdminCombatTyping() {
       );
     }
   };
-  if (!catalogs) return <p className="p-5">{message || "Carregando…"}</p>;
+  if (!catalogs)
+    return (
+      <div className="space-y-4 text-white">
+        <Link
+          prefetch={false}
+          href="/dashboard/admin"
+          className="inline-flex rounded-lg border border-[#F3B43F]/50 px-4 py-2 text-sm text-[#F3B43F] hover:bg-[#F3B43F]/10"
+        >
+          ← Voltar ao Admin
+        </Link>
+        <p
+          role="status"
+          className="rounded-2xl border-2 border-[#F3B43F]/40 bg-[#292018]/80 p-4"
+        >
+          {message || "Carregando…"}
+        </p>
+      </div>
+    );
   const rows = catalogs[groups.find((g) => g[0] === kind)![2]];
   const configLabels: Record<string, string> = {
     min_multiplier: "Multiplicador mínimo",
@@ -200,25 +218,36 @@ export default function AdminCombatTyping() {
     ineffective_max: "Ineficaz até",
   };
   return (
-    <main className="mx-auto max-w-6xl space-y-6 p-4 text-white">
-      <h1 className="text-2xl text-amber-300">
+    <main className="flex min-w-0 flex-col gap-4 text-white">
+      <Link
+        prefetch={false}
+        href="/dashboard/admin"
+        className="inline-flex self-start items-center rounded-lg border border-[#F3B43F]/50 px-4 py-2 text-sm text-[#F3B43F] hover:bg-[#F3B43F]/10 focus-visible:outline focus-visible:outline-[#F3B43F]"
+      >
+        ← Voltar ao Admin
+      </Link>
+      <h1 className="font-imFeel text-3xl text-[#F3B43F]">
         Tipagens, afinidades e famílias
       </h1>
-      <p>
+      <p className="text-sm text-white/60">
         Catálogos e conteúdo PvE. PvP permanece desativado na V1. Desativar um
         cadastro preserva referências existentes.
       </p>
       {message && (
-        <p role="status" className="rounded border p-3">
+        <p
+          role="status"
+          className="rounded-lg border border-[#F3B43F]/30 bg-black/30 p-3 text-sm"
+        >
           {message}
         </p>
       )}
-      <section className="space-y-4 rounded border border-amber-900/50 p-4">
-        <h2>Catálogos</h2>
+      <section className="space-y-4 rounded-2xl border-2 border-[#F3B43F]/40 bg-[#292018]/80 p-4">
+        <h2 className="font-imFeel text-xl text-[#F3B43F]">Catálogos</h2>
         <nav className="flex flex-wrap gap-2">
           {groups.map((g) => (
             <button
-              className="rounded border p-2"
+              className={`rounded-lg border px-3 py-2 text-sm font-bold transition-colors ${kind === g[0] ? "border-[#F3B43F] bg-[#BC8418] text-black" : "border-[#F3B43F]/30 text-[#F3B43F] hover:bg-[#F3B43F]/10"}`}
+              aria-pressed={kind === g[0]}
               key={g[0]}
               onClick={() => choose(g[0])}
             >
@@ -227,17 +256,21 @@ export default function AdminCombatTyping() {
           ))}
         </nav>
         <div className="grid gap-4 md:grid-cols-[1fr_2fr]">
-          <div className="max-h-96 overflow-y-auto">
+          <div className="max-h-96 overflow-y-auto rounded-xl border border-white/10 bg-black/20">
             {rows.map((row) => (
               <button
-                className="block w-full border-b p-2 text-left"
+                className={`block w-full border-b border-white/10 px-3 py-2 text-left text-sm transition-colors ${selected === row.id ? "bg-[#F3B43F]/15 text-[#F3B43F]" : "text-white/80 hover:bg-white/5"}`}
+                aria-pressed={selected === row.id}
                 key={row.id}
                 onClick={() => choose(kind, row)}
               >
                 {row.nome} {!row.ativo && "(inativo)"}
               </button>
             ))}
-            <button className="mt-3 border p-2" onClick={() => choose(kind)}>
+            <button
+              className="m-3 rounded-lg bg-[#BC8418] px-3 py-2 text-sm font-bold text-black hover:bg-[#a5710f]"
+              onClick={() => choose(kind)}
+            >
               Novo cadastro
             </button>
           </div>
@@ -261,7 +294,7 @@ export default function AdminCombatTyping() {
                   (kind === "families" && k === "default_affinity_profile_id"),
               )
               .map((k) => (
-                <label className="grid gap-1" key={k}>
+                <label className="grid gap-1 text-sm text-white/80" key={k}>
                   {label[k]}
                   {k === "ativo" ? (
                     <input
@@ -273,7 +306,7 @@ export default function AdminCombatTyping() {
                     />
                   ) : k.endsWith("_id") ? (
                     <select
-                      className="bg-stone-900 p-2"
+                      className="rounded-lg border border-white/10 bg-black/30 p-2 text-sm text-white focus:border-[#F3B43F]/60 focus:outline-none"
                       value={String(values[k] ?? "")}
                       onChange={(e) =>
                         setValues({
@@ -294,7 +327,7 @@ export default function AdminCombatTyping() {
                     </select>
                   ) : k === "categoria" || k === "default_damage_nature" ? (
                     <select
-                      className="bg-stone-900 p-2"
+                      className="rounded-lg border border-white/10 bg-black/30 p-2 text-sm text-white focus:border-[#F3B43F]/60 focus:outline-none"
                       value={String(values[k] ?? "")}
                       onChange={(e) =>
                         setValues({ ...values, [k]: e.target.value })
@@ -318,7 +351,7 @@ export default function AdminCombatTyping() {
                   ) : (
                     <input
                       type={k === "ordem" ? "number" : "text"}
-                      className="bg-stone-900 p-2"
+                      className="rounded-lg border border-white/10 bg-black/30 p-2 text-sm text-white focus:border-[#F3B43F]/60 focus:outline-none"
                       value={String(values[k] ?? "")}
                       onChange={(e) =>
                         setValues({
@@ -375,13 +408,13 @@ export default function AdminCombatTyping() {
             <label>
               Motivo
               <input
-                className="ml-2 bg-stone-900 p-2"
+                className="ml-2 rounded-lg border border-white/10 bg-black/30 p-2 text-sm text-white focus:border-[#F3B43F]/60 focus:outline-none"
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
               />
             </label>
             <button
-              className="ml-2 rounded border p-2"
+              className="rounded-lg bg-[#BC8418] px-4 py-2 text-sm font-bold text-black hover:bg-[#a5710f] disabled:opacity-50"
               disabled={busy || reason.trim().length < 5}
               onClick={() => void save()}
             >
@@ -390,10 +423,10 @@ export default function AdminCombatTyping() {
           </div>
         </div>
       </section>
-      <section className="space-y-3">
-        <h2 className="text-xl">Conteúdo do jogo</h2>
+      <section className="space-y-3 rounded-2xl border-2 border-[#F3B43F]/40 bg-[#292018]/80 p-4">
+        <h2 className="font-imFeel text-xl text-[#F3B43F]">Conteúdo do jogo</h2>
         <select
-          className="bg-stone-900 p-2"
+          className="rounded-lg border border-white/10 bg-black/30 p-2 text-sm text-white focus:border-[#F3B43F]/60 focus:outline-none"
           value={entityKind}
           onChange={(e) => {
             setEntityKind(e.target.value);
@@ -407,7 +440,7 @@ export default function AdminCombatTyping() {
           ))}
         </select>
         <select
-          className="ml-2 max-w-full bg-stone-900 p-2"
+          className="ml-2 max-w-full rounded-lg border border-white/10 bg-black/30 p-2 text-sm text-white focus:border-[#F3B43F]/60 focus:outline-none"
           value={entityId}
           onChange={(e) => setEntityId(Number(e.target.value))}
         >
@@ -424,8 +457,10 @@ export default function AdminCombatTyping() {
         </select>
         {entityId > 0 && <TypingEditor kind={entityKind} id={entityId} />}
       </section>
-      <details className="space-y-3 rounded border p-4">
-        <summary>Caps, faixas e labels</summary>
+      <details className="space-y-3 rounded-2xl border-2 border-[#F3B43F]/40 bg-[#292018]/80 p-4">
+        <summary className="cursor-pointer font-imFeel text-xl text-[#F3B43F]">
+          Limites e mensagens de efetividade
+        </summary>
         <label className="block">
           <input
             type="checkbox"
@@ -443,7 +478,7 @@ export default function AdminCombatTyping() {
             <input
               type="number"
               step="0.01"
-              className="ml-2 bg-stone-900 p-2"
+              className="ml-2 rounded-lg border border-white/10 bg-black/30 p-2 text-sm text-white focus:border-[#F3B43F]/60 focus:outline-none"
               value={Number(config[k])}
               onChange={(e) =>
                 setConfig({ ...config, [k]: Number(e.target.value) })
@@ -456,7 +491,7 @@ export default function AdminCombatTyping() {
             <label className="block" key={k}>
               Label {k}
               <input
-                className="ml-2 bg-stone-900 p-2"
+                className="ml-2 rounded-lg border border-white/10 bg-black/30 p-2 text-sm text-white focus:border-[#F3B43F]/60 focus:outline-none"
                 value={v}
                 onChange={(e) =>
                   setConfig({
@@ -473,22 +508,27 @@ export default function AdminCombatTyping() {
         )}
         <p>Usa o motivo informado no formulário de catálogo.</p>
         <button
-          className="rounded border p-2"
+          className="rounded-lg border border-[#F3B43F]/50 px-3 py-2 text-sm font-bold text-[#F3B43F] hover:bg-[#F3B43F]/10 disabled:opacity-50"
           disabled={reason.trim().length < 5}
           onClick={() => void saveConfig()}
         >
           Salvar configuração
         </button>
       </details>
-      <section className="space-y-3 rounded border p-4">
-        <h2>Simulador de resolução de dano</h2>
+      <section className="space-y-3 rounded-2xl border-2 border-[#F3B43F]/40 bg-[#292018]/80 p-4">
+        <h2 className="font-imFeel text-xl text-[#F3B43F]">
+          Simulador de dano
+        </h2>
         <p>
           Informe o dano bruto já escalado; o servidor aplica defesa,
           afinidades, componentes e especializações usando o resolver de
           produção.
         </p>
         {(["amount", "weaponId", "powerId", "targetId"] as const).map((k) => (
-          <label className="mr-3 inline-block" key={k}>
+          <label
+            className="mb-3 mr-3 inline-block text-sm text-white/80"
+            key={k}
+          >
             {
               {
                 amount: "Dano bruto",
@@ -500,14 +540,14 @@ export default function AdminCombatTyping() {
             <input
               type="number"
               min="0"
-              className="ml-2 w-24 bg-stone-900 p-2"
+              className="ml-2 w-24 rounded-lg border border-white/10 bg-black/30 p-2 text-sm text-white focus:border-[#F3B43F]/60 focus:outline-none"
               value={sim[k]}
               onChange={(e) => setSim({ ...sim, [k]: Number(e.target.value) })}
             />
           </label>
         ))}
         <select
-          className="bg-stone-900 p-2"
+          className="rounded-lg border border-white/10 bg-black/30 p-2 text-sm text-white focus:border-[#F3B43F]/60 focus:outline-none"
           value={sim.targetKind}
           onChange={(e) => setSim({ ...sim, targetKind: e.target.value })}
         >
@@ -522,7 +562,7 @@ export default function AdminCombatTyping() {
             ))}
         </select>
         <button
-          className="ml-2 rounded border p-2"
+          className="rounded-lg bg-[#BC8418] px-4 py-2 text-sm font-bold text-black hover:bg-[#a5710f] disabled:opacity-50"
           onClick={() => void simulate()}
         >
           Simular
