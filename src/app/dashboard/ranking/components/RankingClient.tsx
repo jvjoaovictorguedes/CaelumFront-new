@@ -89,6 +89,7 @@ interface RankingResponse {
   pagina: number;
   totalPaginas: number;
   totalItens: number;
+  totalOnline: number;
   minhaPosicao?: MinhaPosicaoNivelGoldForja | MinhaPosicaoGuilda | MinhaPosicaoPvp;
 }
 
@@ -140,24 +141,32 @@ export default function RankingClient() {
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
 
-  const carregar = useCallback(async () => {
-    setCarregando(true);
-    setErro(null);
+  const carregar = useCallback(async (silencioso = false) => {
+    if (!silencioso) {
+      setCarregando(true);
+      setErro(null);
+    }
     try {
       const resposta = await axiosInstance.get<{ data?: RankingResponse }>("/ranking", {
         params: { type: tipo, page: pagina },
       });
       setDados(resposta.data?.data ?? null);
+      setErro(null);
     } catch {
+      if (silencioso) return;
       setErro("Não foi possível carregar o ranking agora. Tente novamente em instantes.");
       setDados(null);
     } finally {
-      setCarregando(false);
+      if (!silencioso) setCarregando(false);
     }
   }, [tipo, pagina]);
 
   useEffect(() => {
-    carregar();
+    void carregar();
+    const intervalo = window.setInterval(() => {
+      if (document.visibilityState === "visible") void carregar(true);
+    }, 30_000);
+    return () => window.clearInterval(intervalo);
   }, [carregar]);
 
   function irParaAba(novoTipo: TipoRanking) {
@@ -201,6 +210,11 @@ export default function RankingClient() {
 
       {!carregando && !erro && dados && (
         <>
+          <p role="status" className="flex items-center gap-2 text-sm text-white/80">
+            <IndicadorOnline online={dados.totalOnline > 0} />
+            Jogadores online:{" "}
+            <strong className="text-emerald-400">{dados.totalOnline.toLocaleString("pt-BR")}</strong>
+          </p>
           {tipo === "pvp_casual" && (
             <p className="rounded-xl border border-[#F3B43F]/30 bg-black/30 px-4 py-2 text-xs leading-relaxed text-white/65">
               {AVISO_CASUAL_NAO_COMPETITIVO}
