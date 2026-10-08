@@ -4,7 +4,9 @@ import { Server } from "socket.io";
 
 export async function startMockBackend(port = 3101) {
   const calls = [];
-  let adminMode=false;
+  let adminMode=false;let crisisMode=false,crisisAck=false,crisisProgress=0;
+  const crisisStage={key:"RESGATE",nome:"Resgate dos sobreviventes",requirements:[{key:"ERVAS",nome:"Ervas para os feridos",target_progress:10,mandatory:true,sources:[],items:[{id:99,nome:"Erva medicinal — Comum",progress_per_unit:1,ranking_points_per_unit:1,owned:5}]}],effects:[]};
+  const crisisStatus=()=>({id:1,status:"ACTIVE",nome:"Reconstrução de Caelum",stage:crisisStage,stage_count:3,stage_index:0,current_stage_key:"RESGATE",effects:{xp_pct:10,gold_pct:10},restrictions:[{target_id:1,target_type:"ADVENTURE_ZONE",nome:"Bosque devastado",unlock_after_stage_key:"RESGATE"}],progress:[{stage_key:"RESGATE",requirement_key:"ERVAS",current_progress:crisisProgress,target_progress:10}],rewards:[],pending_announcement:crisisAck?null:{seq:1,title:"Caelum precisa de ajuda",message:"Ajude a reconstruir a cidade",catch_up:false}});
   const affinities=[{id:1,key:"FIRE",nome:"Fogo",categoria:"ELEMENTAL",ativo:true,ordem:0}];
   const typingCatalogs={DamageAffinityType:affinities,WeaponType:[{id:1,key:"HAMMER",nome:"Martelo",ativo:true,default_damage_nature:"Fisico",default_affinity_id:null}],MonsterFamily:[{id:1,key:"CONSTRUCT",nome:"Construto",ativo:true,default_affinity_profile_id:1}],CombatAffinityProfile:[{id:1,key:"INITIAL_CONSTRUCT",nome:"Inicial — Construto",ativo:true}],CombatAffinityProfileEntry:[],WeaponTypeFamilyBonus:[]};
   const combatSockets = new Set();
@@ -55,6 +57,7 @@ export async function startMockBackend(port = 3101) {
     const chunks = [];
     for await (const chunk of req) chunks.push(chunk);
     const raw = Buffer.concat(chunks).toString();
+    const body=raw?JSON.parse(raw):{};
     calls.push({
       route,
       method: req.method,
@@ -75,6 +78,12 @@ export async function startMockBackend(port = 3101) {
     let payload = { status: "success", data: [] };
     if(route === "/anti-automation/status") payload={data:{required:true,challengeId:"00000000-0000-4000-8000-000000000001",siteKey:"smoke-sitekey"}};
     else if(route === "/anti-automation/verify")payload={data:{verified:true}};
+    else if(route==="/world-crisis/status")payload={data:crisisMode?crisisStatus():{status:"NONE"}};
+    else if(route==="/world-crisis/requirements")payload={data:crisisMode?crisisStage.requirements:[]};
+    else if(route==="/world-crisis/ranking")payload={data:{rows:[],me:null,my_guild:null}};
+    else if(route==="/world-crisis/announcements/ack"){crisisAck=true;payload={data:{}};}
+    else if(route==="/world-crisis/contribute"){crisisProgress+=Number(body.quantity);payload={data:{accepted_quantity:body.quantity,progress_units:body.quantity,ranking_points:body.quantity,remaining_quantity:0}};}
+    else if(route==="/admin/world-crisis/catalogs")payload={data:{items:[],resources:[],zones:[],configs:[],enabled:false}};
     else if(route.startsWith("/combat-typing/powers/"))payload={data:{nature:"Fisico",affinityMode:"INHERIT_WEAPON",affinity:null,addedAffinity:null,addedDamagePct:0,imbueAffinity:null,imbueDamagePct:0,imbueDurationTurns:0,familyBonuses:[]}};
     else if(route==="/admin/combat-typing")payload={data:{catalogs:typingCatalogs,config:{pve_enabled:true,pvp_enabled:false,min_multiplier:0.05,max_multiplier:3,family_bonus_cap:50,effective_min:1.15,weakened_max:0.9,ineffective_max:0.6,labels:{effective:"EFETIVO",neutral:"NEUTRO",weakened:"ENFRAQUECIDO",ineffective:"INEFICAZ"}},metrics:{}}};
     else if(route==="/admin/combat-typing/entities/monsters")payload={data:[{id:1,nome:"Golem Smoke"}]};
@@ -129,6 +138,7 @@ export async function startMockBackend(port = 3101) {
   await once(http, "listening");
   return {
     calls,
+    setCrisisMode: value=>{crisisMode=Boolean(value);},
     setAdminMode: value=>{adminMode=Boolean(value);},
     combatSockets,
     io,

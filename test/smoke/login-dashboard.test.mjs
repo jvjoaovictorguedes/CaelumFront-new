@@ -176,6 +176,24 @@ test(
       await page.getByRole("link", {name: "← Voltar ao Admin", exact: true}).click();
       await waitUntil(() => page.url().endsWith("/dashboard/admin"), "return to admin hub");
 
+      mock.setCrisisMode(true);
+      await page.evaluate(()=>window.dispatchEvent(new Event("caelum:world-crisis-update")));
+      await page.getByRole("dialog",{name:"Caelum precisa de ajuda"}).waitFor();
+      await page.getByRole("button",{name:"Entendi",exact:true}).click();
+      await page.getByRole("dialog",{name:"Caelum precisa de ajuda"}).waitFor({state:"detached"});
+      await page.goto(`${origin}/dashboard/quests/reconstruction`);
+      await page.getByRole("heading",{name:"Ervas para os feridos",exact:true}).waitFor();
+      await page.getByLabel("Material do inventário").selectOption("99");
+      await page.getByLabel("Quantidade",{exact:true}).fill("2");
+      await page.getByRole("button",{name:"Entregar materiais",exact:true}).click();
+      await page.getByText(/2 item\(ns\) entregue\(s\)/).waitFor();
+      assert.equal(mock.calls.filter(c=>c.route==="/world-crisis/contribute").length,1);
+      await page.goto(`${origin}/dashboard/admin/world-crisis`);
+      await page.getByRole("heading",{name:"Crises Mundiais & Reconstrução",exact:true}).waitFor();
+      await page.getByRole("button",{name:"Adicionar etapa",exact:true}).click();
+      await page.getByRole("heading",{name:"Etapa 2",exact:true}).waitFor();
+      assert.equal(await page.getByRole("link",{name:"← Voltar ao Admin",exact:true}).getAttribute("href"),"/dashboard/admin");
+
       // Challenge is lazy and completes without retrying a mutable request.
       assert.equal(await page.locator('script[data-caelum-turnstile]').count(),0);
       await page.evaluate(()=>window.dispatchEvent(new Event("caelum:verification-required")));

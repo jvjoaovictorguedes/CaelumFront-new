@@ -7,10 +7,13 @@
 // pressuposto do status público: o mundo só sabe que existe algo a
 // partir da descoberta.
 import Link from "next/link";
+import {useWorldCrisis} from "@/contexts/WorldCrisisContext";
 import { useWorldBossSocket } from "@/contexts/WorldBossSocketContext";
 
 export default function WorldBossGlobalAlert() {
   const { status } = useWorldBossSocket();
+  const {crisis}=useWorldCrisis();
+  if(crisis?.status==="ACTIVE")return null;
 
   if (!status || (status.status !== "DISCOVERED" && status.status !== "ACTIVE")) return null;
 

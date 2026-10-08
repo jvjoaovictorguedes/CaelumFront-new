@@ -124,6 +124,8 @@ export default function WorldBossBattleScene({
   const [erro, setErro] = useState("");
   const [log, setLog] = useState<string[]>([]);
   const [damageResolution,setDamageResolution]=useState<DamageResolution|null>(null);
+  const [prazoExpirado,setPrazoExpirado]=useState(false);
+  useEffect(()=>{if(!status?.combat_expires_at){setPrazoExpirado(false);return;}const remaining=status.remaining_ms??Math.max(0,new Date(status.combat_expires_at).getTime()-Date.now());setPrazoExpirado(remaining<=0);const timer=setTimeout(()=>setPrazoExpirado(true),Math.max(0,remaining));return()=>clearTimeout(timer);},[status?.combat_expires_at,status?.remaining_ms]);
   const [encerrada, setEncerrada] = useState<"vitoria" | "derrota" | null>(null);
   const [mostrarPainelLateral, setMostrarPainelLateral] = useState(false);
 
@@ -227,7 +229,7 @@ setLog((atual) => [texto, ...atual].slice(0, 20));
   const fundoBatalha = status?.fundo_url ?? bossImagemUrl;
 
   async function executar(acaoFn: () => Promise<WorldBossAcaoResultado>, usouPoder: boolean, usouPoderDeFogo: boolean) {
-    if (agindo || meuCooldownRestanteMs > 0 || encerrada) return;
+    if (agindo || meuCooldownRestanteMs > 0 || encerrada || prazoExpirado) return;
     setAgindo(true);
     setErro("");
     try {
@@ -469,7 +471,7 @@ setLog((atual) => [texto, ...atual].slice(0, 20));
             <p className="mb-1 text-center text-xs text-white/50">Próxima ação em {(meuCooldownRestanteMs / 1000).toFixed(1)}s</p>
           )}
           <CombatActionBar
-            podeAgir={!encerrada}
+            podeAgir={!encerrada && !prazoExpirado}
             ocupado={agindo || meuCooldownRestanteMs > 0}
             manaAtual={lutador.mana_atual}
             onAtaqueBasico={() => executar(atacarWorldBoss, false, false)}

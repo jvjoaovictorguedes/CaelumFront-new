@@ -1,4 +1,6 @@
 import React from "react";
+import {WorldCrisisProvider} from "@/contexts/WorldCrisisContext";
+import WorldCrisisGlobalAlert from "@/components/world-crisis/WorldCrisisGlobalAlert";
 import AutomationVerification from "@/components/AutomationVerification";
 import NavMenu from "./components/NavMenu";
 import { getCurrentCharacter, getCurrentCharacterId, isCurrentUserAdmin } from "@/utils/character-session";
@@ -33,10 +35,10 @@ export default async function DashboardLayout({
         <SessionKeepAlive />
         <AutomationVerification />
         <PvpSocketProvider characterId={characterId ? Number(characterId) : undefined}>
-          <WorldBossSocketProvider>
+          <WorldBossSocketProvider><WorldCrisisProvider>
             <UniqueFeatSocketProvider>
               <GlobalChatSocketProvider>
-                <WorldBossGlobalAlert />
+                <WorldBossGlobalAlert /><WorldCrisisGlobalAlert />
                 <UniqueFeatGlobalAlert />
                 <div className="homeDash min-h-[100dvh] w-full overflow-x-hidden bg-cover bg-center bg-fixed">
                   <NavMenu
@@ -54,7 +56,7 @@ export default async function DashboardLayout({
                 <FloatingGlobalChatWidget />
               </GlobalChatSocketProvider>
             </UniqueFeatSocketProvider>
-          </WorldBossSocketProvider>
+          </WorldCrisisProvider></WorldBossSocketProvider>
         </PvpSocketProvider>
       </CharacterProvider>
     </ToastProvider>

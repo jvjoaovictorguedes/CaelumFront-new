@@ -143,8 +143,10 @@ export function WorldBossSocketProvider({ children }: { children: React.ReactNod
     const socket = io(baseUrl, { transports: ["websocket", "polling"] });
     socketRef.current = socket;
 
-    socket.on("connect", () => socket.emit("worldboss:entrar"));
+    socket.on("connect", () => {socket.emit("worldboss:entrar");window.dispatchEvent(new Event("caelum:world-crisis-update"));});
 
+    socket.on("worldboss:failed",()=>{recarregar();window.dispatchEvent(new Event("caelum:world-crisis-update"));});
+    for(const type of ["started","progress","stage-completed","final-stage","completed","ranking-update","status"])socket.on(`worldcrisis:${type}`,()=>window.dispatchEvent(new Event("caelum:world-crisis-update")));
     socket.on("worldboss:status", (payload: WorldBossStatusApi) => setStatus(payload));
     socket.on("worldboss:desperta", (payload: WorldBossStatusApi) => {
       setStatus(payload);

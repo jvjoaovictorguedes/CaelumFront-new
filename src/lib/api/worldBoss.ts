@@ -25,7 +25,8 @@ export interface WorldBossCombatePublicoApi {
 }
 
 export interface WorldBossStatusApi {
-  status: "Nenhum" | "DISCOVERED" | "ACTIVE" | "DEFEATED" | "CANCELLED";
+  combat_expires_at?:string|null;remaining_ms?:number|null;failed_at?:string|null;failure_reason?:string|null;
+  status: "Nenhum" | "DISCOVERED" | "ACTIVE" | "DEFEATED" | "CANCELLED" | "FAILED";
   event_id?: number;
   nome?: string | null;
   descricao?: string | null;

@@ -1764,6 +1764,7 @@ export interface WorldBossPhaseApi {
 }
 
 export interface WorldBossConfigApi {
+  combat_duration_seconds?:number|null;id_failure_crisis_config?:number|null;
   id: number;
   nome: string;
   descricao: string;
@@ -1815,6 +1816,7 @@ export interface WorldBossConfigListItemApi extends Omit<WorldBossConfigApi, "fa
 }
 
 export interface PayloadWorldBossConfigAdmin {
+  combat_duration_seconds?:number|null;id_failure_crisis_config?:number|null;
   nome: string;
   descricao: string;
   lore?: string | null;

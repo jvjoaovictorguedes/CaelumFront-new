@@ -29,6 +29,7 @@ import {
 import WorldBossCastCountdown from "./WorldBossCastCountdown";
 import WorldBossRankingPanel from "./WorldBossRankingPanel";
 import WorldBossResultScreen from "./WorldBossResultScreen";
+import WorldBossDeadline from "@/components/world-crisis/WorldBossDeadline";
 import WorldBossBattleScene from "./WorldBossBattleScene";
 
 // Próxima ação do Boss em contagem regressiva local, a partir de um ms
@@ -124,7 +125,7 @@ export default function WorldBossArena() {
     );
   }
 
-  if (status.status === "DEFEATED") {
+  if (["DEFEATED","FAILED"].includes(status.status)) {
     return <WorldBossResultScreen status={status} ranking={ranking} />;
   }
 
@@ -147,7 +148,7 @@ export default function WorldBossArena() {
 
   if (sessao) {
     return (
-      <WorldBossBattleScene
+      <><div className="fixed left-1/2 top-3 z-[100] -translate-x-1/2"><WorldBossDeadline status={status}/></div><WorldBossBattleScene
         lutadorInicial={sessao.lutador}
         poderesIniciais={sessao.poderes}
         cooldownsIniciais={sessao.cooldowns}
@@ -157,7 +158,7 @@ export default function WorldBossArena() {
           recarregar();
           refreshCharacter();
         }}
-      />
+      /></>
     );
   }
 
@@ -165,7 +166,7 @@ export default function WorldBossArena() {
   const castPendente = status.combate?.cast_pendente ?? null;
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4"><WorldBossDeadline status={status}/>
       <div className="rounded-2xl border-2 border-red-500/70 bg-[#292018]/90 p-5 text-white shadow-xl">
         <div className="flex items-center justify-between">
           <h2 className="font-imFeel text-2xl text-red-400">{status.nome}</h2>
