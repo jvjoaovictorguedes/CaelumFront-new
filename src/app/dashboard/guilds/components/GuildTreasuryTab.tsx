@@ -157,6 +157,13 @@ export default function GuildTreasuryTab({
   const [quantidadeDeposito, setQuantidadeDeposito] = useState("1");
   const [pendenteConfirmacao, setPendenteConfirmacao] = useState<ItemDoInventario | null>(null);
 
+  // Quantidade a retirar de cada stack do Armazém, por id_item — o
+  // padrão é o próprio pedido do jogador: antes só existia "retirar
+  // tudo" (sempre linha.quantidade); agora cada linha tem seu próprio
+  // campo, inicializado com o estoque total pra manter o botão "Tudo"
+  // funcionando com um clique.
+  const [quantidadesRetirada, setQuantidadesRetirada] = useState<Record<number, string>>({});
+
   const { itens: inventario, carregando: carregandoInventario, recarregar: recarregarInventario } =
     useInventarioDepositavel();
   const { socket } = useGuildSocket();
@@ -280,6 +287,12 @@ export default function GuildTreasuryTab({
     executarDeposito(item, quantidade);
   }
 
+  function quantidadeRetiradaDe(idItem: number, quantidadeMaxima: number) {
+    const bruta = quantidadesRetirada[idItem];
+    if (bruta === undefined) return quantidadeMaxima;
+    return Math.max(1, Math.min(quantidadeMaxima, Number(bruta) || 1));
+  }
+
   async function retirarItem(idItem: number, quantidade: number) {
     setProcessando(true);
     setErroArmazem("");
@@ -287,6 +300,11 @@ export default function GuildTreasuryTab({
     try {
       await axiosInstance.post(`/guilds/${guild.id}/treasury/items/withdraw`, { idItem, quantidade });
       setSucessoArmazem("Item retirado do Armazém.");
+      setQuantidadesRetirada((prev) => {
+        const resto = { ...prev };
+        delete resto[idItem];
+        return resto;
+      });
       carregarResumo();
       recarregarInventario();
     } catch (error) {
@@ -489,14 +507,37 @@ export default function GuildTreasuryTab({
                   </span>
                 </span>
                 {resumo.pode_retirar && (
-                  <button
-                    type="button"
-                    disabled={processando}
-                    onClick={() => retirarItem(linha.id_item, linha.quantidade)}
-                    className="shrink-0 rounded-lg border border-white/20 px-3 py-1 text-xs hover:border-white/40 disabled:opacity-50"
-                  >
-                    Retirar tudo
-                  </button>
+                  <span className="flex shrink-0 items-center gap-1">
+                    <input
+                      type="number"
+                      min={1}
+                      max={linha.quantidade}
+                      value={quantidadesRetirada[linha.id_item] ?? String(linha.quantidade)}
+                      onChange={(e) =>
+                        setQuantidadesRetirada((prev) => ({ ...prev, [linha.id_item]: e.target.value }))
+                      }
+                      className="w-16 rounded-lg border border-white/20 bg-black/30 px-2 py-1 text-xs text-white outline-none focus:border-[#F3B43F]"
+                    />
+                    <button
+                      type="button"
+                      disabled={processando}
+                      onClick={() =>
+                        setQuantidadesRetirada((prev) => ({ ...prev, [linha.id_item]: String(linha.quantidade) }))
+                      }
+                      className="rounded-lg border border-white/20 px-2 py-1 text-xs hover:border-white/40 disabled:opacity-50"
+                      title="Preencher com a quantidade total"
+                    >
+                      Tudo
+                    </button>
+                    <button
+                      type="button"
+                      disabled={processando}
+                      onClick={() => retirarItem(linha.id_item, quantidadeRetiradaDe(linha.id_item, linha.quantidade))}
+                      className="rounded-lg border border-white/20 px-3 py-1 text-xs hover:border-white/40 disabled:opacity-50"
+                    >
+                      Retirar
+                    </button>
+                  </span>
                 )}
               </div>
             ))}
