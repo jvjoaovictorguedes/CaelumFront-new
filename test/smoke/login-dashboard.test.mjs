@@ -194,6 +194,23 @@ test(
       await page.getByRole("heading",{name:"Etapa 2",exact:true}).waitFor();
       assert.equal(await page.getByRole("link",{name:"← Voltar ao Admin",exact:true}).getAttribute("href"),"/dashboard/admin");
 
+      await page.goto(`${origin}/dashboard/admin/discord-news`);
+      await page.getByRole("heading",{name:"News Caelum · Discord",exact:true}).waitFor();
+      await page.getByRole("cell",{name:"Dano base",exact:true}).waitFor();
+      assert.equal(await page.getByRole("cell",{name:"100",exact:true}).count(),1);
+      assert.equal(await page.getByRole("cell",{name:"120",exact:true}).count(),1);
+      await page.getByRole("button",{name:"Aprovar publicação",exact:true}).click();
+      await page.getByRole("alert").filter({hasText:"Informe um motivo"}).waitFor();
+      assert.equal(mock.calls.filter(c=>c.route==="/admin/discord-news/changes/1/review").length,0);
+      await page.getByLabel("Motivo da operação",{exact:true}).fill("Balanceamento aprovado para testes");
+      await page.getByRole("button",{name:"Aprovar publicação",exact:true}).click();
+      await page.getByRole("cell",{name:/Balanceamento — Bola de Fogo/}).waitFor();
+      assert.equal(mock.calls.filter(c=>c.route==="/admin/discord-news/changes/1/review").length,1);
+      assert.equal(await page.getByRole("link",{name:"← Voltar ao Admin",exact:true}).getAttribute("href"),"/dashboard/admin");
+      await page.setViewportSize({width:375,height:812});
+      assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth),true);
+      await page.setViewportSize({width:1280,height:720});
+
       // Challenge is lazy and completes without retrying a mutable request.
       assert.equal(await page.locator('script[data-caelum-turnstile]').count(),0);
       await page.evaluate(()=>window.dispatchEvent(new Event("caelum:verification-required")));

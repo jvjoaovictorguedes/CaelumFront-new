@@ -4,6 +4,7 @@ import { Server } from "socket.io";
 
 export async function startMockBackend(port = 3101) {
   const calls = [];
+  let newsApproved=false;
   let adminMode=false;let crisisMode=false,crisisAck=false,crisisProgress=0;
   const crisisStage={key:"RESGATE",nome:"Resgate dos sobreviventes",requirements:[{key:"ERVAS",nome:"Ervas para os feridos",target_progress:10,mandatory:true,sources:[],items:[{id:99,nome:"Erva medicinal — Comum",progress_per_unit:1,ranking_points_per_unit:1,owned:5}]}],effects:[]};
   const crisisStatus=()=>({id:1,status:"ACTIVE",nome:"Reconstrução de Caelum",stage:crisisStage,stage_count:3,stage_index:0,current_stage_key:"RESGATE",effects:{xp_pct:10,gold_pct:10},restrictions:[{target_id:1,target_type:"ADVENTURE_ZONE",nome:"Bosque devastado",unlock_after_stage_key:"RESGATE"}],progress:[{stage_key:"RESGATE",requirement_key:"ERVAS",current_progress:crisisProgress,target_progress:10}],rewards:[],pending_announcement:crisisAck?null:{seq:1,title:"Caelum precisa de ajuda",message:"Ajude a reconstruir a cidade",catch_up:false}});
@@ -89,6 +90,8 @@ export async function startMockBackend(port = 3101) {
     else if(route==="/admin/combat-typing/entities/monsters")payload={data:[{id:1,nome:"Golem Smoke"}]};
     else if(route==="/admin/combat-typing/entities/monsters/1")payload={data:{values:{id:1,nome:"Golem Smoke",monster_family_id:1,affinity_profile_id:null,basic_attack_nature:"Fisico",basic_attack_affinity_id:null},preview:{family:{id:1,nome:"Construto"},inherited:{1:1},overrides:{},multipliers:{1:1}}}};
     else if(route.startsWith("/admin/combat-typing/preview/"))payload={data:{affinities:[{...affinities[0],multiplier:1,effectivenessLabel:"NEUTRO"}]}};
+    else if(route==="/admin/discord-news")payload={data:{environment:"staging",configured:false,enabled:false,environment_enabled:false,application_id:null,guild_id:null,channel_id:null,checks:{bot_token:false,public_key:false,ids:false},state:{enabled:false,auto_patch_notes:true,capture_since:"2026-10-08T00:00:00Z"},changes:[{id:1,name:"Bola de Fogo",entity:"Power",release_env:"staging",status:newsApproved?"Approved":"Pending",createdAt:"2026-10-08T00:00:00Z",diff:[{field:"dano_base",label:"Dano base",before:100,after:120}]}],deliveries:newsApproved?[{id:1,kind:"change",source_id:1,status:"Pending",attempts:0,message_id:null,channel_id:null,last_error:null,createdAt:"2026-10-08T00:00:00Z",payload:{embeds:[{title:"Balanceamento — Bola de Fogo"}]}}]:[]}};
+    else if(route==="/admin/discord-news/changes/1/review"){newsApproved=true;payload={data:{id:1,status:"Approved"}};}
     else if (route === "/maintenance/status")
       payload = { enabled: false, message: "" };
     else if (route === "/users/login")
