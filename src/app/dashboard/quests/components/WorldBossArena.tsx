@@ -148,7 +148,7 @@ export default function WorldBossArena() {
 
   if (sessao) {
     return (
-      <><div className="fixed left-1/2 top-3 z-[100] -translate-x-1/2"><WorldBossDeadline status={status}/></div><WorldBossBattleScene
+      <WorldBossBattleScene
         lutadorInicial={sessao.lutador}
         poderesIniciais={sessao.poderes}
         cooldownsIniciais={sessao.cooldowns}
@@ -158,7 +158,7 @@ export default function WorldBossArena() {
           recarregar();
           refreshCharacter();
         }}
-      /></>
+      />
     );
   }
 

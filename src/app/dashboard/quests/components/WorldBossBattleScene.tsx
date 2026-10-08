@@ -38,6 +38,7 @@ import CombatActionBar from "@/components/combat/CombatActionBar";
 import { spriteFolderForClass, spriteForClass } from "@/app/dashboard/adventure/components/sprites/spriteForClass";
 import { getSpriteAnimationDurationMs, type EstadoSprite } from "@/app/dashboard/adventure/components/sprites/spriteSheets";
 import WorldBossCastCountdown from "./WorldBossCastCountdown";
+import WorldBossDeadline from "@/components/world-crisis/WorldBossDeadline";
 import WorldBossRankingPanel from "./WorldBossRankingPanel";
 
 type EstadoAnimacao =
@@ -360,7 +361,7 @@ setLog((atual) => [texto, ...atual].slice(0, 20));
           ← Sair
         </button>
 
-        <div className="flex flex-col items-center text-center text-white drop-shadow-lg">
+        <div className="flex min-w-0 flex-1 flex-col items-center text-center text-white drop-shadow-lg">
           <p className="text-[10px] uppercase tracking-widest text-red-400 sm:text-xs">
             {status?.fase_atual ? status.fase_atual.nome_fase : "Ameaça Mundial"}
           </p>
@@ -368,6 +369,12 @@ setLog((atual) => [texto, ...atual].slice(0, 20));
           {faseAlerta?.texto_alerta && <p className="mt-1 animate-pulse text-xs italic text-red-300">{faseAlerta.texto_alerta}</p>}
           {status?.combate && (
             <p className="mt-1 text-[10px] text-orange-300">Fúria: {status.combate.furia_atual_pct}%</p>
+          )}
+          {status && <div className="mt-2 w-full max-w-sm"><WorldBossDeadline status={status} /></div>}
+          {castPendente?.power && (
+            <div className="mt-2 w-full max-w-sm">
+              <WorldBossCastCountdown nome={castPendente.power.nome} imagemUrl={castPendente.power.imagem_url} resolvesAt={castPendente.resolves_at} />
+            </div>
           )}
         </div>
 
@@ -380,12 +387,6 @@ setLog((atual) => [texto, ...atual].slice(0, 20));
           i
         </button>
       </div>
-
-      {castPendente?.power && (
-        <div className="absolute left-1/2 top-16 z-20 w-72 -translate-x-1/2 sm:top-20">
-          <WorldBossCastCountdown nome={castPendente.power.nome} imagemUrl={castPendente.power.imagem_url} resolvesAt={castPendente.resolves_at} />
-        </div>
-      )}
 
       <div className="absolute inset-0 z-10 flex items-center justify-between px-[8%] sm:px-[14%]">
         <div
