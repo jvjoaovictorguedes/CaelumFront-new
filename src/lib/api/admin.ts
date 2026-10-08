@@ -3831,6 +3831,11 @@ export interface GuildBalanceCompletoApi {
     BOSS_AO_VIVO_FATOR_ESCALADA_DANO: number;
     BOSS_AO_VIVO_MAX_RODADAS: number;
   }>;
+  // Tesouro V2 — capacidade de slots do Armazém por marco de nível da
+  // guilda (chave = nível mínimo do marco, valor = capacidade).
+  "guild.tesouro": GuildBalanceGrupoApi<{
+    CAPACIDADE_TESOURO_POR_NIVEL: Record<string, number>;
+  }>;
 }
 export async function obterGuildBalanceAdmin(): Promise<GuildBalanceCompletoApi> {
   const resposta = await axiosInstance.get<{ data: GuildBalanceCompletoApi }>("/admin/guild/balance");

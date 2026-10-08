@@ -88,13 +88,66 @@ export interface TransacaoTesouro {
   Character?: { id: number; nome: string };
 }
 
-export interface Contribuicao {
+// Tesouro V2 — Armazém de itens/equipamentos da guilda (spec "Tesouro
+// da Guilda V2 + Contribuição V2" §12), separado do saldo de ouro
+// acima (GuildResumo.tesouro/TransacaoTesouro, inalterados).
+export interface TesouroItemEstoque {
+  id_item: number;
+  nome?: string;
+  imagem_url?: string | null;
+  tipo_item?: string;
+  raridade?: string;
+  quantidade: number;
+}
+
+export interface TesouroEquipamento {
   id: number;
-  id_personagem: number;
-  ouro_doado_total: number;
-  contribuicao_total: number;
-  contribuicao_temporada: number;
-  Character?: { id: number; nome: string; nivel: number };
+  id_item: number;
+  nome?: string;
+  imagem_url?: string | null;
+  raridade: string | null;
+  refinamento: number;
+  depositado_por: string | null;
+  depositado_em: string;
+}
+
+export interface TesouroResumo {
+  capacidade: number;
+  slots_usados: number;
+  pode_depositar: boolean;
+  pode_retirar: boolean;
+  estoque: TesouroItemEstoque[];
+  equipamentos: TesouroEquipamento[];
+}
+
+export interface TesouroMovimentacao {
+  id: number;
+  operation: "DEPOSITO" | "RETIRADA";
+  personagem: { id: number; nome: string } | null;
+  id_item: number;
+  nome_item: string;
+  raridade: string | null;
+  refinamento: number | null;
+  quantidade: number | null;
+  createdAt: string;
+}
+
+// Contribuição V2 — ranking por período + detalhe de membro, aditivos
+// à rota legada de GuildContribution (Contribuicao acima, inalterada).
+export type PeriodoContribuicao = "week" | "month" | "all";
+
+export interface ContribuicaoRankingLinha {
+  personagem: { id: number; nome: string; nivel: number } | null;
+  pontos: number;
+  composicao: Record<string, number>;
+}
+
+export interface ContribuicaoMembroDetalhe {
+  pontos_semana: number;
+  pontos_mes: number;
+  pontos_historico: number;
+  composicao: Record<string, number>;
+  ultima_contribuicao: { source_type: string; pontos: number; createdAt: string } | null;
 }
 
 export const PERMISSOES = [
@@ -108,6 +161,7 @@ export const PERMISSOES = [
   "liberar_boss",
   "comprar_beneficios",
   "gerenciar_mural",
+  "retirar_itens_tesouro",
 ] as const;
 
 export type Permissao = (typeof PERMISSOES)[number];
