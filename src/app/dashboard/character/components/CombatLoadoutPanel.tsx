@@ -8,11 +8,34 @@ import ItemIcon from "@/components/Item/ItemIcon";
 import { useCharacter } from "@/contexts/CharacterContext";
 
 const MAX_SLOTS = 5;
+const NOME_ATRIBUTO: Record<string, string> = {
+  Forca: "Força",
+  Vitalidade: "Vitalidade",
+  Agilidade: "Agilidade",
+  Inteligencia: "Inteligência",
+  Velocidade: "Velocidade",
+};
+
+function detalhesHabilidade(poder: PoderApi): string[] {
+  const detalhes = [`Dano base: ${(poder.dano_base ?? 0).toLocaleString("pt-BR")}`];
+  if (poder.cura_base) detalhes.push(`Cura base: ${poder.cura_base.toLocaleString("pt-BR")}`);
+  detalhes.push(
+    poder.valor_escala === 0
+      ? "Sem escalamento de atributo"
+      : `Escalamento: ${NOME_ATRIBUTO[poder.escala_atributo] ?? poder.escala_atributo} × ${poder.valor_escala.toLocaleString("pt-BR")} (${(poder.valor_escala * 100).toLocaleString("pt-BR")}%)`,
+  );
+  return detalhes;
+}
 
 interface PoderApi {
   id_power: number;
+  combat_slot?: number | null;
   nome: string;
   descricao?: string | null;
+  dano_base: number | null;
+  cura_base: number | null;
+  escala_atributo: string;
+  valor_escala: number;
   tipo_poder: "Ativo" | "Passivo";
   imagem_url?: string | null;
   aprendido: boolean;
@@ -77,7 +100,7 @@ function SeletorModal({
   onFechar,
 }: {
   titulo: string;
-  opcoes: { id: number; nome: string; imagemUrl?: string | null; descricao?: string | null }[];
+  opcoes: { id: number; nome: string; imagemUrl?: string | null; descricao?: string | null; detalhes?: string[] }[];
   onEscolher: (id: number) => void;
   onFechar: () => void;
 }) {
@@ -126,6 +149,11 @@ function SeletorModal({
                   {opcao.descricao && (
                     <p className="mt-0.5 text-xs leading-snug text-white/60">{opcao.descricao}</p>
                   )}
+                  {opcao.detalhes?.map((detalhe) => (
+                    <p key={detalhe} className="mt-1 text-xs leading-snug text-[#F3B43F]/90">
+                      {detalhe}
+                    </p>
+                  ))}
                 </div>
               </button>
             ))}
@@ -145,7 +173,7 @@ export default function CombatLoadoutPanel({ characterId }: { characterId: numbe
   const [mensagem, setMensagem] = useState("");
   const [processando, setProcessando] = useState(false);
   const [seletorAberto, setSeletorAberto] = useState<
-    "habilidade" | { tipo: "item"; slot: number } | null
+    { tipo: "habilidade" | "item"; slot: number } | null
   >(null);
 
   const carregar = useCallback(async () => {
@@ -176,9 +204,6 @@ export default function CombatLoadoutPanel({ characterId }: { characterId: numbe
   const ativasAtivas = poderes.filter(
     (p) => p.tipo_poder === "Ativo" && p.aprendido && p.ativo,
   );
-  const ativasDisponiveis = poderes.filter(
-    (p) => p.tipo_poder === "Ativo" && p.aprendido && !p.ativo,
-  );
 
   const slotsConsumiveis = Array.from(
     { length: MAX_SLOTS },
@@ -189,13 +214,14 @@ export default function CombatLoadoutPanel({ characterId }: { characterId: numbe
       entrada.Item.tipo_item === "Consumivel" && !slotsConsumiveis.includes(entrada.id_item),
   );
 
-  async function alternarHabilidade(idCharacterAbility: number | null, ativar: boolean) {
+  async function alternarHabilidade(idCharacterAbility: number | null, ativar: boolean, slot?: number) {
     if (!idCharacterAbility || processando) return;
     setProcessando(true);
     setMensagem("");
     try {
       await axiosInstance.patch(`/character-abilities/${idCharacterAbility}/toggle`, {
         is_active: ativar,
+        combat_slot: slot,
       });
       await carregar();
       setSeletorAberto(null);
@@ -256,13 +282,13 @@ export default function CombatLoadoutPanel({ characterId }: { characterId: numbe
         </div>
         <div className="grid grid-cols-3 gap-3 sm:grid-cols-5">
           {Array.from({ length: MAX_SLOTS }).map((_, i) => {
-            const poder = ativasAtivas[i];
+            const poder = ativasAtivas.find((p) => p.combat_slot === i);
             return (
               <Slot
                 key={i}
                 nome={poder?.nome}
                 imagemUrl={poder?.imagem_url}
-                onSelecionar={() => setSeletorAberto("habilidade")}
+                onSelecionar={() => setSeletorAberto({ tipo: "habilidade", slot: i })}
                 onRemover={
                   poder ? () => alternarHabilidade(poder.id_character_ability, false) : undefined
                 }
@@ -294,18 +320,19 @@ export default function CombatLoadoutPanel({ characterId }: { characterId: numbe
         </div>
       </div>
 
-      {seletorAberto === "habilidade" && (
+      {seletorAberto?.tipo === "habilidade" && (
         <SeletorModal
           titulo="Selecionar habilidade"
-          opcoes={ativasDisponiveis.map((p) => ({
+          opcoes={poderes.filter((p) => p.tipo_poder === "Ativo" && p.aprendido).map((p) => ({
             id: p.id_power,
             nome: p.nome,
             imagemUrl: p.imagem_url,
-            descricao: p.descricao,
+            descricao: p.descricao?.trim() || "Sem descrição cadastrada.",
+            detalhes: detalhesHabilidade(p),
           }))}
           onEscolher={(idPower) => {
-            const poder = ativasDisponiveis.find((p) => p.id_power === idPower);
-            if (poder) alternarHabilidade(poder.id_character_ability, true);
+            const poder = poderes.find((p) => p.id_power === idPower);
+            if (poder) alternarHabilidade(poder.id_character_ability, true, seletorAberto.slot);
           }}
           onFechar={() => setSeletorAberto(null)}
         />

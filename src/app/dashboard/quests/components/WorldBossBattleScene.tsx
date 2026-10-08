@@ -1,4 +1,6 @@
 "use client";
+import {DamageBreakdown} from "@/components/combat-typing/TypingFeedback";
+import type {DamageResolution} from "@/types/contracts/combatTyping";
 
 // Cena de batalha da Ameaça Mundial — bug relatado ("não tá igual
 // aventura"): WorldBossArena.tsx era só um painel de texto/botões
@@ -36,6 +38,7 @@ import CombatActionBar from "@/components/combat/CombatActionBar";
 import { spriteFolderForClass, spriteForClass } from "@/app/dashboard/adventure/components/sprites/spriteForClass";
 import { getSpriteAnimationDurationMs, type EstadoSprite } from "@/app/dashboard/adventure/components/sprites/spriteSheets";
 import WorldBossCastCountdown from "./WorldBossCastCountdown";
+import WorldBossDeadline from "@/components/world-crisis/WorldBossDeadline";
 import WorldBossRankingPanel from "./WorldBossRankingPanel";
 
 type EstadoAnimacao =
@@ -121,6 +124,9 @@ export default function WorldBossBattleScene({
   const [agindo, setAgindo] = useState(false);
   const [erro, setErro] = useState("");
   const [log, setLog] = useState<string[]>([]);
+  const [damageResolution,setDamageResolution]=useState<DamageResolution|null>(null);
+  const [prazoExpirado,setPrazoExpirado]=useState(false);
+  useEffect(()=>{if(!status?.combat_expires_at){setPrazoExpirado(false);return;}const remaining=status.remaining_ms??Math.max(0,new Date(status.combat_expires_at).getTime()-Date.now());setPrazoExpirado(remaining<=0);const timer=setTimeout(()=>setPrazoExpirado(true),Math.max(0,remaining));return()=>clearTimeout(timer);},[status?.combat_expires_at,status?.remaining_ms]);
   const [encerrada, setEncerrada] = useState<"vitoria" | "derrota" | null>(null);
   const [mostrarPainelLateral, setMostrarPainelLateral] = useState(false);
 
@@ -166,7 +172,7 @@ export default function WorldBossBattleScene({
   }, [status?.hp_current, status?.hp_max, status?.hp_percentual]);
 
   const adicionarLog = useCallback((texto: string) => {
-    setLog((atual) => [texto, ...atual].slice(0, 20));
+setLog((atual) => [texto, ...atual].slice(0, 20));
   }, []);
 
   function triggerFloatingJogador(text: string, color: string) {
@@ -224,7 +230,7 @@ export default function WorldBossBattleScene({
   const fundoBatalha = status?.fundo_url ?? bossImagemUrl;
 
   async function executar(acaoFn: () => Promise<WorldBossAcaoResultado>, usouPoder: boolean, usouPoderDeFogo: boolean) {
-    if (agindo || meuCooldownRestanteMs > 0 || encerrada) return;
+    if (agindo || meuCooldownRestanteMs > 0 || encerrada || prazoExpirado) return;
     setAgindo(true);
     setErro("");
     try {
@@ -251,6 +257,7 @@ export default function WorldBossBattleScene({
         setAnimBoss("anim-atingido");
         setHpBoss({ atual: resultado.boss.hp_current, max: resultado.boss.hp_max, percentual: resultado.boss.hp_percentual });
       }
+      setDamageResolution(resultado.damageResolution??null);
       if (resultado.cura > 0) triggerFloatingJogador(`+${resultado.cura}`, "#44ff44");
 
       adicionarLog(
@@ -354,7 +361,7 @@ export default function WorldBossBattleScene({
           ← Sair
         </button>
 
-        <div className="flex flex-col items-center text-center text-white drop-shadow-lg">
+        <div className="flex min-w-0 flex-1 flex-col items-center text-center text-white drop-shadow-lg">
           <p className="text-[10px] uppercase tracking-widest text-red-400 sm:text-xs">
             {status?.fase_atual ? status.fase_atual.nome_fase : "Ameaça Mundial"}
           </p>
@@ -362,6 +369,12 @@ export default function WorldBossBattleScene({
           {faseAlerta?.texto_alerta && <p className="mt-1 animate-pulse text-xs italic text-red-300">{faseAlerta.texto_alerta}</p>}
           {status?.combate && (
             <p className="mt-1 text-[10px] text-orange-300">Fúria: {status.combate.furia_atual_pct}%</p>
+          )}
+          {status && <div className="mt-2 w-full max-w-sm"><WorldBossDeadline status={status} /></div>}
+          {castPendente?.power && (
+            <div className="mt-2 w-full max-w-sm">
+              <WorldBossCastCountdown nome={castPendente.power.nome} imagemUrl={castPendente.power.imagem_url} resolvesAt={castPendente.resolves_at} />
+            </div>
           )}
         </div>
 
@@ -374,12 +387,6 @@ export default function WorldBossBattleScene({
           i
         </button>
       </div>
-
-      {castPendente?.power && (
-        <div className="absolute left-1/2 top-16 z-20 w-72 -translate-x-1/2 sm:top-20">
-          <WorldBossCastCountdown nome={castPendente.power.nome} imagemUrl={castPendente.power.imagem_url} resolvesAt={castPendente.resolves_at} />
-        </div>
-      )}
 
       <div className="absolute inset-0 z-10 flex items-center justify-between px-[8%] sm:px-[14%]">
         <div
@@ -444,6 +451,7 @@ export default function WorldBossBattleScene({
         <div className="absolute inset-x-3 top-24 z-30 grid grid-cols-1 gap-3 sm:inset-x-auto sm:right-4 sm:w-80">
           <div className="max-h-48 overflow-y-auto rounded-xl border border-white/10 bg-black/70 p-3 text-xs backdrop-blur">
             <p className="mb-1 text-[10px] font-bold uppercase text-white/50">Combate</p>
+            <DamageBreakdown value={damageResolution}/>
             {log.length === 0 ? <p className="text-white/40">Nenhuma ação ainda.</p> : log.map((linha, i) => <p key={i} className="text-white/70">{linha}</p>)}
           </div>
           <div className="rounded-xl border border-white/10 bg-black/70 p-3 backdrop-blur">
@@ -464,12 +472,13 @@ export default function WorldBossBattleScene({
             <p className="mb-1 text-center text-xs text-white/50">Próxima ação em {(meuCooldownRestanteMs / 1000).toFixed(1)}s</p>
           )}
           <CombatActionBar
-            podeAgir={!encerrada}
+            podeAgir={!encerrada && !prazoExpirado}
             ocupado={agindo || meuCooldownRestanteMs > 0}
             manaAtual={lutador.mana_atual}
             onAtaqueBasico={() => executar(atacarWorldBoss, false, false)}
             poderes={poderes.map((p) => ({
               id: p.id,
+              combat_slot: p.combat_slot,
               nome: p.nome,
               imagem_url: p.imagem_url,
               custo_mana: p.custo_mana,

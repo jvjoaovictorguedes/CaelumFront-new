@@ -9,6 +9,11 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      # Dedicated mock target for smoke artifacts; deployment uses its own env.
+      NEXT_PUBLIC_API_URL: http://127.0.0.1:3101/api
+      INTERNAL_API_URL: http://127.0.0.1:3101/api
+      NEXT_TELEMETRY_DISABLED: 1
 
     steps:
       - uses: actions/checkout@v4
@@ -20,8 +25,22 @@ jobs:
 
       - run: npm ci
 
+      - name: Contract and realtime state tests
+        run: npm test
+
       - name: Lint
         run: npm run lint
 
       - name: Build
         run: npm run build
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-1.63.0
+
+      - name: Install smoke browser
+        run: npx playwright-core install --with-deps chromium
+
+      - name: Login, BFF session and realtime smoke
+        run: npm run test:smoke

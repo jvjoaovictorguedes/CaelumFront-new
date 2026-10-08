@@ -17,7 +17,7 @@ export interface ZonaApi {
   // isso em /adventure/zones/:id/enter, nunca confia só nesta checagem
   // do lado do cliente.
   nivel_jogador_minimo: number;
-  bloqueada_por_nivel: boolean;
+  bloqueada_por_nivel: boolean;bloqueada_por_crise?:boolean;
 }
 
 const CORES_PERIGO: Record<ZonaApi["perigo"], string> = {
@@ -104,14 +104,14 @@ export default function ZoneSelector({ zonas }: { zonas: ZonaApi[] }) {
 
             <button
               type="button"
-              disabled={entrandoEm === zona.id || zona.bloqueada_por_nivel}
+              disabled={entrandoEm === zona.id || zona.bloqueada_por_nivel || zona.bloqueada_por_crise}
               onClick={() => entrar(zona.id)}
               title={zona.bloqueada_por_nivel ? `Você precisa ser nível ${zona.nivel_jogador_minimo} pra entrar aqui.` : undefined}
               className="mt-4 rounded-lg bg-[#BC8418] px-4 py-2 font-bold text-black transition hover:bg-[#a5710f] disabled:cursor-not-allowed disabled:opacity-60"
             >
               {entrandoEm === zona.id
                 ? "Entrando..."
-                : zona.bloqueada_por_nivel
+                : zona.bloqueada_por_crise ? "Zona devastada" : zona.bloqueada_por_nivel
                   ? `Requer nível ${zona.nivel_jogador_minimo}`
                   : "Entrar"}
             </button>

@@ -28,6 +28,8 @@ const CATEGORIAS: CategoriaAdmin[] = [
   {
     titulo: "Conteúdo",
     modulos: [
+      { titulo: "Tipagens e afinidades", descricao: "Famílias, perfis e especializações PvE.", href: "/dashboard/admin/combat-typing", permissao: "combat_typing.view" },
+      { titulo: "Anti-automação", descricao: "Sinais, revisão e rollout.", href: "/dashboard/admin/anti-automation", permissao: "anti_automation.view" },
       { titulo: "Itens", descricao: "Criar, editar e desativar itens e propriedades.", href: "/dashboard/admin/items", permissao: "items.manage" },
       { titulo: "Conjuntos de Equipamentos", descricao: "Peças, thresholds e bônus de conjunto.", href: "/dashboard/admin/equipment-sets", permissao: "equipmentsets.manage" },
       { titulo: "Habilidades", descricao: "Catálogo de Habilidades (Power), vínculos e evolução 1-10.", href: "/dashboard/admin/powers", permissao: "powers.manage" },
@@ -40,6 +42,7 @@ const CATEGORIAS: CategoriaAdmin[] = [
       { titulo: "Mídia", descricao: "Upload e versionamento de assets.", href: "/dashboard/admin/media", permissao: "media.manage" },
       { titulo: "Músicas", descricao: "Faixas, páginas, contextos e pools — rascunho, publicação e rollback.", href: "/dashboard/admin/music", permissao: "music.manage" },
       { titulo: "Taverna", descricao: "Cardápio, jogos de azar, descanso e métricas.", href: "/dashboard/admin/tavern", permissao: "tavern.manage" },
+      {titulo:"Crises Mundiais & Reconstrução",descricao:"Consequências, materiais, rankings e recuperação de Caelum.",href:"/dashboard/admin/world-crisis",permissao:"worldcrisis.manage"},
       { titulo: "Ameaça Mundial", descricao: "Catálogo de Boss Global, ciclo atual e métricas.", href: "/dashboard/admin/world-boss", permissao: "worldboss.manage" },
       { titulo: "Pesca & Navegação", descricao: "Zonas, espécies, pool de encontro, portos, iscas e afinidades.", href: "/dashboard/admin/fishing", permissao: "fishing.manage" },
       { titulo: "Alquimia (Caldeirão)", descricao: "Receitas, ingredientes, custo e modo de desbloqueio.", href: "/dashboard/admin/alchemy", permissao: "alchemy.manage" },

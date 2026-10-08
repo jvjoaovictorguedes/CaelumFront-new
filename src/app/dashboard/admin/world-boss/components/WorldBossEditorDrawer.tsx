@@ -1,4 +1,6 @@
 "use client";
+import WorldBossConsequenceTab from "./WorldBossConsequenceTab";
+import TypingEditor from "@/components/combat-typing/TypingEditor";
 
 // Ameaça Mundial V2 §13.1/§13.2 — editor completo do catálogo, em tela
 // cheia (nunca mais o modal pequeno de antes): Identidade, Atributos +
@@ -28,7 +30,7 @@ import WorldBossAbilitiesTab from "./WorldBossAbilitiesTab";
 import WorldBossResistancesTab from "./WorldBossResistancesTab";
 import WorldBossBalanceTab from "./WorldBossBalanceTab";
 
-type AbaInterna = "identidade" | "atributos" | "habilidades" | "resistencias" | "fases" | "descoberta" | "recompensas" | "balanceamento";
+type AbaInterna = "consequencia" | "identidade" | "atributos" | "habilidades" | "resistencias" | "fases" | "descoberta" | "recompensas" | "balanceamento";
 
 const ABAS: [AbaInterna, string][] = [
   ["identidade", "Identidade"],
@@ -38,6 +40,7 @@ const ABAS: [AbaInterna, string][] = [
   ["resistencias", "Resistências"],
   ["descoberta", "Descoberta"],
   ["recompensas", "Recompensas"],
+  ["consequencia", "Consequência"],
   ["balanceamento", "Balanceamento"],
 ];
 
@@ -96,6 +99,7 @@ export default function WorldBossEditorDrawer({
       try {
         const config = await obterWorldBossConfigAdmin(idConfigInicial);
         setForm({
+          combat_duration_seconds:config.combat_duration_seconds??null,id_failure_crisis_config:config.id_failure_crisis_config??null,
           nome: config.nome,
           descricao: config.descricao,
           lore: config.lore ?? "",
@@ -200,6 +204,8 @@ export default function WorldBossEditorDrawer({
           <p className="text-sm text-white/50">Salve o catálogo na aba Identidade (ou qualquer outra com o botão &quot;Salvar catálogo&quot;) antes de configurar isto.</p>
         ) : (
           <div className="mx-auto max-w-4xl">
+            {configId&&<TypingEditor kind="world-bosses" id={configId}/>}
+            {aba === "consequencia" && <WorldBossConsequenceTab form={form} setForm={setForm}/>}
             {aba === "identidade" && <WorldBossIdentityTab form={form} setForm={setForm} editando={configId !== null} />}
             {aba === "atributos" && <WorldBossAttributesTab form={form} setForm={setForm} />}
             {aba === "fases" && <WorldBossPhasesTab form={form} setForm={setForm} habilidades={habilidades} />}

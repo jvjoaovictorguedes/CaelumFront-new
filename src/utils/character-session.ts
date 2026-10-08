@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import axiosInstance from "./axiosIntance";
 
 export interface CurrentCharacter {
+  effective_affinities?: import("@/components/combat-typing/types").DefensiveAffinity[];
   id: number;
   nome: string;
   genero: string;

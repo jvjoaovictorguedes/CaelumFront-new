@@ -276,6 +276,7 @@ export default function LiveDuelArena({ meuCharacterId }: { meuCharacterId: numb
               onAtaqueBasico={() => agirEDesabilitar("attack")}
               poderes={meusPoderes.map((poder) => ({
                 id: poder.id,
+                combat_slot: poder.combat_slot,
                 nome: poder.nome,
                 imagem_url: poder.imagem_url,
                 custo_mana: poder.custo_mana,

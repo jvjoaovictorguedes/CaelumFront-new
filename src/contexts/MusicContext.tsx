@@ -90,7 +90,7 @@ function fadeVolume(
   const inicio = performance.now();
   function passo(agora: number) {
     if (tokenAtualRef.current !== meuToken) return;
-    const progresso = Math.min(1, (agora - inicio) / duracaoMs);
+    const progresso = Math.max(0, Math.min(1, (agora - inicio) / duracaoMs));
     audio.volume = de + (para - de) * progresso;
     if (progresso < 1) {
       requestAnimationFrame(passo);

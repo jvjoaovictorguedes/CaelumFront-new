@@ -1,4 +1,5 @@
 "use client";
+import {DamageBreakdown} from "@/components/combat-typing/TypingFeedback";
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -66,6 +67,7 @@ interface Power {
 }
 
 interface Ability {
+  combat_slot?: number | null;
   id: number;
   Power: Power;
 }
@@ -107,6 +109,9 @@ interface ItemInventarioApi {
 }
 
 interface EnemyState {
+  lastDamageResolution?:import("@/components/combat-typing/types").DamageResolution|null;
+  combatTurn?: number;
+  encounterId?: string;
   nome: string;
   nivel: number;
 
@@ -1124,7 +1129,7 @@ export default function CombatArena({
           characterId: character.id,
 
           enemy,
-
+          ...(actionEndpoint === "/combat/action" ? {stateVersion:enemy.combatTurn || 0,encounterId:enemy.encounterId} : {}),
           action,
         },
       );
@@ -1550,6 +1555,7 @@ export default function CombatArena({
             onPassarTurno={() => executarAcao({ type: "pass" })}
             poderes={abilities.map((habilidade) => ({
               id: habilidade.Power.id,
+              combat_slot: habilidade.combat_slot,
               nome: habilidade.Power.nome,
               imagem_url: habilidade.Power.imagem_url,
               custo_mana: habilidade.Power.custo_mana,
@@ -1769,6 +1775,7 @@ export default function CombatArena({
 
             <div className="flex flex-1 flex-col-reverse overflow-y-auto rounded-xl bg-black/85 p-4 text-sm shadow-inner">
               <div>
+                <DamageBreakdown value={enemy?.lastDamageResolution}/>
                 {log.map((linha, indice) => (
                   <p
                     key={indice}

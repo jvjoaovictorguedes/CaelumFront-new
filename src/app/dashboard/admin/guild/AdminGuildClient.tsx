@@ -1,4 +1,5 @@
 "use client";
+import TypingEditor from "@/components/combat-typing/TypingEditor";
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
@@ -44,9 +45,9 @@ export default function AdminGuildClient() {
         </Link>
         <h1 className="mt-1 font-imFeel text-3xl text-[#F3B43F]">Guilda</h1>
         <p className="mt-1 text-sm text-white/60">
-          Requisitos de promoção de Rank, carência anti-exploit, Buffs (XP/Gold/Forja), pontuação de Contribuição e o
-          Boss ao vivo (frações de recompensa + tamanho/turno/escalada de dano), além dos catálogos de Nível e Boss
-          por Rank. Missões de Guilda ficam em{" "}
+          Requisitos de promoção de Rank, carência anti-exploit, Buffs (XP/Gold/Forja), pontuação de Contribuição, o
+          Boss ao vivo (frações de recompensa + tamanho/turno/escalada de dano) e a capacidade do Armazém do Tesouro,
+          além dos catálogos de Nível e Boss por Rank. Missões de Guilda ficam em{" "}
           <Link prefetch={false} href="/dashboard/admin/missions" className="text-[#F3B43F] hover:underline">
             Conteúdo → Missões
           </Link>{" "}
@@ -120,6 +121,7 @@ function AbaBalanceamento() {
       <CardBuffs atual={dados["guild.buffs"].atual} onSalvo={carregar} />
       <CardContribuicao atual={dados["guild.contribuicao"].atual} onSalvo={carregar} />
       <CardBossBalance atual={dados["guild.boss"].atual} onSalvo={carregar} />
+      <CardTesouro atual={dados["guild.tesouro"].atual} onSalvo={carregar} />
     </div>
   );
 }
@@ -394,6 +396,109 @@ function CardContribuicao({
         <label className="flex flex-col gap-1 text-xs text-white/70">
           XP Missão Rank — máximo (rank S)
           <input type="number" min={xpMin} className={`${INPUT} w-32`} value={xpMax} onChange={(e) => setXpMax(Number(e.target.value))} />
+        </label>
+      </div>
+      <button type="button" disabled={salvando} onClick={salvar} className={`${BTN} mt-3`}>
+        {salvando ? "Salvando..." : "Salvar"}
+      </button>
+    </div>
+  );
+}
+
+function CardTesouro({
+  atual,
+  onSalvo,
+}: {
+  atual: GuildBalanceCompletoApi["guild.tesouro"]["atual"];
+  onSalvo: () => void;
+}) {
+  const [marcos, setMarcos] = useState(atual.CAPACIDADE_TESOURO_POR_NIVEL);
+  const [novoNivel, setNovoNivel] = useState("");
+  const [salvando, setSalvando] = useState(false);
+  const [erro, setErro] = useState("");
+  const [mensagem, setMensagem] = useState("");
+
+  const niveisOrdenados = Object.keys(marcos)
+    .map(Number)
+    .sort((a, b) => a - b);
+
+  function removerMarco(nivel: number) {
+    setMarcos((m) => {
+      const copia = { ...m };
+      delete copia[nivel];
+      return copia;
+    });
+  }
+
+  function adicionarMarco() {
+    const nivel = Number(novoNivel);
+    if (!Number.isInteger(nivel) || nivel < 1 || marcos[nivel] !== undefined) return;
+    setMarcos((m) => ({ ...m, [nivel]: 30 }));
+    setNovoNivel("");
+  }
+
+  async function salvar() {
+    setSalvando(true);
+    setErro("");
+    setMensagem("");
+    try {
+      await atualizarGuildBalanceAdmin("guild.tesouro", { CAPACIDADE_TESOURO_POR_NIVEL: marcos });
+      setMensagem("Capacidade do Tesouro salva.");
+      onSalvo();
+    } catch (error) {
+      setErro(mensagemDeErroAdmin(error, "Não foi possível salvar."));
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  return (
+    <div className={CARD}>
+      <p className="mb-1 font-imFeel text-xl text-[#F3B43F]">Capacidade do Armazém (Tesouro)</p>
+      <p className="mb-3 text-xs text-white/50">
+        Quantidade de slots do Armazém de itens/equipamentos por marco de nível da guilda — vale o maior marco com
+        nível ≤ nível atual. A capacidade deve crescer (ou manter) conforme o nível sobe.
+      </p>
+      <CardMensagem erro={erro} mensagem={mensagem} />
+      <div className="mb-3 flex flex-wrap gap-3">
+        {niveisOrdenados.map((nivel) => (
+          <label key={nivel} className="flex flex-col gap-1 text-xs text-white/70">
+            Nível {nivel}
+            <span className="flex items-center gap-1">
+              <input
+                type="number"
+                min={1}
+                className={`${INPUT} w-24`}
+                value={marcos[nivel]}
+                onChange={(e) => setMarcos((m) => ({ ...m, [nivel]: Number(e.target.value) }))}
+              />
+              {niveisOrdenados.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => removerMarco(nivel)}
+                  className="text-red-400 hover:text-red-300"
+                  title="Remover marco"
+                >
+                  ✕
+                </button>
+              )}
+            </span>
+          </label>
+        ))}
+        <label className="flex flex-col gap-1 text-xs text-white/70">
+          Novo marco (nível)
+          <span className="flex items-center gap-1">
+            <input
+              type="number"
+              min={1}
+              className={`${INPUT} w-24`}
+              value={novoNivel}
+              onChange={(e) => setNovoNivel(e.target.value)}
+            />
+            <button type="button" onClick={adicionarMarco} className="text-[#F3B43F] hover:text-[#ffd27a]">
+              + add
+            </button>
+          </span>
         </label>
       </div>
       <button type="button" disabled={salvando} onClick={salvar} className={`${BTN} mt-3`}>
@@ -825,6 +930,7 @@ function AbaBoss() {
       </div>
 
       <div className={CARD}>
+        {editandoId&&<TypingEditor kind="guild-bosses" id={editandoId}/>}
         <p className="mb-1 font-imFeel text-xl text-[#F3B43F]">{editandoId ? `Editando Boss (rank ${form.rank})` : "Novo Boss"}</p>
         <p className="mb-3 text-xs text-white/50">Um Boss por Rank (F..S) — não promove mais Rank, só concede XP de Guilda fixo + recompensa individual.</p>
         <CardMensagem erro={erro} mensagem={mensagem} />

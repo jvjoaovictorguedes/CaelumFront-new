@@ -1,3 +1,4 @@
+import {ResistanceList} from "@/components/combat-typing/TypingFeedback";
 import Link from "next/link";
 
 import axiosInstance from "@/utils/axiosIntance";
@@ -15,6 +16,9 @@ interface DropApi {
 }
 
 interface MonstroApi {
+  family?:{nome:string}|null;
+  basicAttackProfile?:{nature:string;affinity:{nome:string}|null};
+  effectiveAffinities?: import("@/components/combat-typing/types").DefensiveAffinity[];
   descoberto: boolean;
   nome: string;
   raridade: string;
@@ -186,6 +190,9 @@ export default async function BestiaryRegionPage({
                   {monstro.raridade}
                 </span>
               </div>
+              {monstro.family&&<p>Família: {monstro.family.nome}</p>}
+              {monstro.basicAttackProfile&&<p>Ataque: {monstro.basicAttackProfile.nature} — {monstro.basicAttackProfile.affinity?.nome??"Neutro"}</p>}
+              <ResistanceList values={monstro.effectiveAffinities}/>
               {imagemMonstro && (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img

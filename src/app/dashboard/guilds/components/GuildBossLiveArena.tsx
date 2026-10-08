@@ -1,4 +1,5 @@
 "use client";
+import {DamageBreakdown} from "@/components/combat-typing/TypingFeedback";
 
 import { useEffect, useRef, useState } from "react";
 import { usePvpSocket, type TurnoBossGuildaPayload } from "@/contexts/PvpSocketContext";
@@ -211,6 +212,8 @@ export default function GuildBossLiveArena() {
 
   return (
     <div className="fixed inset-0 z-[90] overflow-hidden bg-[#1a1410]">
+      <DamageBreakdown value={turnosBossGuilda.at(-1)?.damageResolution}/>
+
       <style jsx>{`
         @keyframes floatUp {
           0% {
@@ -357,6 +360,7 @@ export default function GuildBossLiveArena() {
               }}
               poderes={(meuMembro?.poderes ?? []).map((p) => ({
                 id: p.id,
+                combat_slot: p.combat_slot,
                 nome: p.nome,
                 imagem_url: p.imagem_url,
                 custo_mana: p.custo_mana,

@@ -224,8 +224,8 @@ export const fishingApi = {
       .then((r) => r.data.data.sessao as SessaoPesca),
   cast: (sessionId: number) => axiosInstance.post(`/fishing/sessions/${sessionId}/cast`).then((r) => r.data.data.sessao as SessaoPesca),
   hook: (sessionId: number) => axiosInstance.post(`/fishing/sessions/${sessionId}/hook`).then((r) => r.data.data.sessao as SessaoPesca),
-  reel: (sessionId: number, active: boolean) =>
-    axiosInstance.post(`/fishing/sessions/${sessionId}/reel`, { active }).then((r) => r.data.data.sessao as SessaoPesca),
+  reel: (sessionId: number, active: boolean, stateVersion: number, actionId = crypto.randomUUID()) =>
+    axiosInstance.post(`/fishing/sessions/${sessionId}/reel`, { active, stateVersion, actionId }).then((r) => r.data.data.sessao as SessaoPesca),
   abandon: (sessionId: number) => axiosInstance.post(`/fishing/sessions/${sessionId}/abandon`).then((r) => r.data.data.sessao as SessaoPesca),
 
   getPorts: () => axiosInstance.get("/fishing/navigation/ports").then((r) => r.data.data.portos),

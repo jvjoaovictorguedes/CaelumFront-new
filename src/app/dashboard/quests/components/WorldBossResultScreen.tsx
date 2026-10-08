@@ -4,10 +4,12 @@
 // Dano, Golpe Final, Descobridor e Ranking Final. Tudo já vem pronto do
 // backend (status público + worldboss:ranking-final) — nenhum cálculo
 // aqui, só apresentação.
+import Link from "next/link";
 import type { WorldBossRankingApi, WorldBossStatusApi } from "@/lib/api/worldBoss";
 import WorldBossRankingPanel from "./WorldBossRankingPanel";
 
 export default function WorldBossResultScreen({ status, ranking }: { status: WorldBossStatusApi; ranking: WorldBossRankingApi | null }) {
+  if(status.status==="FAILED")return <div className="rounded-2xl border-2 border-red-400/50 bg-[#292018]/90 p-5 text-center text-white"><h2 className="font-imFeel text-3xl text-[#F3B43F]">AMEAÇA NÃO CONTIDA</h2><p className="my-3">{status.nome} não foi derrotado no prazo. HP restante: {status.hp_current?.toLocaleString("pt-BR")}.</p><Link href="/dashboard/quests/reconstruction" className="inline-block rounded-lg bg-[#BC8418] px-4 py-2 font-bold text-black">Ajudar na Reconstrução</Link></div>;
   return (
     <div className="flex flex-col gap-4 rounded-2xl border-2 border-[#F3B43F] bg-[#292018]/90 p-5 text-white shadow-xl">
       <div className="text-center">
