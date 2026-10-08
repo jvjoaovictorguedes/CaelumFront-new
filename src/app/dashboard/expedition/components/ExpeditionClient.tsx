@@ -84,6 +84,7 @@ interface ResultadoColeta {
   enemy: InimigoInterrupcao | null;
   resultado: string | null;
   item_ganho: ItemGanho | null;
+  receita_encontrada: ItemGanho | null;
   quantidade: number;
   xp_ganho: number;
   subiu_nivel: boolean;
@@ -485,6 +486,25 @@ export default function ExpeditionClient() {
             <p className="rounded-lg bg-[#F3B43F]/20 px-3 py-1.5 text-sm font-bold text-[#F3B43F]">
               Sua profissão subiu para o nível {resultado.nivel}!
             </p>
+          )}
+          {resultado.receita_encontrada && (
+            <div className="flex items-center gap-3 rounded-lg border-2 border-[#F3B43F] bg-[#F3B43F]/10 p-3">
+              <ItemIcon
+                imagemUrl={resolveMediaUrl(resultado.receita_encontrada.imagem_url)}
+                nome={resultado.receita_encontrada.nome}
+                className="h-12 w-12 shrink-0 rounded-lg border-2 border-[#F3B43F] bg-[#3a2f24]"
+                imgClassName="h-full w-full object-contain p-1.5"
+                fallback={
+                  <div className="flex h-full w-full items-center justify-center text-lg font-bold text-[#F3B43F]/80">
+                    {resultado.receita_encontrada.nome.charAt(0).toUpperCase()}
+                  </div>
+                }
+              />
+              <div>
+                <p className="text-xs font-bold uppercase tracking-widest text-[#F3B43F]">Achado raríssimo!</p>
+                <p className="font-bold">{resultado.receita_encontrada.nome}</p>
+              </div>
+            </div>
           )}
         </div>
       )}
