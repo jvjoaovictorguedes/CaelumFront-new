@@ -40,8 +40,10 @@ export async function obterWikiArtigo(slug: string): Promise<WikiArtigoApi> {
 
 export interface WikiReferenciaApi extends Omit<WikiArtigoApi, "id"> {
   id: string;
-  kind: "monster" | "guide";
+  kind: "monster" | "guide" | "class" | "skill";
   nivel?: number;
+  tipo_poder?: "Ativo" | "Passivo";
+  aprendida?: boolean;
 }
 
 export async function obterWikiEnciclopedia(): Promise<WikiReferenciaApi[]> {
