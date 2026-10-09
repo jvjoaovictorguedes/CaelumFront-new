@@ -9,7 +9,7 @@
 // dispara `onAction`; quem decide se a ação é válida e qual o novo
 // estado é sempre o backend (Fase 8).
 import { useMemo } from "react";
-import { usePrefereMovimentoReduzido } from "./usePrefereMovimentoReduzido";
+import { usePrefereMovimentoReduzido } from "../usePrefereMovimentoReduzido";
 import type {
   AlavancaFeedback,
   ComponenteFeedback,

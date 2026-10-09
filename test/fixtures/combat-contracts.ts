@@ -102,6 +102,13 @@ export const combatContracts = {
       "FIM": "templeboss:fim",
       "ERRO": "templeboss:erro",
       "SAIR": "templeboss:sair"
+    },
+    "EVENTPUZZLE": {
+      "IDENTIFICAR": "eventpuzzle:identificar",
+      "ENTRAR": "eventpuzzle:entrar",
+      "ESTADO": "eventpuzzle:estado",
+      "ERRO": "eventpuzzle:erro",
+      "SAIR": "eventpuzzle:sair"
     }
   },
   "casual": {

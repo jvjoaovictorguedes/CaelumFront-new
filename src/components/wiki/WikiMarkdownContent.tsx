@@ -29,7 +29,7 @@ const componentes: Components = {
   a: ({ children, href }) => (
     <a
       href={href}
-      target="_blank"
+      target={href?.startsWith("/") && !href.startsWith("//") ? undefined : "_blank"}
       rel="noopener noreferrer"
       className="text-[#F3B43F] underline decoration-[#F3B43F]/50 hover:text-[#BC8418]"
     >
@@ -60,13 +60,13 @@ const componentes: Components = {
   ),
   table: ({ children }) => (
     <div className="overflow-x-auto">
-      <table className="w-full border-collapse text-sm text-white/80">{children}</table>
+      <table className="w-full border-collapse text-lg leading-relaxed tabular-nums text-white/90">{children}</table>
     </div>
   ),
   th: ({ children }) => (
-    <th className="border border-white/15 bg-black/30 px-2 py-1 text-left font-bold text-[#F3B43F]">{children}</th>
+    <th className="border border-white/15 bg-black/30 px-3 py-2 text-left font-bold text-[#F3B43F]">{children}</th>
   ),
-  td: ({ children }) => <td className="border border-white/10 px-2 py-1">{children}</td>,
+  td: ({ children }) => <td className="border border-white/10 px-3 py-2">{children}</td>,
 };
 
 export default function WikiMarkdownContent({ conteudo }: { conteudo: string }) {
