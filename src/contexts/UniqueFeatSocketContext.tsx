@@ -34,7 +34,7 @@ export function UniqueFeatSocketProvider({ children }: { children: React.ReactNo
 
   useEffect(() => {
     const baseUrl = socketUrlFromApiUrl(process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api");
-    const socket = io(baseUrl, { transports: ["websocket", "polling"] });
+    const socket = io(baseUrl, { transports: ["polling", "websocket"] });
     socketRef.current = socket;
 
     // Sem sala pra entrar — é um broadcast global de verdade (io.emit no

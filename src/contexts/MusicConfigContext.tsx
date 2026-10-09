@@ -113,7 +113,7 @@ export function MusicConfigProvider({ children }: { children: React.ReactNode })
     // nunca forçar o MusicProvider a trocar uma solicitação já ativa no
     // meio de algo (o snapshot novo só é usado na PRÓXIMA vez que um
     // slot for resolvido — próxima montagem de PageMusic/useContextMusic).
-    const socket = io(SOCKET_BASE_URL, { transports: ["websocket", "polling"] });
+    const socket = io(SOCKET_BASE_URL, { transports: ["polling", "websocket"] });
     socketRef.current = socket;
     socket.on("music:config-updated", (payload: { version?: number }) => {
       if (typeof payload?.version === "number" && payload.version > versionRef.current) {

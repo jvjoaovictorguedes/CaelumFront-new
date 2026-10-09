@@ -33,6 +33,12 @@ export type { EstadoGuardiaoPayload, CastStartGuardiaoPayload, FaseAlteradaGuard
 
 interface PvpSocketContextValue {
   conectado: boolean;
+  // Só true depois do ack de TRANSPORT.IDENTIFY (ver useCombatTransport.
+  // ts) — nunca confundir com `conectado`, que é só a camada de
+  // transporte. Qualquer ação que dependa de socket.characterId no
+  // servidor (templeboss:entrar, etc.) precisa checar isto antes de
+  // emitir, nunca só `conectado`.
+  realtimeReady: boolean;
   onlineIds: Set<number>;
   desafioRecebido: DesafioRecebido | null;
   desafioEnviadoPara: number | null;
@@ -134,7 +140,7 @@ export function PvpSocketProvider({
       registerGuildbossListeners(socket, { setResultadoBossGuilda, setTurnosBossGuilda, setCastBossGuilda, setBatalhaBossGuilda, setTurnoAtualBossGuilda, setRodadaAtualBossGuilda, setErroBossGuilda }),
       registerTempleBossListeners(socket, { setEstadoGuardiao, setLogGuardiao, setCastGuardiao, setFaseAlteradaGuardiao, setResultadoGuardiao, setErroGuardiao }),
   ], [setBatalhaBossGuilda, setBatalhaGrupo, setCastBossGuilda, setCastGuardiao, setConvitePartyEnviadoPara, setConvitePartyRecebido, setDesafioEnviadoPara, setDesafioRecebido, setDuelo, setErro, setErroBossGuilda, setErroGuardiao, setErroParty, setEstadoGuardiao, setFaseAlteradaGuardiao, setFilaRanked, setGrupoAtual, setLogGuardiao, setMatchEncontradoRanked, setOponenteDesconectadoRanked, setRatingUpdate, setResultadoBossGuilda, setResultadoFinal, setResultadoGrupo, setResultadoGuardiao, setRodadaAtualBossGuilda, setRodadaAtualGrupo, setSerieTorneio, setTurnoAtualBossGuilda, setTurnoAtualGrupo, setTurnos, setTurnosBossGuilda, setTurnosGrupo, router]);
-  const { socketRef, conectado, onlineIds } = useCombatTransport(characterId, setErro, registerDomains);
+  const { socketRef, conectado, identificado: realtimeReady, onlineIds } = useCombatTransport(characterId, setErro, registerDomains);
 
   const desafiar = useCallback((idDesafiado: number) => {
     socketRef.current?.emit(SOCKET_EVENTS.PVP.DESAFIAR, { idDesafiado });
@@ -293,6 +299,7 @@ export function PvpSocketProvider({
     <PvpSocketContext.Provider
       value={{
         conectado,
+        realtimeReady,
         onlineIds,
         desafioRecebido,
         desafioEnviadoPara,

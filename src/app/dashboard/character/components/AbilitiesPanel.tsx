@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import axiosInstance from "@/utils/axiosIntance";
 import { resolveMediaUrl } from "@/utils/media-url";
+import PowerTypingDetails from "@/components/combat-typing/PowerTypingDetails";
 
 interface CustoEvolucao {
   ouro: number;
@@ -195,6 +196,12 @@ function DetalheDoPoder({
       </div>
       <p className="mt-2 text-sm text-white/80">{poder.descricao}</p>
       <p className="mt-1 text-xs text-white/60">{detalhes.join(" · ")}</p>
+      {/* Rebalanceamento de Powers §30 — mesmo tipo de dano/afinidade/
+          "pode causar X" já mostrado na barra de combate (CombatActionBar),
+          aqui na ficha de personagem também — nunca reimplementado. */}
+      <div className="mt-1 text-white/60">
+        <PowerTypingDetails powerId={poder.id_power} />
+      </div>
 
       {bloqueado && poder.bloqueado_por_evolucao && (
         <p className="mt-3 text-[11px] text-purple-300/80">
