@@ -4292,3 +4292,448 @@ export async function salvarAntiAutomacaoConfigAdmin(values: AntiAutomationPolic
   const resposta = await axiosInstance.patch<{ data: AntiAutomationPolicyApi }>("/admin/anti-automation/config", { values, reason });
   return resposta.data.data;
 }
+
+// ===== Templo do Véu Celestial — Admin (permissão única temple.manage) =====
+// Edição normal só é aceita pelo backend em DRAFT/SCHEDULED — a partir de
+// ACTIVE o config_snapshot já congelou e o catálogo nunca pode mudar por
+// baixo de uma Convergência em andamento (backend rejeita com 409; aqui só
+// mostramos a mensagem de erro, nunca escondemos os campos preventivamente).
+export type TempleEventoStatusApi = "DRAFT" | "SCHEDULED" | "ACTIVE" | "RELICARY_ONLY" | "ENDED" | "CANCELLED";
+
+export interface TempleEventoAdminApi {
+  id: number;
+  key: string;
+  nome: string;
+  lore: string | null;
+  teaser: string | null;
+  imagem_url: string | null;
+  status: TempleEventoStatusApi;
+  starts_at: string | null;
+  missions_end_at: string | null;
+  relicary_end_at: string | null;
+  ended_at: string | null;
+  cancelled_at: string | null;
+  cancel_reason: string | null;
+  id_currency_item: number;
+}
+
+export interface PayloadTempleEventoAdmin {
+  key?: string;
+  nome?: string;
+  lore?: string | null;
+  teaser?: string | null;
+  imagem_url?: string | null;
+}
+
+export type TempleMissaoCategoriaApi = "RITO_DIARIO" | "PROVACAO_PRINCIPAL";
+export type TempleObjectiveTypeApi =
+  | "WIN_ADVENTURE_NO_CONSUMABLE"
+  | "APPLY_STATUS"
+  | "DEFEAT_AFFECTED_BY_STATUS"
+  | "WIN_DISTINCT_ZONES"
+  | "FINAL_BLOW_WITH_POWER"
+  | "CRAFT_RARITY_OR_HIGHER"
+  | "COMPLETE_EXPEDITIONS"
+  | "PARTY_ADVENTURE_WINS"
+  | "DELIVER_ITEM"
+  | "CLEANSE_STATUS";
+
+export const TEMPLE_OBJECTIVE_TYPES: TempleObjectiveTypeApi[] = [
+  "WIN_ADVENTURE_NO_CONSUMABLE",
+  "APPLY_STATUS",
+  "DEFEAT_AFFECTED_BY_STATUS",
+  "WIN_DISTINCT_ZONES",
+  "FINAL_BLOW_WITH_POWER",
+  "CRAFT_RARITY_OR_HIGHER",
+  "COMPLETE_EXPEDITIONS",
+  "PARTY_ADVENTURE_WINS",
+  "DELIVER_ITEM",
+  "CLEANSE_STATUS",
+];
+
+export interface TempleMissaoAdminApi {
+  id: number;
+  id_event: number;
+  key: string;
+  categoria: TempleMissaoCategoriaApi;
+  objective_type: TempleObjectiveTypeApi;
+  objective_config: { itemId?: number; quantidade?: number; statusKey?: string; statusKeys?: string[]; minRaridade?: string };
+  meta: number;
+  reward_sigils: number;
+  nome_exibicao: string;
+  descricao: string | null;
+  ordem: number;
+  ativo: boolean;
+}
+
+export interface PayloadTempleMissaoAdmin {
+  key?: string;
+  categoria?: TempleMissaoCategoriaApi;
+  objective_type?: TempleObjectiveTypeApi;
+  objective_config?: TempleMissaoAdminApi["objective_config"];
+  meta?: number;
+  reward_sigils?: number;
+  nome_exibicao?: string;
+  descricao?: string | null;
+  ordem?: number;
+  ativo?: boolean;
+}
+
+export interface TempleMissaoPreviewApi {
+  key: string | null;
+  categoria: TempleMissaoCategoriaApi | null;
+  nome_exibicao: string | null;
+  descricao: string | null;
+  meta: number | null;
+  reward_sigils: number;
+  objective_type: TempleObjectiveTypeApi | null;
+  progresso_atual: number;
+  completed_at: string | null;
+  claimed_at: string | null;
+  objetivo_e_set: boolean;
+}
+
+export type TempleRewardKindApi = "STACKABLE_ITEM" | "EQUIPMENT";
+
+export interface TempleRewardPoolAdminApi {
+  id: number;
+  id_event: number;
+  nome: string;
+  custo_sigilos_draw: number;
+  pity_raro_mais_garantia: number | null;
+  pity_featured_garantia: number | null;
+  ativo: boolean;
+}
+
+export interface PayloadTempleRewardPoolAdmin {
+  nome?: string;
+  custo_sigilos_draw?: number;
+  pity_raro_mais_garantia?: number | null;
+  pity_featured_garantia?: number | null;
+  ativo?: boolean;
+}
+
+export interface TempleRewardEntryAdminApi {
+  id: number;
+  id_pool: number;
+  key: string;
+  reward_kind: TempleRewardKindApi;
+  id_item: number;
+  quantidade: number;
+  raridade_instancia: string | null;
+  weight: number;
+  eh_raro_mais: boolean;
+  eh_featured: boolean;
+  eh_unico: boolean;
+  fallback_key: string | null;
+  nome_exibicao: string;
+  ordem: number;
+  ativo: boolean;
+}
+
+export interface PayloadTempleRewardEntryAdmin {
+  key?: string;
+  reward_kind?: TempleRewardKindApi;
+  id_item?: number;
+  quantidade?: number;
+  raridade_instancia?: string | null;
+  weight?: number;
+  eh_raro_mais?: boolean;
+  eh_featured?: boolean;
+  eh_unico?: boolean;
+  fallback_key?: string | null;
+  nome_exibicao?: string;
+  ordem?: number;
+  ativo?: boolean;
+}
+
+export interface TempleOddsPreviewEntryApi {
+  key: string;
+  nome_exibicao: string;
+  reward_kind: TempleRewardKindApi;
+  weight: number;
+  eh_raro_mais: boolean;
+  eh_featured: boolean;
+  eh_unico: boolean;
+  chance_pct: number;
+}
+
+export interface TempleOddsPreviewApi {
+  pool: TempleRewardPoolAdminApi | null;
+  entries: TempleOddsPreviewEntryApi[];
+  avisos: string[];
+}
+
+export interface TempleBossConfigAdminApi {
+  id: number;
+  id_event: number;
+  id_monstro_base: number;
+  nome_exibicao: string | null;
+  lore: string | null;
+  target_turns_to_kill: number | null;
+  target_boss_actions_survivable: number | null;
+  scaling_min_multiplier: number | null;
+  scaling_max_multiplier: number | null;
+  reward_sigils_primeira_vitoria: number;
+  ativo: boolean;
+}
+
+export interface PayloadTempleBossConfigAdmin {
+  id_monstro_base: number;
+  nome_exibicao?: string | null;
+  lore?: string | null;
+  target_turns_to_kill?: number | null;
+  target_boss_actions_survivable?: number | null;
+  scaling_min_multiplier?: number | null;
+  scaling_max_multiplier?: number | null;
+  reward_sigils_primeira_vitoria?: number;
+}
+
+export interface TempleBossPhaseAdminApi {
+  id: number;
+  id_boss_config: number;
+  ordem: number;
+  hp_threshold_pct: number;
+  nome_exibicao: string | null;
+  dano_multiplicador: number;
+  defesa_multiplicador: number;
+  enrage: boolean;
+}
+
+export interface PayloadTempleBossPhaseAdmin {
+  ordem?: number;
+  hp_threshold_pct?: number;
+  nome_exibicao?: string | null;
+  dano_multiplicador?: number;
+  defesa_multiplicador?: number;
+  enrage?: boolean;
+}
+
+export interface TempleBossResistanceAdminApi {
+  id: number;
+  id_boss_config: number;
+  status_key: string;
+  imune: boolean;
+  resistencia_pct: number;
+}
+
+export interface PayloadTempleBossResistanceAdmin {
+  status_key?: string;
+  imune?: boolean;
+  resistencia_pct?: number;
+}
+
+export interface TempleBossRewardEntryAdminApi {
+  id: number;
+  id_boss_config: number;
+  reward_kind: TempleRewardKindApi;
+  id_item: number;
+  quantidade: number;
+  raridade_instancia: string | null;
+  weight: number;
+  nivel_minimo: number | null;
+  nivel_maximo: number | null;
+  nome_exibicao: string;
+  garantido: boolean;
+  ativo: boolean;
+}
+
+export interface PayloadTempleBossRewardEntryAdmin {
+  reward_kind?: TempleRewardKindApi;
+  id_item?: number;
+  quantidade?: number;
+  raridade_instancia?: string | null;
+  weight?: number;
+  nivel_minimo?: number | null;
+  nivel_maximo?: number | null;
+  nome_exibicao?: string;
+  garantido?: boolean;
+  ativo?: boolean;
+}
+
+export interface TempleEventoDetalhesAdminApi {
+  evento: TempleEventoAdminApi;
+  missoes: TempleMissaoAdminApi[];
+  relicario: { pool: TempleRewardPoolAdminApi; entries: TempleRewardEntryAdminApi[] } | null;
+  guardiao: {
+    config: TempleBossConfigAdminApi;
+    fases: TempleBossPhaseAdminApi[];
+    resistencias: TempleBossResistanceAdminApi[];
+    rewardEntries: TempleBossRewardEntryAdminApi[];
+  } | null;
+}
+
+export interface TempleBossSimulacaoResultadoApi {
+  perfil_jogador: { dpr: number; ehp: number };
+  scaling: {
+    target_turns_to_kill: number;
+    target_boss_actions_survivable: number;
+    scaling_min_multiplier: number;
+    scaling_max_multiplier: number;
+  };
+  base: { vida_maxima: number; dano_min: number; dano_max: number; defesa: number };
+  stats_escalados: { vida_maxima: number; dano_min: number; dano_max: number; defesa: number; multiplicador_aplicado: number };
+  turnos_estimados_pra_matar: number;
+  acoes_do_boss_pra_matar_jogador: number;
+}
+
+// Convergências (catálogo/lifecycle).
+export async function listarEventosTemploAdmin(
+  filtros: { pagina?: number; porPagina?: number; status?: TempleEventoStatusApi; nome?: string } = {},
+): Promise<{ eventos: TempleEventoAdminApi[]; total: number; pagina: number; porPagina: number }> {
+  const resposta = await axiosInstance.get<{ data: { eventos: TempleEventoAdminApi[]; total: number; pagina: number; porPagina: number } }>(
+    "/admin/temple/events",
+    { params: filtros },
+  );
+  return resposta.data.data;
+}
+export async function obterEventoTemploAdmin(id: number): Promise<TempleEventoDetalhesAdminApi> {
+  const resposta = await axiosInstance.get<{ data: TempleEventoDetalhesAdminApi }>(`/admin/temple/events/${id}`);
+  return resposta.data.data;
+}
+export async function criarEventoTemploAdmin(payload: PayloadTempleEventoAdmin): Promise<TempleEventoAdminApi> {
+  const resposta = await axiosInstance.post<{ data: { evento: TempleEventoAdminApi } }>("/admin/temple/events", payload);
+  return resposta.data.data.evento;
+}
+export async function atualizarEventoTemploAdmin(id: number, payload: PayloadTempleEventoAdmin): Promise<TempleEventoAdminApi> {
+  const resposta = await axiosInstance.patch<{ data: { evento: TempleEventoAdminApi } }>(`/admin/temple/events/${id}`, payload);
+  return resposta.data.data.evento;
+}
+export async function agendarEventoTemploAdmin(
+  id: number,
+  payload: { starts_at: string; missions_end_at: string; relicary_end_at: string },
+): Promise<TempleEventoAdminApi> {
+  const resposta = await axiosInstance.post<{ data: { evento: TempleEventoAdminApi } }>(`/admin/temple/events/${id}/schedule`, payload);
+  return resposta.data.data.evento;
+}
+export async function cancelarEventoTemploAdmin(id: number, motivo: string): Promise<TempleEventoAdminApi> {
+  const resposta = await axiosInstance.post<{ data: { evento: TempleEventoAdminApi } }>(`/admin/temple/events/${id}/cancel`, { motivo });
+  return resposta.data.data.evento;
+}
+export async function duplicarEventoTemploAdmin(id: number): Promise<TempleEventoDetalhesAdminApi> {
+  const resposta = await axiosInstance.post<{ data: TempleEventoDetalhesAdminApi }>(`/admin/temple/events/${id}/duplicate`);
+  return resposta.data.data;
+}
+
+// Provações (missões) de um evento.
+export async function listarMissoesTemploAdmin(idEvento: number): Promise<TempleMissaoAdminApi[]> {
+  const resposta = await axiosInstance.get<{ data: { missoes: TempleMissaoAdminApi[] } }>(`/admin/temple/events/${idEvento}/missions`);
+  return resposta.data.data.missoes;
+}
+export async function criarMissaoTemploAdmin(idEvento: number, payload: PayloadTempleMissaoAdmin): Promise<TempleMissaoAdminApi> {
+  const resposta = await axiosInstance.post<{ data: { missao: TempleMissaoAdminApi } }>(`/admin/temple/events/${idEvento}/missions`, payload);
+  return resposta.data.data.missao;
+}
+export async function atualizarMissaoTemploAdmin(idEvento: number, idMissao: number, payload: PayloadTempleMissaoAdmin): Promise<TempleMissaoAdminApi> {
+  const resposta = await axiosInstance.patch<{ data: { missao: TempleMissaoAdminApi } }>(`/admin/temple/events/${idEvento}/missions/${idMissao}`, payload);
+  return resposta.data.data.missao;
+}
+export async function excluirMissaoTemploAdmin(idEvento: number, idMissao: number): Promise<void> {
+  await axiosInstance.delete(`/admin/temple/events/${idEvento}/missions/${idMissao}`);
+}
+export async function previewMissaoTemploAdmin(idEvento: number, payload: PayloadTempleMissaoAdmin): Promise<TempleMissaoPreviewApi> {
+  const resposta = await axiosInstance.post<{ data: { preview: TempleMissaoPreviewApi } }>(`/admin/temple/events/${idEvento}/missions/preview`, payload);
+  return resposta.data.data.preview;
+}
+
+// Relicário dos Ecos (pool + entries) de um evento.
+export async function obterRelicarioTemploAdmin(idEvento: number): Promise<{ pool: TempleRewardPoolAdminApi | null; entries: TempleRewardEntryAdminApi[] }> {
+  const resposta = await axiosInstance.get<{ data: { pool: TempleRewardPoolAdminApi | null; entries: TempleRewardEntryAdminApi[] } }>(
+    `/admin/temple/events/${idEvento}/relicary`,
+  );
+  return resposta.data.data;
+}
+export async function salvarPoolRelicarioTemploAdmin(idEvento: number, payload: PayloadTempleRewardPoolAdmin): Promise<TempleRewardPoolAdminApi> {
+  const resposta = await axiosInstance.put<{ data: { pool: TempleRewardPoolAdminApi } }>(`/admin/temple/events/${idEvento}/relicary/pool`, payload);
+  return resposta.data.data.pool;
+}
+export async function criarEntryRelicarioTemploAdmin(idEvento: number, payload: PayloadTempleRewardEntryAdmin): Promise<TempleRewardEntryAdminApi> {
+  const resposta = await axiosInstance.post<{ data: { entry: TempleRewardEntryAdminApi } }>(`/admin/temple/events/${idEvento}/relicary/entries`, payload);
+  return resposta.data.data.entry;
+}
+export async function atualizarEntryRelicarioTemploAdmin(
+  idEvento: number,
+  idEntry: number,
+  payload: PayloadTempleRewardEntryAdmin,
+): Promise<TempleRewardEntryAdminApi> {
+  const resposta = await axiosInstance.patch<{ data: { entry: TempleRewardEntryAdminApi } }>(
+    `/admin/temple/events/${idEvento}/relicary/entries/${idEntry}`,
+    payload,
+  );
+  return resposta.data.data.entry;
+}
+export async function excluirEntryRelicarioTemploAdmin(idEvento: number, idEntry: number): Promise<void> {
+  await axiosInstance.delete(`/admin/temple/events/${idEvento}/relicary/entries/${idEntry}`);
+}
+export async function previewOddsRelicarioTemploAdmin(idEvento: number): Promise<TempleOddsPreviewApi> {
+  const resposta = await axiosInstance.get<{ data: TempleOddsPreviewApi }>(`/admin/temple/events/${idEvento}/relicary/preview-odds`);
+  return resposta.data.data;
+}
+
+// Provação Final (Guardião) de um evento.
+export async function obterGuardiaoTemploAdmin(idEvento: number): Promise<{
+  config: TempleBossConfigAdminApi | null;
+  fases: TempleBossPhaseAdminApi[];
+  resistencias: TempleBossResistanceAdminApi[];
+  rewardEntries: TempleBossRewardEntryAdminApi[];
+}> {
+  const resposta = await axiosInstance.get<{
+    data: { config: TempleBossConfigAdminApi | null; fases: TempleBossPhaseAdminApi[]; resistencias: TempleBossResistanceAdminApi[]; rewardEntries: TempleBossRewardEntryAdminApi[] };
+  }>(`/admin/temple/events/${idEvento}/boss`);
+  return resposta.data.data;
+}
+export async function salvarConfigGuardiaoTemploAdmin(idEvento: number, payload: PayloadTempleBossConfigAdmin): Promise<TempleBossConfigAdminApi> {
+  const resposta = await axiosInstance.put<{ data: { config: TempleBossConfigAdminApi } }>(`/admin/temple/events/${idEvento}/boss/config`, payload);
+  return resposta.data.data.config;
+}
+export async function criarFaseGuardiaoTemploAdmin(idEvento: number, payload: PayloadTempleBossPhaseAdmin): Promise<TempleBossPhaseAdminApi> {
+  const resposta = await axiosInstance.post<{ data: { fase: TempleBossPhaseAdminApi } }>(`/admin/temple/events/${idEvento}/boss/phases`, payload);
+  return resposta.data.data.fase;
+}
+export async function atualizarFaseGuardiaoTemploAdmin(idEvento: number, idFase: number, payload: PayloadTempleBossPhaseAdmin): Promise<TempleBossPhaseAdminApi> {
+  const resposta = await axiosInstance.patch<{ data: { fase: TempleBossPhaseAdminApi } }>(`/admin/temple/events/${idEvento}/boss/phases/${idFase}`, payload);
+  return resposta.data.data.fase;
+}
+export async function excluirFaseGuardiaoTemploAdmin(idEvento: number, idFase: number): Promise<void> {
+  await axiosInstance.delete(`/admin/temple/events/${idEvento}/boss/phases/${idFase}`);
+}
+export async function criarResistenciaGuardiaoTemploAdmin(idEvento: number, payload: PayloadTempleBossResistanceAdmin): Promise<TempleBossResistanceAdminApi> {
+  const resposta = await axiosInstance.post<{ data: { resistencia: TempleBossResistanceAdminApi } }>(`/admin/temple/events/${idEvento}/boss/resistances`, payload);
+  return resposta.data.data.resistencia;
+}
+export async function atualizarResistenciaGuardiaoTemploAdmin(
+  idEvento: number,
+  idResistencia: number,
+  payload: PayloadTempleBossResistanceAdmin,
+): Promise<TempleBossResistanceAdminApi> {
+  const resposta = await axiosInstance.patch<{ data: { resistencia: TempleBossResistanceAdminApi } }>(
+    `/admin/temple/events/${idEvento}/boss/resistances/${idResistencia}`,
+    payload,
+  );
+  return resposta.data.data.resistencia;
+}
+export async function excluirResistenciaGuardiaoTemploAdmin(idEvento: number, idResistencia: number): Promise<void> {
+  await axiosInstance.delete(`/admin/temple/events/${idEvento}/boss/resistances/${idResistencia}`);
+}
+export async function criarRecompensaGuardiaoTemploAdmin(idEvento: number, payload: PayloadTempleBossRewardEntryAdmin): Promise<TempleBossRewardEntryAdminApi> {
+  const resposta = await axiosInstance.post<{ data: { entry: TempleBossRewardEntryAdminApi } }>(`/admin/temple/events/${idEvento}/boss/rewards`, payload);
+  return resposta.data.data.entry;
+}
+export async function atualizarRecompensaGuardiaoTemploAdmin(
+  idEvento: number,
+  idEntry: number,
+  payload: PayloadTempleBossRewardEntryAdmin,
+): Promise<TempleBossRewardEntryAdminApi> {
+  const resposta = await axiosInstance.patch<{ data: { entry: TempleBossRewardEntryAdminApi } }>(
+    `/admin/temple/events/${idEvento}/boss/rewards/${idEntry}`,
+    payload,
+  );
+  return resposta.data.data.entry;
+}
+export async function excluirRecompensaGuardiaoTemploAdmin(idEvento: number, idEntry: number): Promise<void> {
+  await axiosInstance.delete(`/admin/temple/events/${idEvento}/boss/rewards/${idEntry}`);
+}
+export async function simularGuardiaoTemploAdmin(idEvento: number, payload: { dpr: number; ehp: number }): Promise<TempleBossSimulacaoResultadoApi> {
+  const resposta = await axiosInstance.post<{ data: TempleBossSimulacaoResultadoApi }>(`/admin/temple/events/${idEvento}/boss/simulate`, payload);
+  return resposta.data.data;
+}

@@ -44,6 +44,7 @@ const CATEGORIAS: CategoriaAdmin[] = [
       { titulo: "Taverna", descricao: "Cardápio, jogos de azar, descanso e métricas.", href: "/dashboard/admin/tavern", permissao: "tavern.manage" },
       {titulo:"Crises Mundiais & Reconstrução",descricao:"Consequências, materiais, rankings e recuperação de Caelum.",href:"/dashboard/admin/world-crisis",permissao:"worldcrisis.manage"},
       { titulo: "Ameaça Mundial", descricao: "Catálogo de Boss Global, ciclo atual e métricas.", href: "/dashboard/admin/world-boss", permissao: "worldboss.manage" },
+      { titulo: "Templo do Véu Celestial", descricao: "Convergências, Provações, Relicário dos Ecos e Guardião (Provação Final).", href: "/dashboard/admin/temple", permissao: "temple.manage" },
       { titulo: "Pesca & Navegação", descricao: "Zonas, espécies, pool de encontro, portos, iscas e afinidades.", href: "/dashboard/admin/fishing", permissao: "fishing.manage" },
       { titulo: "Alquimia (Caldeirão)", descricao: "Receitas, ingredientes, custo e modo de desbloqueio.", href: "/dashboard/admin/alchemy", permissao: "alchemy.manage" },
       { titulo: "Forja", descricao: "Blueprints, barras, pergaminhos e balanceamento de fundição/fabricação/refinamento.", href: "/dashboard/admin/forge", permissaoQualquerUma: ["forge.manage", "forge.balance"] },
