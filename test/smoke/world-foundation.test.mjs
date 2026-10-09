@@ -49,6 +49,26 @@ test("Mundo no Next real: gate, admin, chunks, câmera e revogação", { timeout
     await page.locator("canvas").waitFor();
     await page.getByText("Carregando a Capital…").waitFor({ state: "hidden" });
     const primeiroQuadro = Date.now() - inicio;
+    await esperar(async () => !!await page.locator("[data-player-x]").getAttribute("data-player-x"), "personagem pronto");
+    const player = page.locator("[data-player-x]");
+    if (process.env.WORLD_CAPTURE_DIR) { await mkdir(process.env.WORLD_CAPTURE_DIR,{recursive:true}); await page.screenshot({path:path.join(process.env.WORLD_CAPTURE_DIR,"capital.png")}); }
+    const y0 = Number(await player.getAttribute("data-player-y"));
+    await page.keyboard.down("W"); await esperar(async () => Number(await player.getAttribute("data-player-y")) < y0 - 100, "caminhada", 15000); await page.keyboard.up("W");
+    const y1 = Number(await player.getAttribute("data-player-y"));
+    assert.ok(y1 < y0 - 90, `Personagem andou: ${y0} → ${y1}`);
+    await page.keyboard.down("W"); await esperar(async () => Number(await player.getAttribute("data-player-y")) < 880, "chegou à fonte", 15000); await delay(600); await page.keyboard.up("W");
+    assert.ok(Number(await player.getAttribute("data-player-y")) >= 868, "Fonte bloqueia a passagem");
+    await page.keyboard.down("A"); await esperar(async () => Number(await player.getAttribute("data-player-x")) < 400, "rua da forja", 20000); await page.keyboard.up("A");
+    await page.keyboard.down("W"); await esperar(async () => Number(await player.getAttribute("data-player-y")) < 570, "ferreiro próximo", 15000); await page.keyboard.up("W");
+    await page.getByRole("button", { name: "Conversar com Aldric · Ferreiro" }).click();
+    await page.getByRole("dialog").waitFor();
+    assert.equal(await page.getByRole("link",{name:"Abrir serviço"}).getAttribute("href"), "/dashboard/forge");
+    const dialogY = await player.getAttribute("data-player-y");
+    await page.keyboard.down("S"); await delay(200); await page.keyboard.up("S");
+    assert.equal(await player.getAttribute("data-player-y"), dialogY);
+    await page.getByRole("button",{name:"Voltar à praça"}).click();
+    await page.getByRole("button",{name:"Consultar atlas"}).click();
+    await esperar(async () => chunks.size > 0 && Number(await page.locator("[data-chunks-carregando]").getAttribute("data-chunks-carregando")) === 0, "atlas pronto");
     assert.ok(chunks.size > 0 && chunks.size <= 40, `Carregou ${chunks.size} chunks iniciais`);
     const recursos = await page.evaluate(() => performance.getEntriesByType("resource").map(e => ({ url: e.name, bytes: e.encodedBodySize, duracao_ms: e.duration })).filter(r => r.url.includes("/world/") || r.url.includes("/_next/static/chunks/")));
     const captura = process.env.WORLD_CAPTURE_DIR;
