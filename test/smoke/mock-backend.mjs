@@ -1,9 +1,12 @@
+import { readFileSync } from "node:fs";
 import { createServer } from "node:http";
 import { once } from "node:events";
 import { Server } from "socket.io";
 
 export async function startMockBackend(port = 3101) {
   const calls = [];
+  let worldMode = false;
+  const worldManifest = JSON.parse(readFileSync(new URL("../fixtures/world-manifest.json", import.meta.url)));
   let newsApproved=false;
   let adminMode=false;let crisisMode=false,crisisAck=false,crisisProgress=0;
   const crisisStage={key:"RESGATE",nome:"Resgate dos sobreviventes",requirements:[{key:"ERVAS",nome:"Ervas para os feridos",target_progress:10,mandatory:true,sources:[],items:[{id:99,nome:"Erva medicinal — Comum",progress_per_unit:1,ranking_points_per_unit:1,owned:5}]}],effects:[]};
@@ -92,6 +95,9 @@ export async function startMockBackend(port = 3101) {
     else if(route.startsWith("/admin/combat-typing/preview/"))payload={data:{affinities:[{...affinities[0],multiplier:1,effectivenessLabel:"NEUTRO"}]}};
     else if(route==="/admin/discord-news")payload={data:{environment:"staging",configured:false,enabled:false,environment_enabled:false,application_id:null,guild_id:null,channel_id:null,checks:{bot_token:false,public_key:false,ids:false},state:{enabled:false,auto_patch_notes:true,capture_since:"2026-10-08T00:00:00Z"},changes:[{id:1,name:"Bola de Fogo",entity:"Power",release_env:"staging",status:newsApproved?"Approved":"Pending",createdAt:"2026-10-08T00:00:00Z",diff:[{field:"dano_base",label:"Dano base",before:100,after:120}]}],deliveries:newsApproved?[{id:1,kind:"change",source_id:1,status:"Pending",attempts:0,message_id:null,channel_id:null,last_error:null,createdAt:"2026-10-08T00:00:00Z",payload:{embeds:[{title:"Balanceamento — Bola de Fogo"}]}}]:[]}};
     else if(route==="/admin/discord-news/changes/1/review"){newsApproved=true;payload={data:{id:1,status:"Approved"}};}
+    else if (route === "/world/exploration/acesso") payload = { data: { habilitado: worldMode, fase: 0 } };
+    else if (route === "/world/exploration/manifesto") { status = worldMode ? 200 : 403; payload = worldMode ? { data: worldManifest } : { code: "WORLD_NOT_ENABLED" }; }
+    else if (route === "/admin/world/exploration/1/acesso") { if (req.method === "PATCH") worldMode = body.habilitado; payload = { data: { id_personagem: 1, nome: character.nome, habilitado: worldMode } }; }
     else if (route === "/maintenance/status")
       payload = { enabled: false, message: "" };
     else if (route === "/users/login")
@@ -99,7 +105,7 @@ export async function startMockBackend(port = 3101) {
     else if (route === "/users/socket-ticket")
       payload = { data: { ticket: "smoke-ticket" } };
     else if (route === "/characters/me" || route === "/characters/by-user/1")
-      payload = { data: { character, isAdmin: adminMode, adminPermissions: adminMode?["combat_typing.view","combat_typing.manage"]:[] } };
+      payload = { data: { character, isAdmin: adminMode, adminPermissions: adminMode?["combat_typing.view","combat_typing.manage","world.manage"]:[] } };
     else if (route === "/dashboard/summary") payload = { data: summary };
     else if (route === "/music/config")
       payload = {
@@ -142,6 +148,7 @@ export async function startMockBackend(port = 3101) {
   return {
     calls,
     setCrisisMode: value=>{crisisMode=Boolean(value);},
+    setWorldMode: value=>{worldMode=Boolean(value);},
     setAdminMode: value=>{adminMode=Boolean(value);},
     combatSockets,
     io,

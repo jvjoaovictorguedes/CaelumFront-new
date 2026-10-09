@@ -82,6 +82,7 @@ const CATEGORIAS: CategoriaAdmin[] = [
   {
     titulo: "Sistema",
     modulos: [
+      { titulo: "Mundo explorável", descricao: "Habilitar ou retirar o teste por personagem.", href: "/dashboard/admin/world", permissao: "world.manage" },
       { titulo: "News Caelum · Discord", descricao: "Publicações, histórico de balanceamento e integração do bot.", href: "/dashboard/admin/discord-news", permissao: "discordnews.manage" },
       { titulo: "Patch Notes", descricao: "Publicar atualizações sem migration.", href: "/dashboard/admin/patch-notes", permissao: "patchnotes.manage" },
       { titulo: "Jornal da Guilda", descricao: "Registrar conquistas notáveis de jogadores e guildas.", href: "/dashboard/admin/guild-journal", permissao: "guildjournal.manage" },

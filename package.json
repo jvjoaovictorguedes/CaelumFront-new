@@ -9,9 +9,11 @@
     "lint": "next lint",
     "test:combat-effects": "node --experimental-strip-types --test test/combatEffectEditor.test.mjs",
     "test": "node --experimental-strip-types --test test/*.test.mjs",
-    "test:smoke": "node --test test/smoke/login-dashboard.test.mjs"
+    "test:smoke": "node --test --test-concurrency=1 test/smoke/*.test.mjs",
+    "world:maps": "node scripts/generate-world-maps.cjs"
   },
   "dependencies": {
+    "@caelum/world-contracts": "file:vendor/caelum-world-contracts-0.1.0.tgz",
     "axios": "^1.10.0",
     "next": "15.4.10",
     "phaser": "^3.90.0",
@@ -30,6 +32,7 @@
     "eslint": "^9",
     "eslint-config-next": "15.4.10",
     "playwright-core": "1.63.0",
+    "sharp": "0.34.3",
     "socket.io": "4.8.3",
     "tailwindcss": "^4",
     "typescript": "^5"

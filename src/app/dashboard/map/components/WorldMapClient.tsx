@@ -105,7 +105,7 @@ function nodePassaNoFiltro(node: NodeApi, filtro: FiltroTipo, subfiltroExpedicao
 
 // Estado neutro fica sempre visível de fundo, mesmo filtrando Nodes
 // (spec §27: "territórios permanecem como camada de fundo").
-export default function WorldMapClient({ mapa }: { mapa: WorldMapApi }) {
+export default function WorldMapClient({ mapa, mundoHabilitado = false }: { mapa: WorldMapApi; mundoHabilitado?: boolean }) {
   const [filtro, setFiltro] = useState<FiltroTipo>("TODOS");
   const [subfiltroExpedicao, setSubfiltroExpedicao] = useState<SubfiltroExpedicao>(null);
   const [nodeSelecionadoId, setNodeSelecionadoId] = useState<number | null>(null);
@@ -136,17 +136,11 @@ export default function WorldMapClient({ mapa }: { mapa: WorldMapApi }) {
             ✕
           </Link>
           <h1 className="font-imFeel text-3xl text-white sm:text-4xl">Mapa de Caelum</h1>
-          {/* Liberado pra todos (pedido do jogador) — ainda é um
-              protótipo em desenvolvimento, não o Mapa de produção,
-              então o rótulo deixa isso claro mesmo fora da página em
-              si (ver aviso dentro de /prototype-2d). */}
-          <Link prefetch={false}
-            href="/prototype-2d"
-            title="Protótipo de exploração 2D — ainda em desenvolvimento, vamos continuar melhorando"
+          {mundoHabilitado && <Link prefetch={false}
+            href="/dashboard/mundo"
+            title="Conferir a fundação do mundo explorável"
             className="rounded-full border border-dashed border-[#F3B43F]/50 px-3 py-1 text-xs font-bold text-[#F3B43F]/80 transition hover:border-[#F3B43F] hover:text-[#F3B43F]"
-          >
-            Protótipo 2D (em desenvolvimento)
-          </Link>
+          >Mundo explorável · teste</Link>}
         </div>
         <WorldMapFilters
           filtro={filtro}
