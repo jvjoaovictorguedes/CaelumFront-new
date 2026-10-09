@@ -23,6 +23,15 @@ export function useCombatTransport(
 ) {
   const socketRef = useRef<Socket | null>(null);
   const [conectado, setConectado] = useState(false);
+  // Diferente de `conectado` (só a camada de transporte/TCP-websocket):
+  // `identificado` só vira true DEPOIS do ack de SOCKET_EVENTS.TRANSPORT.
+  // IDENTIFY, que é quando o servidor efetivamente seta socket.characterId.
+  // Bug reportado ("clico em Enfrentar o Guardião e a batalha não
+  // inicia"): qualquer ação que dependa de socket.characterId (ex.:
+  // templeboss:entrar) emitida ENTRE o `connect` e esse ack chega no
+  // servidor sem characterId nenhum — nunca basta `conectado === true`
+  // pra saber que já dá pra agir.
+  const [identificado, setIdentificado] = useState(false);
   const [onlineIds, setOnlineIds] = useState<Set<number>>(new Set());
   useEffect(() => {
     if (!characterId) return;
@@ -37,6 +46,10 @@ export function useCombatTransport(
 
     scope.on("connect", () => {
       setConectado(true);
+      // Toda conexão NOVA (primeira vez ou reconexão) sempre exige um
+      // IDENTIFY novo — nunca reaproveita um `identificado=true` de uma
+      // conexão anterior enquanto o ack desta ainda não chegou.
+      setIdentificado(false);
       // O JWT é httpOnly (o browser não tem acesso), então o socket não
       // consegue mandar um Bearer no identificar — busca um ticket de
       // curtíssima duração via HTTP (que passa pelo proxy same-origin e
@@ -54,6 +67,8 @@ export function useCombatTransport(
           // depois do ack é garantido que o personagem já está
           // identificado pra qualquer evento seguinte.
           socket.emit(SOCKET_EVENTS.TRANSPORT.IDENTIFY, { ticket }, () => {
+            if (!active || !socket.connected) return;
+            setIdentificado(true);
             socket.emit(
               SOCKET_EVENTS.PVP.LISTAR_ONLINE,
               {},
@@ -75,7 +90,10 @@ export function useCombatTransport(
         });
     });
 
-    scope.on("disconnect", () => setConectado(false));
+    scope.on("disconnect", () => {
+      setConectado(false);
+      setIdentificado(false);
+    });
 
     const disposeDomains = registerDomains(socket);
     for (const event of ["pvp:erro","party:erro","guildboss:erro"]) {
@@ -108,5 +126,5 @@ export function useCombatTransport(
       socketRef.current = null;
     };
   }, [characterId, setErro, registerDomains]);
-  return { socketRef, conectado, onlineIds };
+  return { socketRef, conectado, identificado, onlineIds };
 }

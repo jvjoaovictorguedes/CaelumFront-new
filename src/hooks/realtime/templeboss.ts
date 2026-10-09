@@ -11,6 +11,11 @@ import type {
   FimGuardiaoPayload,
 } from "@/types/contracts/templeboss";
 
+// Decisão pura de quando é seguro emitir templeboss:entrar (sem
+// React/socket) mora em ./templebossEntrada — arquivo sem imports de
+// valor, testável diretamente via `node --experimental-strip-types`
+// (mesma restrição que levou reducers.ts a só ter `import type`).
+
 export function useTempleBossState() {
   const [erroGuardiao, setErroGuardiao] = useState("");
   const [estadoGuardiao, setEstadoGuardiao] = useState<EstadoGuardiaoPayload | null>(null);

@@ -56,7 +56,19 @@ export default async function DashboardLayout({
                 </div>
                 <PartyBattleArena />
                 <GuildBossLiveArena />
-                {templeEnabled && <TempleGuardianLiveArena />}
+                {/* Nunca gatear pelo templeEnabled deste Server Layout: ele é
+                   lido uma vez por render do layout e o Next pode manter o
+                   mesmo layout montado entre navegações, deixando a arena
+                   presa num valor desatualizado mesmo após o Templo ser
+                   liberado (bug "clico em Enfrentar o Guardião e a batalha
+                   não inicia"). A arena já retorna null sozinha quando
+                   estadoGuardiao === null — igual às outras arenas globais
+                   abaixo, que também nunca dependem de um gate do layout. A
+                   segurança do release fica inteira no backend
+                   (templeReleaseService.requireEnabled() + boss_unlocked_at);
+                   templeEnabled aqui só esconde menu/página (NavMenu acima e
+                   temple/page.tsx), nunca a infraestrutura da arena. */}
+                <TempleGuardianLiveArena />
                 <FloatingMusicWidget />
                 <FloatingGlobalChatWidget />
               </GlobalChatSocketProvider>
