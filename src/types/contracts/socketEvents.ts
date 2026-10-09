@@ -97,4 +97,11 @@ export const SOCKET_EVENTS = {
     SAIR: "worldboss:sair",
     STATUS: "worldboss:status",
   },
+  EVENTPUZZLE: {
+    IDENTIFICAR: "eventpuzzle:identificar",
+    ENTRAR: "eventpuzzle:entrar",
+    ESTADO: "eventpuzzle:estado",
+    ERRO: "eventpuzzle:erro",
+    SAIR: "eventpuzzle:sair",
+  },
 } as const;
