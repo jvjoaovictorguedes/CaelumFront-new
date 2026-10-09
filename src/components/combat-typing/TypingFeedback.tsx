@@ -1,4 +1,5 @@
 import type { DefensiveAffinity, DamageResolution } from "./types";
+import { damageNatureLabel } from "@/types/contracts/combatTyping";
 export function ResistanceList({ values }: { values?: DefensiveAffinity[] }) {
   if (!values?.length) return null;
   return (
@@ -36,7 +37,7 @@ export function DamageBreakdown({
       </summary>
       {value.components.map((c, i) => (
         <p key={i}>
-          {c.affinity?.nome ?? c.nature}: {c.finalDamage}{" "}
+          {c.affinity?.nome ?? damageNatureLabel(c.nature)}: {c.finalDamage}{" "}
           {c.effectivenessLabel && (
             <strong>
               {" "}

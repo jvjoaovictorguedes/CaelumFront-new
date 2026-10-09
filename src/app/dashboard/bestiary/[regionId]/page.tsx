@@ -1,4 +1,5 @@
 import {ResistanceList} from "@/components/combat-typing/TypingFeedback";
+import { damageNatureLabel } from "@/types/contracts/combatTyping";
 import Link from "next/link";
 
 import axiosInstance from "@/utils/axiosIntance";
@@ -191,7 +192,7 @@ export default async function BestiaryRegionPage({
                 </span>
               </div>
               {monstro.family&&<p>Família: {monstro.family.nome}</p>}
-              {monstro.basicAttackProfile&&<p>Ataque: {monstro.basicAttackProfile.nature} — {monstro.basicAttackProfile.affinity?.nome??"Neutro"}</p>}
+              {monstro.basicAttackProfile&&<p>Ataque: {damageNatureLabel(monstro.basicAttackProfile.nature)} — {monstro.basicAttackProfile.affinity?.nome??"Neutro"}</p>}
               <ResistanceList values={monstro.effectiveAffinities}/>
               {imagemMonstro && (
                 // eslint-disable-next-line @next/next/no-img-element

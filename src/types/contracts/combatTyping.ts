@@ -1,3 +1,22 @@
+// Rebalanceamento de Powers §3/§30 — "nature" aqui é SEMPRE tipo_dano/
+// damage_nature_override/basic_attack_nature (Fisico/Magico/Verdadeiro/
+// Nenhum: define multiplicador de Classe e mitigação de Defesa) — NUNCA
+// Natureza Mágica (Fogo/Água/Terra/Ar/Luz/Escuridão/Raio/Yin&Yang, a
+// identidade/Evolution de personagem, que não aparece nesta API). Os
+// dois nomes se parecem em português só por coincidência; nunca troque
+// um pelo outro. Sem isso, cada tela mostrava o ENUM crú ("Fisico") —
+// nunca "Físico" — pro jogador.
+export const DAMAGE_NATURE_LABEL: Record<string, string> = {
+  Fisico: "Físico",
+  Magico: "Mágico",
+  Verdadeiro: "Verdadeiro",
+  Nenhum: "Nenhum",
+};
+export function damageNatureLabel(nature?: string | null): string | null {
+  if (!nature) return null;
+  return DAMAGE_NATURE_LABEL[nature] ?? nature;
+}
+
 export interface Affinity {
   id: number;
   key: string;

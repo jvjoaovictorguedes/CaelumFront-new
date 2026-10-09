@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import api from "@/utils/axiosIntance";
 import type { Affinity, TypingPreview, DefensiveAffinity } from "./types";
+import { damageNatureLabel } from "@/types/contracts/combatTyping";
 interface ItemProfile {
   weapon: TypingPreview | null;
   affinity: Affinity | null;
@@ -38,7 +39,7 @@ export default function ItemTypingDetails({
       <p>
         {value.weapon?.type?.nome}{" "}
         {value.weapon &&
-          `— ${value.weapon.nature} — ${value.affinity?.nome ?? "Neutro"}`}
+          `— ${damageNatureLabel(value.weapon.nature)} — ${value.affinity?.nome ?? "Neutro"}`}
       </p>
       {value.nativeElement && Number(value.weapon?.elementalPct) > 0 && (
         <p>
