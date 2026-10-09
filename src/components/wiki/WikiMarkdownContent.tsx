@@ -29,7 +29,7 @@ const componentes: Components = {
   a: ({ children, href }) => (
     <a
       href={href}
-      target="_blank"
+      target={href?.startsWith("/") && !href.startsWith("//") ? undefined : "_blank"}
       rel="noopener noreferrer"
       className="text-[#F3B43F] underline decoration-[#F3B43F]/50 hover:text-[#BC8418]"
     >
