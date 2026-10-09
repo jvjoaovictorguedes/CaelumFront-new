@@ -33,14 +33,14 @@ export default function WikiEncyclopedia() {
   </article>;
   return <div className="space-y-6">
     <div><h2 className="font-imFeel text-3xl text-[#F3B43F]">Crônicas do aventureiro</h2><p className="mt-2 font-imFeel text-lg leading-relaxed text-white/80">Conheça os caminhos de Caelum, prepare sua jornada e consulte as criaturas que você já derrotou. As fichas acompanham os valores atuais do jogo.</p></div>
-    <label className="block text-sm text-white/80">Buscar nos registros<input value={query} onChange={e => setQuery(e.target.value)} placeholder="Nome da criatura ou assunto..." type="search" className="mt-2 w-full rounded-lg border border-[#F3B43F]/40 bg-black/30 px-3 py-2 text-white" /></label>
-    {(["guide", "monster"] as const).map(kind => <section key={kind}>
-      <h3 className="mb-3 font-imFeel text-2xl text-[#F3B43F]">{kind === "guide" ? "Manual do aventureiro" : "Criaturas descobertas"}</h3>
+    <label className="block text-sm text-white/80">Buscar nos registros<input value={query} onChange={e => setQuery(e.target.value)} placeholder="Classe, criatura ou assunto..." type="search" className="mt-2 w-full rounded-lg border border-[#F3B43F]/40 bg-black/30 px-3 py-2 text-white" /></label>
+    {(["guide", "class", "monster"] as const).map(kind => <section key={kind}>
+      <h3 className="mb-3 font-imFeel text-2xl text-[#F3B43F]">{kind === "guide" ? "Manual do aventureiro" : kind === "class" ? "Classes e evoluções" : "Criaturas descobertas"}</h3>
       <div className="grid gap-3 sm:grid-cols-2">{visible.filter(e => e.kind === kind).map(e => <button key={e.slug} type="button" onClick={() => {setSelected(e.slug);}} className="flex gap-3 rounded-xl border border-[#F3B43F]/30 bg-black/20 p-4 text-left transition hover:border-[#F3B43F] hover:bg-[#BC8418]/10 focus-visible:outline-2 focus-visible:outline-[#F3B43F]">
         {e.imagem_url && <img src={resolveMediaUrl(e.imagem_url)} alt="" loading="lazy" className="h-16 w-16 shrink-0 rounded-lg object-contain" />}
         <span><span className="block font-imFeel text-xl text-[#F3B43F]">{e.titulo}</span>{e.nivel != null && <span className="text-xs text-white/60">Nível {e.nivel}</span>}<span className="mt-1 line-clamp-2 block text-sm text-white/70">{e.resumo ?? "Abrir o pergaminho"}</span></span>
       </button>)}</div>
-      {!visible.some(e => e.kind === kind) && <p className="text-sm text-white/60">{query ? "Nenhum registro corresponde à busca." : kind === "monster" ? "Derrote sua primeira criatura na Aventura para revelar sua história, atributos e espólios aqui." : "Nenhum manual disponível."}</p>}
+      {!visible.some(e => e.kind === kind) && <p className="text-sm text-white/60">{query ? "Nenhum registro corresponde à busca." : kind === "monster" ? "Derrote sua primeira criatura na Aventura para revelar sua história, atributos e espólios aqui." : kind === "class" ? "Nenhuma classe ativa cadastrada neste ambiente." : "Nenhum manual disponível."}</p>}
     </section>)}
   </div>;
 }

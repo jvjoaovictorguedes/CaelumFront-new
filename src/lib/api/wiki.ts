@@ -40,7 +40,7 @@ export async function obterWikiArtigo(slug: string): Promise<WikiArtigoApi> {
 
 export interface WikiReferenciaApi extends Omit<WikiArtigoApi, "id"> {
   id: string;
-  kind: "monster" | "guide";
+  kind: "monster" | "guide" | "class";
   nivel?: number;
 }
 
