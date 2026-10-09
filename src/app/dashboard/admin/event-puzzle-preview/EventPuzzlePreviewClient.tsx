@@ -4,12 +4,15 @@ import MechanicalPuzzleScene from "@/components/puzzle/mechanical/MechanicalPuzz
 import type { PuzzleMecanicoConfig, PuzzleMecanicoEstadoPublico } from "@/components/puzzle/mechanical/types";
 import OpticalPuzzleScene from "@/components/puzzle/optical/OpticalPuzzleScene";
 import type { PuzzleOpticoConfig, PuzzleOpticoEstadoPublico } from "@/components/puzzle/optical/types";
+import HydraulicPuzzleScene from "@/components/puzzle/hydraulic/HydraulicPuzzleScene";
+import type { PuzzleHidraulicoConfig, PuzzleHidraulicoEstadoPublico } from "@/components/puzzle/hydraulic/types";
 
 // Mesma topologia pública das fixtures canônicas do backend (nunca a
 // golden solution): "Câmara das Engrenagens" (Fase 3,
-// test/puzzleMechanicalComponents.test.js) e "Observatório / Prisma da
-// Aurora" (Fase 5, test/puzzleOpticalComponents.test.js). `position` é
-// dado de layout do Admin (Fase 15), fixo aqui só pra este preview.
+// test/puzzleMechanicalComponents.test.js), "Observatório / Prisma da
+// Aurora" (Fase 5, test/puzzleOpticalComponents.test.js) e "Sala das
+// Marés" (Fase 6, test/puzzleHydraulicComponents.test.js). `position`
+// é dado de layout do Admin (Fase 15), fixo aqui só pra este preview.
 const CONFIG_MECANICO: PuzzleMecanicoConfig = {
   components: [
     { id: "motor1", type: "MOTOR", props: { rpmNominal: 120, sentido: "CW" }, position: { x: 90, y: 180 } },
@@ -154,14 +157,80 @@ const PASSOS_OPTICOS: { titulo: string; estado: PuzzleOpticoEstadoPublico }[] = 
   },
 ];
 
+const CONFIG_HIDRAULICO: PuzzleHidraulicoConfig = {
+  components: [
+    { id: "pump1", type: "PUMP", props: { vazaoNominal: 100 }, position: { x: 90, y: 180 } },
+    { id: "pipe1", type: "PIPE", props: { vazaoMaxima: 60 }, position: { x: 230, y: 180 } },
+    { id: "valve1", type: "VALVE", props: {}, position: { x: 360, y: 180 } },
+    { id: "pressure1", type: "PRESSURE_NODE", props: { fatorPressao: 2 }, position: { x: 490, y: 180 } },
+    { id: "turbine1", type: "TURBINE", props: { vazaoAlvo: 60, toleranciaVazao: 0 }, position: { x: 620, y: 180 } },
+    { id: "reservoir1", type: "RESERVOIR", props: { capacidade: 80 }, position: { x: 230, y: 320 } },
+  ],
+  connections: [
+    { id: "c1", from: { componentId: "pump1", port: "out" }, to: { componentId: "pipe1", port: "in" } },
+    { id: "c2", from: { componentId: "pipe1", port: "out" }, to: { componentId: "valve1", port: "in" } },
+    { id: "c3", from: { componentId: "valve1", port: "out" }, to: { componentId: "pressure1", port: "in" } },
+    { id: "c4", from: { componentId: "pressure1", port: "out" }, to: { componentId: "turbine1", port: "in" } },
+    { id: "c5", from: { componentId: "pump1", port: "out2" }, to: { componentId: "reservoir1", port: "in" } },
+  ],
+};
+
+const PASSOS_HIDRAULICOS: { titulo: string; estado: PuzzleHidraulicoEstadoPublico }[] = [
+  {
+    titulo: "1. Estado inicial — tudo parado",
+    estado: {
+      components: {
+        pump1: { ligada: false, vazao: 0 },
+        pipe1: { vazao: 0, sobrecarregado: false, vazaoMaxima: 60 },
+        valve1: { aberta: false, vazao: 0 },
+        pressure1: { vazao: 0, pressao: 0 },
+        turbine1: { vazao: 0, atingido: false },
+        reservoir1: { nivel: 0, transbordando: false, capacidade: 80 },
+      },
+      objetivosConcluidos: [],
+    },
+  },
+  {
+    titulo: "2. Bomba ligada — o cano limita a 60 (sobrecarregado) e o reservatório já transborda (direto, sem gating)",
+    estado: {
+      components: {
+        pump1: { ligada: true, vazao: 100 },
+        pipe1: { vazao: 60, sobrecarregado: true, vazaoMaxima: 60 },
+        valve1: { aberta: false, vazao: 0 },
+        pressure1: { vazao: 0, pressao: 0 },
+        turbine1: { vazao: 0, atingido: false },
+        reservoir1: { nivel: 80, transbordando: true, capacidade: 80 },
+      },
+      objetivosConcluidos: ["obj_transbordamento"],
+    },
+  },
+  {
+    titulo: "3. Válvula aberta — medidor deriva a pressão e a turbina atinge o alvo",
+    estado: {
+      components: {
+        pump1: { ligada: true, vazao: 100 },
+        pipe1: { vazao: 60, sobrecarregado: true, vazaoMaxima: 60 },
+        valve1: { aberta: true, vazao: 60 },
+        pressure1: { vazao: 60, pressao: 120 },
+        turbine1: { vazao: 60, atingido: true },
+        reservoir1: { nivel: 80, transbordando: true, capacidade: 80 },
+      },
+      objetivosConcluidos: ["obj_transbordamento", "obj_turbina"],
+    },
+  },
+];
+
+type Dominio = "mecanico" | "optico" | "hidraulico";
+
 export default function EventPuzzlePreviewClient() {
-  const [dominio, setDominio] = useState<"mecanico" | "optico">("mecanico");
+  const [dominio, setDominio] = useState<Dominio>("mecanico");
   const [passoMecanico, setPassoMecanico] = useState(0);
   const [passoOptico, setPassoOptico] = useState(0);
+  const [passoHidraulico, setPassoHidraulico] = useState(0);
 
-  const passo = dominio === "mecanico" ? passoMecanico : passoOptico;
-  const setPasso = dominio === "mecanico" ? setPassoMecanico : setPassoOptico;
-  const passos = dominio === "mecanico" ? PASSOS_MECANICOS : PASSOS_OPTICOS;
+  const passo = dominio === "mecanico" ? passoMecanico : dominio === "optico" ? passoOptico : passoHidraulico;
+  const setPasso = dominio === "mecanico" ? setPassoMecanico : dominio === "optico" ? setPassoOptico : setPassoHidraulico;
+  const passos = dominio === "mecanico" ? PASSOS_MECANICOS : dominio === "optico" ? PASSOS_OPTICOS : PASSOS_HIDRAULICOS;
   const atual = passos[passo];
 
   return (
@@ -171,20 +240,15 @@ export default function EventPuzzlePreviewClient() {
         <p className="mt-1 text-sm text-white/70">
           Protótipo visual (SVG procedural, sem backend ainda). Avance os instantâneos pra ver as regras de cada domínio sendo representadas — o estado real virá do servidor a partir da Fase 8.
         </p>
-        <div className="mt-3 flex gap-2">
-          <button
-            type="button"
-            onClick={() => setDominio("mecanico")}
-            className={`rounded px-3 py-1.5 text-sm font-semibold ${dominio === "mecanico" ? "bg-[#BC8418] text-black" : "border border-white/20 text-white/80 hover:bg-white/10"}`}
-          >
+        <div className="mt-3 flex flex-wrap gap-2">
+          <button type="button" onClick={() => setDominio("mecanico")} className={`rounded px-3 py-1.5 text-sm font-semibold ${dominio === "mecanico" ? "bg-[#BC8418] text-black" : "border border-white/20 text-white/80 hover:bg-white/10"}`}>
             Oficina dos Eixos (mecânico)
           </button>
-          <button
-            type="button"
-            onClick={() => setDominio("optico")}
-            className={`rounded px-3 py-1.5 text-sm font-semibold ${dominio === "optico" ? "bg-[#BC8418] text-black" : "border border-white/20 text-white/80 hover:bg-white/10"}`}
-          >
+          <button type="button" onClick={() => setDominio("optico")} className={`rounded px-3 py-1.5 text-sm font-semibold ${dominio === "optico" ? "bg-[#BC8418] text-black" : "border border-white/20 text-white/80 hover:bg-white/10"}`}>
             Observatório (óptico)
+          </button>
+          <button type="button" onClick={() => setDominio("hidraulico")} className={`rounded px-3 py-1.5 text-sm font-semibold ${dominio === "hidraulico" ? "bg-[#BC8418] text-black" : "border border-white/20 text-white/80 hover:bg-white/10"}`}>
+            Sala das Marés (hidráulico)
           </button>
         </div>
       </div>
@@ -192,8 +256,10 @@ export default function EventPuzzlePreviewClient() {
       <div className="rounded-lg border border-[#F3B43F]/40 bg-[#292018]/80 p-4">
         {dominio === "mecanico" ? (
           <MechanicalPuzzleScene config={CONFIG_MECANICO} estado={PASSOS_MECANICOS[passoMecanico].estado} onAction={() => setPassoMecanico((p) => Math.min(p + 1, PASSOS_MECANICOS.length - 1))} />
-        ) : (
+        ) : dominio === "optico" ? (
           <OpticalPuzzleScene config={CONFIG_OPTICO} estado={PASSOS_OPTICOS[passoOptico].estado} onAction={() => setPassoOptico((p) => Math.min(p + 1, PASSOS_OPTICOS.length - 1))} />
+        ) : (
+          <HydraulicPuzzleScene config={CONFIG_HIDRAULICO} estado={PASSOS_HIDRAULICOS[passoHidraulico].estado} onAction={() => setPassoHidraulico((p) => Math.min(p + 1, PASSOS_HIDRAULICOS.length - 1))} />
         )}
       </div>
 
