@@ -39,7 +39,14 @@ export function useCombatTransport(
     const baseUrl = socketUrlFromApiUrl(
       process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api",
     );
-    const socket = io(baseUrl, { transports: ["websocket", "polling"] });
+    // "polling" primeiro, "websocket" depois (faz o upgrade assim que
+    // possível) — na ordem inversa, o cliente tenta um handshake de
+    // WebSocket "a frio" (sem a negociação HTTP normal antes), que pode
+    // falhar silenciosamente atrás de certos proxies/load balancers
+    // (reproduzido: o handshake HTTP comum do Socket.IO respondia
+    // perfeito, mas a conexão real do app nunca terminava de
+    // identificar). Esta é a ordem padrão do próprio socket.io-client.
+    const socket = io(baseUrl, { transports: ["polling", "websocket"] });
     socketRef.current = socket;
     let active = true;
     const scope = createListenerScope(socket);

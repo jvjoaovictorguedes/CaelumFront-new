@@ -155,7 +155,7 @@ export function MessagesSocketProvider({
     if (!currentUserId) return;
 
     const baseUrl = socketUrlFromApiUrl(process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api");
-    const socket = io(baseUrl, { transports: ["websocket", "polling"] });
+    const socket = io(baseUrl, { transports: ["polling", "websocket"] });
     socketRef.current = socket;
     let jaConectouUmaVez = false;
 

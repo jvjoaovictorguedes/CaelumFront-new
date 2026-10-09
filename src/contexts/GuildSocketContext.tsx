@@ -68,7 +68,7 @@ export function GuildSocketProvider({
 
   useEffect(() => {
     const baseUrl = socketUrlFromApiUrl(process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api");
-    const novoSocket = io(baseUrl, { transports: ["websocket", "polling"] });
+    const novoSocket = io(baseUrl, { transports: ["polling", "websocket"] });
     socketRef.current = novoSocket;
     setPronto(false);
     setResultadoJoinRoom(null);

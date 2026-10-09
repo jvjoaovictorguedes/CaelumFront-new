@@ -140,7 +140,7 @@ export function WorldBossSocketProvider({ children }: { children: React.ReactNod
     recarregar();
 
     const baseUrl = socketUrlFromApiUrl(process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api");
-    const socket = io(baseUrl, { transports: ["websocket", "polling"] });
+    const socket = io(baseUrl, { transports: ["polling", "websocket"] });
     socketRef.current = socket;
 
     socket.on("connect", () => {socket.emit("worldboss:entrar");window.dispatchEvent(new Event("caelum:world-crisis-update"));});
