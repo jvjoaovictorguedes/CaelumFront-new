@@ -225,3 +225,44 @@ body {
     background-position: var(--sprite-end, 100%) 0;
   }
 }
+
+/* Evento "O Coração da Máquina Celestial" — Fase 4 (Renderização
+   Procedural Mecânica). --puzzle-rpm-duration é setado por instância
+   em MechanicalPuzzleScene.tsx (60/rpm segundos por volta); o sentido
+   (CW/CCW) decide a direção via animation-direction, nunca um keyframe
+   separado invertido (mantém a MESMA curva nos dois sentidos). O
+   componente já decide em JS se aplica esta classe (usePrefereMovimentoReduzido),
+   mas a guarda abaixo é defesa em profundidade: se escapar alguma
+   instância sem o hook, o SO que pediu menos movimento não gira nada. */
+@keyframes puzzle-girar {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes puzzle-fluir-energia {
+  to {
+    stroke-dashoffset: -24;
+  }
+}
+
+@keyframes puzzle-pulsar-objetivo {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .puzzle-girar,
+  .puzzle-fluir-energia,
+  .puzzle-pulsar-objetivo {
+    animation: none !important;
+  }
+}

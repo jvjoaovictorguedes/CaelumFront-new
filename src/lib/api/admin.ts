@@ -4214,3 +4214,81 @@ export async function simularEvolucaoClasseAdmin(payload: { id_classe: number; i
   const resposta = await axiosInstance.post<{ data: ResultadoSimuladorClassesApi }>("/admin/classes/simulator", payload);
   return resposta.data.data;
 }
+
+// Anti-automação — score/revisão não comprova automação por si só;
+// shadow mode registra decisões sem bloquear jogadores. Rotas já
+// protegidas por anti_automation.view/manage no backend.
+export interface AntiAutomationPolicyApi {
+  enabled: boolean;
+  shadow_mode: boolean;
+  risk_enabled: boolean;
+  rate_limit_enabled: boolean;
+  challenge_enabled: boolean;
+  restriction_enabled: boolean;
+  turnstile_fail_open: boolean;
+  observation_threshold: number;
+  challenge_threshold: number;
+  restriction_threshold: number;
+  decay_per_hour: number;
+  verified_minutes: number;
+  restriction_minutes: number;
+  event_retention_days: number;
+  challenge_retention_days: number;
+}
+export interface AntiAutomationRiskStateApi {
+  id_personagem: number;
+  score: number;
+  status: string;
+  signal_families: string[];
+  last_signal_at: string | null;
+  last_decay_at: string | null;
+  verified_until: string | null;
+  restricted_until: string | null;
+  exempt_until: string | null;
+  version: number;
+  personagem?: { nome: string } | null;
+}
+export interface AntiAutomationSummaryApi {
+  total: number;
+  items: AntiAutomationRiskStateApi[];
+  signalsLastDay: { event_type: string; count: string }[];
+  policy: AntiAutomationPolicyApi;
+}
+export interface AntiAutomationEventApi {
+  id: number;
+  event_type: string;
+  action_type: string;
+  createdAt: string;
+  risk_delta: number;
+}
+export interface AntiAutomationChallengeApi {
+  id: string;
+  status: string;
+  attempts: number;
+  createdAt?: string;
+}
+export interface AntiAutomationDetailApi {
+  state: AntiAutomationRiskStateApi | null;
+  events: AntiAutomationEventApi[];
+  challenges: AntiAutomationChallengeApi[];
+}
+export type AntiAutomationReviewAction = "reviewed" | "reset" | "release" | "challenge" | "exempt";
+
+export async function obterAntiAutomacaoAdmin(page: number, status?: string): Promise<AntiAutomationSummaryApi> {
+  const params = new URLSearchParams({ page: String(page) });
+  if (status) params.set("status", status);
+  const resposta = await axiosInstance.get<{ data: AntiAutomationSummaryApi }>(`/admin/anti-automation?${params.toString()}`);
+  return resposta.data.data;
+}
+export async function obterAntiAutomacaoPersonagemAdmin(id: number): Promise<AntiAutomationDetailApi> {
+  const resposta = await axiosInstance.get<{ data: AntiAutomationDetailApi }>(`/admin/anti-automation/${id}`);
+  return resposta.data.data;
+}
+export async function revisarAntiAutomacaoAdmin(id: number, action: AntiAutomationReviewAction, reason: string): Promise<AntiAutomationRiskStateApi> {
+  const resposta = await axiosInstance.post<{ data: AntiAutomationRiskStateApi }>(`/admin/anti-automation/${id}/review`, { action, reason });
+  return resposta.data.data;
+}
+export async function salvarAntiAutomacaoConfigAdmin(values: AntiAutomationPolicyApi, reason: string): Promise<AntiAutomationPolicyApi> {
+  const resposta = await axiosInstance.patch<{ data: AntiAutomationPolicyApi }>("/admin/anti-automation/config", { values, reason });
+  return resposta.data.data;
+}
