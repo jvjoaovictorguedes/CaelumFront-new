@@ -1,7 +1,10 @@
+import { redirect } from "next/navigation";
+import { temploDisponivel } from "@/lib/api/temple";
 import { getCurrentCharacter } from "@/utils/character-session";
 import TempleClient from "./TempleClient";
 
 export default async function TemplePage() {
+  if (!await temploDisponivel()) redirect("/dashboard");
   const character = await getCurrentCharacter();
 
   if (!character) {

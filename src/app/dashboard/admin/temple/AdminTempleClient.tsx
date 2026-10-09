@@ -9,6 +9,7 @@ import {
   mensagemDeErroAdmin,
   type TempleEventoAdminApi,
 } from "@/lib/api/admin";
+import TempleReleaseCard from "./components/TempleReleaseCard";
 import TempleEditorDrawer from "./components/TempleEditorDrawer";
 import TempleAuditTab from "./components/TempleAuditTab";
 
@@ -38,6 +39,7 @@ export default function AdminTempleClient() {
         </p>
       </div>
 
+      <TempleReleaseCard />
       <div className="flex flex-wrap gap-2">
         {([
           ["catalogo", "Convergências"],

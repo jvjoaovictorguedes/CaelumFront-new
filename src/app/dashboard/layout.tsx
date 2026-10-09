@@ -1,3 +1,4 @@
+import { temploDisponivel } from "@/lib/api/temple";
 import React from "react";
 import {WorldCrisisProvider} from "@/contexts/WorldCrisisContext";
 import WorldCrisisGlobalAlert from "@/components/world-crisis/WorldCrisisGlobalAlert";
@@ -29,6 +30,7 @@ export default async function DashboardLayout({
   const characterId = await getCurrentCharacterId();
   const character = await getCurrentCharacter();
   const isAdmin = await isCurrentUserAdmin();
+  const templeEnabled = await temploDisponivel();
 
   return (
     <ToastProvider>
@@ -46,6 +48,7 @@ export default async function DashboardLayout({
                     classe={character?.Class?.nome}
                     avatarKey={character?.avatar_key}
                     isAdmin={isAdmin}
+                    templeEnabled={templeEnabled}
                   />
                   <main className="dashboard-main min-h-[100dvh] overflow-y-auto px-4 pb-8 pt-20 sm:px-6 lg:px-8 lg:pt-8">
                     {children}
@@ -53,7 +56,7 @@ export default async function DashboardLayout({
                 </div>
                 <PartyBattleArena />
                 <GuildBossLiveArena />
-                <TempleGuardianLiveArena />
+                {templeEnabled && <TempleGuardianLiveArena />}
                 <FloatingMusicWidget />
                 <FloatingGlobalChatWidget />
               </GlobalChatSocketProvider>

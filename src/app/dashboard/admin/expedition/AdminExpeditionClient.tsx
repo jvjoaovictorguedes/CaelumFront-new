@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import RecipeFindCard from "./RecipeFindCard";
 import { useCallback, useEffect, useState } from "react";
 import {
   atualizarExpeditionBalanceAdmin,
@@ -122,6 +123,7 @@ function AbaExpedicao({ dados, onSalvo }: { dados: ExpeditionBalanceCompletoApi;
       <CardProgressao atual={dados["expedition.progression"].atual} onSalvo={onSalvo} />
       <CardDrops atual={dados["expedition.drops"].atual} onSalvo={onSalvo} />
       <CardEmboscada atual={dados["expedition.ambush"].atual} onSalvo={onSalvo} />
+      <RecipeFindCard />
       <CardRecursos />
     </div>
   );
@@ -660,6 +662,7 @@ function CardRecursos() {
                 <p className="mb-2 text-sm font-bold text-white">
                   {regiao.nome} <span className="font-normal text-white/40">(nível mín. {regiao.nivel_minimo})</span>
                 </p>
+                <VincularRecurso recursos={dados.recursos.filter(r=>!regiao.recursos.some(v=>v.id_recurso===r.id))} busy={salvandoChave!==null} onLink={(id,peso)=>salvarPeso(regiao.id,id,peso)} />
                 {regiao.recursos.length === 0 ? (
                   <p className="text-xs text-white/50">Nenhum recurso vinculado a essa região.</p>
                 ) : (
@@ -1034,4 +1037,10 @@ function AbaGrupo({ dados, onSalvo }: { dados: ExpeditionBalanceCompletoApi; onS
       </button>
     </div>
   );
+}
+
+function VincularRecurso({recursos,busy,onLink}:{recursos:{id:number;nome:string}[];busy:boolean;onLink:(id:number,peso:number)=>Promise<void>}){
+ const [id,setId]=useState(""),[peso,setPeso]=useState("1");
+ if(!recursos.length)return null;
+ return <div className="mb-3 flex flex-wrap items-end gap-2"><label className="text-xs text-white/70">Adicionar recurso à região<select aria-label="Recurso para vincular" value={id} onChange={e=>setId(e.target.value)} className={`ml-2 ${INPUT}`}><option value="">Escolher recurso...</option>{recursos.map(r=><option key={r.id} value={r.id}>{r.nome}</option>)}</select></label><label className="text-xs text-white/70">Peso<input aria-label="Peso do novo vínculo" type="number" min="0" step="1" value={peso} onChange={e=>setPeso(e.target.value)} className={`ml-2 w-20 ${INPUT}`}/></label><button type="button" disabled={busy||!id||!peso.trim()||!Number.isInteger(Number(peso))||Number(peso)<0} onClick={()=>onLink(Number(id),Number(peso))} className={BTN}>Vincular recurso</button></div>;
 }

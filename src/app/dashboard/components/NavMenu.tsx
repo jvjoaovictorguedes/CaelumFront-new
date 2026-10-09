@@ -24,10 +24,12 @@ export default function NavMenu({
   classe,
   avatarKey,
   isAdmin,
+  templeEnabled = false,
 }: {
   classe?: string;
   avatarKey?: string | null;
   isAdmin?: boolean;
+  templeEnabled?: boolean;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -82,7 +84,7 @@ export default function NavMenu({
     { name: "Expedição", iconUrl: "/icons/ui/expedicao.png", path: "/dashboard/expedition" },
     { name: "Pesca", iconUrl: "/icons/ui/pesca.png", path: "/dashboard/fishing" },
     { name: "Taverna", iconUrl: "/icons/loja.png", path: "/dashboard/tavern" },
-    { name: "Templo do Véu Celestial", iconUrl: "/icons/ui/chama.png", path: "/dashboard/temple" },
+    ...(templeEnabled ? [{ name: "Templo do Véu Celestial", iconUrl: "/icons/ui/chama.png", path: "/dashboard/temple" }] : []),
     {
       name: "Guildas",
       iconUrl: "/icons/guildas.png",

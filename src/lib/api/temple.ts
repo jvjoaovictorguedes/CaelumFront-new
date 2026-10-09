@@ -145,3 +145,10 @@ export async function obterStatusGuardiaoTemplo(): Promise<TempleBossStatusApi> 
 export function mensagemDeErroTemplo(erro: unknown, padrao: string): string {
   return (erro as { response?: { data?: { message?: string } } })?.response?.data?.message ?? padrao;
 }
+
+export async function temploDisponivel(): Promise<boolean> {
+  try {
+    const response = await axiosInstance.get<{enabled:boolean}>("/temple/availability");
+    return response.data.enabled === true;
+  } catch { return false; }
+}
