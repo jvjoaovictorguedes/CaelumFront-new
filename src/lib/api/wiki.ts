@@ -40,7 +40,7 @@ export async function obterWikiArtigo(slug: string): Promise<WikiArtigoApi> {
 
 export interface WikiReferenciaApi extends Omit<WikiArtigoApi, "id"> {
   id: string;
-  kind: "monster" | "guide" | "class" | "skill";
+  kind: "monster" | "guide" | "class" | "skill" | "item" | "recipe" | "combat" | "activity";
   nivel?: number;
   tipo_poder?: "Ativo" | "Passivo";
   aprendida?: boolean;
