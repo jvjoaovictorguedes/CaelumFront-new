@@ -87,3 +87,7 @@ public/             — imagens, sprites, sons e ícones estáticos
 mantêm as conexões Socket.IO com o backend (combate em grupo, PvP ao
 vivo, boss de guilda, chat) e expõem o estado via hooks (`usePvpSocket`,
 etc.) pros componentes de cada tela.
+
+## Mundo explorável (experimental)
+
+A fundação da rota `/dashboard/mundo` é liberada individualmente e permanece desativada por padrão. Veja [Fase 0 do mundo](docs/world/fase-0.md) para acesso, contratos, mapas e limites desta entrega.
