@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { isCurrentUserAdmin } from "@/utils/character-session";
 import EventPuzzlePreviewClient from "./EventPuzzlePreviewClient";
@@ -13,6 +14,7 @@ export default async function Page() {
   if (!(await isCurrentUserAdmin())) redirect("/dashboard");
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-5 p-2 sm:p-4">
+      <Link href="/dashboard/admin" prefetch={false} className="text-sm text-[#F3B43F]/80 hover:underline">← Painel Administrativo</Link>
       <EventPuzzlePreviewClient />
     </div>
   );
