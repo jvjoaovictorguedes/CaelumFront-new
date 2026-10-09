@@ -10,6 +10,18 @@ export const MENSAGEM_TIMEOUT_ENTRADA_GUARDIAO =
   "Não foi possível iniciar a batalha. Verifique sua conexão em tempo real e tente novamente.";
 export const TIMEOUT_ENTRADA_GUARDIAO_MS = 8000;
 
+// Mesmo problema, uma etapa antes do clique: se a conexão em tempo real
+// nunca termina de se identificar (ex.: busca do ticket falhando por
+// CORS/URL de ambiente — ver useCombatTransport.ts), o botão ficava
+// preso em "Conectando..." para sempre, sem NENHUM aviso — o mesmo tipo
+// de loading infinito silencioso que a correção do clique já eliminava,
+// só que uma camada acima. Timeout generoso (handshake normal custa uma
+// ida e volta HTTP + um ack de socket, nunca chega perto disso) só pra
+// nunca deixar o jogador esperando pra sempre sem explicação.
+export const MENSAGEM_TIMEOUT_CONEXAO_GUARDIAO =
+  "Não foi possível conectar em tempo real. Verifique sua internet ou recarregue a página.";
+export const TIMEOUT_CONEXAO_GUARDIAO_MS = 12000;
+
 export interface DecisaoEntradaGuardiao {
   podeEntrar: boolean;
   motivoBloqueio?: string;

@@ -6,13 +6,29 @@ import {
   podeIniciarEntradaGuardiao,
   MENSAGEM_TIMEOUT_ENTRADA_GUARDIAO,
   TIMEOUT_ENTRADA_GUARDIAO_MS,
+  MENSAGEM_TIMEOUT_CONEXAO_GUARDIAO,
+  TIMEOUT_CONEXAO_GUARDIAO_MS,
 } from "@/hooks/realtime/templebossEntrada";
 
 // §13.3 — lore + Poder ATUAL do personagem, nunca a fórmula de scaling.
 // Depois de tentativas, Bestiário/Templo pode revelar Powers observadas
 // e resistências descobertas (fora de escopo do V1 deste painel).
 export default function TempleGuardiaoPanel() {
-  const { estadoGuardiao, erroGuardiao, entrarNoGuardiao, limparErroGuardiao, realtimeReady } = usePvpSocket();
+  const {
+    estadoGuardiao,
+    erroGuardiao,
+    entrarNoGuardiao,
+    limparErroGuardiao,
+    realtimeReady,
+    // Erro genérico de conexão em tempo real (ex.: busca do ticket de
+    // socket falhando) — nunca é específico do Guardião, mas sem
+    // mostrá-lo aqui o botão ficava preso em "Conectando..." pra
+    // sempre e SEM NENHUM aviso quando esse erro acontecia, o mesmo
+    // tipo de loading infinito silencioso que o resto desta correção
+    // já eliminava, só que uma camada antes do clique.
+    erro: erroConexao,
+  } = usePvpSocket();
+  const [conexaoDemorada, setConexaoDemorada] = useState(false);
   const [status, setStatus] = useState<TempleBossStatusApi | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [mensagem, setMensagem] = useState("");
@@ -65,6 +81,18 @@ export default function TempleGuardiaoPanel() {
   }, [estadoGuardiao, erroGuardiao, limparTimeoutDeEntrada]);
 
   useEffect(() => () => limparTimeoutDeEntrada(), [limparTimeoutDeEntrada]);
+
+  // Timeout do handshake em si (antes de qualquer clique): se
+  // realtimeReady nunca vira true, avisa em vez de deixar "Conectando..."
+  // preso pra sempre. Reseta sozinho assim que a conexão se recupera.
+  useEffect(() => {
+    if (realtimeReady) {
+      setConexaoDemorada(false);
+      return;
+    }
+    const id = setTimeout(() => setConexaoDemorada(true), TIMEOUT_CONEXAO_GUARDIAO_MS);
+    return () => clearTimeout(id);
+  }, [realtimeReady]);
 
   const dispararEntrada = useCallback(() => {
     const decisao = podeIniciarEntradaGuardiao({ realtimeReady, entrando });
@@ -154,6 +182,9 @@ export default function TempleGuardiaoPanel() {
         </button>
       )}
 
+      {!realtimeReady && conexaoDemorada && (
+        <p className="mt-3 text-sm text-red-400">{erroConexao || MENSAGEM_TIMEOUT_CONEXAO_GUARDIAO}</p>
+      )}
       {erroGuardiao && (
         <p className="mt-3 text-sm text-red-400">
           {erroGuardiao}{" "}
