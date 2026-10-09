@@ -15,6 +15,7 @@ import { useRankedState, registerRankedListeners } from "@/hooks/realtime/ranked
 import { useTournamentState, registerTournamentListeners } from "@/hooks/realtime/tournament";
 import { usePartyState, registerPartyListeners } from "@/hooks/realtime/party";
 import { useGuildbossState, registerGuildbossListeners } from "@/hooks/realtime/guildboss";
+import { useTempleBossState, registerTempleBossListeners } from "@/hooks/realtime/templeboss";
 import { useCombatTransport } from "@/hooks/realtime/useCombatTransport";
 
 import type { LutadorDuelo, PoderDuelo, ConsumivelDuelo, DueloIniciadoPayload, StatusInstanceDuelo, CombatBuffInstanceDuelo, TurnoResultadoPayload, DueloFimPayload, DesafioRecebido } from "@/types/contracts/pvp";
@@ -27,6 +28,8 @@ import type { MembroGrupo, GrupoAtualizadoPayload, ConvitePartyRecebido, PoderGr
 export type { MembroGrupo, GrupoAtualizadoPayload, ConvitePartyRecebido, PoderGrupo, ConsumivelGrupo, AliadoBatalhaGrupo, BatalhaGrupoIniciadaPayload, TurnoGrupoPayload, ProximoTurnoGrupoPayload, BatalhaGrupoFimPayload } from "@/types/contracts/party";
 import type { AliadoBossGuilda, BatalhaBossGuildaIniciadaPayload, MembroEntrouBossGuildaPayload, CastStartBossGuildaPayload, TurnoBossGuildaPayload, ProximoTurnoBossGuildaPayload, RecompensasBossGuilda, BatalhaBossGuildaFimPayload } from "@/types/contracts/guildboss";
 export type { AliadoBossGuilda, BatalhaBossGuildaIniciadaPayload, MembroEntrouBossGuildaPayload, CastStartBossGuildaPayload, TurnoBossGuildaPayload, ProximoTurnoBossGuildaPayload, RecompensasBossGuilda, BatalhaBossGuildaFimPayload } from "@/types/contracts/guildboss";
+import type { EstadoGuardiaoPayload, CastStartGuardiaoPayload, FaseAlteradaGuardiaoPayload, FimGuardiaoPayload, PoderGuardiao } from "@/types/contracts/templeboss";
+export type { EstadoGuardiaoPayload, CastStartGuardiaoPayload, FaseAlteradaGuardiaoPayload, FimGuardiaoPayload, PoderGuardiao } from "@/types/contracts/templeboss";
 
 interface PvpSocketContextValue {
   conectado: boolean;
@@ -87,6 +90,20 @@ interface PvpSocketContextValue {
   agirBossGuilda: (tipo: "attack" | "power", idPoder?: number) => void;
   limparBatalhaBossGuilda: () => void;
   limparErroBossGuilda: () => void;
+  // Templo do Véu Celestial — Provação Final (Guardião solo). Luta
+  // individual: "entrarNoGuardiao" já devolve o estado completo direto
+  // (sem sala de espera, sem ordem de aliados).
+  erroGuardiao: string;
+  estadoGuardiao: EstadoGuardiaoPayload | null;
+  logGuardiao: string[];
+  castGuardiao: CastStartGuardiaoPayload | null;
+  faseAlteradaGuardiao: FaseAlteradaGuardiaoPayload | null;
+  resultadoGuardiao: FimGuardiaoPayload | null;
+  entrarNoGuardiao: () => void;
+  sairDoGuardiao: () => void;
+  agirGuardiao: (tipo: "attack" | "power", idPoder?: number) => void;
+  limparBatalhaGuardiao: () => void;
+  limparErroGuardiao: () => void;
 }
 
 const PvpSocketContext = createContext<PvpSocketContextValue | null>(null);
@@ -107,6 +124,7 @@ export function PvpSocketProvider({
   const { serieTorneio, setSerieTorneio } = useTournamentState();
   const { grupoAtual, setGrupoAtual, convitePartyRecebido, setConvitePartyRecebido, convitePartyEnviadoPara, setConvitePartyEnviadoPara, erroParty, setErroParty, batalhaGrupo, setBatalhaGrupo, turnosGrupo, setTurnosGrupo, turnoAtualGrupo, setTurnoAtualGrupo, rodadaAtualGrupo, setRodadaAtualGrupo, resultadoGrupo, setResultadoGrupo } = usePartyState();
   const { erroBossGuilda, setErroBossGuilda, batalhaBossGuilda, setBatalhaBossGuilda, turnosBossGuilda, setTurnosBossGuilda, turnoAtualBossGuilda, setTurnoAtualBossGuilda, rodadaAtualBossGuilda, setRodadaAtualBossGuilda, castBossGuilda, setCastBossGuilda, resultadoBossGuilda, setResultadoBossGuilda } = useGuildbossState();
+  const { erroGuardiao, setErroGuardiao, estadoGuardiao, setEstadoGuardiao, logGuardiao, setLogGuardiao, castGuardiao, setCastGuardiao, faseAlteradaGuardiao, setFaseAlteradaGuardiao, resultadoGuardiao, setResultadoGuardiao } = useTempleBossState();
 
   const registerDomains = useCallback((socket: Socket) => [
       registerPvpListeners(socket, { setDesafioRecebido, setDesafioEnviadoPara, setErro, setResultadoFinal, setTurnos, setDuelo, router }),
@@ -114,7 +132,8 @@ export function PvpSocketProvider({
       registerTournamentListeners(socket, { setSerieTorneio, setErro }),
       registerPartyListeners(socket, { setConvitePartyRecebido, setConvitePartyEnviadoPara, setErroParty, setGrupoAtual, setResultadoGrupo, setTurnosGrupo, setBatalhaGrupo, setTurnoAtualGrupo, setRodadaAtualGrupo, router }),
       registerGuildbossListeners(socket, { setResultadoBossGuilda, setTurnosBossGuilda, setCastBossGuilda, setBatalhaBossGuilda, setTurnoAtualBossGuilda, setRodadaAtualBossGuilda, setErroBossGuilda }),
-  ], [setBatalhaBossGuilda, setBatalhaGrupo, setCastBossGuilda, setConvitePartyEnviadoPara, setConvitePartyRecebido, setDesafioEnviadoPara, setDesafioRecebido, setDuelo, setErro, setErroBossGuilda, setErroParty, setFilaRanked, setGrupoAtual, setMatchEncontradoRanked, setOponenteDesconectadoRanked, setRatingUpdate, setResultadoBossGuilda, setResultadoFinal, setResultadoGrupo, setRodadaAtualBossGuilda, setRodadaAtualGrupo, setSerieTorneio, setTurnoAtualBossGuilda, setTurnoAtualGrupo, setTurnos, setTurnosBossGuilda, setTurnosGrupo, router]);
+      registerTempleBossListeners(socket, { setEstadoGuardiao, setLogGuardiao, setCastGuardiao, setFaseAlteradaGuardiao, setResultadoGuardiao, setErroGuardiao }),
+  ], [setBatalhaBossGuilda, setBatalhaGrupo, setCastBossGuilda, setCastGuardiao, setConvitePartyEnviadoPara, setConvitePartyRecebido, setDesafioEnviadoPara, setDesafioRecebido, setDuelo, setErro, setErroBossGuilda, setErroGuardiao, setErroParty, setEstadoGuardiao, setFaseAlteradaGuardiao, setFilaRanked, setGrupoAtual, setLogGuardiao, setMatchEncontradoRanked, setOponenteDesconectadoRanked, setRatingUpdate, setResultadoBossGuilda, setResultadoFinal, setResultadoGrupo, setResultadoGuardiao, setRodadaAtualBossGuilda, setRodadaAtualGrupo, setSerieTorneio, setTurnoAtualBossGuilda, setTurnoAtualGrupo, setTurnos, setTurnosBossGuilda, setTurnosGrupo, router]);
   const { socketRef, conectado, onlineIds } = useCombatTransport(characterId, setErro, registerDomains);
 
   const desafiar = useCallback((idDesafiado: number) => {
@@ -248,6 +267,28 @@ export function PvpSocketProvider({
 
   const limparErroBossGuilda = useCallback(() => setErroBossGuilda(""), []);
 
+  const entrarNoGuardiao = useCallback(() => {
+    socketRef.current?.emit(SOCKET_EVENTS.TEMPLEBOSS.ENTRAR);
+  }, []);
+
+  const sairDoGuardiao = useCallback(() => {
+    socketRef.current?.emit(SOCKET_EVENTS.TEMPLEBOSS.SAIR);
+  }, []);
+
+  const agirGuardiao = useCallback((tipo: "attack" | "power", idPoder?: number) => {
+    socketRef.current?.emit(SOCKET_EVENTS.TEMPLEBOSS.ACAO, { tipo, idPoder: tipo === "power" ? idPoder : undefined });
+  }, []);
+
+  const limparBatalhaGuardiao = useCallback(() => {
+    setEstadoGuardiao(null);
+    setLogGuardiao([]);
+    setCastGuardiao(null);
+    setFaseAlteradaGuardiao(null);
+    setResultadoGuardiao(null);
+  }, []);
+
+  const limparErroGuardiao = useCallback(() => setErroGuardiao(""), []);
+
   return (
     <PvpSocketContext.Provider
       value={{
@@ -303,6 +344,17 @@ export function PvpSocketProvider({
         agirBossGuilda,
         limparBatalhaBossGuilda,
         limparErroBossGuilda,
+        erroGuardiao,
+        estadoGuardiao,
+        logGuardiao,
+        castGuardiao,
+        faseAlteradaGuardiao,
+        resultadoGuardiao,
+        entrarNoGuardiao,
+        sairDoGuardiao,
+        agirGuardiao,
+        limparBatalhaGuardiao,
+        limparErroGuardiao,
       }}
     >
       {children}

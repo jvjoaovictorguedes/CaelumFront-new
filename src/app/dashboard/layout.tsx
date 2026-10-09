@@ -13,6 +13,7 @@ import { GlobalChatSocketProvider } from "@/contexts/GlobalChatSocketContext";
 import SessionKeepAlive from "@/components/SessionKeepAlive/SessionKeepAlive";
 import PartyBattleArena from "./adventure/components/PartyBattleArena";
 import GuildBossLiveArena from "./guilds/components/GuildBossLiveArena";
+import TempleGuardianLiveArena from "./temple/components/TempleGuardianLiveArena";
 import WorldBossGlobalAlert from "./components/WorldBossGlobalAlert";
 import UniqueFeatGlobalAlert from "@/components/unique-feats/UniqueFeatGlobalAlert";
 import FloatingMusicWidget from "@/components/music/FloatingMusicWidget";
@@ -52,6 +53,7 @@ export default async function DashboardLayout({
                 </div>
                 <PartyBattleArena />
                 <GuildBossLiveArena />
+                <TempleGuardianLiveArena />
                 <FloatingMusicWidget />
                 <FloatingGlobalChatWidget />
               </GlobalChatSocketProvider>
