@@ -63,3 +63,9 @@ BROWSER_EXECUTABLE_PATH=/caminho/chromium npm run test:smoke
 ```
 
 Esses valores são exclusivos dos testes locais; no deploy usar os URLs configurados para o ambiente.
+
+### Integração em dev — 9 de outubro de 2026
+
+Preservadas as atualizações de Powers, sockets, Templo e Puzzle presentes em dev. 24 testes do Front, build com TypeScript/ESLint e os dois smokes de navegador (login/combate e mundo/admin/revogação) passaram. A fixture de Powers foi atualizada com `statusPossiveis` para acompanhar o contrato atual. Backend: 8 checks específicos de mundo em Postgres local passaram; auditoria de migrations e requires passou.
+
+[GIF do smoke real](fase-0.gif): navegador Chromium, Next/Phaser reais, API simulada. Não é captura do ambiente implantado. A execução completa anterior do backend (1624 testes) não corresponde à suíte de dev depois das atualizações recentes; a integração atual executou os checks de mundo e auditorias indicados acima.

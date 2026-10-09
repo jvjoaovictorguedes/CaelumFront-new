@@ -88,7 +88,7 @@ export async function startMockBackend(port = 3101) {
     else if(route==="/world-crisis/announcements/ack"){crisisAck=true;payload={data:{}};}
     else if(route==="/world-crisis/contribute"){crisisProgress+=Number(body.quantity);payload={data:{accepted_quantity:body.quantity,progress_units:body.quantity,ranking_points:body.quantity,remaining_quantity:0}};}
     else if(route==="/admin/world-crisis/catalogs")payload={data:{items:[],resources:[],zones:[],configs:[],enabled:false}};
-    else if(route.startsWith("/combat-typing/powers/"))payload={data:{nature:"Fisico",affinityMode:"INHERIT_WEAPON",affinity:null,addedAffinity:null,addedDamagePct:0,imbueAffinity:null,imbueDamagePct:0,imbueDurationTurns:0,familyBonuses:[]}};
+    else if(route.startsWith("/combat-typing/powers/"))payload={data:{nature:"Fisico",affinityMode:"INHERIT_WEAPON",affinity:null,addedAffinity:null,addedDamagePct:0,imbueAffinity:null,imbueDamagePct:0,imbueDurationTurns:0,familyBonuses:[],statusPossiveis:[]}};
     else if(route==="/admin/combat-typing")payload={data:{catalogs:typingCatalogs,config:{pve_enabled:true,pvp_enabled:false,min_multiplier:0.05,max_multiplier:3,family_bonus_cap:50,effective_min:1.15,weakened_max:0.9,ineffective_max:0.6,labels:{effective:"EFETIVO",neutral:"NEUTRO",weakened:"ENFRAQUECIDO",ineffective:"INEFICAZ"}},metrics:{}}};
     else if(route==="/admin/combat-typing/entities/monsters")payload={data:[{id:1,nome:"Golem Smoke"}]};
     else if(route==="/admin/combat-typing/entities/monsters/1")payload={data:{values:{id:1,nome:"Golem Smoke",monster_family_id:1,affinity_profile_id:null,basic_attack_nature:"Fisico",basic_attack_affinity_id:null},preview:{family:{id:1,nome:"Construto"},inherited:{1:1},overrides:{},multipliers:{1:1}}}};
