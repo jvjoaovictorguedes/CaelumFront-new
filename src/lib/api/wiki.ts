@@ -37,3 +37,14 @@ export async function obterWikiArtigo(slug: string): Promise<WikiArtigoApi> {
   const resposta = await axiosInstance.get<{ data: { artigo: WikiArtigoApi } }>(`/wiki/${slug}`);
   return resposta.data.data.artigo;
 }
+
+export interface WikiReferenciaApi extends Omit<WikiArtigoApi, "id"> {
+  id: string;
+  kind: "monster" | "guide";
+  nivel?: number;
+}
+
+export async function obterWikiEnciclopedia(): Promise<WikiReferenciaApi[]> {
+  const resposta = await axiosInstance.get<{data: {artigos: WikiReferenciaApi[]}}>("/wiki/encyclopedia");
+  return resposta.data.data.artigos;
+}

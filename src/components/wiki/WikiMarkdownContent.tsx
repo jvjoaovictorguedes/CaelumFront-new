@@ -11,7 +11,7 @@ import { resolveMediaUrl } from "@/utils/media-url";
 // listas/links/imagens/citação/tabela via remark-gfm), com os
 // elementos estilizados usando as DUAS fontes do jogo: títulos em
 // font-imFeel (a fonte de destaque usada em todo o resto do site) e o
-// corpo no sans padrão — nunca uma fonte nova só pra Wiki. Usado tanto
+// corpo em letra medieval — nunca uma fonte nova só pra Wiki. Usado tanto
 // na leitura pública (WikiClient.tsx) quanto na prévia do editor admin
 // (AdminWikiClient.tsx), pra prévia e resultado real serem idênticos.
 //
@@ -23,7 +23,7 @@ const componentes: Components = {
   h1: ({ children }) => <h3 className="mt-2 font-imFeel text-2xl text-[#F3B43F]">{children}</h3>,
   h2: ({ children }) => <h4 className="mt-2 font-imFeel text-xl text-[#F3B43F]">{children}</h4>,
   h3: ({ children }) => <h5 className="mt-2 font-imFeel text-lg text-[#F3B43F]">{children}</h5>,
-  p: ({ children }) => <p className="text-sm leading-relaxed text-white/80">{children}</p>,
+  p: ({ children }) => <p className="text-lg leading-relaxed text-white/80">{children}</p>,
   strong: ({ children }) => <strong className="font-bold text-white">{children}</strong>,
   em: ({ children }) => <em className="italic text-white/90">{children}</em>,
   a: ({ children, href }) => (
@@ -36,8 +36,8 @@ const componentes: Components = {
       {children}
     </a>
   ),
-  ul: ({ children }) => <ul className="ml-5 list-disc space-y-1 text-sm text-white/80">{children}</ul>,
-  ol: ({ children }) => <ol className="ml-5 list-decimal space-y-1 text-sm text-white/80">{children}</ol>,
+  ul: ({ children }) => <ul className="ml-5 list-disc space-y-1 text-base text-white/80">{children}</ul>,
+  ol: ({ children }) => <ol className="ml-5 list-decimal space-y-1 text-base text-white/80">{children}</ol>,
   li: ({ children }) => <li className="leading-relaxed">{children}</li>,
   blockquote: ({ children }) => (
     <blockquote className="border-l-4 border-[#F3B43F]/60 pl-3 italic text-white/70">{children}</blockquote>
@@ -71,7 +71,7 @@ const componentes: Components = {
 
 export default function WikiMarkdownContent({ conteudo }: { conteudo: string }) {
   return (
-    <div className="flex flex-col gap-3">
+    <div className="font-imFeel flex flex-col gap-3">
       <ReactMarkdown remarkPlugins={[remarkGfm]} components={componentes}>
         {conteudo}
       </ReactMarkdown>

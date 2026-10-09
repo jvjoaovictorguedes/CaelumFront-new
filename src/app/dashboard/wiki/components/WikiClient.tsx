@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { listarWikiCategorias, obterWikiArtigo, type WikiArtigoApi, type WikiCategoriaApi } from "@/lib/api/wiki";
+import WikiEncyclopedia from "./WikiEncyclopedia";
 import WikiMarkdownContent from "@/components/wiki/WikiMarkdownContent";
 
 export default function WikiClient({ slugInicial }: { slugInicial?: string }) {
@@ -84,6 +85,7 @@ export default function WikiClient({ slugInicial }: { slugInicial?: string }) {
           {!categoriasFiltradas && !erroLista && <p className="text-sm text-white/50">Carregando...</p>}
           {categoriasFiltradas?.length === 0 && <p className="text-sm text-white/50">Nenhum artigo publicado ainda.</p>}
           <nav className="flex flex-col gap-1">
+            <Link href="/dashboard/wiki" className="mb-3 rounded-lg border border-[#F3B43F]/40 p-2 font-imFeel text-lg text-[#F3B43F]">Enciclopédia e criaturas</Link>
             {categoriasFiltradas
               ?.filter((c) => c.artigos.length > 0)
               .map((cat) => {
@@ -125,13 +127,7 @@ export default function WikiClient({ slugInicial }: { slugInicial?: string }) {
 
         <main className="min-w-0 rounded-2xl border-2 border-[#F3B43F]/40 bg-[#292018]/80 p-5">
           {!slugInicial ? (
-            <div className="flex flex-col items-center gap-2 py-10 text-center text-white/60">
-              <p className="text-lg font-bold text-[#F3B43F]">Escolha um artigo ao lado</p>
-              <p className="max-w-md text-sm">
-                A Wiki está organizada por sistema do jogo — Aventura, Expedição, Forja, Guildas, e por aí vai. Use a
-                busca se já souber o que procura.
-              </p>
-            </div>
+            <WikiEncyclopedia />
           ) : carregandoArtigo ? (
             <p className="text-sm text-white/60">Carregando artigo...</p>
           ) : erroArtigo ? (
@@ -146,6 +142,11 @@ export default function WikiClient({ slugInicial }: { slugInicial?: string }) {
                   alt={artigo.titulo}
                   className="mb-4 max-h-72 w-full rounded-xl border border-black/30 object-cover"
                 />
+              )}
+              {artigo.slug === "classe-multiplicador" && (
+                <p className="mb-4 rounded-lg border border-[#F3B43F]/40 bg-black/20 p-3 text-sm text-white/80">
+                  Consulte os multiplicadores atuais em <Link href="/dashboard/wiki" className="text-[#F3B43F] underline">Manual do aventureiro → Classes e raças</Link>. Esta ficha usa o catálogo atual do servidor.
+                </p>
               )}
               <WikiMarkdownContent conteudo={artigo.conteudo} />
             </article>
