@@ -54,10 +54,13 @@ interface ItemRanking {
   combates?: number;
   rank?: string;
   bosses_derrotados_total?: number;
-  // Ranqueado v2
+  // Ranqueado v2 — nomes crus do backend (GET /ranking não traduz pro
+  // vocabulário inglês que pvp.ts usa pra /pvp/ranked/*; "divisao" em
+  // português mesmo, igual ao que PvpProfileSummary.tsx já consome de
+  // /characters/me).
   rating?: number;
   tier?: string | null;
-  division?: string | null;
+  divisao?: string | null;
 }
 
 interface MinhaPosicaoNivelGoldForja {
@@ -77,7 +80,7 @@ interface MinhaPosicaoPvp {
   pontuacao?: number;
   rating?: number;
   tier?: string | null;
-  division?: string | null;
+  divisao?: string | null;
   vitorias?: number;
   derrotas?: number;
   saldo?: number;
@@ -119,7 +122,7 @@ function valorPrincipal(tipo: TipoRanking, item: ItemRanking): string {
     case "forge":
       return `Forja Nível ${item.forja_nivel} · ${(item.forja_xp ?? 0).toLocaleString("pt-BR")} XP`;
     case "pvp_ranked":
-      return `${rotuloDeElo(item.tier, item.division)} · ${item.rating ?? item.pontuacao ?? 0}`;
+      return `${rotuloDeElo(item.tier, item.divisao)} · ${item.rating ?? item.pontuacao ?? 0}`;
     case "pvp_casual":
       return `Pontuação: ${item.pontuacao ?? 0}`;
     case "boss":
@@ -318,7 +321,7 @@ function MinhaPosicaoBox({
             <p className="font-imFeel text-2xl">#{posicaoPvp.posicao}</p>
             <p className="text-xs text-white/60">
               {tipo === "pvp_ranked"
-                ? `${rotuloDeElo(posicaoPvp.tier, posicaoPvp.division)} · ${posicaoPvp.rating ?? posicaoPvp.pontuacao ?? 0}`
+                ? `${rotuloDeElo(posicaoPvp.tier, posicaoPvp.divisao)} · ${posicaoPvp.rating ?? posicaoPvp.pontuacao ?? 0}`
                 : `Pontuação: ${posicaoPvp.pontuacao ?? 0}`}{" "}
               · {posicaoPvp.vitorias}V · {posicaoPvp.derrotas}D · Saldo:{" "}
               {posicaoPvp.saldo! >= 0 ? "+" : ""}
