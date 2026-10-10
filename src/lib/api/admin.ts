@@ -1015,6 +1015,10 @@ export async function listarEfeitosEquipmentSetAdmin(): Promise<string[]> {
 // Compatibility barrel for the administrative power domain.
 export * from "./admin/powers";
 import type { PowerApi } from "./admin/powers";
+
+// Compatibility barrel for the "O Coração da Máquina Celestial"
+// (event-puzzle) admin domain — Fase 15 ("Puzzle Builder").
+export * from "./admin/eventPuzzle";
 export interface PreviewEvolucaoPowerApi {
   power_id: number;
   nome: string;
