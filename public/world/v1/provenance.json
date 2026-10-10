@@ -1,0 +1,15 @@
+{
+  "source": "/images/map/map.webp",
+  "sha256": "22931b23a4b37187a8af6d60105a0fa2a6f009850c7e12c14b2216bedaf85a78",
+  "source_width": 1536,
+  "source_height": 961,
+  "escala": {
+    "largura_tiles": 400,
+    "altura_tiles": 180,
+    "tile_px": 32,
+    "chunk_tiles": 32
+  },
+  "chunks": 78,
+  "preview_scale": 4,
+  "metodo": "Recorte da arte oficial; sem terreno procedural; mapas de território são shells globais sem navegação."
+}

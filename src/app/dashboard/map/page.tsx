@@ -6,13 +6,15 @@ interface MapaResponse {
   data?: WorldMapApi;
 }
 export default async function MapPage() {
-  let mapa: WorldMapApi | null = null;
-  try {
-    const resposta = await axiosInstance.get<MapaResponse>("/world/map");
-    mapa = resposta.data?.data ?? null;
-  } catch (error) {
-    console.error("Erro ao buscar o Mapa Mundial:", error);
-  }
+  // Mapa e flag são independentes: não somar uma ida à API ao carregamento.
+  const [resultadoMapa, resultadoAcesso] = await Promise.allSettled([
+    axiosInstance.get<MapaResponse>("/world/map"),
+    axiosInstance.get<{ data: { habilitado: boolean } }>("/world/exploration/acesso"),
+  ]);
+  const mapa = resultadoMapa.status === "fulfilled" ? resultadoMapa.value.data?.data ?? null : null;
+  const mundoHabilitado = resultadoAcesso.status === "fulfilled" && resultadoAcesso.value.data.data.habilitado === true;
+  if (resultadoMapa.status === "rejected") console.error("Erro ao buscar o Mapa Mundial:", resultadoMapa.reason);
+  // Falha da flag/versão antiga do Back deixa apenas o mundo experimental oculto.
   if (!mapa) {
     return (
       <div className="fixed inset-0 z-[90] flex flex-col items-center justify-center bg-[#1a1410] px-6 text-center">
@@ -28,7 +30,7 @@ export default async function MapPage() {
   return (
     <div className="fixed p-5 inset-0 z-[90] overflow-hidden bg-[#1a1410]">
       <PageMusic slot="PAGE_MAP" />
-      <WorldMapClient mapa={mapa} />
+      <WorldMapClient mapa={mapa} mundoHabilitado={mundoHabilitado} />
     </div>
   );
 }
