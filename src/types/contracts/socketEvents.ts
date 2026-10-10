@@ -104,4 +104,15 @@ export const SOCKET_EVENTS = {
     ERRO: "eventpuzzle:erro",
     SAIR: "eventpuzzle:sair",
   },
+  EVENTPUZZLEBOSS: {
+    ENTRAR: "eventpuzzleboss:entrar",
+    ESTADO: "eventpuzzleboss:estado",
+    ACAO: "eventpuzzleboss:acao",
+    TURNO_RESULTADO: "eventpuzzleboss:turno-resultado",
+    CAST_START: "eventpuzzleboss:cast-start",
+    FASE_ALTERADA: "eventpuzzleboss:fase-alterada",
+    FIM: "eventpuzzleboss:fim",
+    ERRO: "eventpuzzleboss:erro",
+    SAIR: "eventpuzzleboss:sair",
+  },
 } as const;
