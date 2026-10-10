@@ -15,6 +15,7 @@ import {
 } from "@/lib/api/admin";
 import { BTN, BTN_GHOST, CARD, INPUT_XS } from "./styles";
 import PuzzlePreview from "./PuzzlePreview";
+import DifficultySection from "./DifficultySection";
 
 const STATUS_LABEL: Record<PuzzleBlueprintVersionStatus, string> = {
   DRAFT: "Rascunho",
@@ -99,6 +100,10 @@ export default function VersionsSection({
     setConfigTexto(texto);
     const { erro } = tentarParsear(texto);
     setErroJson(erro);
+  }
+
+  function onMudarConfigObjeto(novoConfig: Record<string, unknown>) {
+    onMudarConfig(JSON.stringify(novoConfig, null, 2));
   }
 
   async function salvarConfig() {
@@ -203,16 +208,30 @@ export default function VersionsSection({
               ))}
           </div>
 
+          {versaoSelecionada.status === "PUBLISHED" && editavel && (
+            <div className="rounded-lg border border-yellow-500/50 bg-yellow-950/30 p-3 text-xs text-yellow-200">
+              Esta revisão já está publicada — editar aqui muda o que jogadores veem na próxima ação deles, mesmo quem já está no meio da
+              sala (a instância sempre lê a config atual, nunca uma cópia congelada no início). Salvar também apaga a assinatura de
+              solvabilidade validada; rode o validador de novo se quiser a confiança de volta.
+            </div>
+          )}
+
+          <DifficultySection
+            config={configParaPreview}
+            onChange={onMudarConfigObjeto}
+            editavel={editavel && versaoSelecionada.status !== "ARCHIVED" && !erroJson}
+          />
+
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             <div className={CARD}>
               <p className="mb-2 font-imFeel text-lg text-[#F3B43F]">Config (JSON)</p>
               <p className="mb-2 text-xs text-white/50">
-                Estrutura esperada: <code>dominio</code> (MECANICO/OPTICO/HIDRAULICO), <code>components</code>, <code>connections</code>,{" "}
-                <code>objectives</code> — ver puzzleEngineCore.js/puzzle*Components.js no backend pros tipos de componente de cada domínio.
-                Só editável enquanto a revisão está em Rascunho.
+                Estrutura esperada: <code>dominio</code> (MECANICO/OPTICO/HIDRAULICO/CONVERGENCIA), <code>components</code>,{" "}
+                <code>connections</code>, <code>objectives</code> — ver puzzleEngineCore.js/puzzle*Components.js no backend pros tipos de
+                componente de cada domínio. Editável em Rascunho ou Publicada; só Arquivada é imutável.
               </p>
               <textarea
-                disabled={!editavel || versaoSelecionada.status !== "DRAFT"}
+                disabled={!editavel || versaoSelecionada.status === "ARCHIVED"}
                 value={configTexto}
                 onChange={(e) => onMudarConfig(e.target.value)}
                 rows={18}
@@ -220,7 +239,7 @@ export default function VersionsSection({
                 className={`${INPUT_XS} w-full font-mono disabled:opacity-60`}
               />
               {erroJson && <p className="mt-1 text-xs text-red-400">JSON inválido: {erroJson}</p>}
-              {editavel && versaoSelecionada.status === "DRAFT" && (
+              {editavel && versaoSelecionada.status !== "ARCHIVED" && (
                 <button type="button" disabled={!!erroJson || salvando} onClick={salvarConfig} className={`${BTN} mt-2`}>
                   {salvando ? "Salvando..." : "Salvar config"}
                 </button>
