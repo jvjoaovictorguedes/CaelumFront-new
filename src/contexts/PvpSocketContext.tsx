@@ -16,7 +16,10 @@ import { useTournamentState, registerTournamentListeners } from "@/hooks/realtim
 import { usePartyState, registerPartyListeners } from "@/hooks/realtime/party";
 import { useGuildbossState, registerGuildbossListeners } from "@/hooks/realtime/guildboss";
 import { useTempleBossState, registerTempleBossListeners } from "@/hooks/realtime/templeboss";
+import { useEventPuzzleBossState, registerEventPuzzleBossListeners } from "@/hooks/realtime/eventpuzzleboss";
+import { useEventPuzzleRoomState, registerEventPuzzleRoomListeners } from "@/hooks/realtime/eventpuzzle";
 import { useCombatTransport } from "@/hooks/realtime/useCombatTransport";
+import axiosInstance from "@/utils/axiosIntance";
 
 import type { LutadorDuelo, PoderDuelo, ConsumivelDuelo, DueloIniciadoPayload, StatusInstanceDuelo, CombatBuffInstanceDuelo, TurnoResultadoPayload, DueloFimPayload, DesafioRecebido } from "@/types/contracts/pvp";
 export type { LutadorDuelo, PoderDuelo, ConsumivelDuelo, DueloIniciadoPayload, StatusInstanceDuelo, CombatBuffInstanceDuelo, TurnoResultadoPayload, DueloFimPayload, DesafioRecebido } from "@/types/contracts/pvp";
@@ -30,6 +33,22 @@ import type { AliadoBossGuilda, BatalhaBossGuildaIniciadaPayload, MembroEntrouBo
 export type { AliadoBossGuilda, BatalhaBossGuildaIniciadaPayload, MembroEntrouBossGuildaPayload, CastStartBossGuildaPayload, TurnoBossGuildaPayload, ProximoTurnoBossGuildaPayload, RecompensasBossGuilda, BatalhaBossGuildaFimPayload } from "@/types/contracts/guildboss";
 import type { EstadoGuardiaoPayload, CastStartGuardiaoPayload, FaseAlteradaGuardiaoPayload, FimGuardiaoPayload, PoderGuardiao } from "@/types/contracts/templeboss";
 export type { EstadoGuardiaoPayload, CastStartGuardiaoPayload, FaseAlteradaGuardiaoPayload, FimGuardiaoPayload, PoderGuardiao } from "@/types/contracts/templeboss";
+import type {
+  EstadoCustodioDoMeridianoPayload,
+  CastStartCustodioDoMeridianoPayload,
+  FaseAlteradaCustodioDoMeridianoPayload,
+  FimCustodioDoMeridianoPayload,
+  PoderCustodioDoMeridiano,
+} from "@/types/contracts/eventpuzzleboss";
+export type {
+  EstadoCustodioDoMeridianoPayload,
+  CastStartCustodioDoMeridianoPayload,
+  FaseAlteradaCustodioDoMeridianoPayload,
+  FimCustodioDoMeridianoPayload,
+  PoderCustodioDoMeridiano,
+} from "@/types/contracts/eventpuzzleboss";
+import type { EstadoEventPuzzleSocketPayload } from "@/types/contracts/eventpuzzle";
+export type { EstadoEventPuzzleSocketPayload } from "@/types/contracts/eventpuzzle";
 
 interface PvpSocketContextValue {
   conectado: boolean;
@@ -110,6 +129,32 @@ interface PvpSocketContextValue {
   agirGuardiao: (tipo: "attack" | "power", idPoder?: number) => void;
   limparBatalhaGuardiao: () => void;
   limparErroGuardiao: () => void;
+  // "O Coração da Máquina Celestial" — Custódio do Meridiano (Fase 16,
+  // mesmo papel de entrarNoGuardiao/agirGuardiao, só que a sala é
+  // escopada por eventEditionId, nunca um evento-singleton).
+  erroCustodio: string;
+  estadoCustodio: EstadoCustodioDoMeridianoPayload | null;
+  logCustodio: string[];
+  castCustodio: CastStartCustodioDoMeridianoPayload | null;
+  faseAlteradaCustodio: FaseAlteradaCustodioDoMeridianoPayload | null;
+  resultadoCustodio: FimCustodioDoMeridianoPayload | null;
+  entrarNoCustodio: (eventEditionId: number) => void;
+  sairDoCustodio: (eventEditionId: number) => void;
+  agirCustodio: (tipo: "attack" | "power", idPoder?: number) => void;
+  limparBatalhaCustodio: () => void;
+  limparErroCustodio: () => void;
+  // "O Coração da Máquina Celestial" — sala de puzzle (Fase 16): pura
+  // sincronização/feedback (eventpuzzle:*) pra quem mais estiver
+  // olhando a mesma PuzzleInstance; a ação em si sempre via HTTP (ver
+  // src/lib/api/eventPuzzle.ts). "entrar" exige um identify PRÓPRIO
+  // deste domínio (ticket novo) antes do `eventpuzzle:entrar` — ver
+  // comentário de eventPuzzleSocket.js no backend.
+  estadoSalaPuzzle: EstadoEventPuzzleSocketPayload | null;
+  erroSalaPuzzle: string;
+  entrarNaSalaPuzzle: (instanceId: number) => Promise<void>;
+  sairDaSalaPuzzle: () => void;
+  limparSalaPuzzle: () => void;
+  limparErroSalaPuzzle: () => void;
 }
 
 const PvpSocketContext = createContext<PvpSocketContextValue | null>(null);
@@ -131,6 +176,8 @@ export function PvpSocketProvider({
   const { grupoAtual, setGrupoAtual, convitePartyRecebido, setConvitePartyRecebido, convitePartyEnviadoPara, setConvitePartyEnviadoPara, erroParty, setErroParty, batalhaGrupo, setBatalhaGrupo, turnosGrupo, setTurnosGrupo, turnoAtualGrupo, setTurnoAtualGrupo, rodadaAtualGrupo, setRodadaAtualGrupo, resultadoGrupo, setResultadoGrupo } = usePartyState();
   const { erroBossGuilda, setErroBossGuilda, batalhaBossGuilda, setBatalhaBossGuilda, turnosBossGuilda, setTurnosBossGuilda, turnoAtualBossGuilda, setTurnoAtualBossGuilda, rodadaAtualBossGuilda, setRodadaAtualBossGuilda, castBossGuilda, setCastBossGuilda, resultadoBossGuilda, setResultadoBossGuilda } = useGuildbossState();
   const { erroGuardiao, setErroGuardiao, estadoGuardiao, setEstadoGuardiao, logGuardiao, setLogGuardiao, castGuardiao, setCastGuardiao, faseAlteradaGuardiao, setFaseAlteradaGuardiao, resultadoGuardiao, setResultadoGuardiao } = useTempleBossState();
+  const { erroCustodio, setErroCustodio, estadoCustodio, setEstadoCustodio, logCustodio, setLogCustodio, castCustodio, setCastCustodio, faseAlteradaCustodio, setFaseAlteradaCustodio, resultadoCustodio, setResultadoCustodio } = useEventPuzzleBossState();
+  const { estadoSalaPuzzle, setEstadoSalaPuzzle, erroSalaPuzzle, setErroSalaPuzzle } = useEventPuzzleRoomState();
 
   const registerDomains = useCallback((socket: Socket) => [
       registerPvpListeners(socket, { setDesafioRecebido, setDesafioEnviadoPara, setErro, setResultadoFinal, setTurnos, setDuelo, router }),
@@ -139,7 +186,9 @@ export function PvpSocketProvider({
       registerPartyListeners(socket, { setConvitePartyRecebido, setConvitePartyEnviadoPara, setErroParty, setGrupoAtual, setResultadoGrupo, setTurnosGrupo, setBatalhaGrupo, setTurnoAtualGrupo, setRodadaAtualGrupo, router }),
       registerGuildbossListeners(socket, { setResultadoBossGuilda, setTurnosBossGuilda, setCastBossGuilda, setBatalhaBossGuilda, setTurnoAtualBossGuilda, setRodadaAtualBossGuilda, setErroBossGuilda }),
       registerTempleBossListeners(socket, { setEstadoGuardiao, setLogGuardiao, setCastGuardiao, setFaseAlteradaGuardiao, setResultadoGuardiao, setErroGuardiao }),
-  ], [setBatalhaBossGuilda, setBatalhaGrupo, setCastBossGuilda, setCastGuardiao, setConvitePartyEnviadoPara, setConvitePartyRecebido, setDesafioEnviadoPara, setDesafioRecebido, setDuelo, setErro, setErroBossGuilda, setErroGuardiao, setErroParty, setEstadoGuardiao, setFaseAlteradaGuardiao, setFilaRanked, setGrupoAtual, setLogGuardiao, setMatchEncontradoRanked, setOponenteDesconectadoRanked, setRatingUpdate, setResultadoBossGuilda, setResultadoFinal, setResultadoGrupo, setResultadoGuardiao, setRodadaAtualBossGuilda, setRodadaAtualGrupo, setSerieTorneio, setTurnoAtualBossGuilda, setTurnoAtualGrupo, setTurnos, setTurnosBossGuilda, setTurnosGrupo, router]);
+      registerEventPuzzleBossListeners(socket, { setEstadoCustodio, setLogCustodio, setCastCustodio, setFaseAlteradaCustodio, setResultadoCustodio, setErroCustodio }),
+      registerEventPuzzleRoomListeners(socket, { setEstadoSalaPuzzle, setErroSalaPuzzle }),
+  ], [setBatalhaBossGuilda, setBatalhaGrupo, setCastBossGuilda, setCastGuardiao, setCastCustodio, setConvitePartyEnviadoPara, setConvitePartyRecebido, setDesafioEnviadoPara, setDesafioRecebido, setDuelo, setErro, setErroBossGuilda, setErroGuardiao, setErroCustodio, setErroParty, setErroSalaPuzzle, setEstadoGuardiao, setEstadoCustodio, setEstadoSalaPuzzle, setFaseAlteradaGuardiao, setFaseAlteradaCustodio, setFilaRanked, setGrupoAtual, setLogGuardiao, setLogCustodio, setMatchEncontradoRanked, setOponenteDesconectadoRanked, setRatingUpdate, setResultadoBossGuilda, setResultadoFinal, setResultadoGrupo, setResultadoGuardiao, setResultadoCustodio, setRodadaAtualBossGuilda, setRodadaAtualGrupo, setSerieTorneio, setTurnoAtualBossGuilda, setTurnoAtualGrupo, setTurnos, setTurnosBossGuilda, setTurnosGrupo, router]);
   const { socketRef, conectado, identificado: realtimeReady, onlineIds } = useCombatTransport(characterId, setErro, registerDomains);
 
   const desafiar = useCallback((idDesafiado: number) => {
@@ -295,6 +344,66 @@ export function PvpSocketProvider({
 
   const limparErroGuardiao = useCallback(() => setErroGuardiao(""), []);
 
+  const entrarNoCustodio = useCallback((eventEditionId: number) => {
+    socketRef.current?.emit(SOCKET_EVENTS.EVENTPUZZLEBOSS.ENTRAR, { eventEditionId });
+  }, []);
+
+  const sairDoCustodio = useCallback((eventEditionId: number) => {
+    socketRef.current?.emit(SOCKET_EVENTS.EVENTPUZZLEBOSS.SAIR, { eventEditionId });
+  }, []);
+
+  const agirCustodio = useCallback((tipo: "attack" | "power", idPoder?: number) => {
+    socketRef.current?.emit(SOCKET_EVENTS.EVENTPUZZLEBOSS.ACAO, { tipo, idPoder: tipo === "power" ? idPoder : undefined });
+  }, []);
+
+  const limparBatalhaCustodio = useCallback(() => {
+    setEstadoCustodio(null);
+    setLogCustodio([]);
+    setCastCustodio(null);
+    setFaseAlteradaCustodio(null);
+    setResultadoCustodio(null);
+  }, []);
+
+  const limparErroCustodio = useCallback(() => setErroCustodio(""), []);
+
+  // Sala de puzzle (eventpuzzle:*) — exige um identify PRÓPRIO deste
+  // domínio (ticket novo via /users/socket-ticket) ANTES do
+  // "eventpuzzle:entrar", mesmo raciocínio documentado em
+  // eventPuzzleSocket.js (evento próprio, não TRANSPORT.IDENTIFY
+  // genérico, pra não ter efeito colateral nos outros domínios que já
+  // compartilham este `socket`). Assim que o servidor confirma o
+  // identify, entra na sala — o próprio servidor devolve o resync via
+  // `eventpuzzle:estado`.
+  const entrarNaSalaPuzzle = useCallback((instanceId: number): Promise<void> => {
+    return new Promise((resolve) => {
+      const socket = socketRef.current;
+      if (!socket) {
+        resolve();
+        return;
+      }
+      axiosInstance
+        .get<{ data?: { ticket?: string } }>("/users/socket-ticket")
+        .then((resp) => {
+          const ticket = resp.data?.data?.ticket;
+          if (!ticket || !socket.connected) {
+            resolve();
+            return;
+          }
+          socket.emit(SOCKET_EVENTS.EVENTPUZZLE.IDENTIFICAR, { ticket }, () => {
+            socket.emit(SOCKET_EVENTS.EVENTPUZZLE.ENTRAR, { instanceId }, () => resolve());
+          });
+        })
+        .catch(() => resolve());
+    });
+  }, []);
+
+  const sairDaSalaPuzzle = useCallback(() => {
+    socketRef.current?.emit(SOCKET_EVENTS.EVENTPUZZLE.SAIR);
+  }, []);
+
+  const limparSalaPuzzle = useCallback(() => setEstadoSalaPuzzle(null), []);
+  const limparErroSalaPuzzle = useCallback(() => setErroSalaPuzzle(""), []);
+
   return (
     <PvpSocketContext.Provider
       value={{
@@ -362,6 +471,23 @@ export function PvpSocketProvider({
         agirGuardiao,
         limparBatalhaGuardiao,
         limparErroGuardiao,
+        erroCustodio,
+        estadoCustodio,
+        logCustodio,
+        castCustodio,
+        faseAlteradaCustodio,
+        resultadoCustodio,
+        entrarNoCustodio,
+        sairDoCustodio,
+        agirCustodio,
+        limparBatalhaCustodio,
+        limparErroCustodio,
+        estadoSalaPuzzle,
+        erroSalaPuzzle,
+        entrarNaSalaPuzzle,
+        sairDaSalaPuzzle,
+        limparSalaPuzzle,
+        limparErroSalaPuzzle,
       }}
     >
       {children}

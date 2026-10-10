@@ -15,6 +15,7 @@ import SessionKeepAlive from "@/components/SessionKeepAlive/SessionKeepAlive";
 import PartyBattleArena from "./adventure/components/PartyBattleArena";
 import GuildBossLiveArena from "./guilds/components/GuildBossLiveArena";
 import TempleGuardianLiveArena from "./temple/components/TempleGuardianLiveArena";
+import EventPuzzleCustodioLiveArena from "./event-puzzle/components/EventPuzzleCustodioLiveArena";
 import WorldBossGlobalAlert from "./components/WorldBossGlobalAlert";
 import UniqueFeatGlobalAlert from "@/components/unique-feats/UniqueFeatGlobalAlert";
 import FloatingMusicWidget from "@/components/music/FloatingMusicWidget";
@@ -69,6 +70,11 @@ export default async function DashboardLayout({
                    templeEnabled aqui só esconde menu/página (NavMenu acima e
                    temple/page.tsx), nunca a infraestrutura da arena. */}
                 <TempleGuardianLiveArena />
+                {/* Mesmo raciocínio do comentário acima sobre
+                   TempleGuardianLiveArena: nunca gatear esta arena por
+                   um flag lido uma vez neste Server Layout — ela
+                   retorna null sozinha enquanto estadoCustodio===null. */}
+                <EventPuzzleCustodioLiveArena />
                 <FloatingMusicWidget />
                 <FloatingGlobalChatWidget />
               </GlobalChatSocketProvider>

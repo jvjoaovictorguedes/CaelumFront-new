@@ -85,6 +85,7 @@ export default function NavMenu({
     { name: "Pesca", iconUrl: "/icons/ui/pesca.png", path: "/dashboard/fishing" },
     { name: "Taverna", iconUrl: "/icons/loja.png", path: "/dashboard/tavern" },
     ...(templeEnabled ? [{ name: "Templo do Véu Celestial", iconUrl: "/icons/ui/chama.png", path: "/dashboard/temple" }] : []),
+    { name: "Coração da Máquina Celestial", iconUrl: "/icons/ui/forja.png", path: "/dashboard/event-puzzle" },
     {
       name: "Guildas",
       iconUrl: "/icons/guildas.png",
