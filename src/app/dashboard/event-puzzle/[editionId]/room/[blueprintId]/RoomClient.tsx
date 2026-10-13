@@ -10,9 +10,11 @@ import {
   executarAcaoEventPuzzle,
   abandonarInstanciaEventPuzzle,
   mensagemDeErroEventPuzzle,
+  erroEhPuzzleJaConcluido,
   type PuzzleBlueprintPublicoApi,
   type PuzzleInstanceRuntimeApi,
   type PuzzleAcaoApi,
+  type PuzzleObjectivoProgressivoApi,
   type PistaDesbloqueadaApi,
   type ConquistaPioneiraApi,
   type RecompensaConcedidaApi,
@@ -25,6 +27,7 @@ import HydraulicPuzzleScene from "@/components/puzzle/hydraulic/HydraulicPuzzleS
 import type { PuzzleHidraulicoConfig, PuzzleHidraulicoEstadoPublico } from "@/components/puzzle/hydraulic/types";
 import ConvergencePuzzleScene from "@/components/puzzle/convergence/ConvergencePuzzleScene";
 import type { PuzzleConvergenciaConfig, PuzzleConvergenciaEstadoPublico } from "@/components/puzzle/convergence/ConvergencePuzzleScene";
+import { classificarObjetivoVisual, textoVisivelDoObjetivo } from "@/hooks/eventPuzzleSalaEstado";
 
 const STATUS_TERMINAIS_SUCESSO = new Set(["COMPLETED"]);
 const STATUS_TERMINAIS = new Set(["COMPLETED", "FAILED", "ABANDONED", "EXPIRED"]);
@@ -57,6 +60,13 @@ export default function RoomClient({ editionId, blueprintId }: { editionId: numb
   const [erroAcao, setErroAcao] = useState<string | null>(null);
   const [abandonando, setAbandonando] = useState(false);
   const [resumoFinal, setResumoFinal] = useState<ResumoFinal>({ pistas: [], conquistas: [], recompensas: [] });
+  // Correção de lifecycle — "sala concluída permanece concluída": se a
+  // listagem já diz `concluido: true` ANTES de qualquer tentativa de
+  // criar/obter Instance, esta página nunca chama
+  // criarOuObterInstanciaEventPuzzle — mostra direto a tela de câmara
+  // concluída (histórico), sem risco de 409/efeito colateral nenhum.
+  const [reentradaEmSalaConcluida, setReentradaEmSalaConcluida] = useState(false);
+  const [proximaSala, setProximaSala] = useState<{ idBlueprint: number; nome: string } | null>(null);
 
   const stateVersionRef = useRef(0);
   const entrouNaSalaRef = useRef(false);
@@ -87,10 +97,36 @@ export default function RoomClient({ editionId, blueprintId }: { editionId: numb
     [mostrarInfo, mostrarSucesso],
   );
 
+  // Acha a próxima sala (`ordem` imediatamente depois) e devolve só se
+  // ela já está desbloqueada — usado tanto na reentrada numa sala já
+  // concluída quanto no feedback imediato de conclusão (seção 9/23):
+  // nunca inventa isso no cliente, sempre releitura real da listagem
+  // autoritativa.
+  const buscarProximaSala = useCallback(async () => {
+    try {
+      const salas = await listarBlueprintsPublicosEventPuzzle(editionId);
+      const atual = salas.find((s) => s.id_blueprint === blueprintId);
+      if (!atual) return null;
+      const proxima = salas.find((s) => s.ordem === atual.ordem + 1);
+      if (!proxima || proxima.bloqueado) return null;
+      return { idBlueprint: proxima.id_blueprint, nome: proxima.titulo_publico };
+    } catch {
+      return null; // best-effort — nunca impede "Voltar às câmaras".
+    }
+  }, [editionId, blueprintId]);
+
   // Carrega o teaser/layout da sala (pra saber o domínio e desenhar a
   // topologia) e cria/retoma a PuzzleInstance — nessa ordem, porque
   // `layout` só existe na resposta pública quando a sala já está
   // desbloqueada (ver dtoPublicoLayout no backend).
+  //
+  // Correção de lifecycle (seção 2/6/7 da correção): se a listagem já
+  // diz `concluido: true`, esta página NUNCA chama
+  // criarOuObterInstanciaEventPuzzle — nunca cria réplica, nunca corre
+  // o risco de reabrir nada. O card da lista (EventPuzzleSalasPanel) já
+  // não oferece "Entrar" numa sala concluída, mas esta página também
+  // não confia só na UI de origem (alguém pode digitar a URL direto,
+  // voltar pelo histórico do navegador, ou abrir de um link salvo).
   useEffect(() => {
     let ativo = true;
     (async () => {
@@ -104,12 +140,29 @@ export default function RoomClient({ editionId, blueprintId }: { editionId: numb
           setCarregando(false);
           return;
         }
+        if (sala.concluido) {
+          setReentradaEmSalaConcluida(true);
+          const proxima = await buscarProximaSala();
+          if (!ativo) return;
+          setProximaSala(proxima);
+          setCarregando(false);
+          return;
+        }
         const { instancia: dto } = await criarOuObterInstanciaEventPuzzle(editionId, blueprintId);
         if (!ativo) return;
         aplicarEstado(dto, { toast: false });
       } catch (erro) {
         if (!ativo) return;
-        setErroCarregamento(mensagemDeErroEventPuzzle(erro, "Não foi possível abrir esta câmara."));
+        // Cliente desatualizado (sala concluída entre a listagem e a
+        // tentativa de criar/obter) — nunca quebra a tela, cai na
+        // mesma tela de "já concluída" em vez de propagar o 409 cru.
+        if (erroEhPuzzleJaConcluido(erro)) {
+          setReentradaEmSalaConcluida(true);
+          const proxima = await buscarProximaSala();
+          if (ativo) setProximaSala(proxima);
+        } else {
+          setErroCarregamento(mensagemDeErroEventPuzzle(erro, "Não foi possível abrir esta câmara."));
+        }
       } finally {
         if (ativo) setCarregando(false);
       }
@@ -119,6 +172,24 @@ export default function RoomClient({ editionId, blueprintId }: { editionId: numb
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editionId, blueprintId]);
+
+  // Feedback imediato de conclusão (seção 9/23) — assim que a ação
+  // devolve `status: "COMPLETED"`, descobre a próxima sala (se já
+  // desbloqueada) pra oferecer "Continuar" sem precisar de F5/sair-e-
+  // entrar. `instancia` já reflete a conclusão nesse ponto porque
+  // `aplicarEstado` já rodou antes deste efeito disparar.
+  useEffect(() => {
+    if (instancia?.status !== "COMPLETED" || proximaSala) return;
+    let ativo = true;
+    (async () => {
+      const proxima = await buscarProximaSala();
+      if (ativo) setProximaSala(proxima);
+    })();
+    return () => {
+      ativo = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [instancia?.status]);
 
   // Entra na sala do socket assim que a instância e a conexão em tempo
   // real estiverem prontas — puro feedback/resync (ver comentário de
@@ -194,7 +265,13 @@ export default function RoomClient({ editionId, blueprintId }: { editionId: numb
   }, [instancia, abandonando, aplicarEstado, mostrarErro]);
 
   const dominio = blueprint?.layout?.dominio ?? null;
-  const objetivos = blueprint?.layout?.objectives ?? [];
+  // Fonte dos objectives pro painel de progresso (seção 12 — "não basta
+  // esconder só no React"): SEMPRE `instancia.objectivesProgressivos`
+  // quando existe uma Instance de verdade (reflete o progresso atual,
+  // atualizado a cada ação/resync); só cai pro `blueprint.layout.
+  // objectives` (snapshot da listagem) quando ainda não há Instance —
+  // nunca o contrário, nunca uma mistura dos dois.
+  const objetivos: PuzzleObjectivoProgressivoApi[] = instancia?.objectivesProgressivos ?? blueprint?.layout?.objectives ?? [];
 
   const { configCena, estadoCena } = useMemo(() => {
     if (!blueprint?.layout || !instancia) return { configCena: null, estadoCena: null };
@@ -205,6 +282,53 @@ export default function RoomClient({ editionId, blueprintId }: { editionId: numb
 
   if (carregando) {
     return <div className="rounded-2xl border border-white/10 bg-[#292018]/60 p-5 text-white">Abrindo a câmara...</div>;
+  }
+
+  // Reentrada numa sala já concluída (seção 2/6/23) — nunca cria
+  // Instance nenhuma, nunca mostra "Entrar" de novo. F5 cai exatamente
+  // aqui de novo (a listagem que acabamos de reler já confirma
+  // `concluido: true` persistido no backend, nunca um estado local
+  // perdido). Objectives do `layout` já vêm 100% revelados pro backend
+  // (sala concluída = tudo concluído), então o checklist mostra tudo
+  // marcado, nunca "???".
+  if (reentradaEmSalaConcluida && blueprint) {
+    const objetivosConcluidos = blueprint.layout?.objectives ?? [];
+    return (
+      <div className="flex flex-col items-center gap-4 rounded-2xl border-2 border-green-500/50 bg-[#292018]/80 p-8 text-center text-white">
+        <h2 className="font-imFeel text-3xl text-green-400">✓ Câmara concluída</h2>
+        <p className="text-white/70">
+          {blueprint.titulo_publico} já foi restaurada.
+          {blueprint.completed_at ? ` Concluída em ${new Date(blueprint.completed_at).toLocaleDateString("pt-BR")}.` : ""}
+        </p>
+        {objetivosConcluidos.length > 0 && (
+          <div className="flex w-full max-w-md flex-col gap-1.5 text-left">
+            {objetivosConcluidos.map((o) => (
+              <span key={o.id} className="rounded-md border border-green-500/40 bg-green-500/10 px-2.5 py-1 text-xs text-green-300">
+                ✓ {textoVisivelDoObjetivo(o)}
+              </span>
+            ))}
+          </div>
+        )}
+        <div className="flex flex-wrap items-center justify-center gap-3">
+          {proximaSala && (
+            <button
+              type="button"
+              onClick={() => router.push(`/dashboard/event-puzzle/${editionId}/room/${proximaSala.idBlueprint}`)}
+              className="rounded-lg bg-[#F3B43F] px-6 py-2.5 font-bold text-black hover:bg-[#d89f2e]"
+            >
+              Continuar → {proximaSala.nome}
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => router.push(`/dashboard/event-puzzle/${editionId}`)}
+            className="rounded-lg bg-[#BC8418] px-6 py-2.5 font-bold text-black hover:bg-[#a5710f]"
+          >
+            Voltar às câmaras
+          </button>
+        </div>
+      </div>
+    );
   }
 
   if (erroCarregamento || !blueprint || !configCena || !estadoCena || !instancia) {
@@ -254,18 +378,29 @@ export default function RoomClient({ editionId, blueprintId }: { editionId: numb
         )}
       </div>
 
+      {/* Apresentação PROGRESSIVA dos objectives (seção 12 da correção)
+          — só concluídos + o atual mostram a própria descrição; um
+          objective futuro nunca aparece com `descricao` nenhuma (o
+          backend já corta isso na origem, ver
+          puzzleBlueprintService.projetarObjectivosProgressivos), então
+          esta UI NUNCA inventa texto pra ele — só "???". */}
       {dominio !== "CONVERGENCIA" && objetivos.length > 0 && (
         <div className="flex flex-wrap gap-2 rounded-lg border border-white/10 bg-black/30 p-3">
           {objetivos.map((o) => {
-            const feito = estadoCena.objetivosConcluidos.includes(o.id);
+            const classe = classificarObjetivoVisual(o);
+            const texto = textoVisivelDoObjetivo(o);
             return (
               <span
                 key={o.id}
                 className={`rounded-md border px-2.5 py-1 text-xs ${
-                  feito ? "border-green-500/50 bg-green-500/10 text-green-300" : "border-white/20 text-white/60"
+                  classe === "CONCLUIDO"
+                    ? "border-green-500/50 bg-green-500/10 text-green-300"
+                    : classe === "ATUAL"
+                      ? "border-[#F3B43F]/50 bg-[#F3B43F]/10 text-[#F3B43F]"
+                      : "border-white/15 text-white/35"
                 }`}
               >
-                {feito ? "✓" : "○"} {o.descricao ?? o.id}
+                {classe === "CONCLUIDO" ? "✓" : classe === "ATUAL" ? "○" : "?"} {texto}
               </span>
             );
           })}
@@ -277,10 +412,15 @@ export default function RoomClient({ editionId, blueprintId }: { editionId: numb
       )}
 
       {(concluida || terminalSemSucesso) && (
-        <div className="flex flex-col items-center gap-4 rounded-2xl border-2 border-[#F3B43F]/60 bg-[#292018]/80 p-8 text-center text-white">
-          <h2 className="font-imFeel text-3xl text-[#F3B43F]">
-            {concluida ? "Câmara concluída!" : instancia.status === "ABANDONED" ? "Câmara abandonada" : "A câmara se fechou"}
+        <div
+          className={`flex flex-col items-center gap-4 rounded-2xl border-2 p-8 text-center text-white ${
+            concluida ? "border-green-500/60 bg-[#1c2a1c]/80" : "border-[#F3B43F]/60 bg-[#292018]/80"
+          }`}
+        >
+          <h2 className={`font-imFeel text-3xl ${concluida ? "text-green-400" : "text-[#F3B43F]"}`}>
+            {concluida ? "✓ Câmara concluída" : instancia.status === "ABANDONED" ? "Câmara abandonada" : "A câmara se fechou"}
           </h2>
+          {concluida && <p className="text-white/70">{blueprint.titulo_publico} restaurada.</p>}
           {concluida && (resumoFinal.pistas.length > 0 || resumoFinal.conquistas.length > 0 || resumoFinal.recompensas.length > 0) && (
             <div className="flex w-full max-w-md flex-col gap-2 text-left">
               {resumoFinal.pistas.map((p, i) => (
@@ -302,13 +442,24 @@ export default function RoomClient({ editionId, blueprintId }: { editionId: numb
               ))}
             </div>
           )}
-          <button
-            type="button"
-            onClick={() => router.push(`/dashboard/event-puzzle/${editionId}`)}
-            className="rounded-lg bg-[#BC8418] px-6 py-2.5 font-bold text-black hover:bg-[#a5710f]"
-          >
-            Voltar às câmaras
-          </button>
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            {concluida && proximaSala && (
+              <button
+                type="button"
+                onClick={() => router.push(`/dashboard/event-puzzle/${editionId}/room/${proximaSala.idBlueprint}`)}
+                className="rounded-lg bg-[#F3B43F] px-6 py-2.5 font-bold text-black hover:bg-[#d89f2e]"
+              >
+                Continuar → {proximaSala.nome}
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => router.push(`/dashboard/event-puzzle/${editionId}`)}
+              className="rounded-lg bg-[#BC8418] px-6 py-2.5 font-bold text-black hover:bg-[#a5710f]"
+            >
+              Voltar às câmaras
+            </button>
+          </div>
         </div>
       )}
     </div>

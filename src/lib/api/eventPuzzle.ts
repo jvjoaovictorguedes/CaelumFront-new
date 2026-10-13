@@ -26,13 +26,31 @@ export async function listarEdicoesAtivasEventPuzzle(): Promise<EventPuzzleEdica
 // ---------------------------------------------------------- Blueprints
 export type DominioPuzzle = "MECANICO" | "OPTICO" | "HIDRAULICO" | "CONVERGENCIA";
 
+// Apresentação progressiva dos objectives (correção de lifecycle/UX) —
+// NUNCA assuma que `descricao` sempre existe: um objective futuro (nem
+// concluído, nem o atual) chega do backend SEM essa chave — o backend
+// já corta o dado na origem (dtoPublicoLayout/dtoRuntimeComObjetivos),
+// então a UI só decide COMO exibir `???`/placeholder, nunca esconde
+// algo que já veio revelado demais.
+export interface PuzzleObjectivoProgressivoApi {
+  id: string;
+  descricao?: string | null;
+  concluido: boolean;
+  atual: boolean;
+}
+
 export interface PuzzleLayoutPublicoApi {
   dominio: DominioPuzzle | null;
   components: Array<{ id: string; type: string; props: Record<string, unknown>; position: { x: number; y: number } | null }>;
   connections: Array<{ id: string; from: { componentId: string; port: string }; to: { componentId: string; port: string } }>;
-  objectives: Array<{ id: string; descricao: string | null }>;
+  objectives: PuzzleObjectivoProgressivoApi[];
 }
 
+// Estado autoritativo da sala pro personagem logado (correção de
+// lifecycle — "listagem pública autoritativa"): o backend decide
+// bloqueado/concluido/em_andamento/replayable, nunca o frontend infere
+// isso tentando criar uma instância. Prioridade visual (nunca ambíguo):
+// bloqueado → concluido → em_andamento → disponível.
 export interface PuzzleBlueprintPublicoApi {
   id_blueprint: number;
   key: string;
@@ -42,6 +60,11 @@ export interface PuzzleBlueprintPublicoApi {
   dificuldade: string | null;
   ordem: number;
   bloqueado: boolean;
+  concluido: boolean;
+  completed_at: string | null;
+  em_andamento: boolean;
+  id_instancia_ativa: number | null;
+  replayable: boolean;
   layout?: PuzzleLayoutPublicoApi;
 }
 
@@ -65,6 +88,13 @@ export interface PuzzleInstanceRuntimeApi {
   state: PuzzleEstadoPublicoApi;
   started_at: string | null;
   completed_at: string | null;
+  // Apresentação progressiva (correção de lifecycle/UX) — sempre o
+  // progresso REAL desta Instance; nunca revela `descricao` de um
+  // objective futuro. Vem em toda resposta que carrega uma Instance
+  // (criar/obter/ação/abandonar) — a UI nunca precisa combinar isto
+  // com `blueprint.layout.objectives` (que só reflete o progresso no
+  // instante em que a listagem foi buscada).
+  objectivesProgressivos: PuzzleObjectivoProgressivoApi[];
 }
 
 export async function criarOuObterInstanciaEventPuzzle(
@@ -191,4 +221,14 @@ export async function obterHallDasLendasEventPuzzle(editionId: number): Promise<
 
 export function mensagemDeErroEventPuzzle(erro: unknown, padrao: string): string {
   return (erro as { response?: { data?: { message?: string } } })?.response?.data?.message ?? padrao;
+}
+
+// Correção de lifecycle — "não criar replay acidental": a UI já evita
+// chamar criarOuObterInstanciaEventPuzzle numa sala com `concluido:
+// true` (ver EventPuzzleSalasPanel/RoomClient), então este 409 deveria
+// ser raro — mas um cliente desatualizado (aba antiga, cache stale)
+// ainda pode disparar essa chamada; nunca pode quebrar a tela, só
+// mostrar que a sala já foi concluída e nunca tentar de novo.
+export function erroEhPuzzleJaConcluido(erro: unknown): boolean {
+  return (erro as { response?: { data?: { code?: string } } })?.response?.data?.code === "PUZZLE_JA_CONCLUIDO";
 }
