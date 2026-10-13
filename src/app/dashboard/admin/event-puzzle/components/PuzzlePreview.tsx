@@ -66,7 +66,21 @@ function repousoMecanico(comp: ComponenteCru): ComponenteFeedback | null {
   const props = (comp.props ?? {}) as Record<string, unknown>;
   switch (comp.type) {
     case "MOTOR":
-      return { ligado: false, rpm: 0, sentido: null };
+      // Preview estático também reflete `ajustavel` (mesma allowlist do
+      // runtime real) — o Admin vê o regulador aparecer no preview
+      // exatamente como o jogador veria, nunca uma 2ª fórmula.
+      return props.ajustavel === true
+        ? {
+            ligado: false,
+            rpm: 0,
+            sentido: null,
+            ajustavel: true,
+            rpmConfigurado: numeroOuZero(props.rpmInicial),
+            rpmMin: numeroOuZero(props.rpmMin),
+            rpmMax: numeroOuZero(props.rpmMax),
+            rpmStep: numeroOuZero(props.rpmStep),
+          }
+        : { ligado: false, rpm: 0, sentido: null };
     case "SHAFT":
       return { rpm: 0, sentido: null };
     case "GEAR":
@@ -78,7 +92,7 @@ function repousoMecanico(comp: ComponenteCru): ComponenteFeedback | null {
     case "CLUTCH":
       return { engatada: false, rpm: 0, sentido: null };
     case "OUTPUT":
-      return { rpm: 0, sentido: null, atingido: false };
+      return { rpm: 0, sentido: null, ressonancia: "SEM_RESONANCIA" };
     default:
       return null;
   }

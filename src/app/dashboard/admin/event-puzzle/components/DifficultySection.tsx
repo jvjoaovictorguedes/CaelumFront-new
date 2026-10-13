@@ -69,6 +69,32 @@ function numeroOuZero(v: unknown): number {
   return typeof v === "number" && Number.isFinite(v) ? v : 0;
 }
 
+function CampoNumero({
+  rotulo,
+  valor,
+  onChange,
+  disabled,
+}: {
+  rotulo: string;
+  valor: number;
+  onChange: (v: number) => void;
+  disabled: boolean;
+}) {
+  return (
+    <label className={LABEL_XS}>
+      {rotulo}
+      <input
+        disabled={disabled}
+        type="number"
+        min={0}
+        value={valor}
+        onChange={(e) => onChange(Number(e.target.value))}
+        className={`${INPUT_XS} w-24`}
+      />
+    </label>
+  );
+}
+
 export default function DifficultySection({
   config,
   onChange,
@@ -83,6 +109,11 @@ export default function DifficultySection({
   const alvos = componentes.filter(
     (c): c is ComponenteConfig => !!c && typeof c === "object" && typeof c.type === "string" && typeof c.id === "string" && !!CAMPOS_POR_TIPO[c.type],
   );
+  // Evolução "RPM ajustável" — MOTOR tem schema próprio (ajustavel +
+  // rpmInicial/rpmMin/rpmMax/rpmStep, OU rpmNominal legado), nunca o
+  // par alvo/tolerância de CAMPOS_POR_TIPO (motor não é um objetivo, é
+  // a FONTE que o jogador controla).
+  const motores = componentes.filter((c): c is ComponenteConfig => !!c && typeof c === "object" && c.type === "MOTOR" && typeof c.id === "string");
 
   function atualizarDificuldade(valor: string) {
     const resto = { ...cfg };
@@ -92,6 +123,25 @@ export default function DifficultySection({
 
   function atualizarCampoComponente(idComponente: string, campo: string, valor: unknown) {
     const novosComponentes = componentes.map((c) => (c.id === idComponente ? { ...c, props: { ...(c.props ?? {}), [campo]: valor } } : c));
+    onChange({ ...cfg, components: novosComponentes });
+  }
+
+  function alternarMotorAjustavel(idComponente: string, ajustavel: boolean) {
+    const novosComponentes = componentes.map((c) => {
+      if (c.id !== idComponente) return c;
+      const props = { ...(c.props ?? {}) } as Record<string, unknown>;
+      if (ajustavel) {
+        props.ajustavel = true;
+        if (typeof props.rpmMin !== "number") props.rpmMin = 60;
+        if (typeof props.rpmMax !== "number") props.rpmMax = 240;
+        if (typeof props.rpmStep !== "number") props.rpmStep = 10;
+        if (typeof props.rpmInicial !== "number") props.rpmInicial = numeroOuZero(props.rpmNominal) || (props.rpmMin as number);
+      } else {
+        delete props.ajustavel;
+        if (typeof props.rpmNominal !== "number") props.rpmNominal = numeroOuZero(props.rpmInicial) || 60;
+      }
+      return { ...c, props };
+    });
     onChange({ ...cfg, components: novosComponentes });
   }
 
@@ -113,6 +163,56 @@ export default function DifficultySection({
         </select>
       </label>
 
+      {motores.length > 0 && (
+        <div className="mb-4 flex flex-col gap-3">
+          <p className="text-xs font-bold text-white/80">Motor / Regulador</p>
+          {motores.map((comp) => {
+            const props = (comp.props ?? {}) as Record<string, unknown>;
+            const ajustavel = props.ajustavel === true;
+            return (
+              <div key={comp.id} className="rounded-lg border border-white/10 bg-black/20 p-3">
+                <p className="mb-2 text-xs font-bold text-white/80">
+                  Motor <span className="font-normal text-white/50">({comp.id})</span>
+                </p>
+                <label className={`${LABEL_XS} mb-2 flex-row items-center gap-2`}>
+                  <input
+                    type="checkbox"
+                    disabled={!editavel}
+                    checked={ajustavel}
+                    onChange={(e) => alternarMotorAjustavel(comp.id, e.target.checked)}
+                  />
+                  Ajustável pelo jogador (regulador em jogo)
+                </label>
+                <div className="flex flex-wrap gap-3">
+                  {ajustavel ? (
+                    <>
+                      <CampoNumero disabled={!editavel} rotulo="RPM inicial" valor={numeroOuZero(props.rpmInicial)} onChange={(v) => atualizarCampoComponente(comp.id, "rpmInicial", v)} />
+                      <CampoNumero disabled={!editavel} rotulo="RPM mínima" valor={numeroOuZero(props.rpmMin)} onChange={(v) => atualizarCampoComponente(comp.id, "rpmMin", v)} />
+                      <CampoNumero disabled={!editavel} rotulo="RPM máxima" valor={numeroOuZero(props.rpmMax)} onChange={(v) => atualizarCampoComponente(comp.id, "rpmMax", v)} />
+                      <CampoNumero disabled={!editavel} rotulo="Passo de RPM" valor={numeroOuZero(props.rpmStep)} onChange={(v) => atualizarCampoComponente(comp.id, "rpmStep", v)} />
+                    </>
+                  ) : (
+                    <CampoNumero disabled={!editavel} rotulo="RPM nominal (fixo)" valor={numeroOuZero(props.rpmNominal)} onChange={(v) => atualizarCampoComponente(comp.id, "rpmNominal", v)} />
+                  )}
+                  <label className={LABEL_XS}>
+                    Sentido
+                    <select
+                      disabled={!editavel}
+                      value={typeof props.sentido === "string" ? (props.sentido as string) : "CW"}
+                      onChange={(e) => atualizarCampoComponente(comp.id, "sentido", e.target.value)}
+                      className={INPUT_XS}
+                    >
+                      <option value="CW">CW</option>
+                      <option value="CCW">CCW</option>
+                    </select>
+                  </label>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
       {alvos.length === 0 ? (
         <p className="text-xs text-white/40">
           Nenhum componente de objetivo (OUTPUT/RECEIVER/TURBINE) encontrado neste config ainda — adicione um pelo JSON pra ver os campos
@@ -128,6 +228,12 @@ export default function DifficultySection({
                 <p className="mb-2 text-xs font-bold text-white/80">
                   {NOME_AMIGAVEL[comp.type] ?? comp.type} <span className="font-normal text-white/50">({comp.id})</span>
                 </p>
+                {comp.type === "OUTPUT" && (
+                  <p className="mb-2 text-[10px] text-amber-300/80">
+                    Estes targets são somente servidor/Admin e não são enviados ao jogador — o runtime do jogador só recebe a
+                    ressonância qualitativa (SEM_RESONANCIA/FRACA/PROXIMA/ESTAVEL), nunca estes números.
+                  </p>
+                )}
                 <div className="flex flex-wrap gap-3">
                   <label className={LABEL_XS}>
                     {campos.alvoLabel}

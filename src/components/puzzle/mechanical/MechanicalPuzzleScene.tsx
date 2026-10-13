@@ -8,7 +8,7 @@
 // (topologia + props, dados do Admin). Clicar/tocar num componente só
 // dispara `onAction`; quem decide se a ação é válida e qual o novo
 // estado é sempre o backend (Fase 8).
-import { useMemo } from "react";
+import { useId, useMemo, useState } from "react";
 import { usePrefereMovimentoReduzido } from "../usePrefereMovimentoReduzido";
 import type {
   AlavancaFeedback,
@@ -22,9 +22,11 @@ import type {
   PuzzleMecanicoAcao,
   PuzzleMecanicoConfig,
   PuzzleMecanicoEstadoPublico,
+  RessonanciaSaida,
   SaidaFeedback,
   Sentido,
 } from "./types";
+import { apresentarRessonancia, decrementar, incrementar, interpretarDigitacaoDeRpm, motorEhAjustavel } from "./reguladorDeRpm";
 
 const BRONZE = "#9c6b2f";
 const BRONZE_CLARO = "#c89450";
@@ -80,6 +82,18 @@ export default function MechanicalPuzzleScene({ config, estado, onAction, erro, 
     onAction({ type, componentId });
   }
 
+  function ajustarRpm(componentId: string, rpm: number) {
+    if (somenteLeitura || !onAction) return;
+    onAction({ type: "AJUSTAR_RPM", componentId, payload: { rpm } });
+  }
+
+  // Reguladores de RPM (seção 5 da encomenda) ficam FORA do <svg>, como
+  // um painel HTML comum — nunca dependem de drag, funcionam com
+  // teclado/toque nativo, e evitam qualquer sutileza de compatibilidade
+  // de <foreignObject>. Um por MOTOR ajustável (hoje a Oficina só tem
+  // um, mas isto nunca assume isso).
+  const motoresAjustaveis = config.components.filter((c) => c.type === "MOTOR" && motorEhAjustavel(estado.components[c.id] as MotorFeedback));
+
   return (
     <div className={`relative w-full ${className ?? ""}`}>
       {erro ? (
@@ -134,6 +148,98 @@ export default function MechanicalPuzzleScene({ config, estado, onAction, erro, 
           ))}
         </g>
       </svg>
+      {motoresAjustaveis.map((comp) => (
+        <ReguladorDeRpm
+          key={comp.id}
+          rotulo={rotuloAmigavel(comp)}
+          fb={estado.components[comp.id] as MotorFeedback & { ajustavel: true }}
+          somenteLeitura={!!somenteLeitura}
+          onAjustar={(rpm) => ajustarRpm(comp.id, rpm)}
+        />
+      ))}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Regulador do Eixo Mestre — painel HTML (fora do <svg>) com [-] RPM [+]
+// e input numérico. Nunca controla estado localmente: o valor exibido é
+// SEMPRE `fb.rpmConfigurado` (o que o servidor já confirmou), nunca um
+// state otimista — digitar/clicar só DISPARA a ação; a UI só reflete o
+// que voltar na próxima atualização de `estado` (mesmo princípio de
+// "servidor é a única autoridade" do resto do puzzle).
+function ReguladorDeRpm({
+  rotulo,
+  fb,
+  somenteLeitura,
+  onAjustar,
+}: {
+  rotulo: string;
+  fb: MotorFeedback & { ajustavel: true };
+  somenteLeitura: boolean;
+  onAjustar: (rpm: number) => void;
+}) {
+  const idInput = useId();
+  const [digitando, setDigitando] = useState<string | null>(null);
+  const { rpmMin, rpmMax, rpmStep, rpmConfigurado } = fb;
+  const desabilitado = somenteLeitura;
+
+  function confirmarDigitacao() {
+    if (digitando === null) return;
+    const valor = interpretarDigitacaoDeRpm(digitando, rpmMin, rpmMax, rpmStep);
+    if (valor !== null && valor !== rpmConfigurado) onAjustar(valor);
+    setDigitando(null);
+  }
+
+  return (
+    <div className="mt-3 flex flex-wrap items-center gap-3 rounded-xl border border-[#9c6b2f]/50 bg-black/30 p-3 text-sm text-[#d8cdb8]">
+      <span className="text-xs uppercase tracking-widest text-[#F3B43F]/80">Regulador — {rotulo}</span>
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          aria-label="Diminuir RPM"
+          disabled={desabilitado || rpmConfigurado <= rpmMin}
+          onClick={() => onAjustar(decrementar(rpmConfigurado, rpmMin, rpmMax, rpmStep))}
+          className="h-9 w-9 rounded-lg border border-[#9c6b2f] bg-[#241b10] text-lg font-bold text-[#F3B43F] disabled:opacity-30"
+        >
+          −
+        </button>
+        <label htmlFor={idInput} className="sr-only">
+          RPM do {rotulo}
+        </label>
+        <input
+          id={idInput}
+          type="number"
+          inputMode="numeric"
+          min={rpmMin}
+          max={rpmMax}
+          step={rpmStep}
+          disabled={desabilitado}
+          value={digitando ?? String(rpmConfigurado)}
+          onChange={(e) => setDigitando(e.target.value)}
+          onBlur={confirmarDigitacao}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              confirmarDigitacao();
+            }
+          }}
+          className="w-20 rounded-lg border border-white/20 bg-black/40 px-2 py-1.5 text-center font-bold text-white"
+        />
+        <span className="text-xs text-white/50">RPM</span>
+        <button
+          type="button"
+          aria-label="Aumentar RPM"
+          disabled={desabilitado || rpmConfigurado >= rpmMax}
+          onClick={() => onAjustar(incrementar(rpmConfigurado, rpmMin, rpmMax, rpmStep))}
+          className="h-9 w-9 rounded-lg border border-[#9c6b2f] bg-[#241b10] text-lg font-bold text-[#F3B43F] disabled:opacity-30"
+        >
+          +
+        </button>
+      </div>
+      <span className="text-[10px] text-white/35">
+        {rpmMin}–{rpmMax}, passo {rpmStep}
+      </span>
     </div>
   );
 }
@@ -241,10 +347,14 @@ function ComponenteMecanico({
 
     case "OUTPUT": {
       const fb = feedback as SaidaFeedback;
+      const apresentacao = apresentarRessonancia(fb.ressonancia);
       return (
         <FormaEstatica x={x} y={y} rotulo={rotuloAmigavel(comp)}>
-          <Saida atingido={fb.atingido} rpm={fb.rpm} sentido={fb.sentido} reduzido={reduzido} />
-          <Legenda linhas={[fb.atingido ? "✓ ALVO ATINGIDO" : "aguardando…", `${fb.rpm} rpm ${setaDeSentido(fb.sentido)}`]} y={54} destaque={fb.atingido} />
+          <Saida ressonancia={fb.ressonancia} rpm={fb.rpm} sentido={fb.sentido} reduzido={reduzido} />
+          {/* Nunca "✓ ALVO ATINGIDO" nem o valor-alvo — só a ressonância
+              qualitativa (seção 8/10 da encomenda) + a RPM ATUAL, que é
+              informação física observável e permitida. */}
+          <Legenda linhas={[apresentacao.rotulo, `Saída atual: ${fb.rpm} rpm ${setaDeSentido(fb.sentido)}`]} y={54} destaque={apresentacao.pulsar} />
         </FormaEstatica>
       );
     }
@@ -468,11 +578,21 @@ function Embreagem({ engatada, rpm, sentido, reduzido }: { engatada: boolean; rp
   );
 }
 
-function Saida({ atingido, rpm, sentido, reduzido }: { atingido: boolean; rpm: number; sentido: Sentido; reduzido: boolean }) {
-  const cor = atingido ? OURO : "#6a7a8a";
+// "Selo Solar" — instrumento/mecanismo (seção 10 da encomenda), nunca
+// uma escala numérica alvo. A cor/espessura/pulso refletem só a
+// classificação qualitativa de ressonância, nunca um valor exato.
+const COR_POR_RESSONANCIA: Record<RessonanciaSaida, string> = {
+  SEM_RESONANCIA: "#6a7a8a",
+  FRACA: "#8a7a5a",
+  PROXIMA: "#c89450",
+  ESTAVEL: OURO,
+};
+function Saida({ ressonancia, rpm, sentido, reduzido }: { ressonancia: RessonanciaSaida; rpm: number; sentido: Sentido; reduzido: boolean }) {
+  const estavel = ressonancia === "ESTAVEL";
+  const cor = COR_POR_RESSONANCIA[ressonancia];
   return (
     <>
-      <circle r={28} fill="none" stroke={cor} strokeWidth={atingido ? 5 : 3} className={atingido && !reduzido ? "puzzle-pulsar-objetivo" : undefined} />
+      <circle r={28} fill="none" stroke={cor} strokeWidth={estavel ? 5 : 3} className={estavel && !reduzido ? "puzzle-pulsar-objetivo" : undefined} />
       {grupoGirante(rpm, sentido, reduzido, <line x1={0} y1={0} x2={0} y2={-20} stroke={cor} strokeWidth={3} />)}
       <circle r={5} fill={cor} />
     </>

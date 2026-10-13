@@ -35,11 +35,28 @@ export interface PuzzleMecanicoConfig {
   connections: ConexaoMecanicaConfig[];
 }
 
-export interface MotorFeedback {
+// Evolução "RPM ajustável" — motor LEGADO (sem `ajustavel`) continua
+// com o shape de sempre (ligado/rpm/sentido); motor AJUSTÁVEL ganha
+// `ajustavel:true` + os limites do regulador (rpmMin/rpmMax/rpmStep) e
+// `rpmConfigurado` (o valor "guardado", mesmo desligado) — nunca
+// segredo, o jogador PRECISA desses números pra operar o controle.
+export interface MotorFeedbackLegado {
   ligado: boolean;
   rpm: number;
   sentido: Sentido;
+  ajustavel?: false;
 }
+export interface MotorFeedbackAjustavel {
+  ligado: boolean;
+  rpm: number;
+  sentido: Sentido;
+  ajustavel: true;
+  rpmConfigurado: number;
+  rpmMin: number;
+  rpmMax: number;
+  rpmStep: number;
+}
+export type MotorFeedback = MotorFeedbackLegado | MotorFeedbackAjustavel;
 export interface EixoFeedback {
   rpm: number;
   sentido: Sentido;
@@ -62,10 +79,15 @@ export interface EmbreagemFeedback {
   rpm: number;
   sentido: Sentido;
 }
+// Evolução "esconder targets do jogador" — `atingido` (boolean cru)
+// NUNCA mais atravessa o backend; só a classificação qualitativa de
+// ressonância abaixo, que já chega pronta (o cliente nunca precisa do
+// valor-alvo pra decidir a cor/texto).
+export type RessonanciaSaida = "SEM_RESONANCIA" | "FRACA" | "PROXIMA" | "ESTAVEL";
 export interface SaidaFeedback {
   rpm: number;
   sentido: Sentido;
-  atingido: boolean;
+  ressonancia: RessonanciaSaida;
 }
 
 export type ComponenteFeedback =
