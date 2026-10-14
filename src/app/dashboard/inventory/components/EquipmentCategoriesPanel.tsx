@@ -10,7 +10,8 @@ import { formatarTier } from "@/utils/equipmentTier";
 import { agruparInstancias } from "@/utils/agruparInstancias";
 import ItemIcon from "@/components/Item/ItemIcon";
 import { ORDEM_RARIDADE, OPCOES_ORDENACAO, type CriterioOrdenacaoInventario } from "@/lib/inventorySort";
-import { useTooltipSide } from "@/hooks/useTooltipSide";
+import { useTooltipFixo } from "@/hooks/useTooltipSide";
+import TooltipFixo from "@/components/TooltipFixo";
 
 type Slot =
   | "Cabeca"
@@ -226,11 +227,12 @@ function iconeFallback(nome: string) {
 
 // Componente próprio por card (não inline no .map() de agruparInstancias)
 // porque a direção do tooltip precisa de estado/medição POR CARD —
-// useTooltipSide chamado dentro de um callback de .map() vira hook-em-
-// -loop. Abrir sempre pra baixo cortava o cabeçalho pros itens do topo
-// da grade, mas também empurrava a página pra baixo sem necessidade
-// pros itens perto do fim — os dois bugs reais, vistos testando a tela
-// como jogador (não só tsc/eslint): ver useTooltipSide.ts.
+// useTooltipFixo chamado dentro de um callback de .map() vira hook-em-
+// -loop. Terceira versão deste tooltip (ver useTooltipSide.ts): agora
+// position:fixed + portal, medido de verdade contra a viewport inteira
+// — as duas primeiras ("sempre pra baixo", depois "só perto do topo da
+// viewport") ainda cortavam/cobriam outras seções numa página com
+// vários cards empilhados.
 function ItemEquipavelCard({
   grupo,
   marcado,
@@ -241,13 +243,23 @@ function ItemEquipavelCard({
   aoClicar: () => void;
 }) {
   const instancia = grupo.representante;
-  const { abrirParaBaixo, medir } = useTooltipSide();
+  const { gatilhoRef, tooltipRef, posicao, hover, aoEntrar, aoSair, medir } = useTooltipFixo<HTMLButtonElement>();
+
+  // Mobile não tem :hover — "marcado" (já ativa ao tocar) precisa
+  // mostrar o tooltip também, e sem um mouseenter pra disparar a
+  // medição, tem que medir explicitamente quando o toque seleciona o
+  // item.
+  useEffect(() => {
+    if (marcado) medir();
+  }, [marcado, medir]);
 
   return (
     <button
+      ref={gatilhoRef}
       type="button"
       onClick={aoClicar}
-      onMouseEnter={(e) => medir(e.currentTarget)}
+      onMouseEnter={aoEntrar}
+      onMouseLeave={aoSair}
       className={`group relative z-10 h-16 w-16 overflow-visible rounded-lg border-2 bg-[#3a2f24] transition hover:z-20 ${
         marcado
           ? "border-[#F3B43F] ring-2 ring-[#F3B43F]/70"
@@ -279,14 +291,8 @@ function ItemEquipavelCard({
 
       {/* Nome/tier/atributos aparecem no hover (desktop) — sem :hover
           no mobile, reaproveita o próprio "marcado" (já ativa ao tocar)
-          pra mostrar o tooltip também por toque. Abre pra cima por
-          padrão e só pra baixo quando falta espaço acima
-          (useTooltipSide). */}
-      <div
-        className={`pointer-events-none absolute left-1/2 w-40 -translate-x-1/2 rounded-md bg-black/90 p-2 text-center shadow-lg transition-opacity group-hover:opacity-100 ${
-          abrirParaBaixo ? "top-full mt-2" : "bottom-full mb-2"
-        } ${marcado ? "opacity-100" : "opacity-0"}`}
-      >
+          pra mostrar o tooltip também por toque. */}
+      <TooltipFixo tooltipRef={tooltipRef} posicao={posicao} visivel={hover || marcado}>
         <span className="block text-[10px] font-bold leading-tight text-white">
           {instancia.nome}
           <ItemTypingDetails itemId={instancia.id_item} />
@@ -301,7 +307,7 @@ function ItemEquipavelCard({
         <div className="mt-1 text-[9px] leading-tight text-white/90">
           <ListaDeAtributos base={instancia.propriedades_base} efetivo={instancia.propriedades_efetivas} />
         </div>
-      </div>
+      </TooltipFixo>
     </button>
   );
 }
@@ -508,11 +514,13 @@ export default function EquipmentCategoriesPanel() {
 // precisa de um componente próprio por card, não um .map() inline.
 function VaraDePescaCard({ grupo }: { grupo: ReturnType<typeof agruparInstancias<InstanciaApi>>[number] }) {
   const instancia = grupo.representante;
-  const { abrirParaBaixo, medir } = useTooltipSide();
+  const { gatilhoRef, tooltipRef, posicao, hover, aoEntrar, aoSair } = useTooltipFixo<HTMLDivElement>();
 
   return (
     <div
-      onMouseEnter={(e) => medir(e.currentTarget)}
+      ref={gatilhoRef}
+      onMouseEnter={aoEntrar}
+      onMouseLeave={aoSair}
       className={`group relative h-16 w-16 overflow-visible rounded-lg border-2 bg-[#3a2f24] ${bordaPorRaridade(instancia.raridade)}`}
     >
       <ItemIcon
@@ -531,11 +539,7 @@ function VaraDePescaCard({ grupo }: { grupo: ReturnType<typeof agruparInstancias
           +{instancia.refinamento}
         </span>
       )}
-      <div
-        className={`pointer-events-none absolute left-1/2 z-20 w-40 -translate-x-1/2 rounded-md bg-black/90 p-2 text-center opacity-0 shadow-lg transition-opacity group-hover:opacity-100 ${
-          abrirParaBaixo ? "top-full mt-2" : "bottom-full mb-2"
-        }`}
-      >
+      <TooltipFixo tooltipRef={tooltipRef} posicao={posicao} visivel={hover}>
         <span className="block text-[10px] font-bold leading-tight text-white">
           {instancia.nome}
           <ItemTypingDetails itemId={instancia.id_item} />
@@ -547,7 +551,7 @@ function VaraDePescaCard({ grupo }: { grupo: ReturnType<typeof agruparInstancias
             {instancia.descricao}
           </span>
         )}
-      </div>
+      </TooltipFixo>
     </div>
   );
 }

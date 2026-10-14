@@ -46,12 +46,18 @@ export default function ItemTypingDetails({
           +{value.weapon?.elementalPct}% como {value.nativeElement.nome}
         </p>
       )}
-      {value.familyBonuses.map((b, i) => (
+      {/* Optional chaining de propósito: este componente é montado pra
+          CADA item equipável/vara do Inventário, sempre (mesmo com o
+          tooltip escondido via opacity) — uma resposta inesperada do
+          backend pra UM item só não pode derrubar a página inteira
+          (bug real visto testando: um fixture de teste sem essa rota
+          mockada corretamente derrubava TODO o Inventário). */}
+      {value.familyBonuses?.map((b, i) => (
         <p key={i}>
           +{b.damageBonusPct}% contra {b.family?.nome}
         </p>
       ))}
-      {value.modifiers.map((m) => (
+      {value.modifiers?.map((m) => (
         <p key={m.affinity.id}>
           {m.affinity.nome}: recebe {Math.abs(m.receivedDamagePct)}%{" "}
           {m.receivedDamagePct < 0 ? "menos" : "mais"} dano

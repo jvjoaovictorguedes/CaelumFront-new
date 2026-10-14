@@ -6,7 +6,8 @@ import { resolveMediaUrl } from "@/utils/media-url";
 import { useCharacter } from "@/contexts/CharacterContext";
 import ItemIcon from "@/components/Item/ItemIcon";
 import { OPCOES_ORDENACAO, ordenarInventario, type CriterioOrdenacaoInventario } from "@/lib/inventorySort";
-import { useTooltipSide } from "@/hooks/useTooltipSide";
+import { useTooltipFixo } from "@/hooks/useTooltipSide";
+import TooltipFixo from "@/components/TooltipFixo";
 
 interface ConsumablePropertiesApi {
   efeito_vida: number;
@@ -80,13 +81,15 @@ function ConsumivelCard({
   selecionado: boolean;
   aoSelecionar: () => void;
 }) {
-  const { abrirParaBaixo, medir } = useTooltipSide();
+  const { gatilhoRef, tooltipRef, posicao, hover, aoEntrar, aoSair } = useTooltipFixo<HTMLButtonElement>();
 
   return (
     <button
+      ref={gatilhoRef}
       type="button"
       onClick={aoSelecionar}
-      onMouseEnter={(e) => medir(e.currentTarget)}
+      onMouseEnter={aoEntrar}
+      onMouseLeave={aoSair}
       className={`group relative z-10 h-16 w-16 overflow-visible rounded-lg border-2 bg-[#3a2f24] transition duration-150 hover:z-20 hover:scale-110 ${
         selecionado
           ? "border-[#F3B43F] ring-2 ring-[#F3B43F]/70"
@@ -111,25 +114,20 @@ function ConsumivelCard({
       {/* Tooltip de hover com nome + descrição — o `title` nativo
           (removido) só mostrava o nome e não suporta texto rico; clicar
           continua abrindo o painel "Usar" embaixo, que reaproveita o
-          mesmo StatsDoConsumivel. Abre pra cima por padrão e só pra
-          baixo quando falta espaço acima (useTooltipSide) — abrir
-          sempre pra baixo cortava o cabeçalho da aba pros itens da
-          primeira linha, mas também fazia o último item da lista
-          "empurrar" a página e forçar rolagem sem necessidade: os dois
-          bugs reais, vistos testando a tela como jogador, não só no
-          tsc/eslint. */}
-      <div
-        className={`pointer-events-none absolute left-1/2 z-20 w-40 -translate-x-1/2 rounded-md bg-black/90 p-2 text-center opacity-0 shadow-lg transition-opacity group-hover:opacity-100 ${
-          abrirParaBaixo ? "top-full mt-2" : "bottom-full mb-2"
-        }`}
-      >
+          mesmo StatsDoConsumivel. Terceira versão deste tooltip: as
+          duas primeiras (sempre pra baixo, depois "pra baixo só perto
+          do topo da VIEWPORT") ainda cortavam ou cobriam outras seções
+          numa página com várias cards empilhados — ver useTooltipSide.ts
+          pro motivo de agora ser position:fixed + portal, medido de
+          verdade, nunca um limiar fixo. */}
+      <TooltipFixo tooltipRef={tooltipRef} posicao={posicao} visivel={hover}>
         <span className="block text-[10px] font-bold leading-tight text-white">{entrada.Item.nome}</span>
         {entrada.Item.descricao && (
           <span className="mt-1 block text-[9px] font-normal leading-tight text-white/60">
             {entrada.Item.descricao}
           </span>
         )}
-      </div>
+      </TooltipFixo>
     </button>
   );
 }

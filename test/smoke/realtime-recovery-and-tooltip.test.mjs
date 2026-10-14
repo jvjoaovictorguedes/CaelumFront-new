@@ -11,12 +11,25 @@
 //    real) e confirmando que o app se recupera sozinho (RankedPanel sai
 //    de "Conectando ao servidor de duelos..." e o botão fica clicável).
 //
-// 2) "A descrição ficou embaixo da foto" (tooltip cortado/sobreposto) —
-//    causa raiz: o tooltip da grade de Consumíveis abria pra CIMA
-//    (bottom-full), e o primeiro item da grade fica colado no topo da
-//    aba — sem espaço acima, o tooltip saía cortado pelo cabeçalho.
-//    Testado aqui com geometria real (getBoundingClientRect) do
-//    tooltip em hover, mais um screenshot pra inspeção visual direta.
+// 2) Tooltip cortado/sobreposto — reportado em TRÊS rodadas diferentes,
+//    cada uma expondo um jeito novo de errar a mesma conta:
+//      a) abria sempre pra CIMA (bottom-full) — cortava o cabeçalho pro
+//         item colado no topo da aba.
+//      b) o fix virou "sempre pra BAIXO" — passou a cobrir a linha de
+//         baixo e empurrar a página (forçar rolagem) pro item no fim
+//         da lista.
+//      c) o fix virou "pra baixo só perto do topo da VIEWPORT" — numa
+//         página com vários cards empilhados (Mão/Anel/Colar/Varas de
+//         Pesca), isso ainda cobria o CARD ANTERIOR quando o item tinha
+//         "espaço" só porque tava longe do topo da PÁGINA, não porque
+//         tinha espaço de verdade livre ali perto.
+//    Fix de verdade: position:fixed + portal pra document.body, medido
+//    contra a viewport real (useTooltipSide.ts) e sempre clampado pra
+//    nunca sair da tela — nunca mais um limiar fixo. Testado aqui com
+//    geometria real (getBoundingClientRect) em 3 cenários (item colado
+//    no topo, item perto do fim da viewport, e o layout exato do bug
+//    reportado — Vara de Bambu logo abaixo do card Colar), mais
+//    screenshots pra inspeção visual direta.
 import test from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
@@ -123,16 +136,10 @@ test(
       await botaoBuscar.waitFor();
       assert.equal(await botaoBuscar.isDisabled(), false, "botão de Ranqueado deve ficar clicável após a recuperação");
 
-      // --- Bug 2 (e a regressão que ele virou): tooltip do Consumível
-      // precisa abrir pra BAIXO só quando não há espaço acima (item
-      // colado no topo da aba — bug original, tooltip cortado), e pra
-      // CIMA quando há espaço de sobra (senão regride pro bug novo
-      // reportado: tooltip cobrindo itens/cabeçalho de baixo, ou
-      // "empurrando" a página e forçando rolagem sem necessidade).
-      // useTooltipSide.ts decide isso via getBoundingClientRect
-      // (ESPACO_MINIMO_ACIMA_PX=200), então o teste reproduz as DUAS
-      // posições de verdade via scroll, em vez de confiar em onde a
-      // fixture deixa o item por acaso.
+      // --- Bug 2: tooltip do Consumível (ver useTooltipSide.ts pro
+      // histórico das 3 rodadas). Geometria real via getBoundingClientRect
+      // em posições que o scroll força de verdade, nunca confiando em
+      // onde a fixture deixa o item por acaso.
       await page.goto(`${origin}/dashboard/inventory`);
       await page.getByRole("button", { name: "Meus Consumíveis" }).click();
       const itemBotao = page
@@ -143,7 +150,8 @@ test(
       const tooltip = page.getByText("Poção de Mana Smoke", { exact: true }).locator("..");
 
       // Posição 1: item colado no topo da viewport (reproduz o bug
-      // original — primeira linha da grade, sem espaço acima).
+      // original — primeira linha da grade, pouquíssimo espaço acima:
+      // espaço abaixo é necessariamente maior, abre pra baixo).
       await itemBotao.evaluate((el) => el.scrollIntoView({ block: "start" }));
       await itemBotao.hover();
       await tooltip.waitFor({ state: "visible" });
@@ -151,42 +159,93 @@ test(
       let caixaTooltip = await tooltip.boundingBox();
       assert.ok(caixaItem && caixaTooltip, "precisa conseguir medir item e tooltip (colado no topo)");
       assert.ok(
-        caixaItem.y < 200,
-        `fixture do teste precisa deixar o item perto o bastante do topo (y=${caixaItem.y})`,
-      );
-      assert.ok(
         caixaTooltip.y >= caixaItem.y + caixaItem.height - 1,
         `sem espaço acima, tooltip deveria abrir pra baixo (item termina em ${caixaItem.y + caixaItem.height}, tooltip começa em ${caixaTooltip.y})`,
       );
-      assert.ok(caixaTooltip.y >= 0, "tooltip não pode começar fora da tela por cima");
+      assert.ok(caixaTooltip.y >= 0, "tooltip não pode começar fora da tela por cima — nunca cortado");
       await page.screenshot({ path: "test/smoke/.tooltip-check-colado-no-topo.png", fullPage: false });
 
-      // Posição 2: item da 2ª linha da grade ("Zuado Elixir de Teste",
-      // atrás de 6 fillers que completam a 1ª linha) — tem espaço de
-      // sobra acima (a linha inteira do item 1) e precisa abrir pra
-      // CIMA, senão é exatamente a regressão reportada pelo jogador
-      // (tooltip cobrindo a linha de baixo / empurrando a página).
+      // Posição 2: item da 2ª linha da grade ("Zuado Elixir de Teste"),
+      // colado no FIM da viewport (scrollIntoView "end") — pouquíssimo
+      // espaço abaixo, então o espaço de cima é necessariamente maior:
+      // abre pra cima. Replica o bug real ("último item empurra a
+      // página e força rolagem sem necessidade") — como agora é
+      // position:fixed, isso é estruturalmente impossível (nunca
+      // participa do scrollHeight do documento), confirmado comparando
+      // o scrollHeight antes/depois do hover.
       const itemLinha2 = page
         .locator("button")
         .filter({ has: page.locator("span", { hasText: "x7" }) })
         .first();
       await itemLinha2.waitFor();
-      await itemLinha2.evaluate((el) => el.scrollIntoView({ block: "center" }));
+      // Viewport baixa de propósito: a grade de 8 itens cabe inteira
+      // numa viewport de 720px sem precisar rolar, então "scrollIntoView
+      // end" não aproxima o item do fim de nada — não existe sobra pra
+      // rolar. Encolher a janela é o jeito confiável de garantir pouco
+      // espaço ABAIXO do item sem depender de quanto conteúdo a fixture
+      // tem.
+      await page.setViewportSize({ width: 1280, height: 320 });
+      await itemLinha2.evaluate((el) => el.scrollIntoView({ block: "end" }));
+      const scrollHeightAntes = await page.evaluate(() => document.documentElement.scrollHeight);
       await itemLinha2.hover();
       const tooltipLinha2 = page.getByText("Zuado Elixir de Teste", { exact: true }).locator("..");
       await tooltipLinha2.waitFor({ state: "visible" });
+      const scrollHeightDepois = await page.evaluate(() => document.documentElement.scrollHeight);
       caixaItem = await itemLinha2.boundingBox();
       caixaTooltip = await tooltipLinha2.boundingBox();
-      assert.ok(caixaItem && caixaTooltip, "precisa conseguir medir item e tooltip (com espaço acima)");
-      assert.ok(
-        caixaItem.y >= 200,
-        `fixture do teste precisa deixar espaço de sobra acima do item da 2ª linha (y=${caixaItem.y})`,
-      );
+      assert.ok(caixaItem && caixaTooltip, "precisa conseguir medir item e tooltip (no fim da viewport)");
       assert.ok(
         caixaTooltip.y + caixaTooltip.height <= caixaItem.y + 1,
-        `com espaço de sobra acima, tooltip deveria abrir pra cima — nunca cobrir o que vem depois nem empurrar a página (item começa em ${caixaItem.y}, tooltip termina em ${caixaTooltip.y + caixaTooltip.height})`,
+        `sem espaço abaixo, tooltip deveria abrir pra cima (item começa em ${caixaItem.y}, tooltip termina em ${caixaTooltip.y + caixaTooltip.height})`,
+      );
+      assert.ok(
+        caixaTooltip.y + caixaTooltip.height <= (await page.evaluate(() => window.innerHeight)),
+        "tooltip não pode terminar fora da tela por baixo — nunca cortado",
+      );
+      assert.equal(
+        scrollHeightDepois,
+        scrollHeightAntes,
+        "hover num item no fim da página NUNCA pode mudar a altura rolável do documento",
       );
       await page.screenshot({ path: "test/smoke/.tooltip-check-com-espaco.png", fullPage: false });
+      await page.setViewportSize({ width: 1280, height: 720 });
+
+      // --- Bug 2c (o mais recente): layout real de várias seções
+      // empilhadas — Vara de Bambu logo abaixo do card "Colar" (as 7
+      // seções de SECOES sempre desenham antes de Varas de Pesca,
+      // mesmo vazias, empurrando o card pra baixo da viewport). O
+      // ponto não é "não pode sobrepor o Colar" (sobrepor um card
+      // vizinho momentaneamente é comportamento normal de tooltip) — é
+      // nunca cortar/sumir e nunca forçar scroll, não importa o quão
+      // apertado o espaço real esteja.
+      await page.goto(`${origin}/dashboard/inventory`);
+      // VaraDePescaCard é o ÚNICO gatilho de tooltip da aba que usa um
+      // <div className="group ..."> em vez de <button> — identifica ele
+      // sozinho, sem precisar de texto (o nome só existe dentro do
+      // tooltip, que começa invisível/fora da tela).
+      const gatilhoVara = page.locator("div.group.relative.h-16.w-16").first();
+      await gatilhoVara.waitFor();
+      await gatilhoVara.scrollIntoViewIfNeeded();
+      const alturaDocAntes = await page.evaluate(() => document.documentElement.scrollHeight);
+      await gatilhoVara.hover();
+      const tooltipVara = page.getByText("Baixa força, boa precisão", { exact: false }).locator("..");
+      await tooltipVara.waitFor({ state: "visible" });
+      const alturaDocDepois = await page.evaluate(() => document.documentElement.scrollHeight);
+      const caixaVara = await gatilhoVara.boundingBox();
+      const caixaTooltipVara = await tooltipVara.boundingBox();
+      const alturaJanela = await page.evaluate(() => window.innerHeight);
+      assert.ok(caixaVara && caixaTooltipVara, "precisa conseguir medir o ícone e o tooltip da Vara de Bambu");
+      assert.ok(caixaTooltipVara.y >= 0, "tooltip da Vara de Bambu não pode começar fora da tela por cima");
+      assert.ok(
+        caixaTooltipVara.y + caixaTooltipVara.height <= alturaJanela,
+        "tooltip da Vara de Bambu não pode terminar fora da tela por baixo",
+      );
+      assert.equal(
+        alturaDocDepois,
+        alturaDocAntes,
+        "hover na Vara de Bambu NUNCA pode mudar a altura rolável do documento",
+      );
+      await page.screenshot({ path: "test/smoke/.tooltip-check-varas-pesca.png", fullPage: false });
 
       assert.deepEqual(errors, []);
     } catch (error) {

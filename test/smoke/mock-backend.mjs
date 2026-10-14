@@ -89,6 +89,15 @@ export async function startMockBackend(port = 3101) {
     else if(route==="/world-crisis/contribute"){crisisProgress+=Number(body.quantity);payload={data:{accepted_quantity:body.quantity,progress_units:body.quantity,ranking_points:body.quantity,remaining_quantity:0}};}
     else if(route==="/admin/world-crisis/catalogs")payload={data:{items:[],resources:[],zones:[],configs:[],enabled:false}};
     else if(route.startsWith("/combat-typing/powers/"))payload={data:{nature:"Fisico",affinityMode:"INHERIT_WEAPON",affinity:null,addedAffinity:null,addedDamagePct:0,imbueAffinity:null,imbueDamagePct:0,imbueDurationTurns:0,familyBonuses:[],statusPossiveis:[]}};
+    // ItemTypingDetails.tsx busca isto já no MOUNT (não só no hover) —
+    // sem uma rota própria aqui, o catch-all devolvia `{data: []}` e
+    // `value.familyBonuses.map(...)` quebrava em QUALQUER tooltip de
+    // equipamento/vara renderizado (mesmo escondido via opacity/fora da
+    // tela, ele ainda está montado). Nunca pego pelos testes antes
+    // porque nenhum smoke test tinha exercitado EquipmentCategoriesPanel
+    // com itens de verdade até o cenário da Vara de Bambu.
+    else if(route.startsWith("/combat-typing/items/")&&!route.endsWith("/compare"))payload={data:{weapon:null,affinity:null,nativeElement:null,modifiers:[],familyBonuses:[]}};
+    else if(route.startsWith("/combat-typing/items/")&&route.endsWith("/compare"))payload={data:{affinities:[]}};
     else if(route==="/admin/combat-typing")payload={data:{catalogs:typingCatalogs,config:{pve_enabled:true,pvp_enabled:false,min_multiplier:0.05,max_multiplier:3,family_bonus_cap:50,effective_min:1.15,weakened_max:0.9,ineffective_max:0.6,labels:{effective:"EFETIVO",neutral:"NEUTRO",weakened:"ENFRAQUECIDO",ineffective:"INEFICAZ"}},metrics:{}}};
     else if(route==="/admin/combat-typing/entities/monsters")payload={data:[{id:1,nome:"Golem Smoke"}]};
     else if(route==="/admin/combat-typing/entities/monsters/1")payload={data:{values:{id:1,nome:"Golem Smoke",monster_family_id:1,affinity_profile_id:null,basic_attack_nature:"Fisico",basic_attack_affinity_id:null},preview:{family:{id:1,nome:"Construto"},inherited:{1:1},overrides:{},multipliers:{1:1}}}};
@@ -158,6 +167,48 @@ export async function startMockBackend(port = 3101) {
                 descricao: "Item da 2ª linha — tooltip precisa abrir pra cima aqui.",
                 consumableProperties: { efeito_vida: 20, efeito_mana: 0 },
               },
+            },
+          ],
+        },
+      };
+    // Reproduz o layout real do bug reportado ("Vara de Bambu" cortando
+    // o card "Colar" acima dela): a aba de Equipamentos sempre desenha
+    // as 7 seções de SECOES (mesmo vazias) ANTES de Varas de Pesca, o
+    // que já empurra a seção de varas bem pra baixo da viewport — não
+    // precisa de muito item pra reproduzir, só um Colar equipado (pro
+    // card "Colar" ter altura de verdade) e uma vara.
+    else if (route === "/inventory/v2")
+      payload = {
+        data: {
+          equipmentInstances: [
+            {
+              id: 50,
+              id_item: 60,
+              nome: "Vara de Bambu",
+              descricao: "Baixa força, boa precisão — a vara inicial de todo pescador.",
+              tipo_item: "Ferramenta",
+              raridade: "Comum",
+              tier_equipamento: null,
+              imagem_url: null,
+              refinamento: 0,
+              estado: "Inventario",
+              propriedades_base: null,
+              propriedades_efetivas: null,
+            },
+          ],
+          equipped: [
+            {
+              slot: "Acessorio2",
+              id_instancia: 51,
+              id_item: 61,
+              nome: "Colar em Chamas",
+              tipo_item: "Acessorio2",
+              raridade: "Lendario",
+              tier_equipamento: 4,
+              imagem_url: null,
+              refinamento: 1,
+              propriedades_base: null,
+              propriedades_efetivas: null,
             },
           ],
         },
