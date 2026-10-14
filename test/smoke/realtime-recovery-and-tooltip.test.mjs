@@ -123,34 +123,70 @@ test(
       await botaoBuscar.waitFor();
       assert.equal(await botaoBuscar.isDisabled(), false, "botão de Ranqueado deve ficar clicável após a recuperação");
 
-      // --- Bug 2: tooltip do Consumível não corta/sobrepõe o topo da aba ---
+      // --- Bug 2 (e a regressão que ele virou): tooltip do Consumível
+      // precisa abrir pra BAIXO só quando não há espaço acima (item
+      // colado no topo da aba — bug original, tooltip cortado), e pra
+      // CIMA quando há espaço de sobra (senão regride pro bug novo
+      // reportado: tooltip cobrindo itens/cabeçalho de baixo, ou
+      // "empurrando" a página e forçando rolagem sem necessidade).
+      // useTooltipSide.ts decide isso via getBoundingClientRect
+      // (ESPACO_MINIMO_ACIMA_PX=200), então o teste reproduz as DUAS
+      // posições de verdade via scroll, em vez de confiar em onde a
+      // fixture deixa o item por acaso.
       await page.goto(`${origin}/dashboard/inventory`);
       await page.getByRole("button", { name: "Meus Consumíveis" }).click();
-      const icone = page.getByRole("button").filter({ hasText: "" }).locator("img, div.flex").first();
       const itemBotao = page
         .locator("button")
         .filter({ has: page.locator("span", { hasText: "x3" }) })
         .first();
       await itemBotao.waitFor();
-      await itemBotao.hover();
       const tooltip = page.getByText("Poção de Mana Smoke", { exact: true }).locator("..");
-      await tooltip.waitFor({ state: "visible" });
-      await page.getByText("Restaura mana ao ser consumida", { exact: false }).waitFor();
 
-      const caixaItem = await itemBotao.boundingBox();
-      const caixaTooltip = await tooltip.boundingBox();
-      assert.ok(caixaItem && caixaTooltip, "precisa conseguir medir item e tooltip");
-      // Abre pra BAIXO (nunca pra cima): o topo do tooltip fica no/após
-      // o fundo do ícone, nunca sobrepondo o cabeçalho da aba acima.
+      // Posição 1: item colado no topo da viewport (reproduz o bug
+      // original — primeira linha da grade, sem espaço acima).
+      await itemBotao.evaluate((el) => el.scrollIntoView({ block: "start" }));
+      await itemBotao.hover();
+      await tooltip.waitFor({ state: "visible" });
+      let caixaItem = await itemBotao.boundingBox();
+      let caixaTooltip = await tooltip.boundingBox();
+      assert.ok(caixaItem && caixaTooltip, "precisa conseguir medir item e tooltip (colado no topo)");
+      assert.ok(
+        caixaItem.y < 200,
+        `fixture do teste precisa deixar o item perto o bastante do topo (y=${caixaItem.y})`,
+      );
       assert.ok(
         caixaTooltip.y >= caixaItem.y + caixaItem.height - 1,
-        `tooltip deveria abrir pra baixo do item (item termina em ${caixaItem.y + caixaItem.height}, tooltip começa em ${caixaTooltip.y})`,
+        `sem espaço acima, tooltip deveria abrir pra baixo (item termina em ${caixaItem.y + caixaItem.height}, tooltip começa em ${caixaTooltip.y})`,
       );
-      // Nunca cortado por cima da viewport/painel.
       assert.ok(caixaTooltip.y >= 0, "tooltip não pode começar fora da tela por cima");
+      await page.screenshot({ path: "test/smoke/.tooltip-check-colado-no-topo.png", fullPage: false });
 
-      await page.screenshot({ path: "test/smoke/.tooltip-check.png", fullPage: false });
-      void icone;
+      // Posição 2: item da 2ª linha da grade ("Zuado Elixir de Teste",
+      // atrás de 6 fillers que completam a 1ª linha) — tem espaço de
+      // sobra acima (a linha inteira do item 1) e precisa abrir pra
+      // CIMA, senão é exatamente a regressão reportada pelo jogador
+      // (tooltip cobrindo a linha de baixo / empurrando a página).
+      const itemLinha2 = page
+        .locator("button")
+        .filter({ has: page.locator("span", { hasText: "x7" }) })
+        .first();
+      await itemLinha2.waitFor();
+      await itemLinha2.evaluate((el) => el.scrollIntoView({ block: "center" }));
+      await itemLinha2.hover();
+      const tooltipLinha2 = page.getByText("Zuado Elixir de Teste", { exact: true }).locator("..");
+      await tooltipLinha2.waitFor({ state: "visible" });
+      caixaItem = await itemLinha2.boundingBox();
+      caixaTooltip = await tooltipLinha2.boundingBox();
+      assert.ok(caixaItem && caixaTooltip, "precisa conseguir medir item e tooltip (com espaço acima)");
+      assert.ok(
+        caixaItem.y >= 200,
+        `fixture do teste precisa deixar espaço de sobra acima do item da 2ª linha (y=${caixaItem.y})`,
+      );
+      assert.ok(
+        caixaTooltip.y + caixaTooltip.height <= caixaItem.y + 1,
+        `com espaço de sobra acima, tooltip deveria abrir pra cima — nunca cobrir o que vem depois nem empurrar a página (item começa em ${caixaItem.y}, tooltip termina em ${caixaTooltip.y + caixaTooltip.height})`,
+      );
+      await page.screenshot({ path: "test/smoke/.tooltip-check-com-espaco.png", fullPage: false });
 
       assert.deepEqual(errors, []);
     } catch (error) {

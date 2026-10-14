@@ -110,6 +110,15 @@ export async function startMockBackend(port = 3101) {
     else if (route === "/character-inventory")
       payload = {
         data: {
+          // 8 itens de propósito (não 1): o teste de tooltip precisa de
+          // DUAS linhas na grade (sm:grid-cols-7) pra cobrir os dois
+          // lados do bug — o item "Poção de Mana Smoke" (raridade mais
+          // alta, sempre ordenado primeiro) cola no topo da 1ª linha
+          // (cenário do bug original, sem espaço acima), e "Zuado Elixir
+          // de Teste" (nome que ordena por último entre os Comum) cai na
+          // 2ª linha, com espaço de sobra acima (cenário da regressão:
+          // tooltip não pode cobrir a linha de baixo nem empurrar a
+          // página).
           inventory: [
             {
               id_personagem_inventario: 1,
@@ -118,10 +127,36 @@ export async function startMockBackend(port = 3101) {
                 id: 10,
                 nome: "Poção de Mana Smoke",
                 tipo_item: "Consumivel",
-                raridade: "Comum",
+                raridade: "Lendario",
                 imagem_url: null,
                 descricao: "Restaura mana ao ser consumida — fixture de smoke test pro bug de tooltip cortado.",
                 consumableProperties: { efeito_vida: 0, efeito_mana: 30 },
+              },
+            },
+            ...Array.from({ length: 6 }, (_, i) => ({
+              id_personagem_inventario: 100 + i,
+              quantidade: 1,
+              Item: {
+                id: 20 + i,
+                nome: `Filler ${i + 1}`,
+                tipo_item: "Consumivel",
+                raridade: "Comum",
+                imagem_url: null,
+                descricao: null,
+                consumableProperties: { efeito_vida: 0, efeito_mana: 0 },
+              },
+            })),
+            {
+              id_personagem_inventario: 2,
+              quantidade: 7,
+              Item: {
+                id: 11,
+                nome: "Zuado Elixir de Teste",
+                tipo_item: "Consumivel",
+                raridade: "Comum",
+                imagem_url: null,
+                descricao: "Item da 2ª linha — tooltip precisa abrir pra cima aqui.",
+                consumableProperties: { efeito_vida: 20, efeito_mana: 0 },
               },
             },
           ],

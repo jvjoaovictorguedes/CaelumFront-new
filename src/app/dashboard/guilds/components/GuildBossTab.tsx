@@ -163,20 +163,25 @@ export default function GuildBossTab({
     }, TIMEOUT_ENTRADA_BOSS_GUILDA_MS);
   }, [realtimeReady, entrando, entrarNoBossGuilda, limparErroBossGuilda, limparTimeoutDeEntrada]);
 
-  // Resync após F5/reconexão (bug reportado): o backend (guildboss:entrar
-  // em guildBossSocket.js) já é idempotente e devolve o estado ATUAL da
-  // luta se o personagem já estava nela. Só dispara quando
-  // `realtimeReady` — nunca antes do IDENTIFY terminar (mesma garantia
-  // do clique manual; dispararEntrada é um no-op silencioso enquanto não
-  // está pronto). `dispararEntrada` é OMITIDO de propósito das deps: ele
-  // muda de identidade a cada toggle de `entrando`, e incluí-lo faria
-  // este efeito re-disparar em loop a cada erro do servidor.
-  useEffect(() => {
-    if (status?.tentativa?.status === "Ativo" && !batalhaBossGuilda) {
-      dispararEntrada();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status?.tentativa?.status, batalhaBossGuilda, realtimeReady]);
+  // Resync após F5/reconexão (bug real reportado duas vezes: primeiro
+  // "o botão trava", depois, já com esse fix, "o boss ainda tá bugado...
+  // não é pq ele já tava ativo?" — e era: este efeito chamava
+  // guildboss:entrar sozinho, no CLIENTE, sempre que a tentativa da
+  // GUILDA estivesse "Ativo", mesmo pra quem nunca tinha entrado na
+  // luta. Esse evento não é neutro — checa cooldown de 20min e, se não
+  // achar uma luta pra resync, ABRE uma nova sozinho (ver
+  // guildBossSocket.js). Resultado: só de abrir esta aba enquanto
+  // QUALQUER outro membro da guilda estava lutando, o jogador era
+  // silenciosamente colocado na luta (ou levava um erro de cooldown)
+  // sem ter clicado em nada.
+  //
+  // O resync de verdade agora é PASSIVO, feito pelo backend
+  // (guildBossSocket.js via registrarAoIdentificar, mesmo padrão de
+  // partySocket.js pro convite pendente): ele só reenvia
+  // guildboss:estado quando ESTE personagem já está numa luta de
+  // verdade (`batalhaPorPersonagem`), nunca cria nem entra em nada —
+  // chega aqui pelo mesmo listener que já popula `batalhaBossGuilda`
+  // pro clique manual, sem precisar o cliente chamar entrar() sozinho.
 
   async function liberarBoss() {
     if (processando) return;

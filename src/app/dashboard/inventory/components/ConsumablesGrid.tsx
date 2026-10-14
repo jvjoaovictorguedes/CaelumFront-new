@@ -6,6 +6,7 @@ import { resolveMediaUrl } from "@/utils/media-url";
 import { useCharacter } from "@/contexts/CharacterContext";
 import ItemIcon from "@/components/Item/ItemIcon";
 import { OPCOES_ORDENACAO, ordenarInventario, type CriterioOrdenacaoInventario } from "@/lib/inventorySort";
+import { useTooltipSide } from "@/hooks/useTooltipSide";
 
 interface ConsumablePropertiesApi {
   efeito_vida: number;
@@ -64,6 +65,72 @@ function StatsDoConsumivel({ item }: { item: ItemInfo }) {
       )}
       {item.descricao && <p className="max-w-xs text-xs text-white/60">{item.descricao}</p>}
     </div>
+  );
+}
+
+// Componente próprio por item (não inline no .map()) porque a direção
+// do tooltip precisa de estado/medição POR CARD — um hook não pode
+// viver dentro de um callback de .map() sem virar hook-em-loop.
+function ConsumivelCard({
+  entrada,
+  selecionado,
+  aoSelecionar,
+}: {
+  entrada: InventarioEntry;
+  selecionado: boolean;
+  aoSelecionar: () => void;
+}) {
+  const { abrirParaBaixo, medir } = useTooltipSide();
+
+  return (
+    <button
+      type="button"
+      onClick={aoSelecionar}
+      onMouseEnter={(e) => medir(e.currentTarget)}
+      className={`group relative z-10 h-16 w-16 overflow-visible rounded-lg border-2 bg-[#3a2f24] transition duration-150 hover:z-20 hover:scale-110 ${
+        selecionado
+          ? "border-[#F3B43F] ring-2 ring-[#F3B43F]/70"
+          : "border-[#F3B43F]/60 hover:border-[#F3B43F]"
+      }`}
+    >
+      <ItemIcon
+        imagemUrl={resolveMediaUrl(entrada.Item.imagem_url)}
+        nome={entrada.Item.nome}
+        permiteClique={false}
+        fallback={
+          <div className="flex h-full w-full items-center justify-center text-lg font-bold text-[#F3B43F]/80">
+            {entrada.Item.nome.charAt(0).toUpperCase()}
+          </div>
+        }
+      />
+      {/* Badge fora do wrapper com overflow-hidden acima — senão
+          o offset negativo fica cortado pelo quadrado do item. */}
+      <span className="pointer-events-none absolute -bottom-1 -right-1 rounded bg-black/80 px-1 text-[9px] font-bold text-white">
+        x{entrada.quantidade}
+      </span>
+      {/* Tooltip de hover com nome + descrição — o `title` nativo
+          (removido) só mostrava o nome e não suporta texto rico; clicar
+          continua abrindo o painel "Usar" embaixo, que reaproveita o
+          mesmo StatsDoConsumivel. Abre pra cima por padrão e só pra
+          baixo quando falta espaço acima (useTooltipSide) — abrir
+          sempre pra baixo cortava o cabeçalho da aba pros itens da
+          primeira linha, mas também fazia o último item da lista
+          "empurrar" a página e forçar rolagem sem necessidade: os dois
+          bugs reais, vistos testando a tela como jogador, não só no
+          tsc/eslint. */}
+      <div
+        className={`pointer-events-none absolute left-1/2 z-20 w-40 -translate-x-1/2 rounded-md bg-black/90 p-2 text-center opacity-0 shadow-lg transition-opacity group-hover:opacity-100 ${
+          abrirParaBaixo ? "top-full mt-2" : "bottom-full mb-2"
+        }`}
+      >
+        <span className="block text-[10px] font-bold leading-tight text-white">{entrada.Item.nome}</span>
+        {entrada.Item.descricao && (
+          <span className="mt-1 block text-[9px] font-normal leading-tight text-white/60">
+            {entrada.Item.descricao}
+          </span>
+        )}
+      </div>
+    </button>
   );
 }
 
@@ -192,53 +259,16 @@ export default function ConsumablesGrid({ characterId }: { characterId: number }
         <>
           <div className="grid grid-cols-4 gap-2 sm:grid-cols-7">
             {ordenarInventario(itens, criterio).map((entrada) => (
-              <button
+              <ConsumivelCard
                 key={entrada.id_personagem_inventario}
-                type="button"
-                onClick={() =>
+                entrada={entrada}
+                selecionado={selecionado === entrada.id_personagem_inventario}
+                aoSelecionar={() =>
                   setSelecionado((atual) =>
                     atual === entrada.id_personagem_inventario ? null : entrada.id_personagem_inventario,
                   )
                 }
-                className={`group relative z-10 h-16 w-16 overflow-visible rounded-lg border-2 bg-[#3a2f24] transition duration-150 hover:z-20 hover:scale-110 ${
-                  selecionado === entrada.id_personagem_inventario
-                    ? "border-[#F3B43F] ring-2 ring-[#F3B43F]/70"
-                    : "border-[#F3B43F]/60 hover:border-[#F3B43F]"
-                }`}
-              >
-                <ItemIcon
-                  imagemUrl={resolveMediaUrl(entrada.Item.imagem_url)}
-                  nome={entrada.Item.nome}
-                  permiteClique={false}
-                  fallback={
-                    <div className="flex h-full w-full items-center justify-center text-lg font-bold text-[#F3B43F]/80">
-                      {entrada.Item.nome.charAt(0).toUpperCase()}
-                    </div>
-                  }
-                />
-                {/* Badge fora do wrapper com overflow-hidden acima — senão
-                    o offset negativo fica cortado pelo quadrado do item. */}
-                <span className="pointer-events-none absolute -bottom-1 -right-1 rounded bg-black/80 px-1 text-[9px] font-bold text-white">
-                  x{entrada.quantidade}
-                </span>
-                {/* Tooltip de hover com nome + descrição — o `title` nativo
-                    (removido) só mostrava o nome e não suporta texto rico;
-                    clicar continua abrindo o painel "Usar" embaixo, que
-                    reaproveita o mesmo StatsDoConsumivel. Abre pra BAIXO
-                    (nunca pra cima): os itens da primeira linha da grade
-                    ficam colados no topo da aba, e um tooltip que abre pra
-                    cima nessa posição é cortado pelo topo do painel — bug
-                    real visto ao testar a tela como jogador, não só o
-                    tsc/eslint. */}
-                <div className="pointer-events-none absolute top-full left-1/2 z-20 mt-2 w-40 -translate-x-1/2 rounded-md bg-black/90 p-2 text-center opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
-                  <span className="block text-[10px] font-bold leading-tight text-white">{entrada.Item.nome}</span>
-                  {entrada.Item.descricao && (
-                    <span className="mt-1 block text-[9px] font-normal leading-tight text-white/60">
-                      {entrada.Item.descricao}
-                    </span>
-                  )}
-                </div>
-              </button>
+              />
             ))}
           </div>
 
