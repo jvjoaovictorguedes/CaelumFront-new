@@ -195,13 +195,12 @@ export default function ConsumablesGrid({ characterId }: { characterId: number }
               <button
                 key={entrada.id_personagem_inventario}
                 type="button"
-                title={entrada.Item.nome}
                 onClick={() =>
                   setSelecionado((atual) =>
                     atual === entrada.id_personagem_inventario ? null : entrada.id_personagem_inventario,
                   )
                 }
-                className={`relative z-10 h-16 w-16 rounded-lg border-2 bg-[#3a2f24] transition duration-150 hover:z-20 hover:scale-110 ${
+                className={`group relative z-10 h-16 w-16 overflow-visible rounded-lg border-2 bg-[#3a2f24] transition duration-150 hover:z-20 hover:scale-110 ${
                   selecionado === entrada.id_personagem_inventario
                     ? "border-[#F3B43F] ring-2 ring-[#F3B43F]/70"
                     : "border-[#F3B43F]/60 hover:border-[#F3B43F]"
@@ -222,6 +221,18 @@ export default function ConsumablesGrid({ characterId }: { characterId: number }
                 <span className="pointer-events-none absolute -bottom-1 -right-1 rounded bg-black/80 px-1 text-[9px] font-bold text-white">
                   x{entrada.quantidade}
                 </span>
+                {/* Tooltip de hover com nome + descrição — o `title` nativo
+                    (removido) só mostrava o nome e não suporta texto rico;
+                    clicar continua abrindo o painel "Usar" embaixo, que
+                    reaproveita o mesmo StatsDoConsumivel. */}
+                <div className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-2 w-40 -translate-x-1/2 rounded-md bg-black/90 p-2 text-center opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+                  <span className="block text-[10px] font-bold leading-tight text-white">{entrada.Item.nome}</span>
+                  {entrada.Item.descricao && (
+                    <span className="mt-1 block text-[9px] font-normal leading-tight text-white/60">
+                      {entrada.Item.descricao}
+                    </span>
+                  )}
+                </div>
               </button>
             ))}
           </div>

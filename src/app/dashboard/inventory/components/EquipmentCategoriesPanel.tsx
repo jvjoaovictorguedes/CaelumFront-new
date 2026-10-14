@@ -76,6 +76,7 @@ interface InstanciaApi {
   id: number;
   id_item: number;
   nome: string;
+  descricao: string | null;
   tipo_item: string;
   raridade: string;
   tier_equipamento: number | null;
@@ -522,6 +523,11 @@ function VarasDePescaSecao({ instancias }: { instancias: InstanciaApi[] }) {
                   {instancia.refinamento > 0 && ` +${instancia.refinamento}`}
                   {grupo.quantidade > 1 && ` (x${grupo.quantidade})`}
                 </span>
+                {instancia.descricao && (
+                  <span className="mt-1 block text-[9px] font-normal leading-tight text-white/60">
+                    {instancia.descricao}
+                  </span>
+                )}
               </div>
             </div>
           );

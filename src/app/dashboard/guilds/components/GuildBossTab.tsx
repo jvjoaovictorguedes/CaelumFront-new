@@ -1,8 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import axiosInstance from "@/utils/axiosIntance";
 import { usePvpSocket } from "@/contexts/PvpSocketContext";
+import {
+  podeIniciarEntradaBossGuilda,
+  MENSAGEM_TIMEOUT_ENTRADA_BOSS_GUILDA,
+  TIMEOUT_ENTRADA_BOSS_GUILDA_MS,
+  MENSAGEM_TIMEOUT_CONEXAO_BOSS_GUILDA,
+  TIMEOUT_CONEXAO_BOSS_GUILDA_MS,
+} from "@/hooks/realtime/guildbossEntrada";
 import type { Permissao } from "./types";
 
 interface ChefeBossApi {
@@ -63,12 +70,35 @@ export default function GuildBossTab({
     resultadoBossGuilda,
     entrarNoBossGuilda,
     limparErroBossGuilda,
+    // Só true depois do ack de TRANSPORT.IDENTIFY (useCombatTransport.ts)
+    // — nunca só `conectado`. Mesmo bug já corrigido no Guardião do
+    // Templo ("clico e a batalha não inicia"): ver guildbossEntrada.ts.
+    realtimeReady,
+    erro: erroConexao,
   } = usePvpSocket();
 
   const [status, setStatus] = useState<StatusBossApi | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [processando, setProcessando] = useState(false);
   const [mensagem, setMensagem] = useState("");
+  const [conexaoDemorada, setConexaoDemorada] = useState(false);
+  // Bug reportado ("botão de Atacar o Boss trava, não consigo entrar"):
+  // clique (ou o resync automático abaixo) sem feedback nenhum enquanto
+  // o socket ainda não tinha terminado de se identificar — o pedido
+  // chegava no servidor sem characterId, o servidor respondia erro, e
+  // nada reavaliava a condição depois disso. `entrando` dá o estado
+  // "Entrando..." e evita clique duplicado; `mensagemBloqueio` cobre
+  // tanto "ainda conectando" quanto "não respondeu a tempo".
+  const [entrando, setEntrando] = useState(false);
+  const [mensagemBloqueio, setMensagemBloqueio] = useState("");
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const limparTimeoutDeEntrada = useCallback(() => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+  }, []);
 
   const carregar = useCallback(async () => {
     try {
@@ -93,21 +123,60 @@ export default function GuildBossTab({
     carregar();
   }, [carregar]);
 
+  // Assim que o servidor responde (sucesso OU erro), a espera acabou —
+  // nunca deixa "Entrando..." travado esperando um evento que já chegou.
+  useEffect(() => {
+    if (batalhaBossGuilda || erroBossGuilda) {
+      limparTimeoutDeEntrada();
+      setEntrando(false);
+    }
+  }, [batalhaBossGuilda, erroBossGuilda, limparTimeoutDeEntrada]);
+
+  useEffect(() => () => limparTimeoutDeEntrada(), [limparTimeoutDeEntrada]);
+
+  // Timeout do handshake em si (antes de qualquer clique): se
+  // realtimeReady nunca vira true, avisa em vez de deixar "Conectando..."
+  // preso pra sempre.
+  useEffect(() => {
+    if (realtimeReady) {
+      setConexaoDemorada(false);
+      return;
+    }
+    const id = setTimeout(() => setConexaoDemorada(true), TIMEOUT_CONEXAO_BOSS_GUILDA_MS);
+    return () => clearTimeout(id);
+  }, [realtimeReady]);
+
+  const dispararEntrada = useCallback(() => {
+    const decisao = podeIniciarEntradaBossGuilda({ realtimeReady, entrando });
+    if (!decisao.podeEntrar) {
+      if (decisao.motivoBloqueio) setMensagemBloqueio(decisao.motivoBloqueio);
+      return;
+    }
+    setMensagemBloqueio("");
+    limparErroBossGuilda();
+    setEntrando(true);
+    entrarNoBossGuilda();
+    limparTimeoutDeEntrada();
+    timeoutRef.current = setTimeout(() => {
+      setEntrando(false);
+      setMensagemBloqueio(MENSAGEM_TIMEOUT_ENTRADA_BOSS_GUILDA);
+    }, TIMEOUT_ENTRADA_BOSS_GUILDA_MS);
+  }, [realtimeReady, entrando, entrarNoBossGuilda, limparErroBossGuilda, limparTimeoutDeEntrada]);
+
   // Resync após F5/reconexão (bug reportado): o backend (guildboss:entrar
   // em guildBossSocket.js) já é idempotente e devolve o estado ATUAL da
-  // luta se o personagem já estava nela — só nunca era chamado sozinho,
-  // só no clique manual de "Atacar o Boss". Sem isso, dar F5 no meio de
-  // uma luta de Boss da Guilda deixava a tela sem a arena, mesmo com a
-  // luta continuando a rodar no servidor; o jogador só via de novo
-  // clicando "Atacar o Boss" (o que reentraria na mesma luta, mas não
-  // sozinho). Entra de novo sempre que a tentativa estiver Ativa e ainda
-  // não houver luta carregada aqui — cobre tanto o mount quanto outro
-  // membro liberando o Boss enquanto esta aba já está aberta.
+  // luta se o personagem já estava nela. Só dispara quando
+  // `realtimeReady` — nunca antes do IDENTIFY terminar (mesma garantia
+  // do clique manual; dispararEntrada é um no-op silencioso enquanto não
+  // está pronto). `dispararEntrada` é OMITIDO de propósito das deps: ele
+  // muda de identidade a cada toggle de `entrando`, e incluí-lo faria
+  // este efeito re-disparar em loop a cada erro do servidor.
   useEffect(() => {
     if (status?.tentativa?.status === "Ativo" && !batalhaBossGuilda) {
-      entrarNoBossGuilda();
+      dispararEntrada();
     }
-  }, [status?.tentativa?.status, batalhaBossGuilda, entrarNoBossGuilda]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status?.tentativa?.status, batalhaBossGuilda, realtimeReady]);
 
   async function liberarBoss() {
     if (processando) return;
@@ -203,12 +272,27 @@ export default function GuildBossTab({
 
                     <button
                       type="button"
-                      onClick={entrarNoBossGuilda}
-                      className="mt-2 rounded-lg bg-[#F3B43F] px-4 py-2 text-sm font-bold text-black transition hover:bg-[#e0a52f]"
+                      onClick={dispararEntrada}
+                      disabled={!realtimeReady || entrando}
+                      className="mt-2 rounded-lg bg-[#F3B43F] px-4 py-2 text-sm font-bold text-black transition hover:bg-[#e0a52f] disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                      Atacar o Boss
+                      {entrando ? "Entrando..." : !realtimeReady ? "Conectando..." : "Atacar o Boss"}
                     </button>
 
+                    {!realtimeReady && conexaoDemorada && (
+                      <p className="mt-2 text-xs text-red-400">{MENSAGEM_TIMEOUT_CONEXAO_BOSS_GUILDA}</p>
+                    )}
+                    {!realtimeReady && erroConexao && (
+                      <p className="mt-2 text-xs text-red-400">{erroConexao}</p>
+                    )}
+                    {mensagemBloqueio && (
+                      <p className="mt-2 text-xs text-red-400">
+                        {mensagemBloqueio}{" "}
+                        <button type="button" onClick={() => setMensagemBloqueio("")} className="underline">
+                          ok
+                        </button>
+                      </p>
+                    )}
                     {erroBossGuilda && (
                       <p className="mt-2 text-xs text-red-400">
                         {erroBossGuilda}{" "}
