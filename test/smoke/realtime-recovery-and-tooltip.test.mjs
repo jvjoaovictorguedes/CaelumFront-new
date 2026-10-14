@@ -245,6 +245,19 @@ test(
         alturaDocAntes,
         "hover na Vara de Bambu NUNCA pode mudar a altura rolável do documento",
       );
+      // Bug real reportado logo depois do fix anterior: "a imagem ficou
+      // embaixo da descrição" — o preview ampliado PRÓPRIO do ItemIcon
+      // (classes h-36/w-36, posição estática) abria num popup separado
+      // do tooltip rico, os dois competindo pelo mesmo espaço no mesmo
+      // hover. mostrarAmpliacao={false} precisa ter desligado esse
+      // popup de vez — nunca deve existir no DOM com o tooltip aberto.
+      assert.equal(
+        await page.locator(".h-36.w-36").count(),
+        0,
+        "o preview ampliado separado do ItemIcon não pode existir mais — a imagem já está dentro do tooltip único",
+      );
+      // A imagem agora mora DENTRO do tooltip único, junto do texto.
+      await tooltipVara.locator("img").waitFor({ state: "visible" });
       await page.screenshot({ path: "test/smoke/.tooltip-check-varas-pesca.png", fullPage: false });
 
       assert.deepEqual(errors, []);

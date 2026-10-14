@@ -100,6 +100,14 @@ function ConsumivelCard({
         imagemUrl={resolveMediaUrl(entrada.Item.imagem_url)}
         nome={entrada.Item.nome}
         permiteClique={false}
+        // O preview ampliado embutido do ItemIcon é um popup PRÓPRIO,
+        // posicionado sozinho (estático, nunca mede espaço de verdade)
+        // — com o tooltip rico deste card (nome+descrição) também
+        // aberto no mesmo hover, viravam DOIS popups brigando pelo
+        // mesmo espaço (bug real reportado: "a imagem ficou embaixo da
+        // descrição"). A imagem agora entra DENTRO do próprio
+        // TooltipFixo abaixo, num tooltip só.
+        mostrarAmpliacao={false}
         fallback={
           <div className="flex h-full w-full items-center justify-center text-lg font-bold text-[#F3B43F]/80">
             {entrada.Item.nome.charAt(0).toUpperCase()}
@@ -111,16 +119,24 @@ function ConsumivelCard({
       <span className="pointer-events-none absolute -bottom-1 -right-1 rounded bg-black/80 px-1 text-[9px] font-bold text-white">
         x{entrada.quantidade}
       </span>
-      {/* Tooltip de hover com nome + descrição — o `title` nativo
-          (removido) só mostrava o nome e não suporta texto rico; clicar
-          continua abrindo o painel "Usar" embaixo, que reaproveita o
-          mesmo StatsDoConsumivel. Terceira versão deste tooltip: as
-          duas primeiras (sempre pra baixo, depois "pra baixo só perto
-          do topo da VIEWPORT") ainda cortavam ou cobriam outras seções
-          numa página com várias cards empilhados — ver useTooltipSide.ts
-          pro motivo de agora ser position:fixed + portal, medido de
-          verdade, nunca um limiar fixo. */}
+      {/* Tooltip de hover com imagem + nome + descrição, tudo num só —
+          o `title` nativo (removido) só mostrava o nome e não suporta
+          texto rico; clicar continua abrindo o painel "Usar" embaixo,
+          que reaproveita o mesmo StatsDoConsumivel. Quarta versão deste
+          tooltip: as três anteriores (sempre pra baixo, depois "pra
+          baixo só perto do topo da VIEWPORT", depois position:fixed mas
+          ainda um popup SEPARADO do preview de imagem do ItemIcon)
+          cada uma resolvia um jeito de cortar/sobrepor — ver
+          useTooltipSide.ts e o comentário de mostrarAmpliacao acima. */}
       <TooltipFixo tooltipRef={tooltipRef} posicao={posicao} visivel={hover}>
+        {resolveMediaUrl(entrada.Item.imagem_url) && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={resolveMediaUrl(entrada.Item.imagem_url)!}
+            alt=""
+            className="mx-auto mb-1 h-10 w-10 object-contain"
+          />
+        )}
         <span className="block text-[10px] font-bold leading-tight text-white">{entrada.Item.nome}</span>
         {entrada.Item.descricao && (
           <span className="mt-1 block text-[9px] font-normal leading-tight text-white/60">

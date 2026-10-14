@@ -29,6 +29,7 @@ export default function ItemIcon({
   imgClassName = "h-full w-full object-contain p-1",
   position = "top",
   permiteClique = true,
+  mostrarAmpliacao = true,
 }: {
   imagemUrl?: string | null;
   nome: string;
@@ -49,17 +50,27 @@ export default function ItemIcon({
   // abrir o preview e nunca mais selecionar. O hover no desktop
   // continua funcionando normalmente.
   permiteClique?: boolean;
+  // Bug real reportado: cards que já têm o PRÓPRIO tooltip rico (nome +
+  // descrição, via useTooltipSide.ts/TooltipFixo) acabavam com DOIS
+  // popups independentes no hover — este preview ampliado (posição
+  // estática, `top`/`bottom` fixo, nunca mede espaço de verdade) E o
+  // tooltip de texto (position:fixed, medido) — cada um decidindo pra
+  // onde abrir por conta própria, um em cima do outro ("a imagem ficou
+  // embaixo da descrição"). Esses cards passam `mostrarAmpliacao={false}`
+  // e colocam a própria imagem DENTRO do tooltip único deles.
+  mostrarAmpliacao?: boolean;
 }) {
   const [visivel, setVisivel] = useState(false);
   const temImagem = Boolean(imagemUrl);
+  const ampliacaoAtiva = mostrarAmpliacao && temImagem;
 
   return (
     <div
       className={`relative ${className}`}
-      onMouseEnter={() => temImagem && setVisivel(true)}
+      onMouseEnter={() => ampliacaoAtiva && setVisivel(true)}
       onMouseLeave={() => setVisivel(false)}
       onClick={
-        temImagem && permiteClique
+        ampliacaoAtiva && permiteClique
           ? (e) => {
               e.stopPropagation();
               setVisivel((v) => !v);
@@ -75,7 +86,7 @@ export default function ItemIcon({
           fallback
         )}
       </div>
-      {visivel && temImagem && (
+      {visivel && ampliacaoAtiva && (
         <div
           className={`pointer-events-none absolute z-50 h-36 w-36 overflow-hidden rounded-xl border-2 border-[#F3B43F] bg-black/85 p-2 shadow-2xl animate-fade-in ${POSICAO[position]}`}
         >

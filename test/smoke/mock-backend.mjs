@@ -137,7 +137,13 @@ export async function startMockBackend(port = 3101) {
                 nome: "Poção de Mana Smoke",
                 tipo_item: "Consumivel",
                 raridade: "Lendario",
-                imagem_url: null,
+                // Precisa de uma imagem DE VERDADE (não null) — o
+                // preview ampliado do ItemIcon só ativa com
+                // `temImagem`, e é exatamente essa combinação (imagem +
+                // tooltip rico no mesmo card) que reproduz o bug real
+                // dos dois popups brigando (ver mostrarAmpliacao nos
+                // cards do Inventário).
+                imagem_url: "/icons/ui/espada.png",
                 descricao: "Restaura mana ao ser consumida — fixture de smoke test pro bug de tooltip cortado.",
                 consumableProperties: { efeito_vida: 0, efeito_mana: 30 },
               },
@@ -150,7 +156,13 @@ export async function startMockBackend(port = 3101) {
                 nome: `Filler ${i + 1}`,
                 tipo_item: "Consumivel",
                 raridade: "Comum",
-                imagem_url: null,
+                // Precisa de uma imagem DE VERDADE (não null) — o
+                // preview ampliado do ItemIcon só ativa com
+                // `temImagem`, e é exatamente essa combinação (imagem +
+                // tooltip rico no mesmo card) que reproduz o bug real
+                // dos dois popups brigando (ver mostrarAmpliacao nos
+                // cards do Inventário).
+                imagem_url: "/icons/ui/espada.png",
                 descricao: null,
                 consumableProperties: { efeito_vida: 0, efeito_mana: 0 },
               },
@@ -163,7 +175,13 @@ export async function startMockBackend(port = 3101) {
                 nome: "Zuado Elixir de Teste",
                 tipo_item: "Consumivel",
                 raridade: "Comum",
-                imagem_url: null,
+                // Precisa de uma imagem DE VERDADE (não null) — o
+                // preview ampliado do ItemIcon só ativa com
+                // `temImagem`, e é exatamente essa combinação (imagem +
+                // tooltip rico no mesmo card) que reproduz o bug real
+                // dos dois popups brigando (ver mostrarAmpliacao nos
+                // cards do Inventário).
+                imagem_url: "/icons/ui/espada.png",
                 descricao: "Item da 2ª linha — tooltip precisa abrir pra cima aqui.",
                 consumableProperties: { efeito_vida: 20, efeito_mana: 0 },
               },
@@ -189,7 +207,9 @@ export async function startMockBackend(port = 3101) {
               tipo_item: "Ferramenta",
               raridade: "Comum",
               tier_equipamento: null,
-              imagem_url: null,
+              // Imagem de verdade — o preview ampliado do ItemIcon só
+              // ativa com `temImagem` (ver mostrarAmpliacao acima).
+              imagem_url: "/icons/ui/espada.png",
               refinamento: 0,
               estado: "Inventario",
               propriedades_base: null,
@@ -205,7 +225,7 @@ export async function startMockBackend(port = 3101) {
               tipo_item: "Acessorio2",
               raridade: "Lendario",
               tier_equipamento: 4,
-              imagem_url: null,
+              imagem_url: "/icons/ui/espada.png",
               refinamento: 1,
               propriedades_base: null,
               propriedades_efetivas: null,

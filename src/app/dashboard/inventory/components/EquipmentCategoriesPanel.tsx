@@ -271,6 +271,12 @@ function ItemEquipavelCard({
         nome={instancia.nome}
         permiteClique={false}
         position="bottom"
+        // O preview ampliado embutido do ItemIcon é um popup PRÓPRIO
+        // (posição estática, nunca mede espaço) — junto com o tooltip
+        // rico deste card, viravam DOIS popups brigando pelo mesmo
+        // espaço no hover (bug real: "a imagem ficou embaixo da
+        // descrição"). A imagem entra no TooltipFixo abaixo, só um.
+        mostrarAmpliacao={false}
         fallback={iconeFallback(instancia.nome)}
       />
       {grupo.quantidade > 1 && (
@@ -293,6 +299,14 @@ function ItemEquipavelCard({
           no mobile, reaproveita o próprio "marcado" (já ativa ao tocar)
           pra mostrar o tooltip também por toque. */}
       <TooltipFixo tooltipRef={tooltipRef} posicao={posicao} visivel={hover || marcado}>
+        {resolveMediaUrl(instancia.imagem_url) && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={resolveMediaUrl(instancia.imagem_url)!}
+            alt=""
+            className="mx-auto mb-1 h-10 w-10 object-contain"
+          />
+        )}
         <span className="block text-[10px] font-bold leading-tight text-white">
           {instancia.nome}
           <ItemTypingDetails itemId={instancia.id_item} />
@@ -527,6 +541,13 @@ function VaraDePescaCard({ grupo }: { grupo: ReturnType<typeof agruparInstancias
         imagemUrl={resolveMediaUrl(instancia.imagem_url)}
         nome={instancia.nome}
         position="bottom"
+        // O preview ampliado embutido do ItemIcon é um popup PRÓPRIO
+        // (posição estática, nunca mede espaço) — junto com o tooltip
+        // rico deste card, viravam DOIS popups brigando pelo mesmo
+        // espaço no hover (bug real reportado: "a imagem ficou embaixo
+        // da descrição", na própria Vara de Bambu). A imagem entra no
+        // TooltipFixo abaixo, só um.
+        mostrarAmpliacao={false}
         fallback={iconeFallback(instancia.nome)}
       />
       {grupo.quantidade > 1 && (
@@ -540,6 +561,14 @@ function VaraDePescaCard({ grupo }: { grupo: ReturnType<typeof agruparInstancias
         </span>
       )}
       <TooltipFixo tooltipRef={tooltipRef} posicao={posicao} visivel={hover}>
+        {resolveMediaUrl(instancia.imagem_url) && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={resolveMediaUrl(instancia.imagem_url)!}
+            alt=""
+            className="mx-auto mb-1 h-10 w-10 object-contain"
+          />
+        )}
         <span className="block text-[10px] font-bold leading-tight text-white">
           {instancia.nome}
           <ItemTypingDetails itemId={instancia.id_item} />
