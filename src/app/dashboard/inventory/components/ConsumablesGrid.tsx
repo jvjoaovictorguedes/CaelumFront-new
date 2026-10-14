@@ -224,8 +224,13 @@ export default function ConsumablesGrid({ characterId }: { characterId: number }
                 {/* Tooltip de hover com nome + descrição — o `title` nativo
                     (removido) só mostrava o nome e não suporta texto rico;
                     clicar continua abrindo o painel "Usar" embaixo, que
-                    reaproveita o mesmo StatsDoConsumivel. */}
-                <div className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-2 w-40 -translate-x-1/2 rounded-md bg-black/90 p-2 text-center opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+                    reaproveita o mesmo StatsDoConsumivel. Abre pra BAIXO
+                    (nunca pra cima): os itens da primeira linha da grade
+                    ficam colados no topo da aba, e um tooltip que abre pra
+                    cima nessa posição é cortado pelo topo do painel — bug
+                    real visto ao testar a tela como jogador, não só o
+                    tsc/eslint. */}
+                <div className="pointer-events-none absolute top-full left-1/2 z-20 mt-2 w-40 -translate-x-1/2 rounded-md bg-black/90 p-2 text-center opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
                   <span className="block text-[10px] font-bold leading-tight text-white">{entrada.Item.nome}</span>
                   {entrada.Item.descricao && (
                     <span className="mt-1 block text-[9px] font-normal leading-tight text-white/60">

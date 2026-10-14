@@ -57,44 +57,76 @@ export function useCombatTransport(
       // IDENTIFY novo — nunca reaproveita um `identificado=true` de uma
       // conexão anterior enquanto o ack desta ainda não chegou.
       setIdentificado(false);
-      // O JWT é httpOnly (o browser não tem acesso), então o socket não
-      // consegue mandar um Bearer no identificar — busca um ticket de
-      // curtíssima duração via HTTP (que passa pelo proxy same-origin e
-      // carrega o cookie) e manda ele, nunca o characterId cru.
-      axiosInstance
-        .get<{ data?: { ticket?: string } }>("/users/socket-ticket")
-        .then((resp) => {
-          if (!active || !socket.connected) return;
-          const ticket = resp.data?.data?.ticket;
-          if (!ticket) return;
-          // Callback de ack: o handler de SOCKET_EVENTS.TRANSPORT.IDENTIFY é assíncrono no
-          // servidor, então emitir os resyncs abaixo sem esperar essa
-          // confirmação corria o risco de chegar ANTES do servidor setar
-          // socket.characterId (resync silenciosamente ignorado). Só
-          // depois do ack é garantido que o personagem já está
-          // identificado pra qualquer evento seguinte.
-          socket.emit(SOCKET_EVENTS.TRANSPORT.IDENTIFY, { ticket }, () => {
+
+      let tentativas = 0;
+      // Ticket de curtíssima duração (30s, ver socketTicketService) — numa
+      // rede lenta (celular, aba em segundo plano) o tempo entre buscar o
+      // ticket e o servidor processar o IDENTIFY podia passar disso. Bug
+      // real reportado ("fica em 'conectando aos servidores' pra sempre,
+      // botão não clicável" no Boss da Guilda e no Ranqueado): o servidor
+      // respondia com um erro mas NUNCA chamava o ack nesse caso, então
+      // este código ficava esperando um callback que nunca chegava —
+      // visto só testando a tela como jogador, não no tsc/eslint. Agora o
+      // servidor sempre chama o ack (com `{ erro }` quando falha) e aqui
+      // a gente tenta de novo com um ticket novo, até um limite, antes de
+      // desistir e avisar o jogador.
+      const tentarIdentificar = () => {
+        // O JWT é httpOnly (o browser não tem acesso), então o socket não
+        // consegue mandar um Bearer no identificar — busca um ticket de
+        // curtíssima duração via HTTP (que passa pelo proxy same-origin e
+        // carrega o cookie) e manda ele, nunca o characterId cru.
+        axiosInstance
+          .get<{ data?: { ticket?: string } }>("/users/socket-ticket")
+          .then((resp) => {
             if (!active || !socket.connected) return;
-            setIdentificado(true);
+            const ticket = resp.data?.data?.ticket;
+            if (!ticket) return;
+            // Callback de ack: o handler de SOCKET_EVENTS.TRANSPORT.IDENTIFY é assíncrono no
+            // servidor, então emitir os resyncs abaixo sem esperar essa
+            // confirmação corria o risco de chegar ANTES do servidor setar
+            // socket.characterId (resync silenciosamente ignorado). Só
+            // depois do ack é garantido que o personagem já está
+            // identificado pra qualquer evento seguinte.
             socket.emit(
-              SOCKET_EVENTS.PVP.LISTAR_ONLINE,
-              {},
-              (resposta: { online?: string[] }) => {
-                setOnlineIds(new Set((resposta?.online ?? []).map(Number)));
+              SOCKET_EVENTS.TRANSPORT.IDENTIFY,
+              { ticket },
+              (resposta?: { erro?: string }) => {
+                if (!active || !socket.connected) return;
+                if (resposta?.erro) {
+                  tentativas += 1;
+                  if (tentativas <= 3) {
+                    tentarIdentificar();
+                  } else {
+                    setErro(
+                      "Não foi possível autenticar a conexão em tempo real.",
+                    );
+                  }
+                  return;
+                }
+                setIdentificado(true);
+                socket.emit(
+                  SOCKET_EVENTS.PVP.LISTAR_ONLINE,
+                  {},
+                  (resposta: { online?: string[] }) => {
+                    setOnlineIds(new Set((resposta?.online ?? []).map(Number)));
+                  },
+                );
+                // Resync após F5/reconexão (bug reportado): se o personagem já
+                // estava numa batalha em grupo em andamento, o servidor
+                // reenvia o estado ATUAL — sem isso a tela nunca repovoava
+                // sozinha, só o processo do servidor continuava rodando a
+                // luta.
+                socket.emit(SOCKET_EVENTS.PARTY.ENTRAR_BATALHA);
               },
             );
-            // Resync após F5/reconexão (bug reportado): se o personagem já
-            // estava numa batalha em grupo em andamento, o servidor
-            // reenvia o estado ATUAL — sem isso a tela nunca repovoava
-            // sozinha, só o processo do servidor continuava rodando a
-            // luta.
-            socket.emit(SOCKET_EVENTS.PARTY.ENTRAR_BATALHA);
+          })
+          .catch(() => {
+            if (active)
+              setErro("Não foi possível autenticar a conexão em tempo real.");
           });
-        })
-        .catch(() => {
-          if (active)
-            setErro("Não foi possível autenticar a conexão em tempo real.");
-        });
+      };
+
+      tentarIdentificar();
     });
 
     scope.on("disconnect", () => {

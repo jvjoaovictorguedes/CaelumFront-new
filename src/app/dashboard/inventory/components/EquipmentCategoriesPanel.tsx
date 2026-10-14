@@ -422,7 +422,7 @@ export default function EquipmentCategoriesPanel() {
                           o próprio "marcado" (já ativa ao tocar) pra
                           mostrar o tooltip também por toque. */}
                       <div
-                        className={`pointer-events-none absolute bottom-full left-1/2 mb-2 w-40 -translate-x-1/2 rounded-md bg-black/90 p-2 text-center shadow-lg transition-opacity group-hover:opacity-100 ${
+                        className={`pointer-events-none absolute top-full left-1/2 mt-2 w-40 -translate-x-1/2 rounded-md bg-black/90 p-2 text-center shadow-lg transition-opacity group-hover:opacity-100 ${
                           marcado ? "opacity-100" : "opacity-0"
                         }`}
                       >
@@ -516,7 +516,7 @@ function VarasDePescaSecao({ instancias }: { instancias: InstanciaApi[] }) {
                   +{instancia.refinamento}
                 </span>
               )}
-              <div className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-2 w-40 -translate-x-1/2 rounded-md bg-black/90 p-2 text-center opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+              <div className="pointer-events-none absolute top-full left-1/2 z-20 mt-2 w-40 -translate-x-1/2 rounded-md bg-black/90 p-2 text-center opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
                 <span className="block text-[10px] font-bold leading-tight text-white">
                   {instancia.nome}
                           <ItemTypingDetails itemId={instancia.id_item}/>

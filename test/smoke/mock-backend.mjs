@@ -107,6 +107,26 @@ export async function startMockBackend(port = 3101) {
     else if (route === "/characters/me" || route === "/characters/by-user/1")
       payload = { data: { character, isAdmin: adminMode, adminPermissions: adminMode?["combat_typing.view","combat_typing.manage","world.manage"]:[] } };
     else if (route === "/dashboard/summary") payload = { data: summary };
+    else if (route === "/character-inventory")
+      payload = {
+        data: {
+          inventory: [
+            {
+              id_personagem_inventario: 1,
+              quantidade: 3,
+              Item: {
+                id: 10,
+                nome: "Poção de Mana Smoke",
+                tipo_item: "Consumivel",
+                raridade: "Comum",
+                imagem_url: null,
+                descricao: "Restaura mana ao ser consumida — fixture de smoke test pro bug de tooltip cortado.",
+                consumableProperties: { efeito_vida: 0, efeito_mana: 30 },
+              },
+            },
+          ],
+        },
+      };
     else if (route === "/music/config")
       payload = {
         data: {
@@ -133,9 +153,25 @@ export async function startMockBackend(port = 3101) {
     res.end(JSON.stringify(payload));
   });
   const io = new Server(http, { cors: { origin: "http://127.0.0.1:3100" } });
+  let falharProximoIdentify = false;
+  let identifyFalhasDisparadas = 0;
   io.on("connection", (socket) => {
     socket.on("identificar", ({ ticket }, ack) => {
       if (ticket !== "smoke-ticket") return;
+      // Reproduz o bug real (ticket de 30s expirando entre o fetch e o
+      // servidor processar o IDENTIFY, numa rede lenta): a PRIMEIRA
+      // tentativa falha exatamente como pvpLiveSocket.js faz em produção
+      // (emite pvp:erro E chama o ack com `{erro}`, nunca deixa o
+      // cliente sem resposta) — então useCombatTransport.ts precisa
+      // buscar um ticket novo e tentar de novo sozinho pra passar deste
+      // teste.
+      if (falharProximoIdentify) {
+        falharProximoIdentify = false;
+        identifyFalhasDisparadas += 1;
+        socket.emit("pvp:erro", { mensagem: "Ticket inválido ou expirado." });
+        ack?.({ erro: "TICKET_INVALIDO" });
+        return;
+      }
       combatSockets.add(socket);
       socket.on("disconnect", () => combatSockets.delete(socket));
       ack?.();
@@ -150,6 +186,8 @@ export async function startMockBackend(port = 3101) {
     setCrisisMode: value=>{crisisMode=Boolean(value);},
     setWorldMode: value=>{worldMode=Boolean(value);},
     setAdminMode: value=>{adminMode=Boolean(value);},
+    setFailNextIdentify: () => { falharProximoIdentify = true; },
+    get identifyFalhasDisparadas() { return identifyFalhasDisparadas; },
     combatSockets,
     io,
     close: () => new Promise((resolve) => io.close(resolve)),
