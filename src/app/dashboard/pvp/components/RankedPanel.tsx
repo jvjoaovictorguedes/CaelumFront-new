@@ -47,7 +47,16 @@ export default function RankedPanel({
   resultadoBruto?: ResultadoRankedBruto | null;
   aoLimparResultado?: () => void;
 }) {
-  const { conectado, duelo } = usePvpSocket();
+  // `realtimeReady` (não `conectado`): o duelo em si chega pelo evento
+  // de socket ranked:match:start, roteado pro characterId identificado
+  // no servidor (SOCKET_EVENTS.TRANSPORT.IDENTIFY). `conectado` só
+  // reflete a camada de transporte (TCP/websocket) — mesmo bug já
+  // corrigido no Boss da Guilda ("botão travado, não consigo entrar"):
+  // com o botão liberado cedo demais, POST /pvp/ranked/match/start
+  // podia ter sucesso (REST, não depende do socket) e o servidor ainda
+  // assim não achar nenhum socket identificado pra avisar — a tela
+  // ficava "Preparando partida..." e nunca trocava pra LiveDuelArena.
+  const { realtimeReady, duelo } = usePvpSocket();
 
   const [status, setStatus] = useState<StatusRanked | null>(null);
   const [carregandoStatus, setCarregandoStatus] = useState(true);
@@ -192,7 +201,7 @@ export default function RankedPanel({
           <button
             type="button"
             onClick={buscarPartida}
-            disabled={buscandoPartida || atingiuLimite || !!duelo || !conectado}
+            disabled={buscandoPartida || atingiuLimite || !!duelo || !realtimeReady}
             className="flex-1 rounded-lg border-2 border-[#F3B43F] bg-[#BC8418] px-4 py-3 text-sm font-bold uppercase tracking-widest text-black transition hover:bg-[#a5710f] disabled:cursor-not-allowed disabled:opacity-50"
           >
             {buscandoPartida ? "Preparando partida..." : "Buscar partida"}
@@ -211,7 +220,7 @@ export default function RankedPanel({
             Você atingiu o limite de {limiteDiario} partidas ranqueadas de hoje. Volte amanhã.
           </p>
         )}
-        {!conectado && (
+        {!realtimeReady && (
           <p className="mt-2 text-center text-xs text-white/50 sm:text-left">
             Conectando ao servidor de duelos...
           </p>
