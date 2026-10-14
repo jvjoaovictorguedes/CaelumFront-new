@@ -4,7 +4,7 @@ import {WorldCrisisProvider} from "@/contexts/WorldCrisisContext";
 import WorldCrisisGlobalAlert from "@/components/world-crisis/WorldCrisisGlobalAlert";
 import AutomationVerification from "@/components/AutomationVerification";
 import NavMenu from "./components/NavMenu";
-import { getCurrentCharacter, getCurrentCharacterId, isCurrentUserAdmin } from "@/utils/character-session";
+import { getCurrentCharacter, isCurrentUserAdmin } from "@/utils/character-session";
 import { PvpSocketProvider } from "@/contexts/PvpSocketContext";
 import { CharacterProvider } from "@/contexts/CharacterContext";
 import { ToastProvider } from "@/contexts/ToastContext";
@@ -28,7 +28,6 @@ interface DashboardLayoutProps {
 export default async function DashboardLayout({
   children,
 }: DashboardLayoutProps) {
-  const characterId = await getCurrentCharacterId();
   const character = await getCurrentCharacter();
   const isAdmin = await isCurrentUserAdmin();
   const templeEnabled = await temploDisponivel();
@@ -38,7 +37,7 @@ export default async function DashboardLayout({
       <CharacterProvider initialCharacter={character}>
         <SessionKeepAlive />
         <AutomationVerification />
-        <PvpSocketProvider characterId={characterId ? Number(characterId) : undefined}>
+        <PvpSocketProvider characterId={character?.id}>
           <WorldBossSocketProvider><WorldCrisisProvider>
             <UniqueFeatSocketProvider>
               <GlobalChatSocketProvider>

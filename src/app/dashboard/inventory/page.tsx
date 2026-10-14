@@ -1,4 +1,4 @@
-import { getCurrentCharacterId } from "@/utils/character-session";
+import { getCurrentCharacter } from "@/utils/character-session";
 import ConsumablesGrid from "./components/ConsumablesGrid";
 import EquipmentCategoriesPanel from "./components/EquipmentCategoriesPanel";
 import InventoryTabs from "./components/InventoryTabs";
@@ -6,10 +6,16 @@ import MaterialsGrid from "./components/MaterialsGrid";
 import PageMusic from "@/components/music/PageMusic";
 
 export default async function InventoryPage() {
-  const characterId = await getCurrentCharacterId();
-  const characterIdNumber = characterId ? Number(characterId) : NaN;
+  // getCurrentCharacter() confere com o backend via /characters/me
+  // (JWT), igual a toda outra página do dashboard — nunca mais o cookie
+  // characterId sozinho, que é só um indicador de UI (ver comentário em
+  // character-session.ts) e podia expirar/faltar com o login ainda
+  // válido, mostrando "crie um personagem" pra quem já tinha um (bug
+  // real reportado: Inventário pedindo personagem com o resto do
+  // dashboard funcionando normalmente).
+  const character = await getCurrentCharacter();
 
-  if (!characterId || !Number.isInteger(characterIdNumber)) {
+  if (!character) {
     return (
       <div className="flex flex-col items-center justify-center h-full">
         <PageMusic slot="PAGE_INVENTORY" />
@@ -28,8 +34,8 @@ export default async function InventoryPage() {
       <PageMusic slot="PAGE_INVENTORY" />
       <InventoryTabs
         equipamentos={<EquipmentCategoriesPanel />}
-        materiais={<MaterialsGrid characterId={characterIdNumber} />}
-        consumiveis={<ConsumablesGrid characterId={characterIdNumber} />}
+        materiais={<MaterialsGrid characterId={character.id} />}
+        consumiveis={<ConsumablesGrid characterId={character.id} />}
       />
     </div>
   );
